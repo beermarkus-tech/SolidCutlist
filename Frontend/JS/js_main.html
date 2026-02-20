@@ -58,8 +58,10 @@
 
     // Settings
     settings: {
-        baseUnit: 'mm',
-        cutoffThreshold: 200.0 // mm. Anything smaller goes in the trash, not the stock array.
+        baseUnit: 'mm',           // The immutable backend unit
+        displayUnit: 'frac_in',   // The UI mask: 'mm', 'dec_in', or 'frac_in'
+        bladeKerf: 3.175,         // mm (Default to 1/8" standard blade)
+        cutoffThreshold: 200.0    // mm. Anything smaller goes in the trash.
     }
     };
 
@@ -75,21 +77,25 @@
      * Loads the state from localStorage. 
      * If no state exists (first time user or cleared cache), it injects the initialAppState.
      */
-    function loadState() {
-    const savedState = localStorage.getItem('lumberLogicState');
-    
-    if (savedState) {
-        try {
-        appState = JSON.parse(savedState);
-        console.log('LumberLogic state loaded successfully from local storage.');
-        } catch (e) {
-        console.error('Data corruption detected in localStorage. Resetting to baseline.', e);
-        initAppState();
+     function loadState() {
+        const savedState = localStorage.getItem('lumberLogicState');
+        
+        if (savedState) {
+            try {
+                appState = JSON.parse(savedState);
+                console.log('LumberLogic state loaded successfully.');
+            } catch (e) {
+                console.error('Data corruption detected.', e);
+                initAppState();
+            }
+        } else {
+            initAppState();
         }
-    } else {
-        console.log('No saved state found. Initializing fresh shop.');
-        initAppState();
-    }
+
+        // FIRE THE RENDERERS ON BOOT
+        if (typeof renderSettings === 'function') renderSettings();
+        if (typeof renderDictionaries === 'function') renderDictionaries();
+        if (typeof renderPartsView === 'function') renderPartsView();
     }
 
     /**
@@ -113,6 +119,134 @@
     }
 
     // ==========================================
+    // MATH & UTILITY ENGINE
+    // ==========================================
+
+    /**
+     * Prevents inch marks (") from breaking HTML input values
+     */
+     function safeHTML(str) {
+        if (!str) return '';
+        return String(str).replace(/"/g, '&quot;');
+    }
+    
+    /**
+     * Parses user UI input (string or number) into Base Units (decimal mm) for the AppState.
+     * Safely handles "1 3/4", "1.75", or "44.45" based on the current Global Setting.
+     */
+     function parseToBaseUnit(input) {
+        if (!input) return 0;
+        let val = String(input).trim();
+        let unit = appState.settings.displayUnit;
+        let decimalInches = 0;
+
+        if (unit === 'mm') {
+            return parseFloat(val) || 0;
+        }
+
+        // If Fractional Inches
+        if (unit === 'frac_in') {
+            if (val.includes('/')) {
+                let parts = val.split(' ');
+                if (parts.length === 2) {
+                    // It's a mixed fraction (e.g., "1 3/4")
+                    let whole = parseFloat(parts[0]) || 0;
+                    let frac = parts[1].split('/');
+                    let num = parseFloat(frac[0]) || 0;
+                    let den = parseFloat(frac[1]) || 1;
+                    decimalInches = whole + (num / den);
+                } else {
+                    // It's just a fraction (e.g., "3/4")
+                    let frac = val.split('/');
+                    let num = parseFloat(frac[0]) || 0;
+                    let den = parseFloat(frac[1]) || 1;
+                    decimalInches = num / den;
+                }
+            } else {
+                // It's just a whole number typed into the fraction setting (e.g., "2")
+                decimalInches = parseFloat(val) || 0;
+            }
+            return decimalInches * 25.4; // Convert inches to mm
+        }
+
+        // If Decimal Inches
+        if (unit === 'dec_in') {
+            decimalInches = parseFloat(val) || 0;
+            return decimalInches * 25.4;
+        }
+
+        return parseFloat(val) || 0; // Fallback
+    }
+
+    /**
+     * Formats Base Units (decimal mm) from the AppState back into a user-friendly string.
+     * Snaps fractional inches to the nearest 1/16th (Woodworking standard).
+     */
+    function formatForDisplay(mmValue) {
+        let val = parseFloat(mmValue) || 0;
+        let unit = appState.settings.displayUnit;
+
+        if (unit === 'mm') {
+            return (Math.round(val * 100) / 100).toString(); // Max 2 decimal places
+        }
+
+        let inches = val / 25.4;
+
+        if (unit === 'dec_in') {
+            return (Math.round(inches * 1000) / 1000).toString(); // Max 3 decimal places
+        }
+
+        if (unit === 'frac_in') {
+            let whole = Math.floor(inches);
+            let remainder = inches - whole;
+            let denominator = 16; // Lock accuracy to 1/16th
+            let numerator = Math.round(remainder * denominator);
+
+            // Edge Case: perfectly whole number
+            if (numerator === 0) {
+                return whole > 0 ? whole.toString() : "0";
+            }
+            
+            // Edge Case: rounded up to the next whole number (e.g., 16/16)
+            if (numerator === denominator) {
+                return (whole + 1).toString();
+            }
+
+            // Simplify the fraction (e.g., 8/16 becomes 1/2)
+            while (numerator % 2 === 0 && denominator % 2 === 0) {
+                numerator /= 2;
+                denominator /= 2;
+            }
+
+            if (whole === 0) {
+                return `${numerator}/${denominator}`;
+            } else {
+                return `${whole} ${numerator}/${denominator}`;
+            }
+        }
+        
+        return val.toString();
+    }
+
+    /**
+     * Converts UI density input into Base kg/m³ for storage.
+     */
+     function parseDensityToBase(input) {
+        let val = parseFloat(input) || 0;
+        if (appState.settings.displayUnit === 'mm') return val; // Already kg/m³
+        return val / 0.06242796; // Convert lb/ft³ back to kg/m³
+    }
+
+    /**
+     * Formats Base kg/m³ into UI display density (kg/m³ or lb/ft³).
+     */
+    function formatDensityForDisplay(kgm3) {
+        let val = parseFloat(kgm3) || 0;
+        if (appState.settings.displayUnit === 'mm') return val.toFixed(2);
+        return (val * 0.06242796).toFixed(2); // Convert to lb/ft³
+    }
+
+    // ==========================================
     // BOOT SEQUENCE
     // ==========================================
     // Initialize app when the page loads
@@ -122,17 +256,20 @@
 
     // --- NAVIGATION ---
     function navigateTo(viewId) {
-        // 1. Hide all views by adding the Bootstrap 'd-none' class
+        // 1. Hide all views
         const views = document.querySelectorAll('.app-view');
         views.forEach(view => view.classList.add('d-none'));
 
-        // 2. Show the requested view by removing 'd-none'
+        // 2. Show requested view
         const targetView = document.getElementById(viewId);
-        if (targetView) {
-            targetView.classList.remove('d-none');
-        } else {
-            console.error("View not found: " + viewId);
-        }
+        if (targetView) targetView.classList.remove('d-none');
+
+        // 3. Highlight the active nav button
+        document.querySelectorAll('.nav-buttons-container .btn').forEach(btn => {
+            btn.classList.remove('active', 'bg-light', 'text-dark', 'fw-bold');
+        });
+        const activeBtn = document.getElementById('nav-btn-' + viewId);
+        if (activeBtn) activeBtn.classList.add('active', 'bg-light', 'text-dark', 'fw-bold');
     }
 
     // --- TOAST NOTIFICATIONS ---

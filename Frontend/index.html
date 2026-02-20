@@ -13,28 +13,27 @@
 <body class="bg-light">
 
     <!-- Top Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 sticky-top">
         <div class="container-fluid">
             <span class="navbar-brand mb-0 h1">🪵 LumberLogic</span>
-            <div class="d-flex gap-2">
-                <!-- Navigation Buttons -->
-                <button class="btn btn-outline-light btn-sm" onclick="navigateTo('view-dashboard')">Dashboard</button>
-                <button class="btn btn-outline-light btn-sm" onclick="navigateTo('view-projects')">Projects</button>
+            <div class="d-flex gap-2 nav-buttons-container">
+                <button id="nav-btn-view-dictionaries" class="btn btn-outline-light btn-sm active" onclick="navigateTo('view-dictionaries')">Setup</button>
+                <button id="nav-btn-view-parts" class="btn btn-outline-light btn-sm" onclick="navigateTo('view-parts')">Partlist</button>
             </div>
         </div>
     </nav>
 
     <!-- Main Content Area -->
     <main id="app-container" class="container">
-        
-        <!-- View: Dashboard (Default active) -->
-        <div id="view-dashboard" class="app-view">
-            <?!= include('Frontend/Views/view_dashboard'); ?>
+       
+        <!-- View: Dictionaries (Hidden by default) -->
+        <div id="view-dictionaries" class="app-view">
+            <?!= include('Frontend/Views/view_dictionaries'); ?>
         </div>
-        
-        <!-- View: Projects (Hidden by default) -->
-        <div id="view-projects" class="app-view d-none">
-            <?!= include('Frontend/Views/view_projects'); ?>
+
+        <!-- View: Parts (Hidden by default) -->
+        <div id="view-parts" class="app-view d-none">
+            <?!= include('Frontend/Views/view_parts'); ?>
         </div>
         
     </main>
@@ -48,5 +47,7 @@
     <!-- Inject our client-side logic -->
     <?!= include('Frontend/JS/js_api'); ?>
     <?!= include('Frontend/JS/js_main'); ?>
+    <?!= include('Frontend/JS/js_dictionaries'); ?>
+    <?!= include('Frontend/JS/js_parts'); ?>
 </body>
 </html>

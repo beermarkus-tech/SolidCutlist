@@ -1,0 +1,376 @@
+<script>
+    /**
+     * Frontend/JS/js_dictionaries.html
+     * Handles logic for adding/removing Materials and Profiles.
+     */
+
+    // --- RENDER FUNCTIONS ---
+    // These functions draw the data from appState onto the screen.
+
+    function renderDictionaries() {
+        renderProjectsTable(); 
+        renderMaterialsTable();
+        renderProfilesTable();
+        
+        // 🪄 Tell the Parts view to instantly update its dropdowns
+        if (typeof refreshPartsDropdowns === 'function') refreshPartsDropdowns();
+        if (typeof renderPartsTable === 'function') renderPartsTable();
+    }
+
+    // --- RENDER FUNCTIONS (Upgraded for In-Line Editing) ---
+
+    function renderMaterialsTable() {
+        const tbody = document.getElementById('table-materials-body');
+        tbody.innerHTML = ''; 
+        
+        appState.materials.forEach(mat => {
+            const tr = document.createElement('tr');
+           
+            let currentCat = mat.category === 'solid' ? 'lumber' : (mat.category || 'lumber');
+
+            // 🪄 COLOR CODED BADGE LOGIC
+            let badgeClass = 'bg-secondary text-white'; // Default
+            if (currentCat === 'lumber') badgeClass = 'bg-success text-white';
+            if (currentCat === 'sheet') badgeClass = 'bg-warning text-dark';
+            if (currentCat === 'fastener') badgeClass = 'bg-info text-dark';
+
+            tr.innerHTML = `
+                <td>
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" 
+                           value="${safeHTML(mat.name)}" 
+                           onchange="updateMaterial('${mat.id}', 'name', this.value)" title="Tap to edit">
+                </td>
+                <td>
+                    <div class="d-flex justify-content-center">
+                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
+                                style="width: 80px; appearance: none; background-image: none; padding-right: 0.5rem; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
+                                onchange="updateMaterial('${mat.id}', 'category', this.value)" title="Tap to change category">
+                            <option value="lumber" class="bg-light text-dark" ${currentCat === 'lumber' ? 'selected' : ''}>Lumber</option>
+                            <option value="sheet" class="bg-light text-dark" ${currentCat === 'sheet' ? 'selected' : ''}>Sheet</option>
+                            <option value="fastener" class="bg-light text-dark" ${currentCat === 'fastener' ? 'selected' : ''}>Fastener</option>
+                        </select>
+                    </div>
+                </td>
+                <td>
+                    <input type="number" step="0.01" class="form-control form-control-sm border-0 bg-transparent text-center" 
+                           value="${formatDensityForDisplay(mat.density)}" 
+                           onchange="updateMaterial('${mat.id}', 'density', this.value)" title="Tap to edit">
+                </td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteMaterial('${mat.id}')">X</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderProfilesTable() {
+        const tbody = document.getElementById('table-profiles-body');
+        tbody.innerHTML = ''; 
+        
+        appState.profiles.forEach(prof => {
+            const tr = document.createElement('tr');
+            
+            // 🪄 MAGIC: Convert internal base mm back to UI strings (e.g., 38.1 -> "1 1/2")
+            let displayThick = formatForDisplay(prof.thickness);
+            let displayWidth = formatForDisplay(prof.width);
+            
+            // 🪄 COLOR CODED BADGE LOGIC
+            let badgeClass = 'bg-secondary text-white'; // Default
+            if (prof.type === 'lumber') badgeClass = 'bg-success text-white';
+            if (prof.type === 'sheet') badgeClass = 'bg-warning text-dark';
+            if (prof.type === 'fastener') badgeClass = 'bg-info text-dark';
+
+            tr.innerHTML = `
+                <td>
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" 
+                           value="${safeHTML(prof.name)}"
+                           onchange="updateProfile('${prof.id}', 'name', this.value)" title="Tap to edit">
+                </td>
+                <td>
+                    <div class="d-flex justify-content-center">
+                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
+                                style="width: 80px; appearance: none; background-image: none; padding-right: 0.5rem; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
+                                onchange="updateProfile('${prof.id}', 'type', this.value)" title="Tap to change category">
+                            <option value="lumber" class="bg-light text-dark" ${prof.type === 'lumber' ? 'selected' : ''}>Lumber</option>
+                            <option value="sheet" class="bg-light text-dark" ${prof.type === 'sheet' ? 'selected' : ''}>Sheet</option>
+                            <option value="fastener" class="bg-light text-dark" ${prof.type === 'fastener' ? 'selected' : ''}>Fastener</option>
+                        </select>
+                    </div>
+                </td>
+                <td class="d-flex align-items-center justify-content-center gap-1">
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0" style="width: 45px;"
+                           value="${displayThick}" 
+                           onchange="updateProfile('${prof.id}', 'thickness', this.value)" title="Tap to edit">
+                    <span class="text-muted text-sm">x</span>
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0" style="width: 45px;"
+                           value="${displayWidth}" 
+                           onchange="updateProfile('${prof.id}', 'width', this.value)" title="Tap to edit">
+                </td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteProfile('${prof.id}')">X</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --- CRUD OPERATIONS ---
+
+    function handleProfileCategoryChange() {
+        const cat = document.getElementById('prof-category').value;
+        const widthInput = document.getElementById('prof-width');
+        
+        if (cat === 'sheet' || cat === 'fastener') {
+            widthInput.value = '';
+            widthInput.disabled = true;
+        } else {
+            widthInput.disabled = false;
+        }
+    }
+
+    function handleAddProfile(event) {
+        event.preventDefault();
+        
+        const name = document.getElementById('prof-name').value;
+        const category = document.getElementById('prof-category').value;
+        const thicknessInput = document.getElementById('prof-thickness').value;
+        const widthInput = document.getElementById('prof-width').value;
+        
+        // 🪄 MAGIC: Convert whatever the user typed into base mm before saving
+        const thicknessBase = parseToBaseUnit(thicknessInput);
+        const widthBase = parseToBaseUnit(widthInput);
+        
+        const newId = 'PR-' + Date.now();
+        
+        const newProfile = {
+            id: newId,
+            name: name,
+            type: category, 
+            thickness: thicknessBase,
+            width: widthBase
+        };
+        
+        appState.profiles.push(newProfile);
+        saveState();
+        renderProfilesTable();
+        showToast('Profile added successfully.');
+        
+        document.getElementById('form-add-profile').reset();
+    }
+
+    function handleAddMaterial(event) {
+        event.preventDefault(); 
+        
+        const name = document.getElementById('mat-name').value;
+        const category = document.getElementById('mat-category').value;
+        const densityInput = document.getElementById('mat-density').value;
+        
+        const newMaterial = {
+            id: 'M-' + Date.now(),
+            name: name,
+            category: category, // 🪄 Now saving the category
+            density: parseDensityToBase(densityInput) 
+        };
+        
+        appState.materials.push(newMaterial);
+        saveState(); 
+        renderMaterialsTable(); 
+        showToast('Material added successfully.');
+        
+        document.getElementById('form-add-material').reset();
+    }
+
+    // --- IN-LINE EDITING UPGRADE FUNCTIONS ---
+
+    function updateMaterial(id, field, newValue) {
+        const mat = appState.materials.find(m => m.id === id);
+        if (mat) {
+            // 🪄 If changing density, parse the lb/ft3 back to kg/m3 for the database
+            mat[field] = (field === 'density') ? parseDensityToBase(newValue) : newValue;
+            saveState();
+            renderMaterialsTable(); // Force a redraw so the format is clean
+            showToast('Material updated.');
+        }
+    }
+
+    function updateProfile(id, field, newValue) {
+        const prof = appState.profiles.find(p => p.id === id);
+        if (prof) {
+            if (field === 'thickness' || field === 'width') {
+                // Intercept and parse to base unit
+                prof[field] = parseToBaseUnit(newValue);
+            } else {
+                prof[field] = newValue;
+                
+                // 🪄 PHYSICS AUTO-HEAL: If they change it to a Sheet, zero out the width so it doesn't leave bad data behind
+                if (field === 'type' && (newValue === 'sheet' || newValue === 'fastener')) {
+                    prof.width = 0;
+                }
+            }
+            
+            saveState();
+            renderProfilesTable(); // <--- Moved this here so it ALWAYS forces the badge to change color instantly
+            
+            // Tell the Parts view to update its dropdowns in the background just in case
+            if (typeof refreshPartsDropdowns === 'function') refreshPartsDropdowns(); 
+            
+            showToast('Profile updated.');
+        }
+    }
+
+    function deleteMaterial(id) {
+        // Filter out the material with the matching ID
+        appState.materials = appState.materials.filter(mat => mat.id !== id);
+        saveState();
+        renderMaterialsTable();
+        showToast('Material deleted.', true); // true makes it a red error toast
+    }
+
+    function deleteProfile(id) {
+        appState.profiles = appState.profiles.filter(prof => prof.id !== id);
+        saveState();
+        renderProfilesTable();
+        showToast('Profile deleted.', true);
+    }
+
+    // ==========================================
+    // PROJECTS LOGIC
+    // ==========================================
+
+    function renderProjectsTable() {
+        const tbody = document.getElementById('table-projects-body');
+        tbody.innerHTML = ''; 
+        
+        // Failsafe in case appState.projects is undefined
+        if (!appState.projects) appState.projects = [];
+
+        appState.projects.forEach(proj => {
+            const tr = document.createElement('tr');
+            
+            // Notice the inline input field. It looks like plain text until you tap it.
+            // When you change the text and tap away, it fires onchange="updateProjectName(...)"
+            tr.innerHTML = `
+                <td>
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" 
+                           value="${proj.name}" 
+                           onchange="updateProjectName('${proj.id}', this.value)"
+                           title="Tap to edit">
+                </td>
+                <td><span class="badge bg-secondary">${proj.status || 'Design'}</span></td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteProject('${proj.id}')">X</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function handleAddProject(event) {
+        event.preventDefault();
+        
+        const nameInput = document.getElementById('proj-name');
+        const newId = 'PROJ-' + Date.now(); // Generates unique ID
+        
+        const newProject = {
+            id: newId,
+            name: nameInput.value,
+            status: 'Design'
+        };
+        
+        appState.projects.push(newProject);
+        saveState();
+        renderProjectsTable();
+        showToast('Project created.');
+        
+        nameInput.value = ''; // Clear the form
+    }
+
+    function updateProjectName(id, newName) {
+        // Find the project by ID and update its name
+        const project = appState.projects.find(p => p.id === id);
+        if (project) {
+            project.name = newName;
+            saveState();
+            showToast('Project renamed.');
+            // Note: We don't need to re-render the whole table here because 
+            // the user just typed the new value directly into the input field.
+        }
+    }
+
+    // A helper to dynamically swap text labels on the UI instantly
+    function updateUnitLabels() {
+        const isMetric = appState.settings.displayUnit === 'mm';
+        const unitText = isMetric ? 'mm' : 'in';
+        const densityText = isMetric ? 'kg/m³' : 'lb/ft³';
+        const weightText = isMetric ? 'kg' : 'lbs';
+        
+        document.querySelectorAll('.display-unit-label').forEach(label => label.innerText = unitText);
+        document.querySelectorAll('.density-unit-label').forEach(label => label.innerText = densityText);
+        document.querySelectorAll('.density-weight-label').forEach(label => label.innerText = weightText);
+    }
+
+    function deleteProject(id) {
+        // We use window.confirm so you don't accidentally delete a whole project with a fat finger
+        if (window.confirm('Delete this project? (This cannot be undone)')) {
+            appState.projects = appState.projects.filter(p => p.id !== id);
+            saveState();
+            renderProjectsTable();
+            showToast('Project deleted.', true);
+        }
+    }
+
+    // --- SETTINGS LOGIC ---
+
+    function renderSettings() {
+        // AUTO-HEAL: If local storage is missing these keys, inject the defaults safely
+        if (!appState.settings) appState.settings = {};
+        if (!appState.settings.displayUnit) appState.settings.displayUnit = 'mm';
+        if (appState.settings.bladeKerf === undefined) appState.settings.bladeKerf = 3.175;
+        if (appState.settings.cutoffThreshold === undefined) appState.settings.cutoffThreshold = 200.0;
+
+        // Set the dropdown
+        document.getElementById('setting-display-unit').value = appState.settings.displayUnit;
+        
+        // 🪄 Apply the math engine so kerf/cutoff translate dynamically (e.g., 3.175mm -> "1/8")
+        document.getElementById('setting-kerf').value = formatForDisplay(appState.settings.bladeKerf);
+        document.getElementById('setting-cutoff').value = formatForDisplay(appState.settings.cutoffThreshold);
+        
+        updateUnitLabels();
+    }
+
+    function handleUnitChange() {
+        // 1. ONLY update the unit preference. 
+        // We strictly DO NOT read the kerf/cutoff text boxes here because they are still formatted in the old unit.
+        appState.settings.displayUnit = document.getElementById('setting-display-unit').value;
+        saveState();
+        
+        // 2. Redraw the UI. The kerf/cutoff boxes will now pull the safe, uncorrupted base-mm 
+        // from the appState and automatically translate it into the new unit.
+        renderSettings(); 
+        renderDictionaries();
+        showToast('Display units updated.');
+    }
+
+    function handleSettingsValueChange() {
+        // 1. ONLY read the text boxes. The unit preference is already safely set.
+        const kerfInput = document.getElementById('setting-kerf').value;
+        const cutoffInput = document.getElementById('setting-cutoff').value;
+        
+        appState.settings.bladeKerf = parseToBaseUnit(kerfInput);
+        appState.settings.cutoffThreshold = parseToBaseUnit(cutoffInput);
+        
+        saveState();
+        renderSettings(); // Cleans up the formatting in case they typed a messy fraction
+        showToast('Settings saved.');
+    }
+
+    // --- INITIALIZATION ---
+    // Ensure the tables render when the app boots up
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            renderSettings();
+            renderDictionaries();
+        }, 100); 
+    });
+</script>

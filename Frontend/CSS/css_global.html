@@ -19,4 +19,21 @@
         from { opacity: 0; transform: translateY(5px); }
         to { opacity: 1; transform: translateY(0); }
     }
+
+    /* Fix for Android Chrome selection quirk on dropdowns and buttons */
+    select, button, input[type="button"], .form-label {
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    /* Strip Bootstrap's default input padding inside small tables to normalize row height */
+    .table-sm .form-control-sm {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        height: auto !important;
+    }
+    
+    .table-sm td {
+        vertical-align: middle;
+    }
 </style>

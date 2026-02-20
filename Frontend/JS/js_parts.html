@@ -1,0 +1,359 @@
+<script>
+    /**
+     * Frontend/JS/js_parts.html
+     * Handles dynamic form logic, math calculations, and part CRUD operations.
+     */
+
+    // --- INITIALIZATION ---
+    
+    // Call this when the app boots or when navigating to the Parts view
+    function renderPartsView() {
+        populateProjectDropdown();
+        renderPartsTable();
+    }
+
+    function populateProjectDropdown() {
+        const projSelect = document.getElementById('part-project');
+        projSelect.innerHTML = '<option value="" disabled selected>Select Project...</option>';
+        
+        if (!appState.projects || appState.projects.length === 0) return;
+
+        appState.projects.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.innerText = p.name;
+            projSelect.appendChild(opt);
+        });
+    }
+
+    // --- DYNAMIC FORM ENGINE ---
+
+    // Forces the Parts form to refresh its dropdowns if the dictionaries or units change
+    function refreshPartsDropdowns() {
+        populateProjectDropdown();
+        
+        // If a category is already selected, re-trigger the change to rebuild the profile/material lists
+        const cat = document.getElementById('part-category').value;
+        if (cat) {
+            handleCategoryChange();
+        }
+    }
+
+    // Fires when the user selects Lumber, Sheet, or Fastener
+    function handleCategoryChange() {
+        const cat = document.getElementById('part-category').value;
+        const widthInput = document.getElementById('part-width');
+        const lengthInput = document.getElementById('part-length');
+        const profSelect = document.getElementById('part-profile');
+        const matSelect = document.getElementById('part-material');
+        const btnAdd = document.getElementById('btn-add-part');
+
+        // 1. Reset inputs
+        widthInput.value = '';
+        lengthInput.value = '';
+        profSelect.innerHTML = '<option value="" disabled selected>Select...</option>';
+        matSelect.innerHTML = '<option value="" disabled selected>Select...</option>';
+        document.getElementById('part-weight').value = '0.00';
+
+        // 2. Lock/Unlock based on Category Physics
+        if (cat === 'lumber') {
+            widthInput.disabled = true;   // Width comes from the profile
+            lengthInput.disabled = false;
+        } else if (cat === 'sheet') {
+            widthInput.disabled = false;  // Sheets need both W and L
+            lengthInput.disabled = false;
+        } else if (cat === 'fastener') {
+            widthInput.disabled = true;   
+            lengthInput.disabled = true;
+        }
+
+        // 3. Populate Profile Dropdown (Filtered by Category)
+        const filteredProfiles = appState.profiles.filter(p => p.type === cat);
+        const unitText = appState.settings.displayUnit === 'mm' ? 'mm' : 'in'; // Get current global unit
+        
+        filteredProfiles.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            // 🪄 Dynamically format dimensions and append the correct unit text
+            opt.innerText = `${p.name} (${formatForDisplay(p.thickness)} x ${formatForDisplay(p.width)} ${unitText})`;
+            profSelect.appendChild(opt);
+        });
+
+        // 4. Populate Material Dropdown (Filtered by Category)
+        const filteredMaterials = appState.materials.filter(m => {
+            // Include auto-heal for legacy data ('solid' becomes 'lumber')
+            let mCat = m.category === 'solid' ? 'lumber' : m.category;
+            return mCat === cat;
+        });
+
+        filteredMaterials.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.innerText = m.name;
+            matSelect.appendChild(opt);
+        });
+
+        // 5. Unlock the rest of the form
+        profSelect.disabled = false;
+        matSelect.disabled = false;
+        btnAdd.disabled = false;
+    }
+
+    // Calculates weight on the fly as the user types
+    function calculateWeight() {
+        const cat = document.getElementById('part-category').value;
+        if (!cat || cat === 'fastener') {
+            document.getElementById('part-weight').value = '0.00';
+            return;
+        }
+
+        const qty = parseFloat(document.getElementById('part-qty').value) || 1;
+        const lengthBase = parseToBaseUnit(document.getElementById('part-length').value) || 0;
+        
+        const profId = document.getElementById('part-profile').value;
+        const matId = document.getElementById('part-material').value;
+
+        if (!profId || !matId || lengthBase === 0) return;
+
+        const profile = appState.profiles.find(p => p.id === profId);
+        const material = appState.materials.find(m => m.id === matId);
+
+        if (!profile || !material) return;
+
+        let widthBase = 0;
+        if (cat === 'lumber') {
+            widthBase = profile.width; // Pull from dictionary
+        } else if (cat === 'sheet') {
+            widthBase = parseToBaseUnit(document.getElementById('part-width').value) || 0; // Pull from input
+        }
+
+        if (widthBase === 0) return;
+
+        // Calculate Volume in cubic millimeters, then convert to cubic meters
+        const volumeM3 = (lengthBase * widthBase * profile.thickness) / 1000000000;
+        
+        // Weight = Volume * Density (kg/m3) * Qty
+        const weightKg = volumeM3 * material.density * qty;
+
+        // Display Formatting (kg vs lbs)
+        const isMetric = appState.settings.displayUnit === 'mm';
+        const displayWeight = isMetric ? weightKg : (weightKg * 2.20462); // kg to lbs
+
+        document.getElementById('part-weight').value = displayWeight.toFixed(2);
+    }
+
+    // --- CRUD OPERATIONS ---
+
+    function handleAddPart(event) {
+        event.preventDefault();
+
+        const projId = document.getElementById('part-project').value;
+        const cat = document.getElementById('part-category').value;
+        const nameInput = document.getElementById('part-name');
+        const qtyInput = document.getElementById('part-qty');
+        const widthInput = document.getElementById('part-width');
+        const lengthInput = document.getElementById('part-length');
+        const profId = document.getElementById('part-profile').value;
+        const matId = document.getElementById('part-material').value;
+
+        const newPart = {
+            id: 'PART-' + Date.now(),
+            projectId: projId,
+            category: cat,
+            name: nameInput.value,
+            qty: parseInt(qtyInput.value) || 1,
+            width: parseToBaseUnit(widthInput.value) || 0,
+            length: parseToBaseUnit(lengthInput.value) || 0,
+            profileId: profId,
+            materialId: matId
+        };
+
+        // Initialize array if it doesn't exist
+        if (!appState.parts) appState.parts = [];
+        
+        appState.parts.push(newPart);
+        saveState();
+        renderPartsTable();
+        showToast('Part added to cutlist.');
+
+        // BATCH ENTRY LOOP: Clear only what needs to be cleared
+        nameInput.value = '';
+        lengthInput.value = '';
+        if (cat === 'sheet') widthInput.value = '';
+        qtyInput.value = 1;
+        document.getElementById('part-weight').value = '0.00';
+        
+        // Snap focus back to name so you can keep typing
+        nameInput.focus();
+    }
+
+    function renderPartsTable() {
+        const tbody = document.getElementById('table-parts-body');
+        tbody.innerHTML = '';
+
+        if (!appState.parts || appState.parts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No parts added yet.</td></tr>';
+            return;
+        }
+
+        appState.parts.forEach(part => {
+            const tr = document.createElement('tr');
+            
+            // Relational Lookups
+            const proj = appState.projects.find(p => p.id === part.projectId)?.name || 'Unknown';
+            const prof = appState.profiles.find(p => p.id === part.profileId);
+            const mat = appState.materials.find(m => m.id === part.materialId);
+            
+            const profName = prof ? prof.name : 'Unknown';
+            const matName = mat ? mat.name : 'Unknown';
+            
+            // 🪄 BUILD INLINE PROJECT DROPDOWN
+            let projOptions = '<option value="" disabled>Select...</option>';
+            appState.projects.forEach(p => {
+                projOptions += `<option value="${p.id}" ${p.id === part.projectId ? 'selected' : ''}>${safeHTML(p.name)}</option>`;
+            });
+
+            // 🪄 BUILD INLINE PROFILE DROPDOWN (Filtered by Part Category)
+            let profOptions = '<option value="" disabled selected>Select...</option>';
+            const filteredProfiles = appState.profiles.filter(p => p.type === part.category);
+            filteredProfiles.forEach(p => {
+                const unitText = appState.settings.displayUnit === 'mm' ? 'mm' : 'in';
+                const dimLabel = `${formatForDisplay(p.thickness)} x ${formatForDisplay(p.width)} ${unitText}`;
+                profOptions += `<option value="${p.id}" ${p.id === part.profileId ? 'selected' : ''}>${safeHTML(p.name)}</option>`;
+            });
+
+            // 🪄 BUILD INLINE MATERIAL DROPDOWN (Filtered by Part Category)
+            let matOptions = '<option value="" disabled selected>Select...</option>';
+            const filteredMaterials = appState.materials.filter(m => {
+                let mCat = m.category === 'solid' ? 'lumber' : m.category; // Auto-heal legacy
+                return mCat === part.category;
+            });
+            filteredMaterials.forEach(m => {
+                matOptions += `<option value="${m.id}" ${m.id === part.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
+            });
+
+            // Format dimensions and logic
+            const unitText = appState.settings.displayUnit === 'mm' ? 'mm' : 'in';
+            const displayW = part.category === 'lumber' ? formatForDisplay(prof ? prof.width : 0) : formatForDisplay(part.width);
+            const displayL = formatForDisplay(part.length);
+            
+            // Lock dimensions based on physics
+            const disableW = (part.category === 'lumber' || part.category === 'fastener') ? 'disabled' : '';
+            const disableL = (part.category === 'fastener') ? 'disabled' : '';
+
+            // Build the editable W x L cell
+            const dimHtml = part.category === 'fastener' ? '-' : `
+                <div class="d-flex align-items-center justify-content-start gap-1">
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0" style="width: 45px;"
+                           value="${displayW}" onchange="updatePart('${part.id}', 'width', this.value)" title="Tap to edit width" ${disableW}>
+                    <span class="text-muted text-sm">x</span>
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0" style="width: 45px;"
+                           value="${displayL}" onchange="updatePart('${part.id}', 'length', this.value)" title="Tap to edit length" ${disableL}>
+                </div>
+            `;
+
+            // CALCULATE INLINE ROW WEIGHT
+            let displayWeight = '-';
+            if (part.category !== 'fastener' && prof && mat) {
+                const safeThick = prof ? prof.thickness : 0;
+                const trueWidth = part.category === 'lumber' ? (prof ? prof.width : 0) : part.width;
+                const volumeM3 = (part.length * trueWidth * safeThick) / 1000000000;
+                const weightKg = volumeM3 * (mat ? mat.density : 0) * part.qty;
+                const isMetric = appState.settings.displayUnit === 'mm';
+                const finalWeight = isMetric ? weightKg : (weightKg * 2.20462);
+                const weightUnit = isMetric ? 'kg' : 'lbs';
+                displayWeight = `<small>${finalWeight.toFixed(2)} ${weightUnit}</small>`;
+            }
+
+            // COLOR CODED BADGE LOGIC
+            let badgeClass = 'bg-secondary text-white'; 
+            if (part.category === 'lumber') badgeClass = 'bg-success text-white';
+            if (part.category === 'sheet') badgeClass = 'bg-warning text-dark';
+            if (part.category === 'fastener') badgeClass = 'bg-info text-dark';
+
+            tr.innerHTML = `
+                <td>
+                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" onchange="updatePart('${part.id}', 'projectId', this.value)" style="max-width: 170px;">
+                        ${projOptions}
+                    </select>
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" 
+                           value="${safeHTML(part.name)}" 
+                           onchange="updatePart('${part.id}', 'name', this.value)" title="Tap to edit">
+                </td>
+                <td>
+                    <div class="d-flex justify-content-center">
+                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
+                                style="width: 80px; appearance: none; background-image: none; padding-right: 0.5rem; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
+                                onchange="updatePartCategory('${part.id}', this.value)" title="Tap to change category">
+                            <option value="lumber" class="bg-light text-dark" ${part.category === 'lumber' ? 'selected' : ''}>Lumber</option>
+                            <option value="sheet" class="bg-light text-dark" ${part.category === 'sheet' ? 'selected' : ''}>Sheet</option>
+                            <option value="fastener" class="bg-light text-dark" ${part.category === 'fastener' ? 'selected' : ''}>Fastener</option>
+                        </select>
+                    </div>
+                </td>
+                <td>
+                    <input type="number" class="form-control form-control-sm border-0 bg-transparent text-center px-0" style="width: 40px;"
+                           value="${part.qty}" min="1"
+                           onchange="updatePart('${part.id}', 'qty', this.value)" title="Tap to edit">
+                </td>
+                <td class="d-flex align-items-center justify-content-center gap-1">${dimHtml}</td>
+                <td>
+                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mb-1" style="max-width: 170px;" onchange="updatePart('${part.id}', 'profileId', this.value)" title="Tap to edit Profile">
+                        ${profOptions}
+                    </select>
+                </td><td>
+                    <select class="form-select form-select-sm border-0 bg-transparent text-muted px-0 py-0" style="max-width: 170px;" onchange="updatePart('${part.id}', 'materialId', this.value)" title="Tap to edit Material">
+                        ${matOptions}
+                    </select>
+                </td>
+                <td>${displayWeight}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deletePart('${part.id}')">X</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function updatePartCategory(partId, newCategory) {
+        const part = appState.parts.find(p => p.id === partId);
+        if (part) {
+            part.category = newCategory;
+            // 🪄 WIPE invalid profiles, materials, and width when physics change
+            part.profileId = '';
+            part.materialId = '';
+            part.width = 0; 
+            
+            saveState();
+            renderPartsTable(); 
+            showToast('Category changed. Please re-select Profile and Material.');
+        }
+    }
+
+    function updatePart(partId, field, newValue) {
+        const part = appState.parts.find(p => p.id === partId);
+        if (part) {
+            if (field === 'width' || field === 'length') {
+                // Run dimensions through the fractional math engine
+                part[field] = parseToBaseUnit(newValue) || 0;
+            } else if (field === 'qty') {
+                part[field] = parseInt(newValue) || 1;
+            } else {
+                part[field] = newValue; // For text like Name
+            }
+            
+            saveState();
+            renderPartsTable(); // Instantly recalculates weight and reformats fractions
+            showToast('Part updated.');
+        }
+    }
+    
+    function deletePart(id) {
+        appState.parts = appState.parts.filter(p => p.id !== id);
+        saveState();
+        renderPartsTable();
+        showToast('Part removed.', true);
+    }
+</script>
