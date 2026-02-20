@@ -1,0 +1,171 @@
+<script>
+    /**
+     * Frontend/JS/js_main.html
+     * Handles UI state, View navigation, and global UI helpers (like Toasts).
+     */
+
+    // ==========================================
+    // GLOBAL APP STATE
+    // ==========================================
+
+    const initialAppState = {
+    
+    // ==========================================
+    // TIER 1: THE DICTIONARIES (Design Building Blocks)
+    // ==========================================
+    
+    // 1. Materials (Wood species, treatments)
+    materials: [
+        // { id: 'M-001', name: 'Pine (Untreated)', density: 0.45, category: 'solid' },
+        // { id: 'M-002', name: 'Oak (White)', density: 0.77, category: 'solid' },
+        // { id: 'M-003', name: 'Birch Plywood', density: 0.68, category: 'sheet' }
+    ],
+
+    // 2. Profiles (Cross-sections and sheet thicknesses. NO LENGTHS HERE)
+    profiles: [
+        // { id: 'PR-001', name: '2x4 Nominal', thickness: 38.0, width: 89.0, type: 'lumber' },
+        // { id: 'PR-002', name: '3/4" Sheet', thickness: 19.05, width: 1220.0, type: 'sheet' }
+    ],
+
+    // ==========================================
+    // TIER 2: SOURCING & INVENTORY (Physical Reality)
+    // ==========================================
+
+    // 3. Catalog (What stores sell, lengths, and prices)
+    catalog: [
+        // { id: 'CAT-001', store: 'Local Big Box', materialId: 'M-001', profileId: 'PR-001', length: 2438.4, price: 4.50 },
+        // { id: 'CAT-002', store: 'Local Big Box', materialId: 'M-001', profileId: 'PR-001', length: 3048.0, price: 6.00 }
+    ],
+
+    // 4. Stock (What is actually sitting in your shop right now)
+    stock: [
+        // { id: 'STK-001', materialId: 'M-002', profileId: 'PR-001', length: 950.0, qty: 2, isCutoff: true }
+    ],
+
+    // ==========================================
+    // TIER 3: THE WORK (Projects & Cutlists)
+    // ==========================================
+
+    // 0. Projects
+    projects: [
+        // { id: 'PROJ-001', name: 'Workbench', status: 'Design' }
+    ],
+
+    // 5. Parts (The Master Cutlist - every piece of wood to be cut)
+    parts: [
+        // { id: 'PART-001', projectId: 'PROJ-001', name: 'Front Left Leg', materialId: 'M-001', profileId: 'PR-001', length: 850.0, qty: 1 }
+    ],
+
+    // Settings
+    settings: {
+        baseUnit: 'mm',
+        cutoffThreshold: 200.0 // mm. Anything smaller goes in the trash, not the stock array.
+    }
+    };
+
+    // We will use this global variable to hold the active data while the app runs.
+    // This is our Single Source of Truth for the UI.
+    let appState = {}; 
+
+    // ==========================================
+    // STATE MANAGEMENT ENGINE (Local Storage)
+    // ==========================================
+
+    /**
+     * Loads the state from localStorage. 
+     * If no state exists (first time user or cleared cache), it injects the initialAppState.
+     */
+    function loadState() {
+    const savedState = localStorage.getItem('lumberLogicState');
+    
+    if (savedState) {
+        try {
+        appState = JSON.parse(savedState);
+        console.log('LumberLogic state loaded successfully from local storage.');
+        } catch (e) {
+        console.error('Data corruption detected in localStorage. Resetting to baseline.', e);
+        initAppState();
+        }
+    } else {
+        console.log('No saved state found. Initializing fresh shop.');
+        initAppState();
+    }
+    }
+
+    /**
+     * Wipes current state and resets to the baseline initialAppState.
+     * We use deep copy (JSON stringify/parse) so we don't accidentally mutate the original blueprint.
+     */
+    function initAppState() {
+    appState = JSON.parse(JSON.stringify(initialAppState));
+    saveState();
+    }
+
+    /**
+     * Commits the current appState to the browser's localStorage.
+     * Call this function anytime a user adds a material, part, or changes a setting.
+     */
+    function saveState() {
+    localStorage.setItem('lumberLogicState', JSON.stringify(appState));
+    console.log('Shop data instantly saved to local memory.');
+    
+    // Note: Phase 7 Debounced Cloud Sync trigger will eventually go here.
+    }
+
+    // ==========================================
+    // BOOT SEQUENCE
+    // ==========================================
+    // Initialize app when the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        loadState();
+    });
+
+    // --- NAVIGATION ---
+    function navigateTo(viewId) {
+        // 1. Hide all views by adding the Bootstrap 'd-none' class
+        const views = document.querySelectorAll('.app-view');
+        views.forEach(view => view.classList.add('d-none'));
+
+        // 2. Show the requested view by removing 'd-none'
+        const targetView = document.getElementById(viewId);
+        if (targetView) {
+            targetView.classList.remove('d-none');
+        } else {
+            console.error("View not found: " + viewId);
+        }
+    }
+
+    // --- TOAST NOTIFICATIONS ---
+    // Instead of ugly alert() boxes, we slide up a modern notification
+    function showToast(message, isError = false) {
+        const container = document.getElementById('toast-container');
+        
+        // Create the toast element
+        const toastEl = document.createElement('div');
+        toastEl.className = `toast align-items-center text-white border-0 ${isError ? 'bg-danger' : 'bg-success'}`;
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        
+        // Inner HTML of the toast
+        toastEl.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        
+        container.appendChild(toastEl);
+        
+        // Initialize and show using Bootstrap's JS API
+        const bsToast = new bootstrap.Toast(toastEl, { delay: 3000 });
+        bsToast.show();
+        
+        // Clean up DOM after it hides
+        toastEl.addEventListener('hidden.bs.toast', () => {
+            toastEl.remove();
+        });
+    }
+</script>

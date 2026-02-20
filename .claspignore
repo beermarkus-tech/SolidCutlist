@@ -1,0 +1,8 @@
+# .claspignore
+# This tells clasp to NOT push these files to Google's servers
+
+**/*.md
+.idx/
+node_modules/
+.git/
+.clasp.json

@@ -1,0 +1,22 @@
+<style>
+    /* * Frontend/CSS/css_global.html
+     * We keep CSS minimal and rely mostly on Bootstrap utility classes.
+     */
+    
+    body {
+        /* Standardizing font to look a bit more polished */
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    /* * The app-view class is applied to our main sections. 
+     * We use Bootstrap's 'd-none' (display: none) to hide inactive views.
+     */
+    .app-view {
+        animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>

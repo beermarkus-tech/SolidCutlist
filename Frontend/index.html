@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LumberLogic</title>
+    
+    <!-- Bootstrap 5 CSS for mobile-first grid and components -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Inject our custom styles -->
+    <?!= include('Frontend/CSS/css_global'); ?>
+</head>
+<body class="bg-light">
+
+    <!-- Top Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">🪵 LumberLogic</span>
+            <div class="d-flex gap-2">
+                <!-- Navigation Buttons -->
+                <button class="btn btn-outline-light btn-sm" onclick="navigateTo('view-dashboard')">Dashboard</button>
+                <button class="btn btn-outline-light btn-sm" onclick="navigateTo('view-projects')">Projects</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main id="app-container" class="container">
+        
+        <!-- View: Dashboard (Default active) -->
+        <div id="view-dashboard" class="app-view">
+            <?!= include('Frontend/Views/view_dashboard'); ?>
+        </div>
+        
+        <!-- View: Projects (Hidden by default) -->
+        <div id="view-projects" class="app-view d-none">
+            <?!= include('Frontend/Views/view_projects'); ?>
+        </div>
+        
+    </main>
+
+    <!-- Global Toast Container (for non-intrusive notifications) -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container"></div>
+
+    <!-- Bootstrap JS bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Inject our client-side logic -->
+    <?!= include('Frontend/JS/js_api'); ?>
+    <?!= include('Frontend/JS/js_main'); ?>
+</body>
+</html>

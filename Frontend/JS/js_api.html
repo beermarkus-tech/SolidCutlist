@@ -1,0 +1,32 @@
+<script>
+    /**
+     * Frontend/JS/js_api.html
+     * Wraps calls to google.script.run so we keep our backend communication
+     * neatly separated from our UI logic.
+     */
+
+    function testBackend() {
+        // Show a loading indication
+        showToast("⏳ Syncing with Google Sheet...", false);
+        
+        // Temporarily disable the button to prevent spam clicks
+        const btn = document.getElementById('btn-test-connection');
+        btn.disabled = true;
+
+        // Call the backend function defined in Backend/Api.gs
+        google.script.run
+            .withSuccessHandler(function(response) {
+                btn.disabled = false;
+                if (response.success) {
+                    showToast("✅ " + response.message, false);
+                } else {
+                    showToast("❌ Backend Error: " + response.message, true);
+                }
+            })
+            .withFailureHandler(function(error) {
+                btn.disabled = false;
+                showToast("❌ Network Error: " + error.message, true);
+            })
+            .testConnection(); // This must match the function name in Api.gs exactly
+    }
+</script>
