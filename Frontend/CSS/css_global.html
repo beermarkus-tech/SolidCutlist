@@ -36,4 +36,14 @@
     .table-sm td {
         vertical-align: middle;
     }
+
+    /* 🪄 Elegant Table Dropdowns: Prevent text from overlapping the arrow */
+    .table-sm .form-select:not(.badge) {
+        padding-right: 1.5rem !important; /* Give the arrow its personal space */
+        text-overflow: ellipsis !important; /* Add "..." if the text is too long */
+        white-space: nowrap !important; /* Stop text from stacking vertically */
+        overflow: hidden !important; 
+        background-position: right 0.25rem center !important; /* Push arrow neatly to the edge */
+        background-size: 12px 12px !important; /* Shrink the arrow just a hair */
+    }
 </style>

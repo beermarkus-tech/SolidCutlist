@@ -1,0 +1,466 @@
+<script>
+    /**
+     * Frontend/JS/js_import.html
+     * Handles reading CSVs, column mapping, dictionary triage, and merging.
+     */
+
+    // --- TEMPORARY STATE VARIABLES ---
+    let rawCsvHeaders = [];
+    let rawCsvRows = [];
+    let targetProjectId = '';
+    
+    // This is the quarantine tank before they go into appState.parts
+    if (!appState.stagingParts) appState.stagingParts = [];
+
+    // --- INITIALIZATION ---
+    function renderImportView() {
+        // Populate the project dropdown when they open the tab
+        const projSelect = document.getElementById('import-project-select');
+        projSelect.innerHTML = '<option value="" disabled selected>Select a Project...</option>';
+        
+        if (appState.projects) {
+            appState.projects.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.innerText = p.name;
+                projSelect.appendChild(opt);
+            });
+        }
+        
+        resetImport();
+    }
+
+    // Completely clears the UI and variables
+    function resetImport() {
+        rawCsvHeaders = [];
+        rawCsvRows = [];
+        targetProjectId = '';
+        appState.stagingParts = [];
+        
+        document.getElementById('import-file-input').value = '';
+        
+        // Reset UI visibility
+        document.getElementById('import-step-1').classList.remove('d-none');
+        document.getElementById('import-step-2').classList.add('d-none');
+        document.getElementById('import-step-3').classList.add('d-none');
+    }
+
+    // --- STEP 1: READ FILE & EXTRACT HEADERS ---
+    function handleCsvUpload() {
+        const projSelect = document.getElementById('import-project-select');
+        const fileInput = document.getElementById('import-file-input');
+
+        // 1. Validation checks
+        if (!projSelect.value) {
+            showToast('Please select a Target Project first.', true);
+            return;
+        }
+        if (!fileInput.files.length) {
+            showToast('Please select a CSV file to upload.', true);
+            return;
+        }
+
+        targetProjectId = projSelect.value;
+        const file = fileInput.files[0];
+        const reader = new FileReader(); // HTML5 magic
+
+        // 2. What to do when the file is read
+        reader.onload = function(e) {
+            const text = e.target.result;
+            
+            // Split the file into rows (handles both Windows and Mac line endings)
+            const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+            
+            if (lines.length < 2) {
+                showToast('The CSV file appears to be empty or invalid.', true);
+                return;
+            }
+
+            // 3. Smart Delimiter Detection (OCL uses ';' but others use ',')
+            const headerLine = lines[0];
+            window.csvDelimiter = headerLine.includes(';') ? ';' : ',';
+
+            // 4. Extract and clean the headers
+            rawCsvHeaders = headerLine.split(window.csvDelimiter).map(h => h.replace(/^"|"$/g, '').trim());
+            
+            // 5. Save the actual data rows for the next step
+            rawCsvRows = lines.slice(1); 
+
+            // 6. Transition the UI
+            document.getElementById('import-step-1').classList.add('d-none');
+            document.getElementById('import-step-2').classList.remove('d-none');
+
+            // 7. Build the dropdowns
+            renderMappingUI();
+        };
+
+        // Command the reader to start
+        reader.readAsText(file);
+    }
+
+    // --- STEP 2: BUILD THE MAPPING UI ---
+    function renderMappingUI() {
+        const container = document.getElementById('mapping-dropdowns-container');
+        container.innerHTML = ''; // Clear out the placeholder
+
+        // The specific data points LumberLogic needs to function, and their likely position in an OCL file
+        const requiredFields = [
+            { id: 'map-name', label: 'Part Name', defaultIndex: 1 },           // OCL "Designation" is usually col 2 (Index 1)
+            { id: 'map-qty', label: 'Quantity', defaultIndex: 2 },             // OCL "Quantity" is usually col 3
+            { id: 'map-length', label: 'Length (Raw)', defaultIndex: 3 },      // OCL "Length - raw" is usually col 4
+            { id: 'map-width', label: 'Width (Raw)', defaultIndex: 4 },        // OCL "Width - raw" is usually col 5
+            { id: 'map-thickness', label: 'Thickness (Raw)', defaultIndex: 5 },// OCL "Thickness - raw" is usually col 6
+            { id: 'map-material', label: 'Material (Optional)', defaultIndex: 11 } // OCL "Material" is usually col 12
+        ];
+
+        // Loop through our required fields and build a dropdown for each one
+        requiredFields.forEach(field => {
+            let optionsHtml = '<option value="" disabled selected>Select column...</option>';
+
+            // Inject the headers we just found in the CSV
+            rawCsvHeaders.forEach((header, index) => {
+                // Auto-select the dropdown if it matches our standard OCL template
+                const isSelected = (index === field.defaultIndex) ? 'selected' : '';
+                optionsHtml += `<option value="${index}" ${isSelected}>Col ${index + 1}: ${header}</option>`;
+            });
+
+            // Build the HTML for the dropdown
+            const colDiv = document.createElement('div');
+            colDiv.className = 'col-md-4 col-sm-6 mb-3';
+            colDiv.innerHTML = `
+                <label class="form-label form-label-sm fw-bold text-secondary mb-1">${field.label}</label>
+                <select class="form-select form-select-sm border-warning" id="${field.id}" required>
+                    ${optionsHtml}
+                </select>
+            `;
+            container.appendChild(colDiv);
+        });
+    }
+
+    // --- STEP 3: PROCESS & MATCH DATA ---
+    function processMapping() {
+        // 1. Grab the mapping selected by the user
+        const colMap = {
+            name: parseInt(document.getElementById('map-name').value),
+            qty: parseInt(document.getElementById('map-qty').value),
+            length: parseInt(document.getElementById('map-length').value),
+            width: parseInt(document.getElementById('map-width').value),
+            thickness: parseInt(document.getElementById('map-thickness').value),
+            material: parseInt(document.getElementById('map-material').value)
+        };
+
+        // Ensure required columns are mapped
+        if (isNaN(colMap.name) || isNaN(colMap.qty) || isNaN(colMap.length) || isNaN(colMap.thickness)) {
+            showToast("Please map Name, Qty, Length, and Thickness.", true);
+            return;
+        }
+
+        appState.stagingParts = [];
+        let detectedCsvUnit = 'unknown'; // 🪄 NEW: Tracker for CSV units
+
+        // 2. Loop through the raw CSV data
+        rawCsvRows.forEach((rowStr, index) => {
+            if (!rowStr.trim()) return;
+
+            // Split the row (handling the delimiter) and strip surrounding quotes
+            const cols = rowStr.split(window.csvDelimiter).map(c => c.replace(/^"|"$/g, '').trim());
+
+            // 3. Extract Raw Data
+            const rawName = cols[colMap.name] || `Part ${index + 1}`;
+            const rawQty = parseInt(cols[colMap.qty]) || 1;
+            const rawMaterial = isNaN(colMap.material) ? '' : (cols[colMap.material] || '');
+
+            // 🪄 THE SNIFFER
+            if (detectedCsvUnit === 'unknown' && cols[colMap.length]) {
+                const rawL = String(cols[colMap.length]).toLowerCase();
+                
+                // Using indexOf is a bit more robust across older tablet browsers than includes()
+                if (rawL.indexOf('mm') > -1 || rawL.indexOf('cm') > -1 || rawL.indexOf(' m') > -1) {
+                    detectedCsvUnit = 'mm';
+                } else if (rawL.indexOf('"') > -1 || rawL.indexOf('in') > -1 || rawL.indexOf("'") > -1) {
+                    detectedCsvUnit = 'in';
+                }
+            }
+
+            // 🪄 The Text Scrubber
+            const cleanDim = (str) => {
+                if (!str) return 0;
+                let cleaned = str.replace(/[^0-9\.\/ ]/g, '').trim();
+                return parseToBaseUnit(cleaned) || 0;
+            };
+
+            const tBase = cleanDim(cols[colMap.thickness]);
+            const wBase = cleanDim(cols[colMap.width]);
+            const lBase = cleanDim(cols[colMap.length]);
+
+            if (tBase === 0 || lBase === 0) return; // Skip invalid or blank rows
+
+            // 4. The Matchmaker Engine
+            let matchedMatId = '';
+            let matchedProfId = '';
+            let inferredCategory = 'lumber';
+
+            // Try to match Material by name (case-insensitive)
+            if (rawMaterial) {
+                const mat = appState.materials.find(m => m.name.toLowerCase() === rawMaterial.toLowerCase());
+                if (mat) matchedMatId = mat.id;
+            }
+
+            // Try to match Profile by Dimensions (using a 1.5mm tolerance for SketchUp quirks)
+            const tolerance = 1.5; 
+            
+            // First, hunt for Lumber (requires matching BOTH thickness and width)
+            const lumberMatch = appState.profiles.find(p => 
+                p.type === 'lumber' && 
+                Math.abs(p.thickness - tBase) <= tolerance && 
+                Math.abs(p.width - wBase) <= tolerance
+            );
+
+            // If not lumber, hunt for Sheet (requires matching ONLY thickness)
+            const sheetMatch = appState.profiles.find(p => 
+                p.type === 'sheet' && 
+                Math.abs(p.thickness - tBase) <= tolerance
+            );
+
+            if (lumberMatch) {
+                matchedProfId = lumberMatch.id;
+                inferredCategory = 'lumber';
+            } else if (sheetMatch) {
+                matchedProfId = sheetMatch.id;
+                inferredCategory = 'sheet';
+            }
+
+            // Define row status based on Matchmaker success
+            const status = (matchedMatId && matchedProfId) ? 'ready' : 'needs_mapping';
+
+            // 5. Save to Staging Array
+            appState.stagingParts.push({
+                id: 'STG-' + Date.now() + '-' + index,
+                projectId: targetProjectId,
+                name: rawName,
+                qty: rawQty,
+                length: lBase,
+                width: wBase,
+                thickness: tBase, 
+                category: inferredCategory,
+                extractedMaterial: rawMaterial,
+                materialId: matchedMatId,
+                profileId: matchedProfId,
+                status: status
+            });
+        });
+
+        // 6. Transition UI to Step 3
+        document.getElementById('import-step-2').classList.add('d-none');
+        document.getElementById('import-step-3').classList.remove('d-none');
+        document.getElementById('staging-count').innerText = `${appState.stagingParts.length} Parts`;
+
+        // 🪄 THE VISUAL DEBUGGER & KLAXON
+        const warningBanner = document.getElementById('import-unit-warning');
+        
+        // 1. Safely grab shop settings (defaults to 'unknown' if not found)
+        const safeSettings = appState.settings || {};
+        const shopUnit = safeSettings.displayUnit || 'unknown_shop_setting'; 
+        
+        // 2. Evaluate the match
+        const isShopMetric = (shopUnit === 'mm');
+        const isCsvMetric = (detectedCsvUnit === 'mm');
+
+        // 3. Trigger Banner
+        if (detectedCsvUnit !== 'unknown' && isShopMetric !== isCsvMetric) {
+            document.getElementById('csv-unit-label').innerText = isCsvMetric ? 'Metric' : 'Imperial';
+            document.getElementById('shop-unit-label').innerText = isShopMetric ? 'Metric' : 'Imperial';
+            warningBanner.classList.remove('d-none');
+        } else {
+            warningBanner.classList.add('d-none');
+        }
+
+        renderStagingTable();
+    }
+
+    // --- STEP 4: RENDER THE STAGING TABLE ---
+    function renderStagingTable() {
+        const tbody = document.getElementById('table-staging-body');
+        tbody.innerHTML = '';
+        
+        let allGreen = true; // Tracks if we are allowed to import
+
+        appState.stagingParts.forEach(part => {
+            const tr = document.createElement('tr');
+            
+            // Apply color coding
+            if (part.status === 'needs_mapping') {
+                tr.classList.add('table-warning');
+                allGreen = false;
+            } else {
+                //tr.classList.add('table-success');
+            }
+
+            // 🪄 1. COLOR CODED CATEGORY BADGE LOGIC
+            let badgeClass = 'bg-secondary text-white'; 
+            if (part.category === 'lumber') badgeClass = 'bg-success text-white';
+            if (part.category === 'sheet') badgeClass = 'bg-warning text-dark';
+            if (part.category === 'fastener') badgeClass = 'bg-info text-dark';
+
+            const unitText = appState.settings.displayUnit === 'mm' ? 'mm' : 'in';
+            const dimDisplay = `${formatForDisplay(part.thickness)} x ${formatForDisplay(part.width)} x ${formatForDisplay(part.length)}`;
+            
+            // 🪄 2. FILTERED PROFILE DROPDOWN
+            let profOptions = '<option value="" disabled selected>⚠️ Assign Profile...</option>';
+            const filteredProfiles = appState.profiles.filter(p => p.type === part.category);
+            filteredProfiles.forEach(p => {
+                const label = `${safeHTML(p.name)} (${formatForDisplay(p.thickness)} x ${formatForDisplay(p.width)} ${unitText})`;
+                profOptions += `<option value="${p.id}" ${p.id === part.profileId ? 'selected' : ''}>${label}</option>`;
+            });
+
+            // 🪄 3. FILTERED MATERIAL DROPDOWN
+            let matOptions = `<option value="" disabled selected>⚠️ Assign Material...</option>`;
+            const filteredMaterials = appState.materials.filter(m => {
+                let mCat = m.category === 'solid' ? 'lumber' : m.category; // Auto-heal legacy data
+                return mCat === part.category;
+            });
+            filteredMaterials.forEach(m => {
+                matOptions += `<option value="${m.id}" ${m.id === part.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
+            });
+
+            // 4. BUILD THE ROW
+            tr.innerHTML = `
+                <td class="fw-bold px-2"><small>${safeHTML(part.name)}</small></td>
+                <td class="text-center"><small>${part.qty}</small></td>
+                <td>
+                    <div class="d-flex justify-content-center">
+                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
+                                style="width: 80px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
+                                onchange="updateStagingCategory('${part.id}', this.value)" title="Tap to change category">
+                            <option value="lumber" class="bg-light text-dark" ${part.category === 'lumber' ? 'selected' : ''}>Lumber</option>
+                            <option value="sheet" class="bg-light text-dark" ${part.category === 'sheet' ? 'selected' : ''}>Sheet</option>
+                            <option value="fastener" class="bg-light text-dark" ${part.category === 'fastener' ? 'selected' : ''}>Fastener</option>
+                        </select>
+                    </div>
+                </td>
+                <td><small>${dimDisplay}</small></td>
+                <td>
+                    <select class="form-select form-select-sm border-0 bg-transparent" onchange="updateStagingPart('${part.id}', 'profileId', this.value)">
+                        ${profOptions}
+                    </select>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm border-0 bg-transparent" onchange="updateStagingPart('${part.id}', 'materialId', this.value)">
+                        ${matOptions}
+                    </select>
+                </td>
+                <td class="text-center fs-5">
+                    ${part.status === 'ready' ? '✅' : '⚠️'}
+                </td>
+                <td class="text-end">
+                    <button class="btn btn-sm py-0 px-2" onclick="deleteStagingPart('${part.id}')">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Toggle the Final Import Button
+        const btnCommit = document.getElementById('btn-commit-import');
+        btnCommit.disabled = !allGreen;
+    }
+
+    // Handles user overriding/fixing the yellow rows
+    function updateStagingPart(id, field, value) {
+        const part = appState.stagingParts.find(p => p.id === id);
+        if (part) {
+            part[field] = value;
+            
+            // If both are now selected, promote back to 'ready'
+            if (part.profileId && part.materialId) {
+                part.status = 'ready';
+            } else {
+                part.status = 'needs_mapping';
+            }
+            
+            renderStagingTable(); 
+        }
+    }
+
+    function updateStagingCategory(id, newCategory) {
+        const part = appState.stagingParts.find(p => p.id === id);
+        if (part) {
+            // 1. Update the physics
+            part.category = newCategory;
+            
+            // 2. Wipe the now-invalid assignments
+            part.profileId = '';
+            part.materialId = '';
+            
+            // 3. 🪄 THE FIX: Revoke the "Ready" status
+            part.status = 'needs_mapping'; 
+            
+            // 4. Redraw the world
+            renderStagingTable(); 
+            
+            showToast('Category changed. Please re-map Profile and Material.', true);
+        }
+    }
+
+    // 🪄 NEW: Snipe a row out of the staging area
+    function deleteStagingPart(id) {
+        appState.stagingParts = appState.stagingParts.filter(p => p.id !== id);
+        
+        // Update the counter badge
+        document.getElementById('staging-count').innerText = `${appState.stagingParts.length} Parts`;
+        
+        renderStagingTable(); // Redraw table and re-evaluate the green Import button
+        showToast('Part removed from import queue.', true);
+    }
+
+    function commitImport() {
+        // 1. Final Safety Check
+        const unmapped = appState.stagingParts.filter(p => p.status !== 'ready');
+        if (unmapped.length > 0) {
+            showToast('Please assign a Profile and Material to all yellow rows before importing.', true);
+            return;
+        }
+
+        if (!appState.parts) appState.parts = [];
+
+        // 2. The Merge Loop
+        appState.stagingParts.forEach((stg, index) => {
+            appState.parts.push({
+                id: 'PART-' + Date.now() + '-' + index, // Generate official unique ID
+                projectId: stg.projectId,
+                category: stg.category,
+                name: stg.name,
+                qty: stg.qty,
+                width: stg.width,   // Already scrubbed into base mm by our parser
+                length: stg.length, // Already scrubbed into base mm by our parser
+                profileId: stg.profileId,
+                materialId: stg.materialId
+            });
+        });
+
+        const importCount = appState.stagingParts.length;
+
+        // 3. Save to Google's Servers
+        saveState();
+
+        // 4. Clean up the Import Engine for next time
+        resetImport();
+
+        // 5. Teleport the user to the Cutlist
+        navigateTo('view-parts');
+        renderPartsView(); // Force the table to draw the newly injected data
+
+        // 6. Celebrate
+        showToast(`Successfully imported ${importCount} parts to your cutlist!`);
+    }
+
+    function updateFileNameDisplay() {
+        const fileInput = document.getElementById('import-file-input');
+        const display = document.getElementById('file-name-display');
+        
+        if (fileInput.files.length > 0) {
+            display.value = fileInput.files[0].name;
+        } else {
+            display.value = "No file selected";
+        }
+    }
+</script>

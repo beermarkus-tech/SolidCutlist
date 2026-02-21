@@ -5,21 +5,25 @@
     </div>
 </div>
 
-<div class="card shadow-sm border-primary mb-4">
-    <div class="card-header bg-primary text-white py-2">
-        <h6 class="card-title mb-0">➕ Add New Part</h6>
+<div class="card shadow-sm">
+    <div class="card-header bg-secondary text-white">
+        <h6 class="card-title mb-0">🧩 Current Partlist</h6>
     </div>
     <div class="card-body bg-light">
         <form id="form-add-part" onsubmit="handleAddPart(event)">
             <div class="row g-2 align-items-end">
                 
-                <div class="col-6 col-md-2">
-                    <label class="form-label form-label-sm fw-bold mb-1">Project</label>
+                <div class="col-sm">
+                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Project</label>
                     <select class="form-select form-select-sm" id="part-project" required>
                         </select>
                 </div>
-                <div class="col-6 col-md-auto">
-                    <label class="form-label form-label-sm fw-bold mb-1">Category</label>
+                <div class="col-sm-2">
+                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Part Name</label>
+                    <input type="text" class="form-control form-control-sm" id="part-name" required>
+                </div>
+                <div class="col-sm">
+                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
                     <select class="form-select form-select-sm border-warning" id="part-category" onchange="handleCategoryChange()" required>
                         <option value="" disabled selected>Select...</option>
                         <option value="lumber">Lumber</option>
@@ -27,72 +31,55 @@
                         <option value="fastener">Fastener</option>
                     </select>
                 </div>
-
-                <div class="col-8 col-md-2">
-                    <label class="form-label form-label-sm mb-1">Part Name</label>
-                    <input type="text" class="form-control form-control-sm" id="part-name" placeholder="e.g., Left Leg" required>
-                </div>
-                <div class="col-4 col-md-auto" style="max-width: 80px;">
-                    <label class="form-label form-label-sm mb-1">Qty</label>
+                <div class="col-sm-1" style="max-width: 80px;">
+                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Qty</label>
                     <input type="number" class="form-control form-control-sm text-center" id="part-qty" value="1" min="1" required>
                 </div>
-
-                <div class="col-6 col-md-1">
-                    <label class="form-label form-label-sm mb-1">Width (<span class="display-unit-label">mm</span>)</label>
-                    <input type="text" class="form-control form-control-sm" id="part-width" onchange="calculateWeight()" disabled>
-                </div>
-                <div class="col-6 col-md-1">
-                    <label class="form-label form-label-sm mb-1">Length (<span class="display-unit-label">mm</span>)</label>
-                    <input type="text" class="form-control form-control-sm" id="part-length" onchange="calculateWeight()" required disabled>
-                </div>
-
-                <div class="col-6 col-md-2">
-                    <label class="form-label form-label-sm mb-1" id="label-profile">Profile / Thickness (<span class="display-unit-label">mm</span>)</label>
-                    <select class="form-select form-select-sm" id="part-profile" onchange="calculateWeight()" required disabled>
-                        <option value="" disabled selected>Select Category First</option>
-                    </select>
-                </div>
-                <div class="col-6 col-md-2">
-                    <label class="form-label form-label-sm mb-1">Material</label>
-                    <select class="form-select form-select-sm" id="part-material" onchange="calculateWeight()" required disabled>
-                        <option value="" disabled selected>Select Category First</option>
-                    </select>
-                </div>
-
-                <div class="col-8 col-md-auto">
-                    <label class="form-label form-label-sm text-muted mb-1">Est. Weight</label>
+                <div class="col-sm-1">
+                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
                     <div class="input-group input-group-sm">
-                        <input type="text" class="form-control bg-transparent border-0 text-end px-1" id="part-weight" value="0.00" readonly style="width: 60px;">
-                        <span class="input-group-text bg-transparent border-0 px-1 density-weight-label">kg</span>
+                        <input type="text" class="form-control form-control-sm" id="part-width" disabled>
+                        <span class="input-group-text display-unit-label">mm</span>
                     </div>
                 </div>
-                <div class="col-4 col-md-auto">
-                    <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold" id="btn-add-part" disabled>Add</button>
+                <div class="col-sm-1">
+                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control form-control-sm" id="part-length" required disabled>
+                        <span class="input-group-text display-unit-label">mm</span>
+                    </div>
+                </div>
+
+                <div class="col-sm">
+                    <label id="label-part-profile" class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
+                    <select class="form-select form-select-sm" id="part-profile" required disabled></select>
+                </div>
+                <div class="col-sm">
+                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material</label>
+                    <select class="form-select form-select-sm" id="part-material" required disabled></select>
+                </div>
+
+                <div class="col-sm-1">
+                    <button type="submit" class="btn btn-primary btn-sm w-100" id="btn-add-part" disabled>Add</button>
                 </div>
                 
             </div>
         </form>
-    </div>
-</div>
-
-<div class="card shadow-sm">
-    <div class="card-header bg-secondary text-white py-2 d-flex justify-content-between align-items-center">
-        <h6 class="card-title mb-0">📋 Parts List</h6>
-    </div>
-    <div class="card-body p-0">
+        <hr>
         <div class="table-responsive">
             <table class="table table-sm table-hover table-striped align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>Project</th>
-                        <th>Name</th>
-                        <th class="col-2 text-center">Category</th>
-                        <th>Qty</th>
-                        <th class="text-center">W x L (<span class="display-unit-label">mm</span>)</th>
-                        <th>Profile</th>
-                        <th>Material</th>
-                        <th>Weight</th>
-                        <th class="text-end">Action</th>
+                        <th onclick="handleSort('parts', 'projectId', 'string')">Project</th>
+                        <th onclick="handleSort('parts', 'name', 'string')">Part Name</th>
+                        <th onclick="handleSort('parts', 'category', 'string')" class="col-2 text-center">Category</th>
+                        <th onclick="handleSort('parts', 'qty', 'number')" class="text-center">Qty</th>
+                        <th onclick="handleSort('parts', 'length', 'number')" class="text-center">Size (<span class="display-unit-label">mm</span>)</th>
+                        <th onclick="handleSort('parts', 'profileId', 'string')">Profile</th>
+                        <th onclick="handleSort('parts', 'materialId', 'string')">Material</th>
+                        <th onclick="handleSort('parts', 'weight', 'number')" class="text-center">Weight</th>
+                        <th onclick="handleSort('parts', 'status', 'string')" class="text-center">Status</th>
+                        <th class="text-end"></th>
                     </tr>
                 </thead>
                 <tbody id="table-parts-body">

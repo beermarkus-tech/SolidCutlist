@@ -246,6 +246,72 @@
         return (val * 0.06242796).toFixed(2); // Convert to lb/ft³
     }
 
+    // Tracks current sort directions (Ascending/Descending)
+    const sortTracker = {};
+
+    function handleSort(arrayName, key, type) {
+        // Toggle sort direction
+        const sortId = arrayName + '_' + key;
+        sortTracker[sortId] = !sortTracker[sortId]; 
+        const dir = sortTracker[sortId] ? 1 : -1;
+
+        appState[arrayName].sort((a, b) => {
+            let valA = a[key];
+            let valB = b[key];
+
+            // 🪄 Smart Lookups for Relational IDs and Dynamic Math in the Parts Table
+            if (arrayName === 'parts') {
+                if (key === 'projectId') {
+                    valA = appState.projects.find(p => p.id === a.projectId)?.name || '';
+                    valB = appState.projects.find(p => p.id === b.projectId)?.name || '';
+                } else if (key === 'profileId') {
+                    valA = appState.profiles.find(p => p.id === a.profileId)?.name || '';
+                    valB = appState.profiles.find(p => p.id === b.profileId)?.name || '';
+                } else if (key === 'materialId') {
+                    valA = appState.materials.find(m => m.id === a.materialId)?.name || '';
+                    valB = appState.materials.find(m => m.id === b.materialId)?.name || '';
+                } else if (key === 'weight') {
+                    // 🪄 Background Weight Calculation for Sorting
+                    const getWeight = (p) => {
+                        if (p.category === 'fastener') return 0;
+                        const prof = appState.profiles.find(pr => pr.id === p.profileId);
+                        const mat = appState.materials.find(m => m.id === p.materialId);
+                        if (!prof || !mat) return 0;
+                        const safeThick = prof.thickness || 0;
+                        const trueWidth = p.category === 'lumber' ? (prof.width || 0) : p.width;
+                        const volumeM3 = (p.length * trueWidth * safeThick) / 1000000000;
+                        return volumeM3 * (mat.density || 0) * p.qty;
+                    };
+                    valA = getWeight(a);
+                    valB = getWeight(b);
+                }
+            }
+            
+            // Clean up values based on type
+            if (type === 'number') {
+                valA = parseFloat(valA) || 0;
+                valB = parseFloat(valB) || 0;
+            } else {
+                valA = String(valA || '').toLowerCase();
+                valB = String(valB || '').toLowerCase();
+            }
+
+            // Execute Sort
+            if (valA < valB) return -1 * dir;
+            if (valA > valB) return 1 * dir;
+            return 0;
+        });
+
+        saveState();
+
+        // Trigger the correct redraw
+        if (arrayName === 'projects') renderProjectsTable();
+        if (arrayName === 'materials') renderMaterialsTable();
+        if (arrayName === 'profiles') renderProfilesTable();
+        if (arrayName === 'parts') renderPartsTable();
+        if (arrayName === 'stagingParts') renderStagingTable();
+    }
+
     // ==========================================
     // BOOT SEQUENCE
     // ==========================================
@@ -270,6 +336,11 @@
         });
         const activeBtn = document.getElementById('nav-btn-' + viewId);
         if (activeBtn) activeBtn.classList.add('active', 'bg-light', 'text-dark', 'fw-bold');
+
+        // 4. View-Specific Initializations 🪄 ADDED THIS BLOCK
+        if (viewId === 'view-import') {
+            renderImportView(); // Fills the project dropdown and resets the UI
+        }
     }
 
     // --- TOAST NOTIFICATIONS ---

@@ -1,0 +1,91 @@
+<div class="row mt-3">
+    <div class="col-12">
+        <h2 class="border-bottom pb-2">Import CSV</h2>
+        <p class="text-muted">Import cutlists from OpenCutList or other CAD software.</p>
+    </div>
+</div>
+
+<div id="import-step-1" class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+        <h6 class="card-title mb-0">1. Upload File</h6>
+    </div>
+    <div class="card-body bg-light">
+        <div class="row align-items-end g-3">
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-secondary">Target Project</label>
+                <select class="form-select" id="import-project-select" required>
+                    <option value="" disabled selected>Select a Project...</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold text-secondary">Select CSV File</label>
+                <div class="input-group">
+                    <input type="file" id="import-file-input" accept=".csv" class="d-none" onchange="updateFileNameDisplay()">
+                    
+                    <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('import-file-input').click()">
+                        Choose File...
+                    </button>
+                    
+                    <input type="text" id="file-name-display" class="form-control bg-white" placeholder="No file selected" readonly>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100 fw-bold" onclick="handleCsvUpload()">Read File</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="import-step-2" class="card shadow-sm mb-4 d-none">
+    <div class="card-header bg-warning text-dark">
+        <h6 class="card-title mb-0">2. Map Columns</h6>
+    </div>
+    <div class="card-body bg-light">
+        <p class="text-muted small">We found the headers in your file. Please link them to LumberLogic's data structure.</p>
+        
+        <div class="row g-2" id="mapping-dropdowns-container">
+            </div>
+
+        <div class="mt-3 text-end">
+            <button class="btn btn-outline-secondary me-2" onclick="resetImport()">Cancel</button>
+            <button class="btn btn-warning fw-bold" onclick="processMapping()">Process Data</button>
+        </div>
+    </div>
+</div>
+
+<div id="import-step-3" class="card shadow-sm mb-4 d-none">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <h6 class="card-title mb-0">3. Review & Import</h6>
+        <span class="badge bg-light text-dark" id="staging-count">0 Parts</span>
+    </div>
+    <div class="card-body bg-light p-0">
+        <div id="import-unit-warning" class="alert alert-danger d-none m-2 py-2 px-3">
+            <strong>⚠️ Unit Mismatch Detected!</strong> 
+            The SketchUp CSV appears to be in <strong id="csv-unit-label">...</strong>, but your shop is set to <strong id="shop-unit-label">...</strong>. Please check your math carefully or change your shop settings before importing.
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover table-striped align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <tr>
+                            <th onclick="handleSort('stagingParts', 'name', 'string')">Part Name</th>
+                            <th class="text-center" onclick="handleSort('stagingParts', 'qty', 'number')">Qty</th>
+                            <th class="col-2 text-center" onclick="handleSort('stagingParts', 'category', 'string')">Category</th>
+                            <th onclick="handleSort('stagingParts', 'length', 'number')">Extracted Dimensions</th>
+                            <th onclick="handleSort('stagingParts', 'profileId', 'string')">Assigned Profile</th>
+                            <th onclick="handleSort('stagingParts', 'materialId', 'string')">Assigned Material</th>
+                            <th class="text-center" onclick="handleSort('stagingParts', 'status', 'string')">Status</th>
+                            <th class="text-end"></th>
+                        </tr>
+                    </tr>
+                </thead>
+                <tbody id="table-staging-body">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer text-end">
+        <button class="btn btn-outline-secondary me-2" onclick="resetImport()">Cancel</button>
+        <button class="btn btn-success fw-bold" id="btn-commit-import" onclick="commitImport()" disabled>Import to Cutlist</button>
+    </div>
+</div>

@@ -18,6 +18,7 @@
             <span class="navbar-brand mb-0 h1">🪵 LumberLogic</span>
             <div class="d-flex gap-2 nav-buttons-container">
                 <button id="nav-btn-view-dictionaries" class="btn btn-outline-light btn-sm active" onclick="navigateTo('view-dictionaries')">Setup</button>
+                <button id="nav-btn-view-import" class="btn btn-outline-light btn-sm" onclick="navigateTo('view-import')">Import</button>
                 <button id="nav-btn-view-parts" class="btn btn-outline-light btn-sm" onclick="navigateTo('view-parts')">Partlist</button>
             </div>
         </div>
@@ -35,7 +36,11 @@
         <div id="view-parts" class="app-view d-none">
             <?!= include('Frontend/Views/view_parts'); ?>
         </div>
-        
+
+        <!-- View: Import (Hidden by default) -->
+        <div id="view-import" class="app-view d-none">
+            <?!= include('Frontend/Views/view_import'); ?>
+        </div>
     </main>
 
     <!-- Global Toast Container (for non-intrusive notifications) -->
@@ -49,5 +54,6 @@
     <?!= include('Frontend/JS/js_main'); ?>
     <?!= include('Frontend/JS/js_dictionaries'); ?>
     <?!= include('Frontend/JS/js_parts'); ?>
+    <?!= include('Frontend/JS/js_import'); ?>
 </body>
 </html>
