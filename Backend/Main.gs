@@ -10,7 +10,7 @@ function doGet(e) {
   
   // Evaluate the template (this executes our include() tags) and serve it
   return template.evaluate()
-      .setTitle('LumberLogic')
+      .setTitle('SolidCutlist')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1.0') // Crucial for mobile-first
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }

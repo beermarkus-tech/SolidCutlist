@@ -15,8 +15,17 @@
                 
                 <div class="col-sm">
                     <label class="form-label form-label-sm fw-bold text-secondary mb-1">Project</label>
-                    <select class="form-select form-select-sm" id="part-project" required>
+                    <select class="form-select form-select-sm" id="part-project" onchange="handleProjectChange()" required>
+                    </select>
+                </div>
+                <div class="col-sm">
+                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Group</label>
+                    <div class="input-group input-group-sm">
+                        <select class="form-select form-select-sm border-warning" id="part-group">
+                            <option value="">No Group</option>
                         </select>
+                        <button type="button" class="btn btn-outline-secondary px-2" onclick="openGroupModalFromParts()" title="Manage Groups">⚙️</button>
+                    </div>
                 </div>
                 <div class="col-sm-2">
                     <label class="form-label form-label-sm fw-bold text-secondary mb-1">Part Name</label>
@@ -70,15 +79,16 @@
             <table class="table table-sm table-hover table-striped align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th onclick="handleSort('parts', 'projectId', 'string')">Project</th>
-                        <th onclick="handleSort('parts', 'name', 'string')">Part Name</th>
-                        <th onclick="handleSort('parts', 'category', 'string')" class="col-2 text-center">Category</th>
-                        <th onclick="handleSort('parts', 'qty', 'number')" class="text-center">Qty</th>
-                        <th onclick="handleSort('parts', 'length', 'number')" class="text-center">Size (<span class="display-unit-label">mm</span>)</th>
-                        <th onclick="handleSort('parts', 'profileId', 'string')">Profile</th>
-                        <th onclick="handleSort('parts', 'materialId', 'string')">Material</th>
-                        <th onclick="handleSort('parts', 'weight', 'number')" class="text-center">Weight</th>
-                        <th onclick="handleSort('parts', 'status', 'string')" class="text-center">Status</th>
+                        <th onclick="handleSort('parts', 'projectId', 'string')">Project ⇅</th>
+                        <th onclick="handleSort('parts', 'groupId', 'string')">Group ⇅</th>
+                        <th onclick="handleSort('parts', 'name', 'string')">Part Name ⇅</th>
+                        <th onclick="handleSort('parts', 'category', 'string')" class="col-2 text-center">Category ⇅</th>
+                        <th onclick="handleSort('parts', 'qty', 'number')" class="text-center">Qty ⇅</th>
+                        <th onclick="handleSort('parts', 'length', 'number')" class="text-center">Size (<span class="display-unit-label">mm</span>) ⇅</th>
+                        <th onclick="handleSort('parts', 'profileId', 'string')">Profile (<span class="display-unit-label">mm</span>) ⇅</th>
+                        <th onclick="handleSort('parts', 'materialId', 'string')">Material ⇅</th>
+                        <th onclick="handleSort('parts', 'weight', 'number')" class="text-center text-nowrap">Weight ⇅</th>
+                        <th onclick="handleSort('parts', 'status', 'string')" class="text-center">Status ⇅</th>
                         <th class="text-end"></th>
                     </tr>
                 </thead>

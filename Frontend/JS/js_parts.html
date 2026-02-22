@@ -54,10 +54,7 @@
 
         // 🪄 3. REBUILD Material Dropdown
         matSelect.innerHTML = '<option value="" disabled selected>Select...</option>';
-        const filteredMaterials = appState.materials.filter(m => {
-            let mCat = m.category === 'solid' ? 'lumber' : m.category;
-            return mCat === cat;
-        });
+        const filteredMaterials = appState.materials.filter(m => m.category === cat);
         filteredMaterials.forEach(m => {
             const opt = document.createElement('option');
             opt.value = m.id;
@@ -77,7 +74,6 @@
         const lengthInput = document.getElementById('part-length');
         const profSelect = document.getElementById('part-profile');
         const matSelect = document.getElementById('part-material');
-        const btnAdd = document.getElementById('btn-add-part');
         const profLabel = document.getElementById('label-part-profile');
 
         // 1. Reset inputs
@@ -114,11 +110,7 @@
         });
 
         // 4. Populate Material Dropdown (Filtered by Category)
-        const filteredMaterials = appState.materials.filter(m => {
-            // Include auto-heal for legacy data ('solid' becomes 'lumber')
-            let mCat = m.category === 'solid' ? 'lumber' : m.category;
-            return mCat === cat;
-        });
+        const filteredMaterials = appState.materials.filter(m => m.category === cat);
 
         filteredMaterials.forEach(m => {
             const opt = document.createElement('option');
@@ -130,7 +122,6 @@
         // 5. Unlock the rest of the form
         profSelect.disabled = false;
         matSelect.disabled = false;
-        btnAdd.disabled = false;
     }
 
     // --- CRUD OPERATIONS ---
@@ -139,6 +130,7 @@
         event.preventDefault();
 
         const projId = document.getElementById('part-project').value;
+        const groupId = document.getElementById('part-group').value;
         const cat = document.getElementById('part-category').value;
         const nameInput = document.getElementById('part-name');
         const qtyInput = document.getElementById('part-qty');
@@ -150,6 +142,7 @@
         const newPart = {
             id: 'PART-' + Date.now(),
             projectId: projId,
+            groupId: groupId,
             category: cat,
             name: nameInput.value,
             qty: parseInt(qtyInput.value) || 1,
@@ -184,7 +177,7 @@
 
         if (!appState.parts || appState.parts.length === 0) {
             // Updated colspan to match the new number of headers
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-muted">No parts added yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted">No parts added yet.</td></tr>';
             return;
         }
 
@@ -221,13 +214,19 @@
 
             // Material Dropdown with ⚠️ Warning
             let matOptions = `<option value="" disabled ${!part.materialId ? 'selected' : ''}>⚠️ Select Material...</option>`;
-            const filteredMaterials = appState.materials.filter(m => {
-                let mCat = m.category === 'solid' ? 'lumber' : m.category;
-                return mCat === part.category;
-            });
+            const filteredMaterials = appState.materials.filter(m => m.category === part.category);
             filteredMaterials.forEach(m => {
                 matOptions += `<option value="${m.id}" ${m.id === part.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
             });
+
+            // 🪄 NEW: Filter Groups for this specific row's Project
+            let groupOptions = '<option value="">No Group</option>';
+            if (appState.groups) {
+                const rowGroups = appState.groups.filter(g => g.projectId === part.projectId);
+                rowGroups.forEach(g => {
+                    groupOptions += `<option value="${g.id}" ${g.id === part.groupId ? 'selected' : ''}>${safeHTML(g.name)}</option>`;
+                });
+            }
 
             // 🪄 3. DIMENSIONS LOGIC
             const displayW = part.category === 'lumber' ? formatForDisplay(prof ? prof.width : 0) : formatForDisplay(part.width);
@@ -261,16 +260,18 @@
             }
 
             // COLOR CODED BADGE LOGIC
-            let badgeClass = 'bg-secondary text-white'; 
-            if (part.category === 'lumber') badgeClass = 'bg-success text-white';
-            if (part.category === 'sheet') badgeClass = 'bg-warning text-dark';
-            if (part.category === 'fastener') badgeClass = 'bg-info text-dark';
+            let badgeClass = getCategoryBadgeClass(part.category);
 
             // 🪄 5. BUILD THE ROW
             tr.innerHTML = `
                 <td>
                     <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" onchange="updatePart('${part.id}', 'projectId', this.value)" style="max-width: 170px;">
                         ${projOptions}
+                    </select>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 text-muted" onchange="updatePart('${part.id}', 'groupId', this.value)" style="max-width: 140px;">
+                        ${groupOptions}
                     </select>
                 </td>
                 <td>
@@ -281,7 +282,7 @@
                 <td>
                     <div class="d-flex justify-content-center">
                         <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 80px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
                                 onchange="updatePartCategory('${part.id}', this.value)" title="Tap to change category" disabled>
                             <option value="lumber" class="bg-light text-dark" ${part.category === 'lumber' ? 'selected' : ''}>Lumber</option>
                             <option value="sheet" class="bg-light text-dark" ${part.category === 'sheet' ? 'selected' : ''}>Sheet</option>
@@ -344,12 +345,16 @@
                 part[field] = parseToBaseUnit(newValue) || 0;
             } else if (field === 'qty') {
                 part[field] = parseInt(newValue) || 1;
+            } else if (field === 'projectId') {
+                part.projectId = newValue;
+                part.groupId = ''; 
+                showToast('Project changed. Group reset to "No Group".');
             } else {
                 part[field] = newValue; // For text like Name
             }
             
             saveState();
-            renderPartsTable(); // Instantly recalculates weight and reformats fractions
+            renderPartsTable();
             showToast('Part updated.');
         }
     }
@@ -359,5 +364,30 @@
         saveState();
         renderPartsTable();
         showToast('Part removed.', true);
+    }
+
+    function handleProjectChange() {
+        const projId = document.getElementById('part-project').value;
+        const groupSelect = document.getElementById('part-group');
+        
+        // 1. Reset to default
+        groupSelect.innerHTML = '<option value="">No Group</option>';
+        
+        // 2. Populate filtered groups
+        if (projId && appState.groups) {
+            const projectGroups = appState.groups.filter(g => g.projectId === projId);
+            projectGroups.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g.id;
+                opt.innerText = g.name;
+                groupSelect.appendChild(opt);
+            });
+        }
+    }
+
+    function openGroupModalFromParts() {
+        const currentProjId = document.getElementById('part-project').value;
+        // Pass the ID if one is selected, otherwise pass the empty string
+        if (typeof openGroupModal === 'function') openGroupModal(currentProjId);
     }
 </script>

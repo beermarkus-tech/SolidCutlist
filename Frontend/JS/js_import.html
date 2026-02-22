@@ -103,7 +103,7 @@
         const container = document.getElementById('mapping-dropdowns-container');
         container.innerHTML = ''; // Clear out the placeholder
 
-        // The specific data points LumberLogic needs to function, and their likely position in an OCL file
+        // The specific data points SolidCutlist needs to function, and their likely position in an OCL file
         const requiredFields = [
             { id: 'map-name', label: 'Part Name', defaultIndex: 1 },           // OCL "Designation" is usually col 2 (Index 1)
             { id: 'map-qty', label: 'Quantity', defaultIndex: 2 },             // OCL "Quantity" is usually col 3
@@ -297,10 +297,7 @@
             }
 
             // 🪄 1. COLOR CODED CATEGORY BADGE LOGIC
-            let badgeClass = 'bg-secondary text-white'; 
-            if (part.category === 'lumber') badgeClass = 'bg-success text-white';
-            if (part.category === 'sheet') badgeClass = 'bg-warning text-dark';
-            if (part.category === 'fastener') badgeClass = 'bg-info text-dark';
+            let badgeClass = getCategoryBadgeClass(part.category);
 
             const unitText = appState.settings.displayUnit === 'mm' ? 'mm' : 'in';
             const dimDisplay = `${formatForDisplay(part.thickness)} x ${formatForDisplay(part.width)} x ${formatForDisplay(part.length)}`;
@@ -316,7 +313,6 @@
             // 🪄 3. FILTERED MATERIAL DROPDOWN
             let matOptions = `<option value="" disabled selected>⚠️ Assign Material...</option>`;
             const filteredMaterials = appState.materials.filter(m => {
-                let mCat = m.category === 'solid' ? 'lumber' : m.category; // Auto-heal legacy data
                 return mCat === part.category;
             });
             filteredMaterials.forEach(m => {
@@ -330,7 +326,7 @@
                 <td>
                     <div class="d-flex justify-content-center">
                         <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 80px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
                                 onchange="updateStagingCategory('${part.id}', this.value)" title="Tap to change category">
                             <option value="lumber" class="bg-light text-dark" ${part.category === 'lumber' ? 'selected' : ''}>Lumber</option>
                             <option value="sheet" class="bg-light text-dark" ${part.category === 'sheet' ? 'selected' : ''}>Sheet</option>

@@ -1,96 +1,199 @@
 <div class="row mt-3">
     <div class="col-12">
-        <h2 class="border-bottom pb-2">Setup</h2>
-        <p class="text-muted">Define the master materials and profiles before starting a project.</p>
+        <h2 class="border-bottom pb-2">Setup & Dictionaries</h2>
+        <p class="text-muted">Define your projects and master materials before hitting the shop.</p>
     </div>
 </div>
 
-<div class="row mt-3 mb-4">
-    <div class="col-lg-6 mb-3 mb-lg-0" id="section-settings">
-        <div class="col-12">
-            <div class="card shadow-sm border-primary">
-                <div class="card-header bg-primary text-white py-2">
-                    <h6 class="card-title mb-0">⚙️ Global Settings</h6>
-                </div>
-                <div class="card-body py-3">
-                    <form id="form-settings">
-                        <div class="row g-3">
-                            <div class="col-12">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Display Units</label>
-                                <select class="form-select form-select-sm" id="setting-display-unit" onchange="handleUnitChange()">
-                                    <option value="mm">Metric (mm, kg)</option>
-                                    <option value="dec_in">Decimal Inches (1.75", lbs)</option>
-                                    <option value="frac_in">Fractional Inches (1 3/4", lbs)</option>
-                                </select>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Blade Kerf</label>
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control" id="setting-kerf" onchange="handleSettingsValueChange()">
-                                    <span class="input-group-text display-unit-label">mm</span>
-                                </div>
-                                <div class="form-text" style="font-size: 0.7rem;">Thickness of your saw blade.</div>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Save Scrap Over:</label>
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control" id="setting-cutoff" onchange="handleSettingsValueChange()">
-                                    <span class="input-group-text display-unit-label">mm</span>
-                                </div>
-                                <div class="form-text" style="font-size: 0.7rem;">Scrap smaller than this goes in the trash.</div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
+<ul class="nav nav-tabs mb-3" id="dictionaryTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-bold text-dark" id="tab-projects" data-bs-toggle="tab" data-bs-target="#pane-projects" type="button" role="tab">📁 Projects</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold text-dark" id="tab-stock" data-bs-toggle="tab" data-bs-target="#pane-stock" type="button" role="tab" onclick="populateStockDropdowns()">📦 My Stock</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold text-dark" id="tab-materials" data-bs-toggle="tab" data-bs-target="#pane-materials" type="button" role="tab">🪵 Materials</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold text-dark" id="tab-profiles" data-bs-toggle="tab" data-bs-target="#pane-profiles" type="button" role="tab">⏹️ Profiles</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold text-dark" id="tab-settings" data-bs-toggle="tab" data-bs-target="#pane-settings" type="button" role="tab">⚙️ Settings</button>
+    </li>
+</ul>
 
-    <div class="col-lg-6" id="section-projects">
-        <div class="col-12">
-            <div class="card shadow-sm border-success">
-                <div class="card-header bg-success text-white py-2">
-                    <h6 class="card-title mb-0">📁 Active Projects</h6>
-                </div>
-                <div class="card-body py-3">
-                    <form id="form-add-project" onsubmit="handleAddProject(event)">
-                        <div class="row g-2 align-items-end">
-                            <div class="col-sm-11">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">New Project Name</label>
-                                <input type="text" class="form-control form-control-sm" id="proj-name" required>
-                            </div>
-                            <div class="col-sm-1">
-                                <button type="submit" class="btn btn-success btn-sm w-100">Add</button>
-                            </div>
+<div class="tab-content" id="dictionaryTabsContent">
+
+    <div class="tab-pane fade show active" id="pane-projects" role="tabpanel" tabindex="0">
+        <div class="card shadow-sm border-success">
+            <div class="card-header bg-success text-white py-2">
+                <h6 class="card-title mb-0">Active Projects</h6>
+            </div>
+            <div class="card-body py-3">
+                <form id="form-add-project" onsubmit="handleAddProject(event)">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-sm-11">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">New Project Name</label>
+                            <input type="text" class="form-control form-control-sm" id="proj-name" required>
                         </div>
-                    </form>
-                    <hr>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mt-2">
-                            <thead class="table-light">
-                                <tr>
-                                    <th onclick="handleSort('projects', 'name', 'string')">Project Name</th>
-                                    <th>Status</th>
-                                    <th class="text-end"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-projects-body">
-                                </tbody>
-                        </table>
+                        <div class="col-sm-1">
+                            <button type="submit" class="btn btn-success btn-sm w-100">Add</button>
+                        </div>
                     </div>
+                </form>
+                <hr>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mt-2">
+                        <thead class="table-light">
+                            <tr>
+                                <th onclick="handleSort('projects', 'name', 'string')" style="cursor: pointer;">Project Name ⇅</th>
+                                <th>Status ⇅</th>
+                                <th class="text-center">Groups</th>
+                                <th class="text-end"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-projects-body"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<div class="row mt-3">
-    <div class="col-md-6 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-header bg-secondary text-white">
-                <h6 class="card-title mb-0">⏹️ Profiles / Thicknesses</h6>
+    <div class="tab-pane fade" id="pane-stock" role="tabpanel" tabindex="0">
+        <div class="card shadow-sm border-info">
+            <div class="card-header bg-info text-dark py-2">
+                <h6 class="card-title mb-0">My Shop Stock</h6>
             </div>
-            <div class="card-body">
+            <div class="card-body py-3">
+                <form id="form-add-stock" onsubmit="handleAddStock(event)">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-sm">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
+                            <select class="form-select form-select-sm" id="stock-category" onchange="handleStockCategoryChange()" required>
+                                <option value="" disabled selected>Select...</option>
+                                <option value="lumber">Lumber</option>
+                                <option value="sheet">Sheet</option>
+                                <option value="fastener">Fastener</option>
+                            </select>
+                        </div>
+                        <div class="col-sm">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
+                            <select class="form-select form-select-sm" id="stock-profile" required disabled></select>
+                        </div>
+                        <div class="col-sm">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material</label>
+                            <select class="form-select form-select-sm" id="stock-material" required disabled></select>
+                        </div>
+                        <div class="col-sm-1">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Qty</label>
+                            <input type="number" class="form-control form-control-sm text-center" id="stock-qty" value="1" min="1" required>
+                        </div>
+                        <div class="col-sm-1">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
+                            <input type="text" class="form-control form-control-sm" id="stock-length" required disabled>
+                        </div>
+                        <div class="col-sm-1">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                            <input type="text" class="form-control form-control-sm" id="stock-width" disabled>
+                        </div>
+                        <div class="col-sm-1">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets Only">Grain</label>
+                            <select class="form-select form-select-sm" id="stock-grain" disabled>
+                                <option value="none">None</option>
+                                <option value="length">Length</option>
+                                <option value="width">Width</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-1 text-center">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Scrap?</label>
+                            <div class="form-check d-flex justify-content-center">
+                                <input class="form-check-input" type="checkbox" id="stock-is-cutoff">
+                            </div>
+                        </div>
+                        <div class="col-sm-1">
+                            <button type="submit" class="btn btn-info btn-sm w-100">Add</button>
+                        </div>
+                    </div>
+                </form>
+                <hr>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mt-2">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="col-1 text-center" onclick="handleSort('stock', 'categoryId', 'string')">Category ⇅</th>
+                                <th class="text-center" onclick="handleSort('stock', 'profileId', 'string')">Profile ⇅</th>
+                                <th class="text-center" onclick="handleSort('stock', 'materialId', 'string')">Material ⇅</th>
+                                <th class="text-center" onclick="handleSort('stock', 'qty', 'number')">Qty ⇅</th>
+                                <th class="text-center" onclick="handleSort('stock', 'length', 'number')">Size (<span class="display-unit-label">mm</span>) ⇅</th>
+                                <th class="text-center" onclick="handleSort('stock', 'grain', 'string')">Grain ⇅</th>
+                                <th class="text-center" onclick="handleSort('stock', 'isCutoff', 'string')">Type ⇅</th>
+                                <th class="text-end"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-stock-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tab-pane fade" id="pane-materials" role="tabpanel" tabindex="0">
+        <div class="card shadow-sm border-secondary">
+            <div class="card-header bg-secondary text-white py-2">
+                <h6 class="card-title mb-0">Master Materials</h6>
+            </div>
+            <div class="card-body py-3">
+                <form id="form-add-material" onsubmit="handleAddMaterial(event)">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-sm-4">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material Name</label>
+                            <input type="text" class="form-control form-control-sm" id="mat-name" required>
+                        </div>
+                        <div class="col-sm-3">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
+                            <select class="form-select form-select-sm" id="mat-category" required>
+                                <option value="lumber">Lumber</option>
+                                <option value="sheet">Sheet</option>
+                                <option value="fastener">Fastener</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Density</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" step="0.01" class="form-control form-control-sm" id="mat-density" value="0" required>
+                                <span class="input-group-text density-unit-label">kg/m³</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-1">
+                            <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
+                        </div>
+                    </div>
+                </form>
+                <hr>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mt-2 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th onclick="handleSort('materials', 'name', 'string')">Name ⇅</th>
+                                <th class="col-2 text-center" onclick="handleSort('materials', 'category', 'string')">Category ⇅</th>
+                                <th class="text-center" onclick="handleSort('materials', 'density', 'number')"> Density (<span class="density-unit-label">kg/m³</span>) ⇅</th>
+                                <th class="text-end"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-materials-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="pane-profiles" role="tabpanel" tabindex="0">
+        <div class="card shadow-sm border-secondary">
+            <div class="card-header bg-secondary text-white py-2">
+                <h6 class="card-title mb-0">Master Profiles & Thicknesses</h6>
+            </div>
+            <div class="card-body py-3">
                 <form id="form-add-profile" onsubmit="handleAddProfile(event)">
                     <div class="row g-2 align-items-end">
                         <div class="col-sm-4">
@@ -105,7 +208,6 @@
                                 <option value="fastener">Fastener</option>
                             </select>
                         </div>
-                    
                         <div class="col-sm-2">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Thickness</label>
                             <div class="input-group input-group-sm">
@@ -130,69 +232,63 @@
                     <table class="table table-sm table-hover mt-2 align-middle">
                         <thead class="table-light">
                             <tr>
-                                <th onclick="handleSort('profiles', 'name', 'string')">Name</th>
-                                <th class="col-2 text-center" onclick="handleSort('profiles', 'type', 'string')">Category</th>
-                                <th class="text-center" onclick="handleSort('profiles', 'thickness', 'number')">Size  (<span class="display-unit-label">mm</span>)</th>
+                                <th onclick="handleSort('profiles', 'name', 'string')" style="cursor: pointer;">Profile Name ⇅</th>
+                                <th class="col-2 text-center" onclick="handleSort('profiles', 'type', 'string')" style="cursor: pointer;">Category ⇅</th>
+                                <th class="text-center" onclick="handleSort('profiles', 'thickness', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</th>
                                 <th class="text-end"></th>
                             </tr>
                         </thead>
-                        <tbody id="table-profiles-body">
-                            </tbody>
+                        <tbody id="table-profiles-body"></tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="col-md-6 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-header bg-secondary text-white">
-                <h6 class="card-title mb-0">🪵 Materials</h6>
+    <div class="tab-pane fade" id="pane-settings" role="tabpanel" tabindex="0">
+        <div class="card shadow-sm border-primary">
+            <div class="card-header bg-primary text-white py-2">
+                <h6 class="card-title mb-0">Global Settings</h6>
             </div>
             <div class="card-body py-3">
-                <form id="form-add-material" onsubmit="handleAddMaterial(event)">
-                    <div class="row g-2 align-items-end">
-                        <div class="col-sm-4">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material Name</label>
-                            <input type="text" class="form-control form-control-sm" id="mat-name" required>
-                        </div>
-                        <div class="col-sm-3">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
-                            <select class="form-select form-select-sm" id="mat-category" required>
-                                <option value="lumber">Lumber</option>
-                                <option value="sheet">Sheet</option>
-                                <option value="fastener">Fastener</option>
+                <form id="form-settings">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Display Units</label>
+                            <select class="form-select form-select-sm" id="setting-display-unit" onchange="handleUnitChange()">
+                                <option value="mm">Metric (mm, kg)</option>
+                                <option value="dec_in">Decimal Inches (1.75", lbs)</option>
+                                <option value="frac_in">Fractional Inches (1 3/4", lbs)</option>
                             </select>
                         </div>
-                    
-                        <div class="col-sm-4">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Density</label>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Blade Kerf</label>
                             <div class="input-group input-group-sm">
-                                <input type="number" step="0.01" class="form-control form-control-sm" id="mat-density" value="0" required>
-                                <span class="input-group-text density-unit-label">kg/m³</span>
+                                <input type="text" class="form-control" id="setting-kerf" onchange="handleSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
                             </div>
+                            <div class="form-text" style="font-size: 0.7rem;">Thickness of your saw blade.</div>
                         </div>
-                        <div class="col-sm-1">
-                            <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Factory Edge Trim</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" id="setting-factory-trim" onchange="handleSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                            <div class="form-text" style="font-size: 0.7rem;">Amount to cut off a new board to square the end.</div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Save Scrap Over:</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" id="setting-cutoff" onchange="handleSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                            <div class="form-text" style="font-size: 0.7rem;">Scrap smaller than this goes in the trash.</div>
                         </div>
                     </div>
                 </form>
-                <hr>
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover mt-2 align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th onclick="handleSort('materials', 'name', 'string')">Name</th>
-                                <th class="col-2 text-center" onclick="handleSort('materials', 'category', 'string')">Category</th>
-                                <th class="text-center" onclick="handleSort('materials', 'density', 'number')"> Density (<span class="density-unit-label">kg/m³</span>)</th>
-                                <th class="text-end"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-materials-body">
-                            </tbody>
-                    </table>
-                </div>
             </div>
         </div>
     </div>
+
 </div>

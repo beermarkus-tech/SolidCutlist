@@ -8,6 +8,7 @@
 
     function renderDictionaries() {
         renderProjectsTable(); 
+        renderStockTable();
         renderMaterialsTable();
         renderProfilesTable();
         
@@ -22,13 +23,15 @@
         if (!appState.settings.displayUnit) appState.settings.displayUnit = 'mm';
         if (appState.settings.bladeKerf === undefined) appState.settings.bladeKerf = 3.175;
         if (appState.settings.cutoffThreshold === undefined) appState.settings.cutoffThreshold = 200.0;
+        if (appState.settings.factoryEdgeTrim === undefined) appState.settings.factoryEdgeTrim = 6.35;
 
         // Set the dropdown
         document.getElementById('setting-display-unit').value = appState.settings.displayUnit;
         
-        // 🪄 Apply the math engine so kerf/cutoff translate dynamically (e.g., 3.175mm -> "1/8")
+        // 🪄 Apply the math engine so variables translate dynamically
         document.getElementById('setting-kerf').value = formatForDisplay(appState.settings.bladeKerf);
         document.getElementById('setting-cutoff').value = formatForDisplay(appState.settings.cutoffThreshold);
+        document.getElementById('setting-factory-trim').value = formatForDisplay(appState.settings.factoryEdgeTrim);
         
         updateUnitLabels();
     }
@@ -53,12 +56,72 @@
                            title="Tap to edit">
                 </td>
                 <td><span class="badge bg-secondary">${proj.status || 'Design'}</span></td>
+                <td class="text-center" style="width: 40px;">
+                    <button class="btn btn-sm btn-light border shadow-sm py-0 px-2" onclick="openGroupModal('${proj.id}')" title="Manage Groups">⚙️</button>
+                </td>
                 <td class="text-end">
                     <button class="btn btn-sm py-0 px-2" onclick="deleteProject('${proj.id}')">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
+    }
+
+    function renderStockTable() {
+        const tbody = document.getElementById('table-stock-body');
+        if (!tbody) return;
+        tbody.innerHTML = ''; 
+        
+        if (!appState.stock) appState.stock = [];
+
+        appState.stock.forEach(item => {
+            const tr = document.createElement('tr');
+            
+            // Lookups
+            const prof = appState.profiles.find(p => p.id === item.profileId);
+            const mat = appState.materials.find(m => m.id === item.materialId);
+            
+            // Formatting
+            const badgeClass = getCategoryBadgeClass(item.categoryId);
+            const sizeString = item.categoryId === 'sheet' 
+                ? `${formatForDisplay(item.length)} x ${formatForDisplay(item.width)}`
+                : `${formatForDisplay(item.length)}`;
+            
+            const typeBadge = item.isCutoff 
+                ? '<span class="badge bg-warning text-dark">Scrap</span>' 
+                : '<span class="badge bg-success">New</span>';
+
+            const grainString = item.categoryId === 'sheet' ? item.grain : '-';
+
+            tr.innerHTML = `
+                <td>
+                    <div class="d-flex justify-content-center">
+                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
+                                onchange="updateMaterial('${mat.id}', 'category', this.value)" title="Tap to change category" disabled>
+                            <option value="lumber" class="bg-light text-dark" ${item.categoryId === 'lumber' ? 'selected' : ''}>Lumber</option>
+                            <option value="sheet" class="bg-light text-dark" ${item.categoryId === 'sheet' ? 'selected' : ''}>Sheet</option>
+                            <option value="fastener" class="bg-light text-dark" ${item.categoryId === 'fastener' ? 'selected' : ''}>Fastener</option>
+                        </select>
+                    </div>
+                </td>
+                <td class="text-center"><small>${prof ? safeHTML(prof.name) : '<span class="text-danger">Missing Profile</span>'}</small></td>
+                <td class="text-center"><small>${mat ? safeHTML(mat.name) : '<span class="text-danger">Missing Material</span>'}</small></td>
+                <td class="text-center"><small>
+                    <input type="number" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width: 50px;"
+                           value="${item.qty}" 
+                           onchange="updateStock('${item.id}', 'qty', this.value)" title="Tap to edit qty">
+                </small></td>
+                <td class="text-center text-nowrap"><small>${sizeString}</small></td>
+                <td class="text-center text-capitalize">${grainString}</small></td>
+                <td class="text-center">${typeBadge}</td>
+                <td class="text-end">
+                    <button type="button" class="btn btn-sm py-0 px-2 text-danger" onclick="deleteStock('${item.id}')">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        updateUnitLabels();
     }
 
     function renderMaterialsTable() {
@@ -68,13 +131,10 @@
         appState.materials.forEach(mat => {
             const tr = document.createElement('tr');
            
-            let currentCat = mat.category === 'solid' ? 'lumber' : (mat.category || 'lumber');
+            let currentCat = mat.category || 'lumber';
 
             // 🪄 COLOR CODED BADGE LOGIC
-            let badgeClass = 'bg-secondary text-white'; // Default
-            if (currentCat === 'lumber') badgeClass = 'bg-success text-white';
-            if (currentCat === 'sheet') badgeClass = 'bg-warning text-dark';
-            if (currentCat === 'fastener') badgeClass = 'bg-info text-dark';
+            let badgeClass = getCategoryBadgeClass(currentCat);
 
             tr.innerHTML = `
                 <td>
@@ -85,7 +145,7 @@
                 <td>
                     <div class="d-flex justify-content-center">
                         <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 80px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
                                 onchange="updateMaterial('${mat.id}', 'category', this.value)" title="Tap to change category" disabled>
                             <option value="lumber" class="bg-light text-dark" ${currentCat === 'lumber' ? 'selected' : ''}>Lumber</option>
                             <option value="sheet" class="bg-light text-dark" ${currentCat === 'sheet' ? 'selected' : ''}>Sheet</option>
@@ -118,10 +178,7 @@
             let displayWidth = formatForDisplay(prof.width);
             
             // 🪄 COLOR CODED BADGE LOGIC
-            let badgeClass = 'bg-secondary text-white'; // Default
-            if (prof.type === 'lumber') badgeClass = 'bg-success text-white';
-            if (prof.type === 'sheet') badgeClass = 'bg-warning text-dark';
-            if (prof.type === 'fastener') badgeClass = 'bg-info text-dark';
+            let badgeClass = getCategoryBadgeClass(prof.type);
 
             // 🪄 DYNAMIC DIMENSIONS DISPLAY
             let dimHtml = '';
@@ -156,7 +213,7 @@
                 <td>
                     <div class="d-flex justify-content-center">
                         <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 80px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
                                 onchange="updateProfile('${prof.id}', 'type', this.value)" title="Tap to change category" disabled>
                             <option value="lumber" class="bg-light text-dark" ${prof.type === 'lumber' ? 'selected' : ''}>Lumber</option>
                             <option value="sheet" class="bg-light text-dark" ${prof.type === 'sheet' ? 'selected' : ''}>Sheet</option>
@@ -424,9 +481,11 @@
         // 1. ONLY read the text boxes. The unit preference is already safely set.
         const kerfInput = document.getElementById('setting-kerf').value;
         const cutoffInput = document.getElementById('setting-cutoff').value;
+        const trimInput = document.getElementById('setting-factory-trim').value;
         
         appState.settings.bladeKerf = parseToBaseUnit(kerfInput);
         appState.settings.cutoffThreshold = parseToBaseUnit(cutoffInput);
+        appState.settings.factoryEdgeTrim = parseToBaseUnit(trimInput);
         
         saveState();
         renderSettings(); // Cleans up the formatting in case they typed a messy fraction
@@ -441,4 +500,248 @@
             renderDictionaries();
         }, 100); 
     });
+
+    // ==========================================
+    // PROJECT GROUP MANAGER
+    // ==========================================
+    let groupModalInstance = null;
+
+    function openGroupModal(preSelectedProjectId = '') {
+        // 1. Initialize Bootstrap Modal if it doesn't exist
+        if (!groupModalInstance) {
+            groupModalInstance = new bootstrap.Modal(document.getElementById('modal-group-manager'), {
+                keyboard: true // Enables ESC to close natively
+            });
+
+            // When modal closes, forcefully update the Parts UI so new groups appear
+            document.getElementById('modal-group-manager').addEventListener('hidden.bs.modal', function () {
+                // Also trigger handleProjectChange to refresh the specific part-group dropdown 
+                // without wiping out what the user was currently doing
+                if (typeof handleProjectChange === 'function') handleProjectChange();
+                if (typeof renderPartsTable === 'function') renderPartsTable();
+            });
+        }
+
+        // 2. Populate the Project Dropdown
+        const projSelect = document.getElementById('modal-group-project-select');
+        projSelect.innerHTML = '<option value="" disabled selected>Select a Project...</option>';
+        if (appState.projects) {
+            appState.projects.forEach(p => {
+                projSelect.innerHTML += `<option value="${p.id}">${safeHTML(p.name)}</option>`;
+            });
+        }
+
+        // 3. Set Context (Pre-select or stay blank)
+        if (preSelectedProjectId) {
+            projSelect.value = preSelectedProjectId;
+        } else {
+            projSelect.value = ""; // Force it to stay on "Select a Project..."
+        }
+
+        renderGroupModalTable();
+        groupModalInstance.show();
+
+        // Bonus UX: Auto-focus the text input when modal opens (needs a tiny delay for the animation)
+        setTimeout(() => {
+            document.getElementById('modal-new-group-name').focus();
+        }, 400);
+    }
+
+    function renderGroupModalTable() {
+        const tbody = document.getElementById('table-modal-groups-body');
+        tbody.innerHTML = '';
+        
+        const activeProjectId = document.getElementById('modal-group-project-select').value;
+        if (!activeProjectId) return;
+
+        if (!appState.groups) appState.groups = [];
+
+        // Filter groups for the active project
+        const projectGroups = appState.groups.filter(g => g.projectId === activeProjectId);
+
+        if (projectGroups.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-3">No groups defined.</td></tr>';
+            return;
+        }
+
+        projectGroups.forEach(grp => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" 
+                           value="${safeHTML(grp.name)}" 
+                           onchange="updateGroupName('${grp.id}', this.value)"
+                           title="Tap to edit">
+                </td>
+                <td class="text-end">
+                    <button type="button" class="btn btn-sm py-0 px-2 text-danger" onclick="deleteGroup('${grp.id}')">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function handleAddGroup(event) {
+        event.preventDefault();
+        const activeProjectId = document.getElementById('modal-group-project-select').value;
+        const nameInput = document.getElementById('modal-new-group-name');
+        
+        if (!activeProjectId) {
+            showToast('Please select a project first.', true);
+            return;
+        }
+
+        if (!appState.groups) appState.groups = [];
+        
+        appState.groups.push({
+            id: 'GRP-' + Date.now(),
+            projectId: activeProjectId,
+            name: nameInput.value
+        });
+        
+        saveState();
+        renderGroupModalTable();
+        nameInput.value = ''; // Clear input
+        nameInput.focus();
+    }
+
+    function updateGroupName(id, newName) {
+        const grp = appState.groups.find(g => g.id === id);
+        if (grp) {
+            grp.name = newName;
+            saveState();
+            showToast('Group renamed.');
+        }
+    }
+
+    function deleteGroup(id) {
+        if (!confirm("Delete this group? All parts in this group will be reset to 'no group'.")) return;
+
+        // 1. Cascade Nullify: Reset parts using this group
+        let affectedParts = 0;
+        if (appState.parts) {
+            appState.parts.forEach(part => {
+                if (part.groupId === id) {
+                    part.groupId = ''; // Snap back to 'no group'
+                    affectedParts++;
+                }
+            });
+        }
+
+        // 2. Delete the group
+        appState.groups = appState.groups.filter(g => g.id !== id);
+        saveState();
+        renderGroupModalTable();
+        
+        showToast(`Group deleted. ${affectedParts} part(s) reset to 'no group'.`, true);
+    }
+
+    // ==========================================
+    // STOCK MANAGER LOGIC
+    // ==========================================
+
+    function handleStockCategoryChange() {
+        const cat = document.getElementById('stock-category').value;
+        const profSelect = document.getElementById('stock-profile');
+        const matSelect = document.getElementById('stock-material');
+        const lengthInput = document.getElementById('stock-length');
+        const widthInput = document.getElementById('stock-width');
+        const grainSelect = document.getElementById('stock-grain');
+        
+        // Reset and enable
+        profSelect.innerHTML = '<option value="" disabled selected>Select...</option>';
+        matSelect.innerHTML = '<option value="" disabled selected>Select...</option>';
+        profSelect.disabled = false;
+        matSelect.disabled = false;
+        lengthInput.disabled = false;
+        
+        // Filter and Populate Profile Dropdown
+        if (appState.profiles) {
+            appState.profiles.filter(p => p.type === cat).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.innerText = p.name;
+                profSelect.appendChild(opt);
+            });
+        }
+        
+        // Filter and Populate Material Dropdown
+        if (appState.materials) {
+            appState.materials.filter(m => m.category === cat).forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.innerText = m.name;
+                matSelect.appendChild(opt);
+            });
+        }
+
+        // Toggle Width and Grain based on category physics
+        if (cat === 'sheet') {
+            widthInput.disabled = false;
+            widthInput.required = true;
+            grainSelect.disabled = false;
+        } else {
+            widthInput.disabled = true;
+            widthInput.required = false;
+            widthInput.value = '';
+            grainSelect.disabled = true;
+            grainSelect.value = 'none';
+        }
+    }
+
+    function populateStockDropdowns() {
+        // Only refresh if a category is already selected
+        if (document.getElementById('stock-category').value) {
+            handleStockCategoryChange();
+        }
+    }
+
+    function handleAddStock(event) {
+        event.preventDefault();
+        
+        const category = document.getElementById('stock-category').value;
+        const lengthInput = parseToBaseUnit(document.getElementById('stock-length').value);
+        const widthInput = category === 'sheet' ? parseToBaseUnit(document.getElementById('stock-width').value) : 0;
+        
+        if (!appState.stock) appState.stock = [];
+
+        appState.stock.push({
+            id: 'STK-' + Date.now(),
+            categoryId: category,
+            profileId: document.getElementById('stock-profile').value,
+            materialId: document.getElementById('stock-material').value,
+            qty: parseInt(document.getElementById('stock-qty').value, 10),
+            length: lengthInput,
+            width: widthInput,
+            grain: document.getElementById('stock-grain').value,
+            isCutoff: document.getElementById('stock-is-cutoff').checked
+        });
+        
+        saveState();
+        renderStockTable();
+        showToast('Item added to Shop Stock.');
+        
+        // Reset form but keep category to allow rapid entry
+        document.getElementById('stock-length').value = '';
+        document.getElementById('stock-width').value = '';
+        document.getElementById('stock-qty').value = '1';
+        document.getElementById('stock-is-cutoff').checked = false;
+    }
+
+    function updateStock(id, field, newValue) {
+        const item = appState.stock.find(s => s.id === id);
+        if (item) {
+            item[field] = (field === 'qty') ? parseInt(newValue, 10) : newValue;
+            saveState();
+            renderStockTable();
+        }
+    }
+
+    function deleteStock(id) {
+        if (!confirm("Remove this item from your stock?")) return;
+        appState.stock = appState.stock.filter(s => s.id !== id);
+        saveState();
+        renderStockTable();
+        showToast('Item removed from stock.');
+    }
 </script>

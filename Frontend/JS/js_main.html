@@ -16,8 +16,8 @@
     
     // 1. Materials (Wood species, treatments)
     materials: [
-        // { id: 'M-001', name: 'Pine (Untreated)', density: 0.45, category: 'solid' },
-        // { id: 'M-002', name: 'Oak (White)', density: 0.77, category: 'solid' },
+        // { id: 'M-001', name: 'Pine (Untreated)', density: 0.45, category: 'lumber' },
+        // { id: 'M-002', name: 'Oak (White)', density: 0.77, category: 'lumber' },
         // { id: 'M-003', name: 'Birch Plywood', density: 0.68, category: 'sheet' }
     ],
 
@@ -51,6 +51,11 @@
         // { id: 'PROJ-001', name: 'Workbench', status: 'Design' }
     ],
 
+    // 0.5 Groups (Sub-assemblies attached to Projects)
+    groups: [
+        // { id: 'GRP-001', projectId: 'PROJ-001', name: 'South Wall' }
+    ],
+    
     // 5. Parts (The Master Cutlist - every piece of wood to be cut)
     parts: [
         // { id: 'PART-001', projectId: 'PROJ-001', name: 'Front Left Leg', materialId: 'M-001', profileId: 'PR-001', length: 850.0, qty: 1 }
@@ -61,7 +66,8 @@
         baseUnit: 'mm',           // The immutable backend unit
         displayUnit: 'frac_in',   // The UI mask: 'mm', 'dec_in', or 'frac_in'
         bladeKerf: 3.175,         // mm (Default to 1/8" standard blade)
-        cutoffThreshold: 200.0    // mm. Anything smaller goes in the trash.
+        cutoffThreshold: 200.0,    // mm. Anything smaller goes in the trash.
+        factoryEdgeTrim: 6.35     // mm. Amount to chop off a new board to square it up.
     }
     };
 
@@ -83,7 +89,7 @@
         if (savedState) {
             try {
                 appState = JSON.parse(savedState);
-                console.log('LumberLogic state loaded successfully.');
+                console.log('SolidCutlist state loaded successfully.');
             } catch (e) {
                 console.error('Data corruption detected.', e);
                 initAppState();
@@ -260,8 +266,9 @@
             let valB = b[key];
 
             // 🪄 Smart Lookups for Relational IDs and Dynamic Math in the Parts Table
-            if (arrayName === 'parts') {
-                if (key === 'projectId') {
+            // 🪄 Smart Lookups for Relational IDs and Dynamic Math
+            if (arrayName === 'parts' || arrayName === 'stock') {
+                if (key === 'projectId' && arrayName === 'parts') {
                     valA = appState.projects.find(p => p.id === a.projectId)?.name || '';
                     valB = appState.projects.find(p => p.id === b.projectId)?.name || '';
                 } else if (key === 'profileId') {
@@ -270,7 +277,7 @@
                 } else if (key === 'materialId') {
                     valA = appState.materials.find(m => m.id === a.materialId)?.name || '';
                     valB = appState.materials.find(m => m.id === b.materialId)?.name || '';
-                } else if (key === 'weight') {
+                } else if (key === 'weight' && arrayName === 'parts') {
                     // 🪄 Background Weight Calculation for Sorting
                     const getWeight = (p) => {
                         if (p.category === 'fastener') return 0;
@@ -309,7 +316,9 @@
         if (arrayName === 'materials') renderMaterialsTable();
         if (arrayName === 'profiles') renderProfilesTable();
         if (arrayName === 'parts') renderPartsTable();
+        if (arrayName === 'stock' && typeof renderStockTable === 'function') renderStockTable();
         if (arrayName === 'stagingParts') renderStagingTable();
+        if (arrayName === 'groups' && typeof renderGroupModalTable === 'function') renderGroupModalTable();
     }
 
     // ==========================================
@@ -375,5 +384,22 @@
         toastEl.addEventListener('hidden.bs.toast', () => {
             toastEl.remove();
         });
+    }
+
+    /**
+     * Returns the exact Bootstrap classes for a given category badge.
+     * Centralizes color management so it can be updated in one place.
+     * @param {string} category - The category name ('lumber', 'sheet', 'fastener')
+     * @returns {string} The CSS class list for the badge.
+     */
+     function getCategoryBadgeClass(category) {
+        const badgeMap = {
+            lumber: 'bg-lumber text-white',
+            sheet: 'bg-sheet text-dark',
+            fastener: 'bg-fastener text-white'
+        };
+
+        // Return the mapped color, or fallback to the default gray if unknown
+        return badgeMap[category] || 'bg-secondary text-white';
     }
 </script>

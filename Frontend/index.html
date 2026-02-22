@@ -9,6 +9,7 @@
     
     <!-- Inject our custom styles -->
     <?!= include('Frontend/CSS/css_global'); ?>
+    <?!= include('Frontend/CSS/css_custom'); ?>
 </head>
 <body class="bg-light">
 
@@ -25,23 +26,72 @@
     </nav>
 
     <!-- Main Content Area -->
-    <main id="app-container" class="container">
+    <main id="app-container" class="container-fluid px-4 px-md-5">
        
         <!-- View: Dictionaries (Hidden by default) -->
-        <div id="view-dictionaries" class="app-view">
+        <div id="view-dictionaries" class="app-view container mt-2" style="max-width: 1200px;">
             <?!= include('Frontend/Views/view_dictionaries'); ?>
+        </div>
+
+        <!-- View: Import (Hidden by default) -->
+        <div id="view-import" class="app-view container mt-2 d-none" style="max-width: 1200px;">
+            <?!= include('Frontend/Views/view_import'); ?>
         </div>
 
         <!-- View: Parts (Hidden by default) -->
         <div id="view-parts" class="app-view d-none">
             <?!= include('Frontend/Views/view_parts'); ?>
         </div>
-
-        <!-- View: Import (Hidden by default) -->
-        <div id="view-import" class="app-view d-none">
-            <?!= include('Frontend/Views/view_import'); ?>
-        </div>
     </main>
+
+    <!-- Global Group Modal -->
+    <div class="modal fade" id="modal-group-manager" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow">
+                <div class="modal-header bg-dark text-white py-2">
+                    <h6 class="modal-title mb-0">⚙️ Project Group Manager</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    
+                    <div class="mb-3">
+                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Active Project</label>
+                        <select class="form-select form-select-sm border-primary" id="modal-group-project-select" onchange="renderGroupModalTable()">
+                            </select>
+                    </div>
+    
+                    <form id="form-add-group" onsubmit="handleAddGroup(event)">
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-sm-9">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">New Group Name</label>
+                                <input type="text" class="form-control form-control-sm" id="modal-new-group-name" placeholder="e.g. South Wall" required>
+                            </div>
+                            <div class="col-sm-3">
+                                <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
+                            </div>
+                        </div>
+                    </form>
+    
+                    <div class="table-responsive bg-white border rounded">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th onclick="handleSort('groups', 'name', 'string')" style="cursor: pointer;">Group Name ⇅</th>
+                                    <th class="text-end"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-modal-groups-body">
+                                </tbody>
+                        </table>
+                    </div>
+    
+                </div>
+                <div class="modal-footer py-1">
+                    <small class="text-muted w-100 text-center">Type a name and press <b>ENTER</b> to add. Press <b>ESC</b> to close.</small>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Global Toast Container (for non-intrusive notifications) -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container"></div>
