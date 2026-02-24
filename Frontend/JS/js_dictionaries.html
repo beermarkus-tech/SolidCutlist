@@ -9,6 +9,7 @@
     function renderDictionaries() {
         renderProjectsTable(); 
         renderStockTable();
+        renderCatalogTable();
         renderMaterialsTable();
         renderProfilesTable();
         
@@ -76,13 +77,37 @@
 
         appState.stock.forEach(item => {
             const tr = document.createElement('tr');
-            
-            // Lookups
-            const prof = appState.profiles.find(p => p.id === item.profileId);
-            const mat = appState.materials.find(m => m.id === item.materialId);
-            
-            // Formatting
             const badgeClass = getCategoryBadgeClass(item.categoryId);
+            
+            // 🪄 0. VALIDATE REALITY & DYNAMIC DROPDOWNS
+            const filteredProfiles = appState.profiles.filter(p => p.type === item.categoryId);
+            const isProfValid = filteredProfiles.some(p => p.id === item.profileId);
+            
+            let profOptions = `<option value="" disabled ${!isProfValid ? 'selected' : ''}>⚠️ Select Profile...</option>`;
+            filteredProfiles.forEach(p => {
+                profOptions += `<option value="${p.id}" ${p.id === item.profileId ? 'selected' : ''}>${safeHTML(p.name)}</option>`;
+            });
+            let profHtml = `
+                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" style="max-width: 150px; margin: 0 auto;" onchange="updateStock('${item.id}', 'profileId', this.value)" title="Tap to change Profile">
+                    ${profOptions}
+                </select>`;
+
+            const filteredMaterials = appState.materials.filter(m => m.category === item.categoryId);
+            const isMatValid = filteredMaterials.some(m => m.id === item.materialId);
+
+            let matOptions = `<option value="" disabled ${!isMatValid ? 'selected' : ''}>⚠️ Select Material...</option>`;
+            filteredMaterials.forEach(m => {
+                matOptions += `<option value="${m.id}" ${m.id === item.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
+            });
+            let matHtml = `
+                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" style="max-width: 150px; margin: 0 auto;" onchange="updateStock('${item.id}', 'materialId', this.value)" title="Tap to change Material">
+                    ${matOptions}
+                </select>`;
+
+            // 🪄 0.5 APPLY ROW HIGHLIGHT IF INVALID
+            if (!isProfValid || !isMatValid) {
+                tr.classList.add('table-warning');
+            }
             const sizeString = item.categoryId === 'sheet' 
                 ? `${formatForDisplay(item.length)} x ${formatForDisplay(item.width)}`
                 : `${formatForDisplay(item.length)}`;
@@ -97,16 +122,15 @@
                 <td>
                     <div class="d-flex justify-content-center">
                         <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
-                                onchange="updateMaterial('${mat.id}', 'category', this.value)" title="Tap to change category" disabled>
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
                             <option value="lumber" class="bg-light text-dark" ${item.categoryId === 'lumber' ? 'selected' : ''}>Lumber</option>
                             <option value="sheet" class="bg-light text-dark" ${item.categoryId === 'sheet' ? 'selected' : ''}>Sheet</option>
                             <option value="fastener" class="bg-light text-dark" ${item.categoryId === 'fastener' ? 'selected' : ''}>Fastener</option>
                         </select>
                     </div>
                 </td>
-                <td class="text-center"><small>${prof ? safeHTML(prof.name) : '<span class="text-danger">Missing Profile</span>'}</small></td>
-                <td class="text-center"><small>${mat ? safeHTML(mat.name) : '<span class="text-danger">Missing Material</span>'}</small></td>
+                <td class="p-0 align-middle">${profHtml}</td>
+                <td class="p-0 align-middle">${matHtml}</td>
                 <td class="text-center"><small>
                     <input type="number" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width: 50px;"
                            value="${item.qty}" 
@@ -145,8 +169,7 @@
                 <td>
                     <div class="d-flex justify-content-center">
                         <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
-                                onchange="updateMaterial('${mat.id}', 'category', this.value)" title="Tap to change category" disabled>
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
                             <option value="lumber" class="bg-light text-dark" ${currentCat === 'lumber' ? 'selected' : ''}>Lumber</option>
                             <option value="sheet" class="bg-light text-dark" ${currentCat === 'sheet' ? 'selected' : ''}>Sheet</option>
                             <option value="fastener" class="bg-light text-dark" ${currentCat === 'fastener' ? 'selected' : ''}>Fastener</option>
@@ -213,8 +236,7 @@
                 <td>
                     <div class="d-flex justify-content-center">
                         <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
-                                onchange="updateProfile('${prof.id}', 'type', this.value)" title="Tap to change category" disabled>
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
                             <option value="lumber" class="bg-light text-dark" ${prof.type === 'lumber' ? 'selected' : ''}>Lumber</option>
                             <option value="sheet" class="bg-light text-dark" ${prof.type === 'sheet' ? 'selected' : ''}>Sheet</option>
                             <option value="fastener" class="bg-light text-dark" ${prof.type === 'fastener' ? 'selected' : ''}>Fastener</option>
@@ -226,6 +248,143 @@
                 </td>
                 <td class="text-end">
                     <button class="btn btn-sm py-0 px-2" onclick="deleteProfile('${prof.id}')">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderCatalogTable() {
+        const tbody = document.getElementById('table-catalog-body');
+        if (!tbody) return;
+        tbody.innerHTML = ''; 
+        if (!appState.catalog) appState.catalog = [];
+
+        const viewUnit = document.getElementById('table-price-view').value;
+        const isMetric = appState.settings.displayUnit === 'mm';
+
+        appState.catalog.forEach(item => {
+            const tr = document.createElement('tr');
+            const store = appState.stores?.find(s => s.id === item.storeId);
+            const badgeClass = getCategoryBadgeClass(item.categoryId);
+            
+            // 🪄 0. VALIDATE REALITY & DYNAMIC DROPDOWNS
+            const filteredProfiles = appState.profiles.filter(p => p.type === item.categoryId);
+            const isProfValid = filteredProfiles.some(p => p.id === item.profileId);
+            
+            let profOptions = `<option value="" disabled ${!isProfValid ? 'selected' : ''}>⚠️ Select Profile...</option>`;
+            filteredProfiles.forEach(p => {
+                profOptions += `<option value="${p.id}" ${p.id === item.profileId ? 'selected' : ''}>${safeHTML(p.name)}</option>`;
+            });
+            // Text is standard, no yellow text classes
+            let profHtml = `
+                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" style="max-width: 150px;" onchange="updateCatalogItem('${item.id}', 'profileId', this.value)" title="Tap to change Profile">
+                    ${profOptions}
+                </select>`;
+
+            const filteredMaterials = appState.materials.filter(m => m.category === item.categoryId);
+            const isMatValid = filteredMaterials.some(m => m.id === item.materialId);
+
+            let matOptions = `<option value="" disabled ${!isMatValid ? 'selected' : ''}>⚠️ Select Material...</option>`;
+            filteredMaterials.forEach(m => {
+                matOptions += `<option value="${m.id}" ${m.id === item.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
+            });
+            // Text is standard, no yellow text classes
+            let matHtml = `
+                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" style="max-width: 150px;" onchange="updateCatalogItem('${item.id}', 'materialId', this.value)" title="Tap to change Material">
+                    ${matOptions}
+                </select>`;
+
+            // 🪄 0.5 APPLY ROW HIGHLIGHT IF INVALID
+            if (!isProfValid || !isMatValid) {
+                tr.classList.add('table-warning');
+            }
+            
+            // 🪄 1. DYNAMIC SIZE INPUTS
+            let dimHtml = '';
+            const displayL = formatForDisplay(item.length);
+            if (item.categoryId === 'sheet') {
+                const displayW = formatForDisplay(item.width);
+                dimHtml = `
+                    <div class="d-flex align-items-center justify-content-center gap-1">
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0" style="width: 50px;" 
+                               value="${displayL}" onchange="updateCatalogItem('${item.id}', 'length', this.value)" title="Tap to edit length">
+                        <span class="text-muted text-sm">x</span>
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-start px-0" style="width: 50px;" 
+                               value="${displayW}" onchange="updateCatalogItem('${item.id}', 'width', this.value)" title="Tap to edit width">
+                    </div>`;
+            } else {
+                dimHtml = `
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width: 60px;" 
+                           value="${displayL}" onchange="updateCatalogItem('${item.id}', 'length', this.value)" title="Tap to edit length">`;
+            }
+
+            // 🪄 2. INLINE STORE DROPDOWN
+            let storeOptions = '<option value="" disabled>Select...</option>';
+            if (appState.stores) {
+                appState.stores.forEach(s => {
+                    storeOptions += `<option value="${s.id}" ${s.id === item.storeId ? 'selected' : ''}>${safeHTML(s.name)}</option>`;
+                });
+            }
+            let storeHtml = `
+                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" onchange="updateCatalogItem('${item.id}', 'storeId', this.value)" title="Tap to change Store">
+                    ${storeOptions}
+                </select>`;
+
+            // 🪄 3. DYNAMIC PRICE INPUT & INLINE UNIT DROPDOWN
+            const uLin = isMetric ? 'm' : 'ft';
+            const uArea = isMetric ? 'm²' : 'sqft';
+            const uVol = isMetric ? 'm³' : 'BF';
+
+            let unitSelectHtml = `
+                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 text-muted" 
+                        style="width: auto; appearance: none; cursor: pointer; text-align: left;" 
+                        onchange="updateCatalogItem('${item.id}', 'priceUnit', this.value)" title="Tap to change Unit">
+                    <option value="piece" ${item.priceUnit === 'piece' ? 'selected' : ''}>pc</option>
+                    <option value="linear" ${item.priceUnit === 'linear' ? 'selected' : ''}>${uLin}</option>
+                    <option value="area" ${item.priceUnit === 'area' ? 'selected' : ''}>${uArea}</option>
+                    <option value="volume" ${item.priceUnit === 'volume' ? 'selected' : ''}>${uVol}</option>
+                </select>
+            `;
+
+            let priceHtml = `
+                <div class="d-flex align-items-center justify-content-center text-nowrap mx-auto" style="width: 130px;">
+                    <input type="number" step="0.01" class="form-control form-control-sm border-0 bg-transparent text-end px-0" style="width: 60px;" 
+                           value="${parseFloat(item.price).toFixed(2)}" onchange="updateCatalogItem('${item.id}', 'price', this.value)" title="Tap to edit price">
+                    <span class="text-muted px-1">/</span>
+                    ${unitSelectHtml}
+                </div>`;
+
+            // Calculate normalized comparison price
+            const displayPrice = getNormalizedPriceDisplay(item, viewUnit);
+
+            let linkHtml = item.link 
+                ? `<a href="${safeHTML(item.link)}" target="_blank" class="text-decoration-none me-2" title="Open Link">🔗</a>` 
+                : `<span class="text-muted me-2" style="opacity: 0.3;">🔗</span>`;
+
+            tr.innerHTML = `
+                <td>
+                    <div class="d-flex justify-content-center">
+                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
+                            <option value="lumber" class="bg-light text-dark" ${item.categoryId === 'lumber' ? 'selected' : ''}>Lumber</option>
+                            <option value="sheet" class="bg-light text-dark" ${item.categoryId === 'sheet' ? 'selected' : ''}>Sheet</option>
+                            <option value="fastener" class="bg-light text-dark" ${item.categoryId === 'fastener' ? 'selected' : ''}>Fastener</option>
+                        </select>
+                    </div>
+                </td>
+                <td class="p-0 align-middle">${profHtml}</td>
+                <td class="p-0 align-middle">${matHtml}</td>
+                <td class="text-center p-0 align-middle">${dimHtml}</td>
+                <td class="p-0 align-middle">${storeHtml}</td>
+                <td class="text-center p-0 align-middle">${priceHtml}</td>
+                <td class="text-center fw-bold text-success">${displayPrice}</td>
+                <td class="text-end text-nowrap">
+                    ${linkHtml}
+                    <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${item.id}', '${safeHTML(item.link || '')}')" title="Edit Link">✏️</button>
+                </td>
+                <td>
+                    <button class="btn btn-sm py-0 px-1 text-danger" onclick="deleteCatalogItem('${item.id}')">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -472,9 +631,34 @@
         const densityText = isMetric ? 'kg/m³' : 'lb/ft³';
         const weightText = isMetric ? 'kg' : 'lbs';
         
+        const linearText = isMetric ? 'm' : 'ft';
+        const areaText = isMetric ? 'm²' : 'sqft';
+        const volText = isMetric ? 'm³' : 'BF';
+        
+        // Update basic global labels
         document.querySelectorAll('.display-unit-label').forEach(label => label.innerText = unitText);
         document.querySelectorAll('.density-unit-label').forEach(label => label.innerText = densityText);
         document.querySelectorAll('.density-weight-label').forEach(label => label.innerText = weightText);
+
+        // Update the header drop-down in the Catalog table (safely checks if it exists first)
+        const tableViewSelect = document.getElementById('table-price-view');
+        if (tableViewSelect && tableViewSelect.options && tableViewSelect.options.length > 3) {
+            tableViewSelect.options[1].text = `Cost / ${linearText}`;
+            tableViewSelect.options[2].text = `Cost / ${areaText}`;
+            tableViewSelect.options[3].text = `Cost / ${volText}`;
+        }
+
+        // 🪄 Update the new Cycle Button text safely
+        const btnCycle = document.getElementById('btn-cycle-unit');
+        const hiddenUnit = document.getElementById('cat-price-unit');
+        if (btnCycle && hiddenUnit) {
+            let u = hiddenUnit.value;
+            let display = 'pc';
+            if (u === 'linear') display = linearText;
+            if (u === 'area') display = areaText;
+            if (u === 'volume') display = volText;
+            btnCycle.innerText = '/ ' + display;
+        }
     }
 
     function handleSettingsValueChange() {
@@ -743,5 +927,326 @@
         saveState();
         renderStockTable();
         showToast('Item removed from stock.');
+    }
+
+    // ==========================================
+    // STORE MANAGER LOGIC (MODAL)
+    // ==========================================
+    let storeModalInstance = null;
+
+    function openStoreModal() {
+        const modalEl = document.getElementById('modal-store-manager');
+        
+        // Failsafe: Check if the HTML actually exists!
+        if (!modalEl) {
+            alert("Error: The Store Modal HTML is missing from index.html!");
+            console.error("Could not find element with ID 'modal-store-manager'.");
+            return;
+        }
+
+        if (!storeModalInstance) {
+            storeModalInstance = new bootstrap.Modal(modalEl);
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                if (typeof populateCatalogDropdowns === 'function') populateCatalogDropdowns();
+            });
+        }
+        
+        renderStoreModalTable();
+        storeModalInstance.show();
+        setTimeout(() => document.getElementById('modal-new-store-name').focus(), 400);
+    }
+
+    function renderStoreModalTable() {
+        const tbody = document.getElementById('table-modal-stores-body');
+        tbody.innerHTML = '';
+        if (!appState.stores) appState.stores = [];
+
+        if (appState.stores.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-3">No stores defined.</td></tr>';
+            return;
+        }
+
+        appState.stores.forEach(store => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" 
+                           value="${safeHTML(store.name)}" 
+                           onchange="updateStoreName('${store.id}', this.value)" title="Tap to edit">
+                </td>
+                <td class="text-end">
+                    <button type="button" class="btn btn-sm py-0 px-2 text-danger" onclick="deleteStore('${store.id}')">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function handleAddStore(event) {
+        event.preventDefault();
+        const nameInput = document.getElementById('modal-new-store-name');
+        if (!appState.stores) appState.stores = [];
+        appState.stores.push({ id: 'STR-' + Date.now(), name: nameInput.value });
+        saveState();
+        renderStoreModalTable();
+        nameInput.value = ''; 
+    }
+
+    function updateStoreName(id, newName) {
+        const store = appState.stores.find(s => s.id === id);
+        if (store) {
+            store.name = newName;
+            saveState();
+            renderCatalogTable(); // Refresh catalog UI to show new name
+            showToast('Store renamed.');
+        }
+    }
+
+    function deleteStore(id) {
+        if (!confirm("Delete this store? This will also remove the store from any catalog items using it.")) return;
+        let affected = 0;
+        if (appState.catalog) {
+            appState.catalog.forEach(item => {
+                if (item.storeId === id) {
+                    item.storeId = '';
+                    affected++;
+                }
+            });
+        }
+        appState.stores = appState.stores.filter(s => s.id !== id);
+        saveState();
+        renderStoreModalTable();
+        renderCatalogTable();
+        showToast(`Store deleted. ${affected} catalog items reset.`, true);
+    }
+
+    // ==========================================
+    // CATALOG & PRICING LOGIC
+    // ==========================================
+
+    function cyclePriceUnit() {
+        const units = ['piece', 'linear', 'area', 'volume'];
+        const hiddenUnit = document.getElementById('cat-price-unit');
+        
+        // Find where we are in the array and grab the next one
+        let currentIndex = units.indexOf(hiddenUnit.value);
+        let nextIndex = (currentIndex + 1) % units.length;
+        hiddenUnit.value = units[nextIndex];
+        
+        // Let the global translation engine instantly format the button text
+        updateUnitLabels(); 
+    }
+
+    function handleCatalogCategoryChange() {
+        const cat = document.getElementById('cat-category').value;
+        const profSelect = document.getElementById('cat-profile');
+        const matSelect = document.getElementById('cat-material');
+        const lengthInput = document.getElementById('cat-length');
+        const widthInput = document.getElementById('cat-width');
+        const btnAdd = document.getElementById('btn-add-catalog');
+        
+        profSelect.innerHTML = '<option value="" disabled selected>Select...</option>';
+        matSelect.innerHTML = '<option value="" disabled selected>Select...</option>';
+        profSelect.disabled = false;
+        matSelect.disabled = false;
+        lengthInput.disabled = false;
+        btnAdd.disabled = false;
+        
+        if (appState.profiles) {
+            appState.profiles.filter(p => p.type === cat).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.innerText = p.name;
+                profSelect.appendChild(opt);
+            });
+        }
+        if (appState.materials) {
+            appState.materials.filter(m => m.category === cat).forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.innerText = m.name;
+                matSelect.appendChild(opt);
+            });
+        }
+        if (cat === 'sheet') {
+            widthInput.disabled = false;
+            widthInput.required = true;
+        } else {
+            widthInput.disabled = true;
+            widthInput.required = false;
+            widthInput.value = '';
+        }
+    }
+
+    function populateCatalogDropdowns() {
+        const storeSelect = document.getElementById('cat-store');
+        
+        if (storeSelect) {
+            // 🪄 1. MEMORIZE the current selection before wiping the list
+            const currentStoreId = storeSelect.value;
+            
+            // 🪄 2. REBUILD the list safely
+            storeSelect.innerHTML = '<option value="" disabled selected>Select Store...</option>';
+            if (appState.stores) {
+                appState.stores.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.innerText = s.name;
+                    storeSelect.appendChild(opt);
+                });
+            }
+            
+            // 🪄 3. RESTORE the selection
+            if (currentStoreId) {
+                storeSelect.value = currentStoreId;
+            }
+        }
+
+        // 🪄 4. RESTORE the Category dropdown trigger (fixes the missing Profile/Material bug)
+        const catSelect = document.getElementById('cat-category');
+        if (catSelect && catSelect.value) {
+            handleCatalogCategoryChange();
+        }
+    }
+
+    function handleAddCatalogItem(event) {
+        event.preventDefault();
+        const category = document.getElementById('cat-category').value;
+        
+        // 🪄 Smart URL Formatter
+        let rawLink = document.getElementById('cat-link').value || '';
+        if (rawLink && !/^https?:\/\//i.test(rawLink)) {
+            rawLink = 'https://' + rawLink;
+        }
+        
+        if (!appState.catalog) appState.catalog = [];
+
+        appState.catalog.push({
+            id: 'CAT-' + Date.now(),
+            categoryId: category,
+            profileId: document.getElementById('cat-profile').value,
+            materialId: document.getElementById('cat-material').value,
+            storeId: document.getElementById('cat-store').value,
+            length: parseToBaseUnit(document.getElementById('cat-length').value),
+            width: category === 'sheet' ? parseToBaseUnit(document.getElementById('cat-width').value) : 0,
+            price: parseFloat(document.getElementById('cat-price').value) || 0,
+            priceUnit: document.getElementById('cat-price-unit').value,
+            link: rawLink
+        });
+        
+        saveState();
+        renderCatalogTable();
+        showToast('Item added to Catalog.');
+    }
+
+    // THE MATH ENGINE: Calculates the true cost of ONE physical piece, no matter what unit the store uses.
+    function calculateCostPerPiece(item) {
+        if (!item.price || item.price === 0) return 0;
+        if (item.priceUnit === 'piece') return item.price;
+        
+        const isMetric = appState.settings.displayUnit === 'mm';
+        const prof = appState.profiles.find(p => p.id === item.profileId);
+        if (!prof) return 0;
+
+        const l_mm = item.length;
+        const w_mm = item.categoryId === 'sheet' ? item.width : (prof.width || 0);
+        const t_mm = prof.thickness || 0;
+
+        if (isMetric) {
+            if (item.priceUnit === 'linear') return item.price * (l_mm / 1000);
+            if (item.priceUnit === 'area') return item.price * ((l_mm / 1000) * (w_mm / 1000));
+            if (item.priceUnit === 'volume') return item.price * ((l_mm / 1000) * (w_mm / 1000) * (t_mm / 1000));
+        } else {
+            if (item.priceUnit === 'linear') return item.price * (l_mm / 304.8);
+            if (item.priceUnit === 'area') return item.price * ((l_mm * w_mm) / 92903.04);
+            if (item.priceUnit === 'volume') return item.price * ((l_mm * w_mm * t_mm) / 2359737.216); // Board Foot Math
+        }
+        return 0;
+    }
+
+    // Displays the normalized column price
+    function getNormalizedPriceDisplay(item, viewUnit) {
+        const costPerPiece = calculateCostPerPiece(item);
+        if (viewUnit === 'piece') return costPerPiece.toFixed(2);
+        
+        const isMetric = appState.settings.displayUnit === 'mm';
+        const prof = appState.profiles.find(p => p.id === item.profileId);
+        if (!prof || item.length === 0) return '0.00';
+
+        const l_mm = item.length;
+        const w_mm = item.categoryId === 'sheet' ? item.width : (prof.width || 0);
+        const t_mm = prof.thickness || 0;
+
+        let factor = 1;
+        if (isMetric) {
+            if (viewUnit === 'linear') factor = (l_mm / 1000);
+            else if (viewUnit === 'area') factor = ((l_mm / 1000) * (w_mm / 1000));
+            else if (viewUnit === 'volume') factor = ((l_mm / 1000) * (w_mm / 1000) * (t_mm / 1000));
+        } else {
+            if (viewUnit === 'linear') factor = (l_mm / 304.8);
+            else if (viewUnit === 'area') factor = ((l_mm * w_mm) / 92903.04);
+            else if (viewUnit === 'volume') factor = ((l_mm * w_mm * t_mm) / 2359737.216);
+        }
+
+        if (factor === 0) return '0.00';
+        return (costPerPiece / factor).toFixed(2);
+    }
+
+    function updateCatalogItem(id, field, newValue) {
+        const item = appState.catalog.find(c => c.id === id);
+        if (item) {
+            if (field === 'length' || field === 'width') {
+                // Safely convert fractional UI input to base mm
+                item[field] = parseToBaseUnit(newValue) || 0;
+            } else if (field === 'price') {
+                // Ensure price is a clean float
+                item[field] = parseFloat(newValue) || 0;
+            } else {
+                // For storeId or generic text
+                item[field] = newValue;
+            }
+            
+            saveState();
+            renderCatalogTable();
+            showToast('Catalog item updated.');
+        }
+    }
+
+    function deleteCatalogItem(id) {
+        if (!confirm("Remove this item from the catalog?")) return;
+        appState.catalog = appState.catalog.filter(c => c.id !== id);
+        saveState();
+        renderCatalogTable();
+        showToast('Item removed.');
+    }
+
+    // --- Link Modal Logic ---
+    let linkModalInstance = null;
+    function openLinkModal(itemId, currentLink) {
+        if (!linkModalInstance) linkModalInstance = new bootstrap.Modal(document.getElementById('modal-link-editor'));
+        document.getElementById('modal-link-item-id').value = itemId;
+        document.getElementById('modal-link-url').value = currentLink || '';
+        linkModalInstance.show();
+        setTimeout(() => document.getElementById('modal-link-url').focus(), 400);
+    }
+
+    function saveCatalogLink(event) {
+        if (event) event.preventDefault(); // Prevents the page from refreshing when you hit ENTER
+        
+        const id = document.getElementById('modal-link-item-id').value;
+        let newLink = document.getElementById('modal-link-url').value || '';
+        
+        // 🪄 Smart URL Formatter
+        if (newLink && !/^https?:\/\//i.test(newLink)) {
+            newLink = 'https://' + newLink;
+        }
+
+        const item = appState.catalog.find(c => c.id === id);
+        if (item) {
+            item.link = newLink;
+            saveState();
+            renderCatalogTable();
+        }
+        linkModalInstance.hide();
     }
 </script>

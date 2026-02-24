@@ -16,11 +16,11 @@
     <!-- Top Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 sticky-top">
         <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">🪵 LumberLogic</span>
+            <span class="navbar-brand mb-0 h1">🪵 SolidCutlist</span>
             <div class="d-flex gap-2 nav-buttons-container">
                 <button id="nav-btn-view-dictionaries" class="btn btn-outline-light btn-sm active" onclick="navigateTo('view-dictionaries')">Setup</button>
-                <button id="nav-btn-view-import" class="btn btn-outline-light btn-sm" onclick="navigateTo('view-import')">Import</button>
                 <button id="nav-btn-view-parts" class="btn btn-outline-light btn-sm" onclick="navigateTo('view-parts')">Partlist</button>
+                <button id="nav-btn-view-cutlist" class="btn btn-outline-light btn-sm" onclick="navigateTo('view-cutlist')">Cutlist</button>
             </div>
         </div>
     </nav>
@@ -29,18 +29,23 @@
     <main id="app-container" class="container-fluid px-4 px-md-5">
        
         <!-- View: Dictionaries (Hidden by default) -->
-        <div id="view-dictionaries" class="app-view container mt-2" style="max-width: 1200px;">
+        <div id="view-dictionaries" class="app-view container mt-2" style="max-width: 1400px;">
             <?!= include('Frontend/Views/view_dictionaries'); ?>
         </div>
 
         <!-- View: Import (Hidden by default) -->
-        <div id="view-import" class="app-view container mt-2 d-none" style="max-width: 1200px;">
+        <div id="view-import" class="app-view container mt-2 d-none" style="max-width: 1400px;">
             <?!= include('Frontend/Views/view_import'); ?>
         </div>
 
         <!-- View: Parts (Hidden by default) -->
         <div id="view-parts" class="app-view d-none">
             <?!= include('Frontend/Views/view_parts'); ?>
+        </div>
+
+        <!-- View: Cutlist (Hidden by default) -->
+        <div id="view-cutlist" class="app-view d-none">
+            <?!= include('Frontend/Views/view_cutlist'); ?>
         </div>
     </main>
 
@@ -74,7 +79,7 @@
     
                     <div class="table-responsive bg-white border rounded">
                         <table class="table table-sm table-hover align-middle mb-0">
-                            <thead class="table-light">
+                            <thead>
                                 <tr>
                                     <th onclick="handleSort('groups', 'name', 'string')" style="cursor: pointer;">Group Name ⇅</th>
                                     <th class="text-end"></th>
@@ -93,6 +98,64 @@
         </div>
     </div>
 
+    <!-- Global Store Modal -->
+    <div class="modal fade" id="modal-store-manager" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow">
+                <div class="modal-header bg-dark text-white py-2">
+                    <h6 class="modal-title mb-0">🏪 Store / Vendor Manager</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <form id="form-add-store" onsubmit="handleAddStore(event)">
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-sm-9">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">New Store Name</label>
+                                <input type="text" class="form-control form-control-sm" id="modal-new-store-name" placeholder="e.g. Home Depot" required>
+                            </div>
+                            <div class="col-sm-3">
+                                <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
+                            </div>
+                        </div>
+                    </form>
+                    <div class="table-responsive bg-white border rounded">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th onclick="handleSort('stores', 'name', 'string')" style="cursor: pointer;">Store Name ⇅</th>
+                                    <th class="text-end"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-modal-stores-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Hyperlink Modal -->
+    <div class="modal fade" id="modal-link-editor" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content shadow">
+                <div class="modal-header bg-dark text-white py-2">
+                    <h6 class="modal-title mb-0">🔗 Edit Web Link</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <form onsubmit="saveCatalogLink(event)">
+                        <input type="hidden" id="modal-link-item-id">
+                        <input type="text" class="form-control form-control-sm mb-2" id="modal-link-url" placeholder="e.g. google.com">
+                        <button type="submit" class="btn btn-primary btn-sm w-100">Save Link</button>
+                    </form>
+                </div>
+                <div class="modal-footer py-1">
+                    <small class="text-muted w-100 text-center">Press <b>ENTER</b> to save.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Global Toast Container (for non-intrusive notifications) -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container"></div>
 
@@ -105,5 +168,7 @@
     <?!= include('Frontend/JS/js_dictionaries'); ?>
     <?!= include('Frontend/JS/js_parts'); ?>
     <?!= include('Frontend/JS/js_import'); ?>
+    <?!= include('Frontend/JS/js_optimizer'); ?>
+    <?!= include('Frontend/JS/js_canvas'); ?>
 </body>
 </html>

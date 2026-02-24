@@ -1,0 +1,67 @@
+<div class="row mt-3">
+    <div class="col-12">
+        <h2 class="border-bottom pb-2">Cutlist Optimizer</h2>
+        <p class="text-muted">Configure your run and generate optimized cutting diagrams.</p>
+    </div>
+</div>
+
+<div class="row g-3">
+    
+    <div class="col-lg-3 col-md-4">
+        <div class="card shadow-sm border-primary">
+            <div class="card-header bg-primary text-white py-2">
+                <h6 class="card-title mb-0">⚙️ Configuration</h6>
+            </div>
+            <div class="card-body py-3" id="optimizer-config-form">
+                <div class="text-center text-muted"><small>Loading...</small></div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary w-100 fw-bold" id="btn-calculate-cutlist" onclick="triggerCalculation()" disabled>Calculate Cutlist</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-9 col-md-8">
+        <div class="card shadow-sm h-100 border-secondary">
+            <div class="card-header bg-secondary text-white py-2 d-flex justify-content-between align-items-center">
+                <h6 class="card-title mb-0">📊 Results</h6>
+            </div>
+            
+            <div class="card-header bg-light border-bottom p-0">
+                <ul class="nav nav-tabs nav-fill border-0" id="resultsTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold text-secondary border-0" id="tab-shopping" data-bs-toggle="tab" data-bs-target="#pane-shopping" type="button" role="tab">🛒 Shopping List</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold text-secondary border-0" id="tab-diagrams" data-bs-toggle="tab" data-bs-target="#pane-diagrams" type="button" role="tab">🔪 Cut Diagrams</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold text-secondary border-0" id="tab-analytics" data-bs-toggle="tab" data-bs-target="#pane-analytics" type="button" role="tab">♻️ Analytics & Offcuts</button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card-body bg-white" id="optimizer-results-container">
+                <div id="optimizer-empty-state" class="text-center text-muted mt-5">
+                    <h1>🧮</h1>
+                    <p class="mt-2">Select your configuration on the left and click Calculate<br>to generate your optimized shopping list and cut diagrams.</p>
+                </div>
+                
+                <div class="tab-content d-none" id="optimizer-tab-content">
+                    
+                    <div class="tab-pane fade show active" id="pane-shopping" role="tabpanel" tabindex="0">
+                        </div>
+                    
+                    <div class="tab-pane fade" id="pane-diagrams" role="tabpanel" tabindex="0">
+                        <div class="text-center text-muted mt-4"><em>Cut diagrams coming in next phase...</em></div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="pane-analytics" role="tabpanel" tabindex="0">
+                        <div class="text-center text-muted mt-4"><em>Analytics coming in next phase...</em></div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

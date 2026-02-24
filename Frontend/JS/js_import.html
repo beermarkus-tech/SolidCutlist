@@ -312,9 +312,8 @@
 
             // 🪄 3. FILTERED MATERIAL DROPDOWN
             let matOptions = `<option value="" disabled selected>⚠️ Assign Material...</option>`;
-            const filteredMaterials = appState.materials.filter(m => {
-                return mCat === part.category;
-            });
+            const filteredMaterials = appState.materials.filter(m => m.category === part.category);
+            
             filteredMaterials.forEach(m => {
                 matOptions += `<option value="${m.id}" ${m.id === part.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
             });

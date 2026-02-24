@@ -1,0 +1,165 @@
+<script>
+    /**
+     * Frontend/JS/js_canvas.html
+     * Renders the visual board cards and HTML5 Canvas diagrams.
+     */
+
+    function renderDiagramsTab(results) {
+        const container = document.getElementById('pane-diagrams');
+        let html = '';
+        
+        const kerf = appState.settings.bladeKerf || 3.175;
+        const trim = appState.settings.factoryEdgeTrim || 6.35;
+        const isMetric = appState.settings.displayUnit === 'mm';
+        
+        let boardCounter = 1; // Global counter for the cutlist labels
+        const canvasDrawQueue = []; // We have to wait for the DOM to render before drawing
+
+        results.forEach(res => {
+            if (res.error) return;
+            
+            const purchase = res.purchase;
+            const prof = appState.profiles.find(p => p.id === res.sku.profileId);
+            const mat = appState.materials.find(m => m.id === res.sku.materialId);
+            const rawLength = purchase.catalogItem.length;
+            
+            // Header for this specific SKU batch
+            html += `
+                <div class="mt-4 mb-2 border-bottom border-2 border-dark pb-1 d-flex justify-content-between align-items-end">
+                    <h5 class="mb-0 fw-bold text-dark">${safeHTML(prof?.name)} - ${safeHTML(mat?.name)}</h5>
+                    <span class="badge bg-secondary">Raw Length: ${formatForDisplay(rawLength)} <span class="display-unit-label"></span></span>
+                </div>
+            `;
+
+            // Loop through each physical board needed for this SKU
+            purchase.layout.forEach((board, bIndex) => {
+                const canvasId = `canvas-board-${boardCounter}`;
+                
+                html += `
+                <div class="card shadow-sm mb-4 border-secondary">
+                    <div class="card-header bg-light py-1 d-flex justify-content-between align-items-center">
+                        <small class="fw-bold text-muted">Board #${boardCounter} of Total</small>
+                        <small class="text-muted">Waste: ${formatForDisplay(board.remaining)} <span class="display-unit-label"></span></small>
+                    </div>
+                    
+                    <div class="card-body p-3 text-center overflow-auto">
+                        <canvas id="${canvasId}" width="1000" height="80" style="width: 100%; min-width: 600px; max-width: 1000px; border-radius: 4px; border: 1px solid #ced4da;"></canvas>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0 border-top">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3" style="width: 50px;">Cut</th>
+                                    <th>Part Label</th>
+                                    <th class="text-end pe-3">Cut Size</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                // The cuts for this specific board
+                board.cuts.forEach((cut, cIndex) => {
+                    // Resolve project name for the label
+                    const partData = appState.parts.find(p => p.id === cut.partId);
+                    const projName = appState.projects.find(p => p.id === partData?.projectId)?.name || 'Unknown';
+                    // If multiple projects are selected, prepend the project name. Otherwise, just part name.
+                    const label = appState.settings.optimizer.selectedProjects.length > 1 
+                        ? `[${safeHTML(projName)}] ${safeHTML(cut.name)}` 
+                        : safeHTML(cut.name);
+
+                    html += `
+                                <tr>
+                                    <td class="ps-3 fw-bold text-muted">${cIndex + 1}</td>
+                                    <td>${label}</td>
+                                    <td class="text-end pe-3 fw-bold">${formatForDisplay(cut.length)} <span class="display-unit-label"></span></td>
+                                </tr>
+                    `;
+                });
+
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                `;
+                
+                // Queue the canvas drawing logic to execute after the HTML is injected
+                canvasDrawQueue.push({ id: canvasId, board: board, length: rawLength, kerf: kerf, trim: trim });
+                boardCounter++;
+            });
+        });
+
+        if (html === '') {
+            html = `<div class="alert alert-warning mt-3">No diagrams could be generated.</div>`;
+        }
+
+        container.innerHTML = html;
+        updateUnitLabels();
+
+        // 🪄 Now that the <canvas> elements actually exist in the DOM, draw on them
+        canvasDrawQueue.forEach(job => {
+            drawBoardGraphic(job.id, job.board, job.length, job.kerf, job.trim);
+        });
+    }
+
+    // The Mathematical Rendering Engine
+    function drawBoardGraphic(canvasId, board, fullLength, kerf, trim) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;  // Internal fixed coordinate system (1000px)
+        const h = canvas.height; // Internal fixed coordinate system (80px)
+        
+        // Scale millimeter reality into pixel reality
+        const pxPerMm = w / fullLength;
+
+        // 1. Paint the background (This represents empty space / waste)
+        ctx.fillStyle = '#e9ecef'; // Bootstrap gray-200
+        ctx.fillRect(0, 0, w, h);
+
+        let currentX = 0;
+
+        // 2. Factory Trim (Left side sliver)
+        if (trim > 0 && board.cuts.length > 0) {
+            const trimPx = trim * pxPerMm;
+            ctx.fillStyle = '#adb5bd'; // Darker gray for trim
+            ctx.fillRect(currentX, 0, trimPx, h);
+            currentX += trimPx;
+        }
+
+        // 3. Draw the Parts and Kerfs
+        board.cuts.forEach((cut, index) => {
+            // If this is the 2nd cut or later, we had to saw through the wood to get here
+            if (index > 0) {
+                const kerfPx = kerf * pxPerMm;
+                ctx.fillStyle = '#dc3545'; // Danger Red for the saw blade
+                ctx.fillRect(currentX, 0, kerfPx, h);
+                currentX += kerfPx;
+            }
+
+            const cutPx = cut.length * pxPerMm;
+            
+            // The wood block
+            ctx.fillStyle = '#DEB887'; // BurlyWood from css_custom
+            ctx.fillRect(currentX, 0, cutPx, h);
+            
+            // Give the wood block a nice brown border
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(currentX, 0, cutPx, h);
+
+            // Stamp the Cut Number in the middle of the block
+            if (cutPx > 25) { // Only draw text if the block is wide enough to hold it
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(index + 1, currentX + (cutPx / 2), h / 2);
+            }
+
+            currentX += cutPx;
+        });
+    }
+</script>

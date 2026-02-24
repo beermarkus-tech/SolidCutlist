@@ -98,6 +98,9 @@
             initAppState();
         }
 
+        // 🪄 Apply the saved theme immediately before drawing the UI
+        if (typeof applyTheme === 'function') applyTheme();
+
         // FIRE THE RENDERERS ON BOOT
         if (typeof renderSettings === 'function') renderSettings();
         if (typeof renderDictionaries === 'function') renderDictionaries();
@@ -265,10 +268,17 @@
             let valA = a[key];
             let valB = b[key];
 
-            // 🪄 Smart Lookups for Relational IDs and Dynamic Math in the Parts Table
             // 🪄 Smart Lookups for Relational IDs and Dynamic Math
-            if (arrayName === 'parts' || arrayName === 'stock') {
-                if (key === 'projectId' && arrayName === 'parts') {
+            if (arrayName === 'parts' || arrayName === 'stock' || arrayName === 'catalog') {
+                if (key === 'storeId') {
+                    valA = appState.stores?.find(s => s.id === a.storeId)?.name || '';
+                    valB = appState.stores?.find(s => s.id === b.storeId)?.name || '';
+                } else if (key === 'calculatedPrice' && arrayName === 'catalog') {
+                    // Calculate dynamic normalized price on the fly for accurate sorting
+                    const viewUnit = document.getElementById('table-price-view').value;
+                    valA = parseFloat(getNormalizedPriceDisplay(a, viewUnit)) || 0;
+                    valB = parseFloat(getNormalizedPriceDisplay(b, viewUnit)) || 0;
+                } else if (key === 'projectId' && arrayName === 'parts') {
                     valA = appState.projects.find(p => p.id === a.projectId)?.name || '';
                     valB = appState.projects.find(p => p.id === b.projectId)?.name || '';
                 } else if (key === 'profileId') {
@@ -317,8 +327,10 @@
         if (arrayName === 'profiles') renderProfilesTable();
         if (arrayName === 'parts') renderPartsTable();
         if (arrayName === 'stock' && typeof renderStockTable === 'function') renderStockTable();
+        if (arrayName === 'catalog' && typeof renderCatalogTable === 'function') renderCatalogTable();
         if (arrayName === 'stagingParts') renderStagingTable();
         if (arrayName === 'groups' && typeof renderGroupModalTable === 'function') renderGroupModalTable();
+        if (arrayName === 'stores' && typeof renderStoreModalTable === 'function') renderStoreModalTable();
     }
 
     // ==========================================
@@ -349,6 +361,8 @@
         // 4. View-Specific Initializations 🪄 ADDED THIS BLOCK
         if (viewId === 'view-import') {
             renderImportView(); // Fills the project dropdown and resets the UI
+        } else if (viewId === 'view-cutlist') {
+            if (typeof renderOptimizerConfig === 'function') renderOptimizerConfig();
         }
     }
 
@@ -401,5 +415,46 @@
 
         // Return the mapped color, or fallback to the default gray if unknown
         return badgeMap[category] || 'bg-secondary text-white';
+    }
+
+    // ==========================================
+    // THEME & DARK MODE LOGIC
+    // ==========================================
+
+    function toggleTheme() {
+        const isDark = document.getElementById('setting-theme-toggle').checked;
+        
+        // Ensure settings object exists
+        if (!appState.settings) appState.settings = {};
+        
+        // Save choice to database
+        appState.settings.theme = isDark ? 'dark' : 'light';
+        saveState();
+        
+        // Apply instantly
+        applyTheme();
+    }
+
+    function applyTheme() {
+        // Default to light if not set
+        const theme = (appState.settings && appState.settings.theme) ? appState.settings.theme : 'light';
+        
+        // 1. Tell Bootstrap to flip the global component colors (tables, inputs, etc.)
+        document.documentElement.setAttribute('data-bs-theme', theme);
+        
+        // 2. 🪄 The Bulletproof Background Fix: Manually swap the body classes
+        if (theme === 'dark') {
+            document.body.classList.remove('bg-light', 'bg-white');
+            document.body.classList.add('bg-dark');
+        } else {
+            document.body.classList.remove('bg-dark');
+            document.body.classList.add('bg-light'); 
+        }
+        
+        // 3. Keep the switch UI perfectly synced with the data
+        const toggle = document.getElementById('setting-theme-toggle');
+        if (toggle) {
+            toggle.checked = (theme === 'dark');
+        }
     }
 </script>

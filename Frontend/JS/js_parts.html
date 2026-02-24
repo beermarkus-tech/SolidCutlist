@@ -122,6 +122,7 @@
         // 5. Unlock the rest of the form
         profSelect.disabled = false;
         matSelect.disabled = false;
+        document.getElementById('btn-add-part').disabled = false; // 🪄 UNLOCK THE ADD BUTTON
     }
 
     // --- CRUD OPERATIONS ---
@@ -184,18 +185,18 @@
         appState.parts.forEach(part => {
             const tr = document.createElement('tr');
             
-            // 🪄 1. EVALUATE STATUS & COLOR THE ROW
-            const isReady = part.profileId && part.materialId;
+            // Relational Lookups (Moved up so we can use them for validation)
+            const proj = appState.projects.find(p => p.id === part.projectId);
+            const prof = appState.profiles.find(p => p.id === part.profileId);
+            const mat = appState.materials.find(m => m.id === part.materialId);
+
+            // 🪄 1. EVALUATE STATUS & COLOR THE ROW (Reality Check Standard)
+            const isReady = prof && mat; // Only true if the objects actually exist in the dictionary
             part.status = isReady ? 'ready' : 'needs_mapping'; 
             
             if (!isReady) {
                 tr.classList.add('table-warning'); 
             }
-
-            // Relational Lookups
-            const proj = appState.projects.find(p => p.id === part.projectId);
-            const prof = appState.profiles.find(p => p.id === part.profileId);
-            const mat = appState.materials.find(m => m.id === part.materialId);
             
             // 🪄 2. INLINE DROPDOWNS & WARNINGS
             let projOptions = '<option value="" disabled>Select...</option>';
@@ -204,7 +205,7 @@
             });
 
             // Profile Dropdown with ⚠️ Warning
-            let profOptions = `<option value="" disabled ${!part.profileId ? 'selected' : ''}>⚠️ Select Profile...</option>`;
+            let profOptions = `<option value="" disabled ${!prof ? 'selected' : ''}>⚠️ Select Profile...</option>`;
             const filteredProfiles = appState.profiles.filter(p => p.type === part.category);
             filteredProfiles.forEach(p => {
                 const unitText = appState.settings.displayUnit === 'mm' ? 'mm' : 'in';
@@ -213,7 +214,7 @@
             });
 
             // Material Dropdown with ⚠️ Warning
-            let matOptions = `<option value="" disabled ${!part.materialId ? 'selected' : ''}>⚠️ Select Material...</option>`;
+            let matOptions = `<option value="" disabled ${!mat ? 'selected' : ''}>⚠️ Select Material...</option>`;
             const filteredMaterials = appState.materials.filter(m => m.category === part.category);
             filteredMaterials.forEach(m => {
                 matOptions += `<option value="${m.id}" ${m.id === part.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
@@ -282,8 +283,7 @@
                 <td>
                     <div class="d-flex justify-content-center">
                         <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
-                                onchange="updatePartCategory('${part.id}', this.value)" title="Tap to change category" disabled>
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
                             <option value="lumber" class="bg-light text-dark" ${part.category === 'lumber' ? 'selected' : ''}>Lumber</option>
                             <option value="sheet" class="bg-light text-dark" ${part.category === 'sheet' ? 'selected' : ''}>Sheet</option>
                             <option value="fastener" class="bg-light text-dark" ${part.category === 'fastener' ? 'selected' : ''}>Fastener</option>
@@ -360,6 +360,11 @@
     }
     
     function deletePart(id) {
+        // The Safety Shield
+        if (!confirm("Are you sure you want to delete this part from the cutlist?")) {
+            return; // User got cold feet. Abort mission.
+        }
+
         appState.parts = appState.parts.filter(p => p.id !== id);
         saveState();
         renderPartsTable();
@@ -370,10 +375,13 @@
         const projId = document.getElementById('part-project').value;
         const groupSelect = document.getElementById('part-group');
         
-        // 1. Reset to default
+        // 🪄 1. MEMORIZE the current selection
+        const currentGroupId = groupSelect.value;
+        
+        // 2. Reset to default
         groupSelect.innerHTML = '<option value="">No Group</option>';
         
-        // 2. Populate filtered groups
+        // 3. Populate filtered groups
         if (projId && appState.groups) {
             const projectGroups = appState.groups.filter(g => g.projectId === projId);
             projectGroups.forEach(g => {
@@ -382,6 +390,11 @@
                 opt.innerText = g.name;
                 groupSelect.appendChild(opt);
             });
+        }
+        
+        // 🪄 4. RESTORE the selection so the user doesn't lose their place
+        if (currentGroupId) {
+            groupSelect.value = currentGroupId;
         }
     }
 

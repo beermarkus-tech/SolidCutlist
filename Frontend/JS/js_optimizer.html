@@ -1,0 +1,582 @@
+<script>
+    /**
+     * Frontend/JS/js_optimizer.html
+     * 1D/2D Bin Packing Engine (Volatile Sandbox)
+     */
+
+    // ==========================================
+    // PHASE A: DATA PREP (THE TRIAGE)
+    // ==========================================
+    
+    function prepOptimizerData(projectIds) {
+        if (!appState.parts || appState.parts.length === 0) return [];
+
+        // 🪄 Filter: Grab parts from ALL selected projects
+        const validParts = appState.parts.filter(p => 
+            projectIds.includes(p.projectId) && 
+            p.status === 'ready' && 
+            p.category === 'lumber' 
+        );
+
+        const groupedSKUs = {};
+
+        validParts.forEach(part => {
+            const skuKey = part.profileId + '|' + part.materialId;
+
+            if (!groupedSKUs[skuKey]) {
+                groupedSKUs[skuKey] = {
+                    profileId: part.profileId,
+                    materialId: part.materialId,
+                    category: part.category,
+                    partsToCut: []
+                };
+            }
+
+            for (let i = 0; i < part.qty; i++) {
+                groupedSKUs[skuKey].partsToCut.push({
+                    partId: part.id,
+                    name: part.name,
+                    length: part.length
+                });
+            }
+        });
+
+        const batches = Object.values(groupedSKUs);
+        batches.forEach(batch => {
+            // Sort longest to shortest
+            batch.partsToCut.sort((a, b) => b.length - a.length);
+        });
+
+        return batches;
+    }
+
+    // ==========================================
+    // PHASE B: THE PACKING ENGINE
+    // ==========================================
+
+    function runPackingEngine(projectIds, allowedStoreIds) {
+        const batches = prepOptimizerData(projectIds);
+        
+        // Grab physical shop realities safely
+        const kerf = appState.settings.bladeKerf || 3.175;
+        const trim = appState.settings.factoryEdgeTrim || 6.35;
+        
+        const finalCutlist = [];
+
+        batches.forEach(batch => {
+            // 1. Find all available store options for this exact wood AND filter by Allowed Stores
+            const vendorOptions = appState.catalog.filter(c => 
+                c.profileId === batch.profileId && 
+                c.materialId === batch.materialId &&
+                c.categoryId === 'lumber' &&
+                allowedStoreIds.includes(c.storeId) // 🪄 ONLY check stores the user allowed!
+            );
+
+            // Safety net: No prices in the catalog for this wood
+            if (vendorOptions.length === 0) {
+                finalCutlist.push({
+                    sku: batch,
+                    error: "No store prices found for this Material/Profile combination."
+                });
+                return; // Skip to the next batch
+            }
+
+            let bestOption = null;
+            let lowestCost = Infinity;
+
+            // 2. The Simulation Loop: Test every board length the stores sell
+            vendorOptions.forEach(option => {
+                // We reuse the math engine from the dictionary to find the true cost per physical board
+                const boardCost = (typeof calculateCostPerPiece === 'function') ? calculateCostPerPiece(option) : option.price;
+                
+                // Run the actual Bin Packing math for this board size
+                const packResult = pack1D(batch.partsToCut, option.length, kerf, trim);
+                
+                // If the store's board is shorter than our longest part, it's physically impossible. Skip it.
+                if (packResult.unmapped.length > 0) return;
+
+                const totalCost = packResult.boards.length * boardCost;
+
+                // If this is the cheapest way to buy this wood, save it as the current winner
+                if (totalCost < lowestCost) {
+                    lowestCost = totalCost;
+                    bestOption = {
+                        catalogItem: option,
+                        totalCost: totalCost,
+                        boardsNeeded: packResult.boards.length,
+                        layout: packResult.boards,
+                        waste: packResult.totalWaste
+                    };
+                }
+            });
+
+            // 3. Save the results
+            if (bestOption) {
+                finalCutlist.push({
+                    sku: batch,
+                    success: true,
+                    purchase: bestOption
+                });
+            } else {
+                finalCutlist.push({
+                    sku: batch,
+                    error: "Your parts are too long for any available store boards."
+                });
+            }
+        });
+
+        return finalCutlist;
+    }
+
+    // THE CORE MATH: First Fit Decreasing Algorithm
+    function pack1D(parts, boardLength, kerf, trim) {
+        let boards = [];
+        let unmapped = [];
+        let totalWaste = 0;
+
+        parts.forEach(part => {
+            let placed = false;
+            
+            // Try to fit the part into an already open board
+            for (let i = 0; i < boards.length; i++) {
+                let board = boards[i];
+                
+                // If there is already a cut on this board, we need room for the blade kerf + the part
+                let requiredSpace = (board.cuts.length > 0) ? (part.length + kerf) : part.length;
+
+                if (board.remaining >= requiredSpace) {
+                    board.cuts.push(part);
+                    board.remaining -= requiredSpace;
+                    placed = true;
+                    break;
+                }
+            }
+
+            // If it didn't fit in any open boards, we must buy a new one
+            if (!placed) {
+                // Instantly chop off the factory edge
+                let usableLength = boardLength - trim;
+                
+                if (usableLength >= part.length) {
+                    boards.push({
+                        boardNo: boards.length + 1,
+                        cuts: [part],
+                        remaining: usableLength - part.length
+                    });
+                } else {
+                    // Part is longer than the store's board!
+                    unmapped.push(part);
+                }
+            }
+        });
+
+        // Tally up the scrap wood
+        boards.forEach(b => totalWaste += b.remaining);
+
+        return { boards, unmapped, totalWaste };
+    }
+
+    // ==========================================
+    // TEMPORARY TEST HARNESS (NO CONSOLE NEEDED)
+    // ==========================================
+    
+    function testOptimizerTriage() {
+        const activeProjectId = document.getElementById('part-project').value;
+
+        if (!activeProjectId) {
+            showToast('Boss, please select a project from the dropdown first!', true);
+            return;
+        }
+
+        // 🪄 Run the FULL engine now (Phase A + Phase B)
+        const optimizedData = runPackingEngine(activeProjectId);
+
+        let debugDiv = document.getElementById('debug-output');
+        if (!debugDiv) {
+            debugDiv = document.createElement('div');
+            debugDiv.id = 'debug-output';
+            debugDiv.className = 'alert border-warning mt-4 p-3 bg-dark text-success font-monospace shadow';
+            debugDiv.style.maxHeight = '500px';
+            debugDiv.style.overflowY = 'auto';
+            document.getElementById('view-parts').appendChild(debugDiv);
+        }
+
+        debugDiv.innerHTML = '<h6 class="text-white border-bottom pb-2">🧠 Optimizer Output (Phase B: Packed & Priced)</h6><pre style="font-size: 12px;">' + JSON.stringify(optimizedData, null, 2) + '</pre>';
+        
+        showToast('Engine test complete. Check the debug terminal!');
+    }
+
+    // ==========================================
+    // PHASE C: OPTIMIZER UI & CONFIG STATE
+    // ==========================================
+
+    function renderOptimizerConfig() {
+        // Auto-heal the state if it's the user's first time here
+        if (!appState.settings.optimizer) {
+            appState.settings.optimizer = {
+                useStock: true,
+                selectedProjects: [],
+                selectedStores: []
+            };
+        }
+        const optState = appState.settings.optimizer;
+        
+        let html = `
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="opt-use-stock" ${optState.useStock ? 'checked' : ''} onchange="saveOptConfig()">
+                <label class="form-check-label fw-bold text-secondary" for="opt-use-stock">Use Shop Stock</label>
+            </div>
+            
+            <h6 class="fw-bold text-secondary border-bottom pb-1 mb-2 mt-3">Projects to Cut</h6>
+            <div id="opt-project-list" class="mb-3">`;
+            
+        // Render Projects Checkboxes
+        if (appState.projects && appState.projects.length > 0) {
+            appState.projects.forEach(p => {
+                const isChecked = optState.selectedProjects.includes(p.id) ? 'checked' : '';
+                html += `
+                <div class="form-check">
+                    <input class="form-check-input opt-project-checkbox" type="checkbox" value="${p.id}" id="chk-proj-${p.id}" ${isChecked} onchange="saveOptConfig()">
+                    <label class="form-check-label" for="chk-proj-${p.id}">${safeHTML(p.name)}</label>
+                </div>`;
+            });
+        } else {
+            html += `<small class="text-danger">No projects available.</small>`;
+        }
+        
+        html += `
+            </div>
+            <h6 class="fw-bold text-secondary border-bottom pb-1 mb-2 mt-3">Allowed Stores</h6>
+            <div id="opt-store-list">`;
+            
+        // Render Stores Checkboxes
+        if (appState.stores && appState.stores.length > 0) {
+            appState.stores.forEach(s => {
+                const isChecked = optState.selectedStores.includes(s.id) ? 'checked' : '';
+                html += `
+                <div class="form-check">
+                    <input class="form-check-input opt-store-checkbox" type="checkbox" value="${s.id}" id="chk-store-${s.id}" ${isChecked} onchange="saveOptConfig()">
+                    <label class="form-check-label" for="chk-store-${s.id}">${safeHTML(s.name)}</label>
+                </div>`;
+            });
+        } else {
+             html += `<small class="text-danger">No stores configured.</small>`;
+        }
+        
+        html += `</div>`;
+        
+        document.getElementById('optimizer-config-form').innerHTML = html;
+        validateOptConfig(); // Check if the button should be locked
+    }
+    
+    // Fires every time a user clicks a checkbox
+    function saveOptConfig() {
+        appState.settings.optimizer.useStock = document.getElementById('opt-use-stock').checked;
+        
+        const projChecks = document.querySelectorAll('.opt-project-checkbox:checked');
+        appState.settings.optimizer.selectedProjects = Array.from(projChecks).map(cb => cb.value);
+        
+        const storeChecks = document.querySelectorAll('.opt-store-checkbox:checked');
+        appState.settings.optimizer.selectedStores = Array.from(storeChecks).map(cb => cb.value);
+        
+        saveState();
+        validateOptConfig();
+    }
+    
+    // The Safety Lock
+    function validateOptConfig() {
+        const btn = document.getElementById('btn-calculate-cutlist');
+        const optState = appState.settings.optimizer;
+        
+        if (optState.selectedProjects.length === 0) {
+            btn.disabled = true;
+            btn.innerText = "Select a Project";
+        } else if (optState.selectedStores.length === 0 && !optState.useStock) {
+            btn.disabled = true;
+            btn.innerText = "Select a Store or Stock";
+        } else {
+            btn.disabled = false;
+            btn.innerText = "Calculate Cutlist";
+        }
+    }
+
+    // ==========================================
+    // PHASE D: EXECUTION & RENDERING
+    // ==========================================
+
+    function triggerCalculation() {
+        const optState = appState.settings.optimizer;
+        
+        // 1. Run the Math
+        const results = runPackingEngine(optState.selectedProjects, optState.selectedStores);
+        
+        // 2. Hide the empty state, show the tabs
+        document.getElementById('optimizer-empty-state').classList.add('d-none');
+        document.getElementById('optimizer-tab-content').classList.remove('d-none');
+        
+        // 3. Render the specific tabs
+        renderShoppingListTab(results);
+        if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
+        if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results); // 🪄 RENDER THE ANALYTICS
+    }
+
+    function renderShoppingListTab(results) {
+        const container = document.getElementById('pane-shopping');
+        let totalCost = 0;
+        let totalWeightKg = 0;
+        let html = '';
+        const isMetric = appState.settings.displayUnit === 'mm';
+        const weightUnit = isMetric ? 'kg' : 'lbs';
+
+        // 1. Group the results by Store for a better shopping experience
+        const storeBuckets = {};
+        
+        results.forEach(res => {
+            if (res.error) return; // Skip items we couldn't source
+            
+            const purchase = res.purchase;
+            const storeId = purchase.catalogItem.storeId;
+            const storeName = appState.stores.find(s => s.id === storeId)?.name || 'Unknown Store';
+            
+            if (!storeBuckets[storeName]) storeBuckets[storeName] = [];
+            
+            // Calculate specific weight for this batch
+            const prof = appState.profiles.find(p => p.id === res.sku.profileId);
+            const mat = appState.materials.find(m => m.id === res.sku.materialId);
+            let batchWeight = 0;
+            if (prof && mat) {
+                const volumeM3 = (purchase.catalogItem.length * prof.width * prof.thickness) / 1000000000;
+                batchWeight = volumeM3 * mat.density * purchase.boardsNeeded;
+            }
+            
+            totalCost += purchase.totalCost;
+            totalWeightKg += batchWeight;
+
+            storeBuckets[storeName].push({
+                qty: purchase.boardsNeeded,
+                profName: prof?.name || 'Unknown',
+                matName: mat?.name || 'Unknown',
+                lengthDisplay: formatForDisplay(purchase.catalogItem.length),
+                cost: purchase.totalCost,
+                weight: batchWeight
+            });
+        });
+
+        const totalWeightDisplay = isMetric ? totalWeightKg : (totalWeightKg * 2.20462);
+
+        // 2. Build the "Will My Truck Break?" Banner
+        html += `
+            <div class="alert alert-info d-flex justify-content-between align-items-center mb-4 shadow-sm border-info">
+                <div>
+                    <h5 class="mb-0 fw-bold text-dark">Grand Total</h5>
+                    <small class="text-muted">Combined across all selected stores</small>
+                </div>
+                <div class="text-end">
+                    <h4 class="mb-0 fw-bold text-success">$${totalCost.toFixed(2)}</h4>
+                    <span class="badge bg-secondary">⚖️ ${totalWeightDisplay.toFixed(2)} ${weightUnit}</span>
+                </div>
+            </div>
+        `;
+
+        // 3. Build the Store Lists
+        for (const [storeName, items] of Object.entries(storeBuckets)) {
+            html += `
+                <div class="card mb-3 border-0 shadow-sm">
+                    <div class="card-header bg-dark text-white py-2">
+                        <h6 class="mb-0">🏪 ${safeHTML(storeName)}</h6>
+                    </div>
+                    <ul class="list-group list-group-flush">
+            `;
+            
+            items.forEach(item => {
+                const wDisplay = isMetric ? item.weight : (item.weight * 2.20462);
+                html += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-primary rounded-pill me-2 fs-6">${item.qty} x</span>
+                            <span class="fw-bold">${safeHTML(item.profName)}</span>
+                            <span class="text-muted"> - ${safeHTML(item.matName)}</span>
+                            <br><small class="text-muted ms-5">Length: ${item.lengthDisplay} <span class="display-unit-label"></span></small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-success">$${item.cost.toFixed(2)}</div>
+                            <small class="text-muted">⚖️ ${wDisplay.toFixed(2)} ${weightUnit}</small>
+                        </div>
+                    </li>
+                `;
+            });
+            html += `</ul></div>`;
+        }
+        
+        // Render Errors if any
+        const errors = results.filter(r => r.error);
+        if (errors.length > 0) {
+            html += `<h6 class="text-danger fw-bold mt-4 border-bottom pb-1">⚠️ Sourcing Errors</h6><ul class="list-group">`;
+            errors.forEach(err => {
+                const pName = appState.profiles.find(p=>p.id === err.sku.profileId)?.name || '?';
+                const mName = appState.materials.find(m=>m.id === err.sku.materialId)?.name || '?';
+                html += `<li class="list-group-item list-group-item-danger"><small><strong>${pName} (${mName}):</strong> ${err.error}</small></li>`;
+            });
+            html += `</ul>`;
+        }
+
+        container.innerHTML = html;
+        updateUnitLabels(); // Format the 'mm' / 'in' strings correctly
+    }
+
+    // ==========================================
+    // PHASE E: ANALYTICS & OFFCUTS
+    // ==========================================
+
+    function renderAnalyticsTab(results) {
+        const container = document.getElementById('pane-analytics');
+        
+        const kerf = appState.settings.bladeKerf || 3.175;
+        const trim = appState.settings.factoryEdgeTrim || 6.35;
+        const threshold = appState.settings.cutoffThreshold || 200.0;
+        const isMetric = appState.settings.displayUnit === 'mm';
+        
+        // Master Volume Trackers (in cubic millimeters)
+        let totalRawVolume = 0;
+        let totalPartVolume = 0;
+        let totalOffcutVolume = 0;
+        let totalWasteVolume = 0; 
+        
+        const usableOffcuts = []; // To build the table
+
+        // 1. Crunch the Numbers
+        results.forEach(res => {
+            if (res.error) return;
+            
+            const purchase = res.purchase;
+            const prof = appState.profiles.find(p => p.id === res.sku.profileId);
+            const mat = appState.materials.find(m => m.id === res.sku.materialId);
+            
+            if (!prof || !mat) return;
+            
+            // Calculate cross-section area
+            const crossSection = prof.width * prof.thickness;
+            
+            purchase.layout.forEach(board => {
+                const rawLength = purchase.catalogItem.length;
+                totalRawVolume += (rawLength * crossSection);
+                
+                // Factory trim goes straight to the trash
+                if (board.cuts.length > 0) {
+                    totalWasteVolume += (trim * crossSection);
+                }
+
+                board.cuts.forEach((cut, index) => {
+                    totalPartVolume += (cut.length * crossSection);
+                    
+                    // Kerf sawdust goes straight to the trash
+                    if (index > 0) {
+                        totalWasteVolume += (kerf * crossSection);
+                    }
+                });
+
+                // Evaluate the remaining piece at the end of the board
+                if (board.remaining >= threshold) {
+                    totalOffcutVolume += (board.remaining * crossSection);
+                    
+                    // Save to our list for the UI table
+                    usableOffcuts.push({
+                        profName: prof.name,
+                        matName: mat.name,
+                        length: board.remaining
+                    });
+                } else {
+                    // Too small to save. Trash it.
+                    totalWasteVolume += (board.remaining * crossSection);
+                }
+            });
+        });
+
+        // 2. Calculate Percentages safely
+        let pctYield = 0, pctOffcut = 0, pctWaste = 0;
+        if (totalRawVolume > 0) {
+            pctYield = (totalPartVolume / totalRawVolume) * 100;
+            pctOffcut = (totalOffcutVolume / totalRawVolume) * 100;
+            pctWaste = (totalWasteVolume / totalRawVolume) * 100;
+        }
+
+        // 3. Build the UI
+        let html = `
+            <div class="row mt-3 g-3">
+                <div class="col-md-4">
+                    <div class="card bg-success text-white shadow-sm h-100 border-0">
+                        <div class="card-body text-center py-3">
+                            <h6 class="text-uppercase mb-1 opacity-75">Yield (Actual Parts)</h6>
+                            <h2 class="mb-0 fw-bold">${pctYield.toFixed(1)}%</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white shadow-sm h-100 border-0">
+                        <div class="card-body text-center py-3">
+                            <h6 class="text-uppercase mb-1 opacity-75">Usable Offcut</h6>
+                            <h2 class="mb-0 fw-bold">${pctOffcut.toFixed(1)}%</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-danger text-white shadow-sm h-100 border-0">
+                        <div class="card-body text-center py-3">
+                            <h6 class="text-uppercase mb-1 opacity-75">True Waste (Scrap & Sawdust)</h6>
+                            <h2 class="mb-0 fw-bold">${pctWaste.toFixed(1)}%</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress mt-4 mb-4 shadow-sm" style="height: 25px;">
+                <div class="progress-bar bg-success fw-bold" role="progressbar" style="width: ${pctYield}%" title="Yield: ${pctYield.toFixed(1)}%">Yield</div>
+                <div class="progress-bar bg-primary fw-bold" role="progressbar" style="width: ${pctOffcut}%" title="Offcut: ${pctOffcut.toFixed(1)}%">Offcut</div>
+                <div class="progress-bar bg-danger fw-bold" role="progressbar" style="width: ${pctWaste}%" title="Waste: ${pctWaste.toFixed(1)}%">Waste</div>
+            </div>
+
+            <div class="card shadow-sm border-secondary mt-4">
+                <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0 fw-bold text-dark">📦 Usable Offcuts Generated</h6>
+                    <small class="text-muted">Pieces > ${formatForDisplay(threshold)} <span class="display-unit-label"></span></small>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Profile</th>
+                                <th>Material</th>
+                                <th class="text-end pe-3">Length</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+
+        if (usableOffcuts.length > 0) {
+            // Sort offcuts from longest to shortest for easy reading
+            usableOffcuts.sort((a, b) => b.length - a.length);
+            
+            usableOffcuts.forEach(off => {
+                html += `
+                            <tr>
+                                <td class="ps-3 fw-bold">${safeHTML(off.profName)}</td>
+                                <td class="text-muted">${safeHTML(off.matName)}</td>
+                                <td class="text-end pe-3 fw-bold text-primary">${formatForDisplay(off.length)} <span class="display-unit-label"></span></td>
+                            </tr>
+                `;
+            });
+        } else {
+            html += `<tr><td colspan="3" class="text-center text-muted py-3">No usable offcuts generated in this run.</td></tr>`;
+        }
+
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        container.innerHTML = html;
+        updateUnitLabels();
+    }
+</script>
