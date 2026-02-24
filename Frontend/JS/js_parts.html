@@ -75,6 +75,7 @@
         const profSelect = document.getElementById('part-profile');
         const matSelect = document.getElementById('part-material');
         const profLabel = document.getElementById('label-part-profile');
+        const grainSelect = document.getElementById('part-grain');
 
         // 1. Reset inputs
         widthInput.value = '';
@@ -87,10 +88,13 @@
             widthInput.disabled = true;   // Width comes from the profile
             lengthInput.disabled = false;
             profLabel.innerText = 'Profile';
+            grainSelect.disabled = true;  // 🪄 ADD THIS
+            grainSelect.value = 'none';   // 🪄 ADD THIS
         } else if (cat === 'sheet') {
             widthInput.disabled = false;  // Sheets need both W and L
             lengthInput.disabled = false;
             profLabel.innerText = 'Thickness';
+            grainSelect.disabled = false; // 🪄 ADD THIS
         } else if (cat === 'fastener') {
             widthInput.disabled = true;   
             lengthInput.disabled = true;
@@ -149,6 +153,7 @@
             qty: parseInt(qtyInput.value) || 1,
             width: parseToBaseUnit(widthInput.value) || 0,
             length: parseToBaseUnit(lengthInput.value) || 0,
+            grain: document.getElementById('part-grain').value, // 🪄 NEW
             profileId: profId,
             materialId: matId
         };
@@ -263,6 +268,18 @@
             // COLOR CODED BADGE LOGIC
             let badgeClass = getCategoryBadgeClass(part.category);
 
+            // 🪄 NEW: INLINE GRAIN DROPDOWN
+            let grainHtml = '-';
+            if (part.category === 'sheet') {
+                grainHtml = `
+                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;" onchange="updatePart('${part.id}', 'grain', this.value)" title="Change Grain">
+                        <option value="none" ${part.grain === 'none' ? 'selected' : ''}>None</option>
+                        <option value="length" ${part.grain === 'length' ? 'selected' : ''}>Length</option>
+                        <option value="width" ${part.grain === 'width' ? 'selected' : ''}>Width</option>
+                    </select>
+                `;
+            }
+
             // 🪄 5. BUILD THE ROW
             tr.innerHTML = `
                 <td>
@@ -308,6 +325,7 @@
                         ${matOptions}
                     </select>
                 </td>
+                <td class="p-0 align-middle text-center">${grainHtml}</td> <td class="text-center">${displayWeight}</td>
                 <td class="text-center">${displayWeight}</td>
                 
                 <td class="text-center fs-5">

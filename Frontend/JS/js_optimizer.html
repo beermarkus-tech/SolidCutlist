@@ -11,11 +11,11 @@
     function prepOptimizerData(projectIds) {
         if (!appState.parts || appState.parts.length === 0) return [];
 
-        // 🪄 Filter: Grab parts from ALL selected projects
+        // 🪄 Grab BOTH Lumber and Sheets from selected projects
         const validParts = appState.parts.filter(p => 
             projectIds.includes(p.projectId) && 
             p.status === 'ready' && 
-            p.category === 'lumber' 
+            (p.category === 'lumber' || p.category === 'sheet')
         );
 
         const groupedSKUs = {};
@@ -36,99 +36,114 @@
                 groupedSKUs[skuKey].partsToCut.push({
                     partId: part.id,
                     name: part.name,
-                    length: part.length
+                    length: part.length,
+                    width: part.width || 0,
+                    grain: part.grain || 'none'
                 });
             }
         });
 
         const batches = Object.values(groupedSKUs);
         batches.forEach(batch => {
-            // Sort longest to shortest
-            batch.partsToCut.sort((a, b) => b.length - a.length);
+            if (batch.category === 'sheet') {
+                // 2D: Sort by Area descending
+                batch.partsToCut.sort((a, b) => (b.length * b.width) - (a.length * a.width));
+            } else {
+                // 1D: Sort by Length descending
+                batch.partsToCut.sort((a, b) => b.length - a.length);
+            }
         });
 
         return batches;
     }
 
     // ==========================================
-    // PHASE B: THE PACKING ENGINE
+    // PHASE B: THE PACKING ENGINE (1D & 2D)
     // ==========================================
 
     function runPackingEngine(projectIds, allowedStoreIds) {
         const batches = prepOptimizerData(projectIds);
         
-        // Grab physical shop realities safely
-        const kerf = appState.settings.bladeKerf || 3.175;
-        const trim = appState.settings.factoryEdgeTrim || 6.35;
+        // Grab physical shop realities securely
+        const k1D = appState.settings.bladeKerf || 3.175;
+        const t1D = appState.settings.factoryEdgeTrim || 6.35;
+        const k2D = appState.settings.sheetBladeKerf || 3.175;
+        const t2D = appState.settings.sheetFactoryTrim || 6.35;
+        const pref2D = appState.settings.optimizer.sheetCutPreference || 'auto';
         
         const finalCutlist = [];
 
         batches.forEach(batch => {
-            // 1. Find all available store options for this exact wood AND filter by Allowed Stores
+            const isSheet = batch.category === 'sheet';
+            
             const vendorOptions = appState.catalog.filter(c => 
                 c.profileId === batch.profileId && 
                 c.materialId === batch.materialId &&
-                c.categoryId === 'lumber' &&
-                allowedStoreIds.includes(c.storeId) // 🪄 ONLY check stores the user allowed!
+                c.categoryId === batch.category &&
+                allowedStoreIds.includes(c.storeId)
             );
 
-            // Safety net: No prices in the catalog for this wood
             if (vendorOptions.length === 0) {
-                finalCutlist.push({
-                    sku: batch,
-                    error: "No store prices found for this Material/Profile combination."
-                });
-                return; // Skip to the next batch
+                finalCutlist.push({ sku: batch, error: "No store prices found in selected stores." });
+                return; 
             }
 
             let bestOption = null;
             let lowestCost = Infinity;
 
-            // 2. The Simulation Loop: Test every board length the stores sell
             vendorOptions.forEach(option => {
-                // We reuse the math engine from the dictionary to find the true cost per physical board
                 const boardCost = (typeof calculateCostPerPiece === 'function') ? calculateCostPerPiece(option) : option.price;
-                
-                // Run the actual Bin Packing math for this board size
-                const packResult = pack1D(batch.partsToCut, option.length, kerf, trim);
-                
-                // If the store's board is shorter than our longest part, it's physically impossible. Skip it.
-                if (packResult.unmapped.length > 0) return;
+                let packResult;
 
-                const totalCost = packResult.boards.length * boardCost;
-
-                // If this is the cheapest way to buy this wood, save it as the current winner
-                if (totalCost < lowestCost) {
-                    lowestCost = totalCost;
-                    bestOption = {
-                        catalogItem: option,
-                        totalCost: totalCost,
-                        boardsNeeded: packResult.boards.length,
-                        layout: packResult.boards,
-                        waste: packResult.totalWaste
-                    };
+                // 🪄 ROUTE TO THE CORRECT MATH ENGINE
+                if (isSheet) {
+                    if (pref2D === 'auto') {
+                        // The Matrix Simulation: Run both timelines and pick the winner
+                        let resRip = pack2D(batch.partsToCut, option.length, option.width, option.grain, k2D, t2D, 'rip');
+                        let resCross = pack2D(batch.partsToCut, option.length, option.width, option.grain, k2D, t2D, 'cross');
+                        
+                        if (resRip.unmapped.length > 0 && resCross.unmapped.length > 0) return; // Impossible both ways
+                        
+                        if (resRip.unmapped.length > 0) packResult = resCross;
+                        else if (resCross.unmapped.length > 0) packResult = resRip;
+                        else {
+                            if (resRip.boards.length < resCross.boards.length) packResult = resRip;
+                            else if (resCross.boards.length < resRip.boards.length) packResult = resCross;
+                            else packResult = (resRip.totalWaste <= resCross.totalWaste) ? resRip : resCross;
+                        }
+                    } else {
+                        packResult = pack2D(batch.partsToCut, option.length, option.width, option.grain, k2D, t2D, pref2D);
+                    }
+                } else {
+                    packResult = pack1D(batch.partsToCut, option.length, k1D, t1D);
+                }
+                
+                if (packResult && packResult.unmapped.length === 0) {
+                    const totalCost = packResult.boards.length * boardCost;
+                    if (totalCost < lowestCost) {
+                        lowestCost = totalCost;
+                        bestOption = {
+                            catalogItem: option,
+                            totalCost: totalCost,
+                            boardsNeeded: packResult.boards.length,
+                            layout: packResult.boards,
+                            waste: packResult.totalWaste
+                        };
+                    }
                 }
             });
 
-            // 3. Save the results
             if (bestOption) {
-                finalCutlist.push({
-                    sku: batch,
-                    success: true,
-                    purchase: bestOption
-                });
+                finalCutlist.push({ sku: batch, success: true, purchase: bestOption });
             } else {
-                finalCutlist.push({
-                    sku: batch,
-                    error: "Your parts are too long for any available store boards."
-                });
+                finalCutlist.push({ sku: batch, error: "Parts are physically too large for available stock." });
             }
         });
 
         return finalCutlist;
     }
 
-    // THE CORE MATH: First Fit Decreasing Algorithm
+    // --- 1D ALGORITHM (Unchanged) ---
     function pack1D(parts, boardLength, kerf, trim) {
         let boards = [];
         let unmapped = [];
@@ -136,14 +151,9 @@
 
         parts.forEach(part => {
             let placed = false;
-            
-            // Try to fit the part into an already open board
             for (let i = 0; i < boards.length; i++) {
                 let board = boards[i];
-                
-                // If there is already a cut on this board, we need room for the blade kerf + the part
                 let requiredSpace = (board.cuts.length > 0) ? (part.length + kerf) : part.length;
-
                 if (board.remaining >= requiredSpace) {
                     board.cuts.push(part);
                     board.remaining -= requiredSpace;
@@ -151,59 +161,122 @@
                     break;
                 }
             }
-
-            // If it didn't fit in any open boards, we must buy a new one
             if (!placed) {
-                // Instantly chop off the factory edge
                 let usableLength = boardLength - trim;
-                
                 if (usableLength >= part.length) {
-                    boards.push({
-                        boardNo: boards.length + 1,
-                        cuts: [part],
-                        remaining: usableLength - part.length
-                    });
+                    boards.push({ boardNo: boards.length + 1, cuts: [part], remaining: usableLength - part.length });
                 } else {
-                    // Part is longer than the store's board!
                     unmapped.push(part);
                 }
             }
         });
-
-        // Tally up the scrap wood
         boards.forEach(b => totalWaste += b.remaining);
+        return { boards, unmapped, totalWaste };
+    }
+
+    // --- 🪄 2D GUILLOTINE ALGORITHM ---
+    function pack2D(parts, sheetLength, sheetWidth, sheetGrain, kerf, trim, pref) {
+        let boards = [];
+        let unmapped = [];
+        let totalWaste = 0;
+
+        function checkFit(part, rect) {
+            let fitsNormal = (part.width <= rect.w && part.length <= rect.l);
+            let fitsRotated = (part.length <= rect.w && part.width <= rect.l);
+            
+            let normalLegal = true;
+            let rotatedLegal = true;
+            
+            // Grain verification
+            if (part.grain !== 'none' && sheetGrain !== 'none') {
+                if (part.grain === sheetGrain) rotatedLegal = false; // Must align parallel
+                else normalLegal = false; // Must rotate to become parallel
+            }
+            
+            if (fitsNormal && normalLegal) return { fits: true, rotated: false };
+            if (fitsRotated && rotatedLegal) return { fits: true, rotated: true };
+            return { fits: false };
+        }
+
+        parts.forEach(part => {
+            let placed = false;
+            
+            for (let b of boards) {
+                // Find the smallest free rectangle that fits it to minimize waste
+                b.freeRects.sort((r1, r2) => (r1.w * r1.l) - (r2.w * r2.l));
+                
+                for (let i = 0; i < b.freeRects.length; i++) {
+                    let rect = b.freeRects[i];
+                    let fit = checkFit(part, rect);
+                    if (fit.fits) {
+                        place2DPart(b, i, part, fit.rotated, kerf, pref);
+                        placed = true;
+                        break;
+                    }
+                }
+                if (placed) break;
+            }
+            
+            if (!placed) {
+                // Buy new sheet & square 2 edges
+                let wUsable = Math.max(0, sheetWidth - trim);
+                let lUsable = Math.max(0, sheetLength - trim);
+                
+                let newBoard = {
+                    boardNo: boards.length + 1,
+                    cuts: [], 
+                    freeRects: [{ x: trim, y: trim, w: wUsable, l: lUsable }]
+                };
+                
+                let fit = checkFit(part, newBoard.freeRects[0]);
+                if (fit.fits) {
+                    place2DPart(newBoard, 0, part, fit.rotated, kerf, pref);
+                    boards.push(newBoard);
+                } else {
+                    unmapped.push(part); // Part is wider/longer than the whole sheet
+                }
+            }
+        });
+
+        // Tally 2D Area Waste
+        boards.forEach(b => {
+            b.freeRects.forEach(r => totalWaste += (r.w * r.l));
+        });
 
         return { boards, unmapped, totalWaste };
     }
 
-    // ==========================================
-    // TEMPORARY TEST HARNESS (NO CONSOLE NEEDED)
-    // ==========================================
-    
-    function testOptimizerTriage() {
-        const activeProjectId = document.getElementById('part-project').value;
-
-        if (!activeProjectId) {
-            showToast('Boss, please select a project from the dropdown first!', true);
-            return;
-        }
-
-        // 🪄 Run the FULL engine now (Phase A + Phase B)
-        const optimizedData = runPackingEngine(activeProjectId);
-
-        let debugDiv = document.getElementById('debug-output');
-        if (!debugDiv) {
-            debugDiv = document.createElement('div');
-            debugDiv.id = 'debug-output';
-            debugDiv.className = 'alert border-warning mt-4 p-3 bg-dark text-success font-monospace shadow';
-            debugDiv.style.maxHeight = '500px';
-            debugDiv.style.overflowY = 'auto';
-            document.getElementById('view-parts').appendChild(debugDiv);
-        }
-
-        debugDiv.innerHTML = '<h6 class="text-white border-bottom pb-2">🧠 Optimizer Output (Phase B: Packed & Priced)</h6><pre style="font-size: 12px;">' + JSON.stringify(optimizedData, null, 2) + '</pre>';
+    function place2DPart(board, rectIndex, part, rotated, kerf, pref) {
+        let rect = board.freeRects.splice(rectIndex, 1)[0]; // Remove the space we are cutting into
         
-        showToast('Engine test complete. Check the debug terminal!');
+        let pw = rotated ? part.length : part.width;
+        let pl = rotated ? part.width : part.length;
+        
+        board.cuts.push({
+            partId: part.partId,
+            name: part.name,
+            x: rect.x,
+            y: rect.y,
+            w: pw,
+            l: pl,
+            rotated: rotated
+        });
+        
+        // The Guillotine Slicer
+        let rect1, rect2;
+        if (pref === 'cross') { // 🪄 SWAPPED: 'cross' now slices the width
+            // Cut full length, leave width strip
+            rect1 = { x: rect.x + pw + kerf, y: rect.y, w: Math.max(0, rect.w - pw - kerf), l: rect.l };
+            rect2 = { x: rect.x, y: rect.y + pl + kerf, w: pw, l: Math.max(0, rect.l - pl - kerf) };
+        } else {
+            // Cut full width, leave length strip
+            rect1 = { x: rect.x, y: rect.y + pl + kerf, w: rect.w, l: Math.max(0, rect.l - pl - kerf) };
+            rect2 = { x: rect.x + pw + kerf, y: rect.y, w: Math.max(0, rect.w - pw - kerf), l: pl };
+        }
+        
+        // Only keep scrap rectangles if they physically exist
+        if (rect1.w > 0 && rect1.l > 0) board.freeRects.push(rect1);
+        if (rect2.w > 0 && rect2.l > 0) board.freeRects.push(rect2);
     }
 
     // ==========================================
@@ -211,14 +284,16 @@
     // ==========================================
 
     function renderOptimizerConfig() {
-        // Auto-heal the state if it's the user's first time here
         if (!appState.settings.optimizer) {
             appState.settings.optimizer = {
                 useStock: true,
+                sheetCutPreference: 'auto',
                 selectedProjects: [],
                 selectedStores: []
             };
         }
+        if (!appState.settings.optimizer.sheetCutPreference) appState.settings.optimizer.sheetCutPreference = 'auto'; 
+        
         const optState = appState.settings.optimizer;
         
         let html = `
@@ -226,11 +301,19 @@
                 <input class="form-check-input" type="checkbox" id="opt-use-stock" ${optState.useStock ? 'checked' : ''} onchange="saveOptConfig()">
                 <label class="form-check-label fw-bold text-secondary" for="opt-use-stock">Use Shop Stock</label>
             </div>
+
+            <div class="mb-4 bg-light p-2 rounded border">
+                <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.85rem;">Sheet Cut Preference</label>
+                <select class="form-select form-select-sm" id="opt-sheet-cut" onchange="saveOptConfig()">
+                    <option value="auto" ${optState.sheetCutPreference === 'auto' ? 'selected' : ''}>Automatic (Least Waste)</option>
+                    <option value="rip" ${optState.sheetCutPreference === 'rip' ? 'selected' : ''}>Rip Cut First (Length)</option>
+                    <option value="cross" ${optState.sheetCutPreference === 'cross' ? 'selected' : ''}>Cross Cut First (Width)</option>
+                </select>
+            </div>
             
             <h6 class="fw-bold text-secondary border-bottom pb-1 mb-2 mt-3">Projects to Cut</h6>
             <div id="opt-project-list" class="mb-3">`;
             
-        // Render Projects Checkboxes
         if (appState.projects && appState.projects.length > 0) {
             appState.projects.forEach(p => {
                 const isChecked = optState.selectedProjects.includes(p.id) ? 'checked' : '';
@@ -249,7 +332,6 @@
             <h6 class="fw-bold text-secondary border-bottom pb-1 mb-2 mt-3">Allowed Stores</h6>
             <div id="opt-store-list">`;
             
-        // Render Stores Checkboxes
         if (appState.stores && appState.stores.length > 0) {
             appState.stores.forEach(s => {
                 const isChecked = optState.selectedStores.includes(s.id) ? 'checked' : '';
@@ -262,16 +344,15 @@
         } else {
              html += `<small class="text-danger">No stores configured.</small>`;
         }
-        
         html += `</div>`;
         
         document.getElementById('optimizer-config-form').innerHTML = html;
-        validateOptConfig(); // Check if the button should be locked
+        validateOptConfig();
     }
     
-    // Fires every time a user clicks a checkbox
     function saveOptConfig() {
         appState.settings.optimizer.useStock = document.getElementById('opt-use-stock').checked;
+        appState.settings.optimizer.sheetCutPreference = document.getElementById('opt-sheet-cut').value;
         
         const projChecks = document.querySelectorAll('.opt-project-checkbox:checked');
         appState.settings.optimizer.selectedProjects = Array.from(projChecks).map(cb => cb.value);
@@ -283,7 +364,6 @@
         validateOptConfig();
     }
     
-    // The Safety Lock
     function validateOptConfig() {
         const btn = document.getElementById('btn-calculate-cutlist');
         const optState = appState.settings.optimizer;
@@ -306,18 +386,14 @@
 
     function triggerCalculation() {
         const optState = appState.settings.optimizer;
-        
-        // 1. Run the Math
         const results = runPackingEngine(optState.selectedProjects, optState.selectedStores);
         
-        // 2. Hide the empty state, show the tabs
         document.getElementById('optimizer-empty-state').classList.add('d-none');
         document.getElementById('optimizer-tab-content').classList.remove('d-none');
         
-        // 3. Render the specific tabs
         renderShoppingListTab(results);
         if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
-        if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results); // 🪄 RENDER THE ANALYTICS
+        if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
     }
 
     function renderShoppingListTab(results) {
@@ -327,12 +403,12 @@
         let html = '';
         const isMetric = appState.settings.displayUnit === 'mm';
         const weightUnit = isMetric ? 'kg' : 'lbs';
+        const currency = appState.settings.currency || '$'
 
-        // 1. Group the results by Store for a better shopping experience
         const storeBuckets = {};
         
         results.forEach(res => {
-            if (res.error) return; // Skip items we couldn't source
+            if (res.error) return; 
             
             const purchase = res.purchase;
             const storeId = purchase.catalogItem.storeId;
@@ -340,23 +416,32 @@
             
             if (!storeBuckets[storeName]) storeBuckets[storeName] = [];
             
-            // Calculate specific weight for this batch
             const prof = appState.profiles.find(p => p.id === res.sku.profileId);
             const mat = appState.materials.find(m => m.id === res.sku.materialId);
+            
             let batchWeight = 0;
             if (prof && mat) {
-                const volumeM3 = (purchase.catalogItem.length * prof.width * prof.thickness) / 1000000000;
+                let volumeM3 = 0;
+                if (res.sku.category === 'sheet') {
+                    volumeM3 = (purchase.catalogItem.length * purchase.catalogItem.width * prof.thickness) / 1000000000;
+                } else {
+                    volumeM3 = (purchase.catalogItem.length * prof.width * prof.thickness) / 1000000000;
+                }
                 batchWeight = volumeM3 * mat.density * purchase.boardsNeeded;
             }
             
             totalCost += purchase.totalCost;
             totalWeightKg += batchWeight;
 
+            const lengthDisplay = res.sku.category === 'sheet' 
+                ? `${formatForDisplay(purchase.catalogItem.length)} x ${formatForDisplay(purchase.catalogItem.width)}`
+                : formatForDisplay(purchase.catalogItem.length);
+
             storeBuckets[storeName].push({
                 qty: purchase.boardsNeeded,
                 profName: prof?.name || 'Unknown',
                 matName: mat?.name || 'Unknown',
-                lengthDisplay: formatForDisplay(purchase.catalogItem.length),
+                lengthDisplay: lengthDisplay,
                 cost: purchase.totalCost,
                 weight: batchWeight
             });
@@ -364,7 +449,6 @@
 
         const totalWeightDisplay = isMetric ? totalWeightKg : (totalWeightKg * 2.20462);
 
-        // 2. Build the "Will My Truck Break?" Banner
         html += `
             <div class="alert alert-info d-flex justify-content-between align-items-center mb-4 shadow-sm border-info">
                 <div>
@@ -372,13 +456,12 @@
                     <small class="text-muted">Combined across all selected stores</small>
                 </div>
                 <div class="text-end">
-                    <h4 class="mb-0 fw-bold text-success">$${totalCost.toFixed(2)}</h4>
+                    <h4 class="mb-0 fw-bold text-success">${currency}${totalCost.toFixed(2)}</h4>
                     <span class="badge bg-secondary">⚖️ ${totalWeightDisplay.toFixed(2)} ${weightUnit}</span>
                 </div>
             </div>
         `;
 
-        // 3. Build the Store Lists
         for (const [storeName, items] of Object.entries(storeBuckets)) {
             html += `
                 <div class="card mb-3 border-0 shadow-sm">
@@ -396,10 +479,10 @@
                             <span class="badge bg-primary rounded-pill me-2 fs-6">${item.qty} x</span>
                             <span class="fw-bold">${safeHTML(item.profName)}</span>
                             <span class="text-muted"> - ${safeHTML(item.matName)}</span>
-                            <br><small class="text-muted ms-5">Length: ${item.lengthDisplay} <span class="display-unit-label"></span></small>
+                            <br><small class="text-muted ms-5">Size: ${item.lengthDisplay} <span class="display-unit-label"></span></small>
                         </div>
                         <div class="text-end">
-                            <div class="fw-bold text-success">$${item.cost.toFixed(2)}</div>
+                            <div class="fw-bold text-success">${currency}${item.cost.toFixed(2)}</div>
                             <small class="text-muted">⚖️ ${wDisplay.toFixed(2)} ${weightUnit}</small>
                         </div>
                     </li>
@@ -408,7 +491,6 @@
             html += `</ul></div>`;
         }
         
-        // Render Errors if any
         const errors = results.filter(r => r.error);
         if (errors.length > 0) {
             html += `<h6 class="text-danger fw-bold mt-4 border-bottom pb-1">⚠️ Sourcing Errors</h6><ul class="list-group">`;
@@ -421,78 +503,83 @@
         }
 
         container.innerHTML = html;
-        updateUnitLabels(); // Format the 'mm' / 'in' strings correctly
+        updateUnitLabels(); 
     }
 
     // ==========================================
-    // PHASE E: ANALYTICS & OFFCUTS
+    // PHASE E: ANALYTICS & OFFCUTS (1D & 2D)
     // ==========================================
 
     function renderAnalyticsTab(results) {
         const container = document.getElementById('pane-analytics');
         
-        const kerf = appState.settings.bladeKerf || 3.175;
-        const trim = appState.settings.factoryEdgeTrim || 6.35;
-        const threshold = appState.settings.cutoffThreshold || 200.0;
+        const threshold = appState.settings.cutoffThreshold || 200.0; // Lumber 1D
+        const minW = appState.settings.sheetScrapMinWidth || 50.0;    // Sheet 2D Width
+        const minL = appState.settings.sheetScrapMinLength || 400.0;  // Sheet 2D Length
         const isMetric = appState.settings.displayUnit === 'mm';
         
-        // Master Volume Trackers (in cubic millimeters)
         let totalRawVolume = 0;
         let totalPartVolume = 0;
         let totalOffcutVolume = 0;
         let totalWasteVolume = 0; 
         
-        const usableOffcuts = []; // To build the table
+        const usableOffcuts = []; 
 
-        // 1. Crunch the Numbers
         results.forEach(res => {
             if (res.error) return;
             
             const purchase = res.purchase;
+            const isSheet = res.sku.category === 'sheet';
             const prof = appState.profiles.find(p => p.id === res.sku.profileId);
             const mat = appState.materials.find(m => m.id === res.sku.materialId);
-            
             if (!prof || !mat) return;
             
-            // Calculate cross-section area
-            const crossSection = prof.width * prof.thickness;
+            const thick = prof.thickness || 0;
+            const sheetW = isSheet ? purchase.catalogItem.width : (prof.width || 0);
+            const sheetL = purchase.catalogItem.length;
             
             purchase.layout.forEach(board => {
-                const rawLength = purchase.catalogItem.length;
-                totalRawVolume += (rawLength * crossSection);
+                const boardVol = sheetL * sheetW * thick;
+                totalRawVolume += boardVol;
                 
-                // Factory trim goes straight to the trash
-                if (board.cuts.length > 0) {
-                    totalWasteVolume += (trim * crossSection);
-                }
+                let boardPartsVol = 0;
+                let boardOffcutVol = 0;
 
-                board.cuts.forEach((cut, index) => {
-                    totalPartVolume += (cut.length * crossSection);
-                    
-                    // Kerf sawdust goes straight to the trash
-                    if (index > 0) {
-                        totalWasteVolume += (kerf * crossSection);
-                    }
+                board.cuts.forEach((cut) => {
+                    const cutVol = isSheet ? (cut.l * cut.w * thick) : (cut.length * sheetW * thick);
+                    boardPartsVol += cutVol;
+                    totalPartVolume += cutVol;
                 });
 
-                // Evaluate the remaining piece at the end of the board
-                if (board.remaining >= threshold) {
-                    totalOffcutVolume += (board.remaining * crossSection);
-                    
-                    // Save to our list for the UI table
-                    usableOffcuts.push({
-                        profName: prof.name,
-                        matName: mat.name,
-                        length: board.remaining
+                // Tally the Offcuts
+                if (isSheet) {
+                    board.freeRects.forEach(rect => {
+                        const rectVol = rect.l * rect.w * thick;
+                        
+                        // 🪄 NEW: Determine shortest and longest edges regardless of grain orientation
+                        const shortestEdge = Math.min(rect.l, rect.w);
+                        const longestEdge = Math.max(rect.l, rect.w);
+                        
+                        if (shortestEdge >= minW && longestEdge >= minL) {
+                            boardOffcutVol += rectVol;
+                            usableOffcuts.push({ profName: prof.name, matName: mat.name, length: rect.l, width: rect.w });
+                        }
                     });
                 } else {
-                    // Too small to save. Trash it.
-                    totalWasteVolume += (board.remaining * crossSection);
+                    if (board.remaining >= threshold) {
+                        boardOffcutVol += (board.remaining * sheetW * thick);
+                        usableOffcuts.push({ profName: prof.name, matName: mat.name, length: board.remaining });
+                    }
                 }
+                
+                totalOffcutVolume += boardOffcutVol;
+
+                // 🪄 MATHEMATICAL PERFECTION: Any volume that isn't a part or a usable offcut is definitively Waste.
+                // This automatically captures sawdust kerf, factory trim, and tiny unusable scraps.
+                totalWasteVolume += (boardVol - boardPartsVol - boardOffcutVol);
             });
         });
 
-        // 2. Calculate Percentages safely
         let pctYield = 0, pctOffcut = 0, pctWaste = 0;
         if (totalRawVolume > 0) {
             pctYield = (totalPartVolume / totalRawVolume) * 100;
@@ -500,7 +587,6 @@
             pctWaste = (totalWasteVolume / totalRawVolume) * 100;
         }
 
-        // 3. Build the UI
         let html = `
             <div class="row mt-3 g-3">
                 <div class="col-md-4">
@@ -544,32 +630,12 @@
                     <table class="table table-sm table-hover mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-3">Profile</th>
-                                <th>Material</th>
-                                <th class="text-end pe-3">Length</th>
+                                <th class="ps-3" onclick="sortOffcuts('profName')" style="cursor: pointer;">Profile ⇅</th>
+                                <th onclick="sortOffcuts('matName')" style="cursor: pointer;">Material ⇅</th>
+                                <th class="text-end pe-3" onclick="sortOffcuts('length')" style="cursor: pointer;">Size ⇅</th>
                             </tr>
                         </thead>
-                        <tbody>
-        `;
-
-        if (usableOffcuts.length > 0) {
-            // Sort offcuts from longest to shortest for easy reading
-            usableOffcuts.sort((a, b) => b.length - a.length);
-            
-            usableOffcuts.forEach(off => {
-                html += `
-                            <tr>
-                                <td class="ps-3 fw-bold">${safeHTML(off.profName)}</td>
-                                <td class="text-muted">${safeHTML(off.matName)}</td>
-                                <td class="text-end pe-3 fw-bold text-primary">${formatForDisplay(off.length)} <span class="display-unit-label"></span></td>
-                            </tr>
-                `;
-            });
-        } else {
-            html += `<tr><td colspan="3" class="text-center text-muted py-3">No usable offcuts generated in this run.</td></tr>`;
-        }
-
-        html += `
+                        <tbody id="table-offcuts-body">
                         </tbody>
                     </table>
                 </div>
@@ -577,6 +643,50 @@
         `;
 
         container.innerHTML = html;
+        
+        // Save to window for local sorting
+        window.currentOffcuts = usableOffcuts;
+        window.currentOffcutSort = { field: 'length', asc: false };
+        
+        sortOffcuts('length'); // Initial sort and render
+    }
+
+    // 🪄 NEW: Custom sorting engine just for the volatile Offcut data
+    function sortOffcuts(field) {
+        if (window.currentOffcutSort.field === field) {
+            window.currentOffcutSort.asc = !window.currentOffcutSort.asc;
+        } else {
+            window.currentOffcutSort.field = field;
+            window.currentOffcutSort.asc = true;
+        }
+        
+        window.currentOffcuts.sort((a, b) => {
+            let valA = a[field];
+            let valB = b[field];
+            if (field === 'length') { // Sort physically by Area for sheets
+                valA = a.length * (a.width || 1);
+                valB = b.length * (b.width || 1);
+            }
+            if (valA < valB) return window.currentOffcutSort.asc ? -1 : 1;
+            if (valA > valB) return window.currentOffcutSort.asc ? 1 : -1;
+            return 0;
+        });
+        
+        const tbody = document.getElementById('table-offcuts-body');
+        let html = '';
+        if (window.currentOffcuts.length > 0) {
+            window.currentOffcuts.forEach(off => {
+                const sizeStr = off.width ? `${formatForDisplay(off.length)} x ${formatForDisplay(off.width)}` : formatForDisplay(off.length);
+                html += `<tr>
+                            <td class="ps-3 fw-bold">${safeHTML(off.profName)}</td>
+                            <td class="text-muted">${safeHTML(off.matName)}</td>
+                            <td class="text-end pe-3 fw-bold text-primary">${sizeStr} <span class="display-unit-label"></span></td>
+                         </tr>`;
+            });
+        } else {
+            html += `<tr><td colspan="3" class="text-center text-muted py-3">No usable offcuts generated in this run.</td></tr>`;
+        }
+        tbody.innerHTML = html;
         updateUnitLabels();
     }
 </script>

@@ -19,21 +19,27 @@
     }
 
     function renderSettings() {
-        // AUTO-HEAL: If local storage is missing these keys, inject the defaults safely
         if (!appState.settings) appState.settings = {};
         if (!appState.settings.displayUnit) appState.settings.displayUnit = 'mm';
         if (appState.settings.bladeKerf === undefined) appState.settings.bladeKerf = 3.175;
+        if (appState.settings.sheetBladeKerf === undefined) appState.settings.sheetBladeKerf = 3.175; // 🪄 NEW
         if (appState.settings.cutoffThreshold === undefined) appState.settings.cutoffThreshold = 200.0;
+        if (appState.settings.sheetScrapMinWidth === undefined) appState.settings.sheetScrapMinWidth = 50.0; // 🪄 NEW
+        if (appState.settings.sheetScrapMinLength === undefined) appState.settings.sheetScrapMinLength = 400.0; // 🪄 NEW
         if (appState.settings.factoryEdgeTrim === undefined) appState.settings.factoryEdgeTrim = 6.35;
-
-        // Set the dropdown
+        if (appState.settings.sheetFactoryTrim === undefined) appState.settings.sheetFactoryTrim = 6.35; // 🪄 NEW
+        if (!appState.settings.currency) appState.settings.currency = '$'; // 🪄 NEW
+        
         document.getElementById('setting-display-unit').value = appState.settings.displayUnit;
-        
-        // 🪄 Apply the math engine so variables translate dynamically
         document.getElementById('setting-kerf').value = formatForDisplay(appState.settings.bladeKerf);
+        document.getElementById('setting-sheet-kerf').value = formatForDisplay(appState.settings.sheetBladeKerf); // 🪄 NEW
         document.getElementById('setting-cutoff').value = formatForDisplay(appState.settings.cutoffThreshold);
+        document.getElementById('setting-sheet-scrap-width').value = formatForDisplay(appState.settings.sheetScrapMinWidth); // 🪄 NEW
+        document.getElementById('setting-sheet-scrap-length').value = formatForDisplay(appState.settings.sheetScrapMinLength); // 🪄 NEW
         document.getElementById('setting-factory-trim').value = formatForDisplay(appState.settings.factoryEdgeTrim);
-        
+        document.getElementById('setting-sheet-trim').value = formatForDisplay(appState.settings.sheetFactoryTrim); // 🪄 NEW
+        document.getElementById('setting-currency').value = appState.settings.currency; // 🪄 NEW
+
         updateUnitLabels();
     }
 
@@ -79,7 +85,7 @@
             const tr = document.createElement('tr');
             const badgeClass = getCategoryBadgeClass(item.categoryId);
             
-            // 🪄 0. VALIDATE REALITY & DYNAMIC DROPDOWNS
+            // 🪄 0. VALIDATE REALITY & DYNAMIC DROPDOWNS FOR PROFILE/MATERIAL
             const filteredProfiles = appState.profiles.filter(p => p.type === item.categoryId);
             const isProfValid = filteredProfiles.some(p => p.id === item.profileId);
             
@@ -108,15 +114,45 @@
             if (!isProfValid || !isMatValid) {
                 tr.classList.add('table-warning');
             }
-            const sizeString = item.categoryId === 'sheet' 
-                ? `${formatForDisplay(item.length)} x ${formatForDisplay(item.width)}`
-                : `${formatForDisplay(item.length)}`;
-            
-            const typeBadge = item.isCutoff 
-                ? '<span class="badge bg-warning text-dark">Scrap</span>' 
-                : '<span class="badge bg-success">New</span>';
 
-            const grainString = item.categoryId === 'sheet' ? item.grain : '-';
+            // 🪄 1. DYNAMIC SIZE INPUTS
+            let dimHtml = '';
+            const displayL = formatForDisplay(item.length);
+            if (item.categoryId === 'sheet') {
+                const displayW = formatForDisplay(item.width);
+                dimHtml = `
+                    <div class="d-flex align-items-center justify-content-center gap-1">
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0" style="width: 50px;" 
+                               value="${displayL}" onchange="updateStock('${item.id}', 'length', this.value)" title="Tap to edit length">
+                        <span class="text-muted text-sm">x</span>
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-start px-0" style="width: 50px;" 
+                               value="${displayW}" onchange="updateStock('${item.id}', 'width', this.value)" title="Tap to edit width">
+                    </div>`;
+            } else {
+                dimHtml = `
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width: 60px;" 
+                           value="${displayL}" onchange="updateStock('${item.id}', 'length', this.value)" title="Tap to edit length">`;
+            }
+
+            // 🪄 2. INLINE GRAIN DROPDOWN
+            let grainHtml = '-';
+            if (item.categoryId === 'sheet') {
+                grainHtml = `
+                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;" onchange="updateStock('${item.id}', 'grain', this.value)" title="Change Grain">
+                        <option value="none" ${item.grain === 'none' ? 'selected' : ''}>None</option>
+                        <option value="length" ${item.grain === 'length' ? 'selected' : ''}>Length</option>
+                        <option value="width" ${item.grain === 'width' ? 'selected' : ''}>Width</option>
+                    </select>
+                `;
+            }
+
+            // 🪄 3. INLINE TYPE DROPDOWN
+            let typeHtml = `
+                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center ${item.isCutoff ? 'text-warning fw-bold' : 'text-success fw-bold'}" style="width: 75px;" onchange="updateStock('${item.id}', 'isCutoff', this.value === 'true')" title="Change Type">
+                    <option value="false" ${!item.isCutoff ? 'selected' : ''} class="text-success">New</option>
+                    <option value="true" ${item.isCutoff ? 'selected' : ''} class="text-warning">Scrap</option>
+                </select>
+            `;
 
             tr.innerHTML = `
                 <td>
@@ -129,22 +165,22 @@
                         </select>
                     </div>
                 </td>
-                <td class="p-0 align-middle">${profHtml}</td>
-                <td class="p-0 align-middle">${matHtml}</td>
-                <td class="text-center"><small>
+                <td class="p-0 align-middle text-center">${profHtml}</td>
+                <td class="p-0 align-middle text-center">${matHtml}</td>
+                <td class="text-center p-0 align-middle"><small>
                     <input type="number" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width: 50px;"
-                           value="${item.qty}" 
-                           onchange="updateStock('${item.id}', 'qty', this.value)" title="Tap to edit qty">
+                           value="${item.qty}" onchange="updateStock('${item.id}', 'qty', this.value)" title="Tap to edit qty">
                 </small></td>
-                <td class="text-center text-nowrap"><small>${sizeString}</small></td>
-                <td class="text-center text-capitalize">${grainString}</small></td>
-                <td class="text-center">${typeBadge}</td>
-                <td class="text-end">
+                <td class="text-center text-nowrap p-0 align-middle">${dimHtml}</td>
+                <td class="text-center text-capitalize p-0 align-middle">${grainHtml}</td>
+                <td class="text-center p-0 align-middle">${typeHtml}</td>
+                <td class="text-end align-middle">
                     <button type="button" class="btn btn-sm py-0 px-2 text-danger" onclick="deleteStock('${item.id}')">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
+        
         updateUnitLabels();
     }
 
@@ -262,6 +298,7 @@
 
         const viewUnit = document.getElementById('table-price-view').value;
         const isMetric = appState.settings.displayUnit === 'mm';
+        const currency = appState.settings.currency || '$'; // 🪄 ADD THIS
 
         appState.catalog.forEach(item => {
             const tr = document.createElement('tr');
@@ -355,6 +392,17 @@
                     ${unitSelectHtml}
                 </div>`;
 
+            let grainHtml = '-';
+            if (item.categoryId === 'sheet') {
+                grainHtml = `
+                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;" onchange="updateCatalogItem('${item.id}', 'grain', this.value)" title="Change Grain">
+                        <option value="none" ${item.grain === 'none' ? 'selected' : ''}>None</option>
+                        <option value="length" ${item.grain === 'length' ? 'selected' : ''}>Length</option>
+                        <option value="width" ${item.grain === 'width' ? 'selected' : ''}>Width</option>
+                    </select>
+                `;
+            }
+
             // Calculate normalized comparison price
             const displayPrice = getNormalizedPriceDisplay(item, viewUnit);
 
@@ -362,7 +410,7 @@
                 ? `<a href="${safeHTML(item.link)}" target="_blank" class="text-decoration-none me-2" title="Open Link">🔗</a>` 
                 : `<span class="text-muted me-2" style="opacity: 0.3;">🔗</span>`;
 
-            tr.innerHTML = `
+                tr.innerHTML = `
                 <td>
                     <div class="d-flex justify-content-center">
                         <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
@@ -374,16 +422,17 @@
                     </div>
                 </td>
                 <td class="p-0 align-middle">${profHtml}</td>
-                <td class="p-0 align-middle">${matHtml}</td>
                 <td class="text-center p-0 align-middle">${dimHtml}</td>
+                <td class="p-0 align-middle">${matHtml}</td>
+                <td class="text-center p-0 align-middle">${grainHtml}</td>
                 <td class="p-0 align-middle">${storeHtml}</td>
                 <td class="text-center p-0 align-middle">${priceHtml}</td>
-                <td class="text-center fw-bold text-success">${displayPrice}</td>
-                <td class="text-end text-nowrap">
+                <td class="text-center fw-bold text-success align-middle">${currency}${displayPrice}</td>
+                <td class="text-end text-nowrap align-middle">
                     ${linkHtml}
                     <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${item.id}', '${safeHTML(item.link || '')}')" title="Edit Link">✏️</button>
                 </td>
-                <td>
+                <td class="align-middle">
                     <button class="btn btn-sm py-0 px-1 text-danger" onclick="deleteCatalogItem('${item.id}')">🗑️</button>
                 </td>
             `;
@@ -394,16 +443,16 @@
     // --- CRUD OPERATIONS ---
 
     function handleUnitChange() {
-        // 1. ONLY update the unit preference. 
-        // We strictly DO NOT read the kerf/cutoff text boxes here because they are still formatted in the old unit.
+        // 1. ONLY update the global display preferences. 
         appState.settings.displayUnit = document.getElementById('setting-display-unit').value;
+        appState.settings.currency = document.getElementById('setting-currency').value; // 🪄 NOW SAVES CURRENCY
+        
         saveState();
         
-        // 2. Redraw the UI. The kerf/cutoff boxes will now pull the safe, uncorrupted base-mm 
-        // from the appState and automatically translate it into the new unit.
+        // 2. Redraw the ENTIRE UI so tables instantly reflect the new symbols
         renderSettings(); 
         renderDictionaries();
-        showToast('Display units updated.');
+        showToast('Display preferences updated.');
     }
 
     function handleAddProject(event) {
@@ -627,10 +676,10 @@
 
     function updateUnitLabels() {
         const isMetric = appState.settings.displayUnit === 'mm';
+        const currencyText = appState.settings.currency || '$';
         const unitText = isMetric ? 'mm' : 'in';
         const densityText = isMetric ? 'kg/m³' : 'lb/ft³';
         const weightText = isMetric ? 'kg' : 'lbs';
-        
         const linearText = isMetric ? 'm' : 'ft';
         const areaText = isMetric ? 'm²' : 'sqft';
         const volText = isMetric ? 'm³' : 'BF';
@@ -639,7 +688,8 @@
         document.querySelectorAll('.display-unit-label').forEach(label => label.innerText = unitText);
         document.querySelectorAll('.density-unit-label').forEach(label => label.innerText = densityText);
         document.querySelectorAll('.density-weight-label').forEach(label => label.innerText = weightText);
-
+        document.querySelectorAll('.currency-label').forEach(label => label.innerText = currencyText);
+        
         // Update the header drop-down in the Catalog table (safely checks if it exists first)
         const tableViewSelect = document.getElementById('table-price-view');
         if (tableViewSelect && tableViewSelect.options && tableViewSelect.options.length > 3) {
@@ -662,17 +712,16 @@
     }
 
     function handleSettingsValueChange() {
-        // 1. ONLY read the text boxes. The unit preference is already safely set.
-        const kerfInput = document.getElementById('setting-kerf').value;
-        const cutoffInput = document.getElementById('setting-cutoff').value;
-        const trimInput = document.getElementById('setting-factory-trim').value;
-        
-        appState.settings.bladeKerf = parseToBaseUnit(kerfInput);
-        appState.settings.cutoffThreshold = parseToBaseUnit(cutoffInput);
-        appState.settings.factoryEdgeTrim = parseToBaseUnit(trimInput);
+        appState.settings.bladeKerf = parseToBaseUnit(document.getElementById('setting-kerf').value);
+        appState.settings.sheetBladeKerf = parseToBaseUnit(document.getElementById('setting-sheet-kerf').value); // 🪄 NEW
+        appState.settings.cutoffThreshold = parseToBaseUnit(document.getElementById('setting-cutoff').value);
+        appState.settings.sheetScrapMinWidth = parseToBaseUnit(document.getElementById('setting-sheet-scrap-width').value); // 🪄 NEW
+        appState.settings.sheetScrapMinLength = parseToBaseUnit(document.getElementById('setting-sheet-scrap-length').value); // 🪄 NEW
+        appState.settings.factoryEdgeTrim = parseToBaseUnit(document.getElementById('setting-factory-trim').value);
+        appState.settings.sheetFactoryTrim = parseToBaseUnit(document.getElementById('setting-sheet-trim').value); // 🪄 NEW
         
         saveState();
-        renderSettings(); // Cleans up the formatting in case they typed a messy fraction
+        renderSettings();
         showToast('Settings saved.');
     }
 
@@ -915,9 +964,16 @@
     function updateStock(id, field, newValue) {
         const item = appState.stock.find(s => s.id === id);
         if (item) {
-            item[field] = (field === 'qty') ? parseInt(newValue, 10) : newValue;
+            if (field === 'qty') {
+                item[field] = parseInt(newValue, 10) || 1;
+            } else if (field === 'length' || field === 'width') {
+                item[field] = parseToBaseUnit(newValue) || 0;
+            } else {
+                item[field] = newValue; // Handles grain strings and boolean drop-downs
+            }
             saveState();
             renderStockTable();
+            showToast('Stock updated.');
         }
     }
 
@@ -1068,13 +1124,18 @@
                 matSelect.appendChild(opt);
             });
         }
+        const grainSelect = document.getElementById('cat-grain'); // 🪄 ADD THIS
+
         if (cat === 'sheet') {
             widthInput.disabled = false;
             widthInput.required = true;
+            grainSelect.disabled = false; // 🪄 ADD THIS
         } else {
             widthInput.disabled = true;
             widthInput.required = false;
             widthInput.value = '';
+            grainSelect.disabled = true; // 🪄 ADD THIS
+            grainSelect.value = 'none';  // 🪄 ADD THIS
         }
     }
 
@@ -1129,6 +1190,7 @@
             storeId: document.getElementById('cat-store').value,
             length: parseToBaseUnit(document.getElementById('cat-length').value),
             width: category === 'sheet' ? parseToBaseUnit(document.getElementById('cat-width').value) : 0,
+            grain: document.getElementById('cat-grain').value, // 🪄 NEW
             price: parseFloat(document.getElementById('cat-price').value) || 0,
             priceUnit: document.getElementById('cat-price-unit').value,
             link: rawLink
