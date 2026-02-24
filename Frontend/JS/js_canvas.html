@@ -1,300 +1,378 @@
 <script>
-        /**
-         * Frontend/JS/js_canvas.html
-         * Renders the visual board cards and HTML5 Canvas diagrams for 1D and 2D parts.
-         */
-    
-        function renderDiagramsTab(results) {
-            const container = document.getElementById('pane-diagrams');
-            let html = '';
+    /**
+     * Frontend/JS/js_canvas.html
+     * Renders visual board cards with Pixel Scaling, Dynamic Grain, Collapsible SKUs, and Bulletproof Merging.
+     */
+
+    function renderDiagramsTab(results) {
+        const container = document.getElementById('pane-diagrams');
+        let html = '';
+        
+        const k1D = appState.settings.bladeKerf || 3.175;
+        const t1D = appState.settings.factoryEdgeTrim || 6.35;
+        const k2D = appState.settings.sheetBladeKerf || 3.175;
+        const t2D = appState.settings.sheetFactoryTrim || 6.35;
+        const threshold = appState.settings.cutoffThreshold || 200.0; 
+        const minW = appState.settings.sheetScrapMinWidth || 50.0;   
+        const minL = appState.settings.sheetScrapMinLength || 400.0; 
+        
+        let boardCounter = 1; 
+        const canvasDrawQueue = []; 
+
+        const mergedDiagrams = {};
+        let globalMaxSheetDim = 0;
+        let globalMaxLumberDim = 0;
+
+        results.forEach(res => {
+            if (res.error) return;
             
-            const k1D = appState.settings.bladeKerf || 3.175;
-            const t1D = appState.settings.factoryEdgeTrim || 6.35;
-            const k2D = appState.settings.sheetBladeKerf || 3.175;
-            const t2D = appState.settings.sheetFactoryTrim || 6.35;
-            const threshold = appState.settings.cutoffThreshold || 200.0; 
-            const minW = appState.settings.sheetScrapMinWidth || 50.0;   
-            const minL = appState.settings.sheetScrapMinLength || 400.0; 
-            const isMetric = appState.settings.displayUnit === 'mm';
+            const purchase = res.purchase;
+            const isSheet = res.sku.category === 'sheet';
+            const rawLength = purchase.catalogItem.length;
+            const rawWidth = isSheet ? purchase.catalogItem.width : 0;
+            const grain = purchase.catalogItem.grain || 'none';
             
-            let boardCounter = 1; 
-            const canvasDrawQueue = []; 
-    
-            results.forEach(res => {
-                if (res.error) return;
-                
-                const purchase = res.purchase;
-                const isSheet = res.sku.category === 'sheet';
-                const prof = appState.profiles.find(p => p.id === res.sku.profileId);
-                const mat = appState.materials.find(m => m.id === res.sku.materialId);
-                const rawLength = purchase.catalogItem.length;
-                const rawWidth = isSheet ? purchase.catalogItem.width : 0;
-                
-                const sizeString = isSheet 
-                    ? `${formatForDisplay(rawLength)} x ${formatForDisplay(rawWidth)}`
-                    : `${formatForDisplay(rawLength)}`;
-    
+            if (isSheet) {
+                globalMaxSheetDim = Math.max(globalMaxSheetDim, rawLength, rawWidth);
+            } else {
+                globalMaxLumberDim = Math.max(globalMaxLumberDim, rawLength);
+            }
+            
+            // 🪄 THE MERGE SANITIZER: Eliminates Float Errors & Rotation Traps
+            const cleanL = Math.round(rawLength);
+            const cleanW = Math.round(rawWidth);
+            
+            let keyL = cleanL;
+            let keyW = cleanW;
+            
+            // If the material has no grain, 1200x2400 is physically identical to 2400x1200
+            if (grain === 'none' && keyW > keyL) {
+                keyL = cleanW;
+                keyW = cleanL;
+            }
+
+            const boardKey = `${res.sku.profileId}|${res.sku.materialId}|${keyL}|${keyW}|${grain}`;
+
+            if (!mergedDiagrams[boardKey]) {
+                mergedDiagrams[boardKey] = {
+                    profileId: res.sku.profileId,
+                    materialId: res.sku.materialId,
+                    category: res.sku.category,
+                    length: rawLength, // Keep original for display
+                    width: rawWidth,
+                    grain: grain,
+                    layouts: []
+                };
+            }
+            mergedDiagrams[boardKey].layouts.push(...purchase.layout);
+        });
+
+        const sortedGroups = Object.values(mergedDiagrams).sort((a, b) => {
+            if (a.category === 'lumber' && b.category === 'sheet') return -1;
+            if (a.category === 'sheet' && b.category === 'lumber') return 1;
+            return b.length - a.length;
+        });
+
+        if (sortedGroups.length > 0) {
+            html += `
+                <div class="d-flex justify-content-end gap-2 mb-3 no-print border-bottom pb-2">
+                    <button class="btn btn-sm btn-outline-secondary py-0 fw-bold" onclick="toggleAllSKUs(true)">⬇️ Expand All</button>
+                    <button class="btn btn-sm btn-outline-secondary py-0 fw-bold" onclick="toggleAllSKUs(false)">⬆️ Collapse All</button>
+                </div>
+            `;
+        }
+
+        sortedGroups.forEach(group => {
+            const isSheet = group.category === 'sheet';
+            const prof = appState.profiles.find(p => p.id === group.profileId);
+            const mat = appState.materials.find(m => m.id === group.materialId);
+            
+            const sizeString = isSheet 
+                ? `${formatForDisplay(group.length)} x ${formatForDisplay(group.width)}`
+                : `${formatForDisplay(group.length)}`;
+
+            const localMax = isSheet ? Math.max(group.length, group.width) : group.length;
+            const globalMax = isSheet ? globalMaxSheetDim : globalMaxLumberDim;
+            const canvasWidth = globalMax > 0 ? Math.max(300, Math.floor((localMax / globalMax) * 1000)) : 1000;
+            
+            let canvasHeight = 40; 
+            if (isSheet && group.length > 0) {
+                const displayLong = Math.max(group.length, group.width);
+                const displayShort = Math.min(group.length, group.width);
+                canvasHeight = Math.floor(canvasWidth * (displayShort / displayLong)); 
+            }
+
+            html += `
+            <details class="sku-group mb-4" open>
+                <summary class="mt-2 mb-2 border-bottom border-2 border-dark pb-1 d-flex justify-content-between align-items-end" style="cursor: pointer; outline: none; list-style-position: inside;">
+                    <h5 class="mb-0 fw-bold text-dark d-inline-block">${safeHTML(prof?.name)} - ${safeHTML(mat?.name)}</h5>
+                    <span class="badge bg-secondary">Raw Size: ${sizeString} <span class="display-unit-label"></span></span>
+                </summary>
+                <div class="pt-2"> 
+            `;
+
+            group.layouts.forEach((board, bIndex) => {
+                const canvasId = `canvas-board-${boardCounter}`;
+
+                let wasteVal = 0;
+                if (isSheet) {
+                    board.freeRects.forEach(r => wasteVal += (r.w * r.l));
+                } else {
+                    wasteVal = board.remaining;
+                }
+                const wasteLabel = isSheet ? 'Waste Area' : 'Waste Length';
+                const wasteDisplay = isSheet 
+                    ? (wasteVal / 1000000).toFixed(2) + ' m²' 
+                    : formatForDisplay(wasteVal);
+
                 html += `
-                    <div class="mt-4 mb-2 border-bottom border-2 border-dark pb-1 d-flex justify-content-between align-items-end">
-                        <h5 class="mb-0 fw-bold text-dark">${safeHTML(prof?.name)} - ${safeHTML(mat?.name)}</h5>
-                        <span class="badge bg-secondary">Raw Size: ${sizeString} <span class="display-unit-label"></span></span>
+                <div class="card shadow-sm mb-4 border-secondary" style="page-break-inside: avoid;">
+                    <div class="card-header bg-light py-1 d-flex justify-content-between align-items-center">
+                        <small class="fw-bold text-muted">Board #${bIndex + 1} of ${group.layouts.length}</small>
+                        <small class="text-muted">${wasteLabel}: ${wasteDisplay} ${isSheet ? '' : '<span class="display-unit-label"></span>'}</small>
                     </div>
+                    
+                    <div class="card-body p-3 text-center overflow-auto bg-white d-flex justify-content-center">
+                        <canvas id="${canvasId}" width="${canvasWidth}" height="${canvasHeight}" style="max-width: 100%; border-radius: 4px; border: 1px solid #ced4da;"></canvas>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0 border-top">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3" style="width: 50px;">Cut</th>
+                                    <th>Part Label</th>
+                                    <th class="text-center">Grain</th>
+                                    <th class="text-end pe-3">Cut Size</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                 `;
-    
-                purchase.layout.forEach((board, bIndex) => {
-                    const canvasId = `canvas-board-${boardCounter}`;
+
+                board.cuts.forEach((cut, cIndex) => {
+                    const partData = appState.parts.find(p => p.id === cut.partId);
+                    const projName = appState.projects.find(p => p.id === partData?.projectId)?.name || 'Unknown';
+                    const label = appState.settings.optimizer.selectedProjects.length > 1 
+                        ? `[${safeHTML(projName)}] ${safeHTML(cut.name)}` 
+                        : safeHTML(cut.name);
                     
-                    let canvasHeight = 80; 
-                    if (isSheet && rawLength > 0) {
-                        canvasHeight = Math.floor(1000 * (rawWidth / rawLength)); 
-                    }
-    
-                    let wasteVal = 0;
-                    if (isSheet) {
-                        board.freeRects.forEach(r => wasteVal += (r.w * r.l));
-                    } else {
-                        wasteVal = board.remaining;
-                    }
-                    const wasteLabel = isSheet ? 'Waste Area' : 'Waste Length';
-                    const wasteDisplay = isSheet 
-                        ? (wasteVal / 1000000).toFixed(2) + ' m²' 
-                        : formatForDisplay(wasteVal);
-    
+                    const grainStr = isSheet && partData ? partData.grain : '-';
+                    const cutSizeStr = isSheet 
+                        ? `${formatForDisplay(cut.l)} x ${formatForDisplay(cut.w)}` 
+                        : `${formatForDisplay(cut.length)}`;
+
+                    const rotationWarning = (isSheet && cut.rotated) ? ' <span class="badge bg-warning text-dark ms-1">Rotated</span>' : '';
+
                     html += `
-                    <div class="card shadow-sm mb-4 border-secondary">
-                        <div class="card-header bg-light py-1 d-flex justify-content-between align-items-center">
-                            <small class="fw-bold text-muted">Board #${bIndex + 1} of ${purchase.layout.length}</small>
-                            <small class="text-muted">${wasteLabel}: ${wasteDisplay} ${isSheet ? '' : '<span class="display-unit-label"></span>'}</small>
-                        </div>
-                        
-                        <div class="card-body p-3 text-center overflow-auto bg-white">
-                            <canvas id="${canvasId}" width="1000" height="${canvasHeight}" style="width: 100%; min-width: 600px; max-width: 1000px; border-radius: 4px; border: 1px solid #ced4da;"></canvas>
-                        </div>
-                        
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover mb-0 border-top">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="ps-3" style="width: 50px;">Cut</th>
-                                        <th>Part Label</th>
-                                        <th class="text-center">Grain</th>
-                                        <th class="text-end pe-3">Cut Size</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                                <tr>
+                                    <td class="ps-3 fw-bold text-muted">${cIndex + 1}</td>
+                                    <td>${label}${rotationWarning}</td>
+                                    <td class="text-center text-capitalize text-muted"><small>${grainStr}</small></td>
+                                    <td class="text-end pe-3 fw-bold">${cutSizeStr} <span class="display-unit-label"></span></td>
+                                </tr>
                     `;
-    
-                    board.cuts.forEach((cut, cIndex) => {
-                        const partData = appState.parts.find(p => p.id === cut.partId);
-                        const projName = appState.projects.find(p => p.id === partData?.projectId)?.name || 'Unknown';
-                        const label = appState.settings.optimizer.selectedProjects.length > 1 
-                            ? `[${safeHTML(projName)}] ${safeHTML(cut.name)}` 
-                            : safeHTML(cut.name);
-                        
-                        const grainStr = isSheet && partData ? partData.grain : '-';
-                        const cutSizeStr = isSheet 
-                            ? `${formatForDisplay(cut.l)} x ${formatForDisplay(cut.w)}` 
-                            : `${formatForDisplay(cut.length)}`;
-    
-                        const rotationWarning = (isSheet && cut.rotated) ? ' <span class="badge bg-warning text-dark ms-1">Rotated</span>' : '';
-    
-                        html += `
-                                    <tr>
-                                        <td class="ps-3 fw-bold text-muted">${cIndex + 1}</td>
-                                        <td>${label}${rotationWarning}</td>
-                                        <td class="text-center text-capitalize text-muted"><small>${grainStr}</small></td>
-                                        <td class="text-end pe-3 fw-bold">${cutSizeStr} <span class="display-unit-label"></span></td>
-                                    </tr>
-                        `;
-                    });
-    
-                    html += `
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    `;
-                    
-                    canvasDrawQueue.push({ 
-                        id: canvasId, board: board, isSheet: isSheet,
-                        length: rawLength, width: rawWidth,
-                        kerf: isSheet ? k2D : k1D, trim: isSheet ? t2D : t1D,
-                        threshold: threshold, minW: minW, minL: minL
-                    });
-                    boardCounter++;
                 });
+
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                `;
+                
+                canvasDrawQueue.push({ 
+                    id: canvasId, board: board, isSheet: isSheet,
+                    length: group.length, width: group.width, grain: group.grain, 
+                    kerf: isSheet ? k2D : k1D, trim: isSheet ? t2D : t1D,
+                    threshold: threshold, minW: minW, minL: minL
+                });
+                boardCounter++;
             });
-    
-            if (html === '') {
-                html = `<div class="alert alert-warning mt-3">No diagrams could be generated.</div>`;
-            }
-    
-            container.innerHTML = html;
-            updateUnitLabels();
-    
-            canvasDrawQueue.forEach(job => {
-                if (job.isSheet) {
-                    drawSheetGraphic(job.id, job.board, job.length, job.width, job.kerf, job.trim, job.minW, job.minL);
-                } else {
-                    drawBoardGraphic(job.id, job.board, job.length, job.kerf, job.trim);
-                }
-            });
-        }
-    
-        // ==========================================
-        // 2D SHEET RENDERING ENGINE
-        // ==========================================
-        function drawSheetGraphic(canvasId, board, sheetLength, sheetWidth, kerf, trim, minW, minL) {
-            const canvas = document.getElementById(canvasId);
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            const w = canvas.width;  
-            const h = canvas.height; 
             
-            const pxPerMm = w / sheetLength;
-    
-            // 1. Paint Background
-            ctx.fillStyle = '#e9ecef'; 
-            ctx.fillRect(0, 0, w, h);
-    
-            // 2. Paint Factory Trim
-            if (trim > 0 && board.cuts.length > 0) {
-                ctx.fillStyle = '#adb5bd'; 
-                ctx.fillRect(0, 0, sheetLength * pxPerMm, trim * pxPerMm); 
-                ctx.fillRect(0, 0, trim * pxPerMm, sheetWidth * pxPerMm); 
+            html += `</div></details>`;
+        });
+
+        if (html === '') {
+            html = `<div class="alert alert-warning mt-3">No diagrams could be generated.</div>`;
+        }
+
+        container.innerHTML = html;
+        updateUnitLabels();
+
+        canvasDrawQueue.forEach(job => {
+            if (job.isSheet) {
+                drawSheetGraphic(job.id, job.board, job.length, job.width, job.grain, job.kerf, job.trim, job.minW, job.minL); 
+            } else {
+                drawBoardGraphic(job.id, job.board, job.length, job.kerf, job.trim);
             }
-    
-            // 🪄 Negative Space (Guillotine Cuts)
-            board.freeRects.forEach(rect => {
-                const cx = rect.y * pxPerMm; 
-                const cy = rect.x * pxPerMm; 
-                const cw = rect.l * pxPerMm; 
-                const ch = rect.w * pxPerMm; 
-    
-                // The Strip Rule logic
-                const shortestEdge = Math.min(rect.l, rect.w);
-                const longestEdge = Math.max(rect.l, rect.w);
-                const isUsable = (shortestEdge >= minW && longestEdge >= minL);
-    
-                if (isUsable) {
-                    ctx.fillStyle = 'rgba(40, 167, 69, 0.15)'; // Green for Usable Offcut
-                    ctx.strokeStyle = '#28a745'; 
-                } else {
-                    ctx.fillStyle = 'rgba(220, 53, 69, 0.1)'; // Red for True Scrap
-                    ctx.strokeStyle = '#dc3545'; 
-                }
-    
-                ctx.fillRect(cx, cy, cw, ch);
-                ctx.setLineDash([5, 5]); 
+        });
+    }
+
+    function toggleAllSKUs(expand) {
+        document.querySelectorAll('details.sku-group').forEach(el => {
+            if (expand) el.setAttribute('open', '');
+            else el.removeAttribute('open');
+        });
+    }
+
+    // ==========================================
+    // 2D SHEET RENDERING ENGINE
+    // ==========================================
+    function drawSheetGraphic(canvasId, board, sheetLength, sheetWidth, sheetGrain, kerf, trim, minW, minL) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;  
+        const h = canvas.height; 
+        
+        const flipDisplay = (sheetWidth > sheetLength);
+        const displayLong = flipDisplay ? sheetWidth : sheetLength;
+        const pxPerMm = w / displayLong;
+
+        function mapCoords(mathX, mathY, mathW, mathL) {
+            if (flipDisplay) {
+                return { cx: mathX * pxPerMm, cy: mathY * pxPerMm, cw: mathW * pxPerMm, ch: mathL * pxPerMm };
+            } else {
+                return { cx: mathY * pxPerMm, cy: mathX * pxPerMm, cw: mathL * pxPerMm, ch: mathW * pxPerMm };
+            }
+        }
+
+        ctx.fillStyle = '#e9ecef'; 
+        ctx.fillRect(0, 0, w, h);
+
+        if (trim > 0 && board.cuts.length > 0) {
+            ctx.fillStyle = '#adb5bd'; 
+            ctx.fillRect(0, 0, w, trim * pxPerMm); 
+            ctx.fillRect(0, 0, trim * pxPerMm, h); 
+        }
+
+        board.freeRects.forEach(rect => {
+            const mapped = mapCoords(rect.x, rect.y, rect.w, rect.l);
+            const shortestEdge = Math.min(rect.l, rect.w);
+            const longestEdge = Math.max(rect.l, rect.w);
+            const isUsable = (shortestEdge >= minW && longestEdge >= minL);
+
+            if (isUsable) {
+                ctx.fillStyle = 'rgba(40, 167, 69, 0.15)'; 
+                ctx.strokeStyle = '#28a745'; 
+            } else {
+                ctx.fillStyle = 'rgba(220, 53, 69, 0.1)'; 
+                ctx.strokeStyle = '#dc3545'; 
+            }
+
+            ctx.fillRect(mapped.cx, mapped.cy, mapped.cw, mapped.ch);
+            ctx.setLineDash([5, 5]); 
+            ctx.lineWidth = 1;
+            ctx.strokeRect(mapped.cx, mapped.cy, mapped.cw, mapped.ch);
+            ctx.setLineDash([]); 
+        });
+
+        let isVisualHorizontal = false;
+        if (sheetGrain !== 'none') {
+            isVisualHorizontal = (sheetGrain === 'length');
+            if (flipDisplay) isVisualHorizontal = !isVisualHorizontal;
+        }
+
+        board.cuts.forEach((cut, index) => {
+            const mapped = mapCoords(cut.x, cut.y, cut.w, cut.l);
+
+            ctx.fillStyle = '#DEB887'; 
+            ctx.fillRect(mapped.cx, mapped.cy, mapped.cw, mapped.ch);
+
+            if (sheetGrain !== 'none') {
+                ctx.strokeStyle = 'rgba(139, 69, 19, 0.25)'; 
                 ctx.lineWidth = 1;
-                ctx.strokeRect(cx, cy, cw, ch);
-                ctx.setLineDash([]); 
-            });
-    
-            // 3. Draw Parts
-            board.cuts.forEach((cut, index) => {
-                const cx = cut.y * pxPerMm; 
-                const cy = cut.x * pxPerMm; 
-                const cw = cut.l * pxPerMm; 
-                const ch = cut.w * pxPerMm; 
-    
-                ctx.fillStyle = '#DEB887'; 
-                ctx.fillRect(cx, cy, cw, ch);
-    
-                let partData = appState.parts.find(p => p.id === cut.partId);
-                let grainPref = partData ? partData.grain : 'none';
+                ctx.beginPath();
                 
-                if (grainPref !== 'none') {
-                    let isHorizontal = true;
-                    if (grainPref === 'length') {
-                        isHorizontal = !cut.rotated;
-                    } else if (grainPref === 'width') {
-                        isHorizontal = cut.rotated;
+                if (isVisualHorizontal) {
+                    const stepY = mapped.ch < 45 ? mapped.ch / 4 : 15; 
+                    for (let y = mapped.cy + stepY; y < mapped.cy + mapped.ch - 1; y += stepY) {
+                        ctx.moveTo(mapped.cx, y);
+                        ctx.lineTo(mapped.cx + mapped.cw, y);
                     }
-    
-                    ctx.strokeStyle = 'rgba(139, 69, 19, 0.25)'; 
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    
-                    if (isHorizontal) {
-                        const step = ch / 6;
-                        for (let i = 1; i < 6; i++) {
-                            ctx.moveTo(cx, cy + (i * step));
-                            ctx.lineTo(cx + cw, cy + (i * step));
-                        }
-                    } else {
-                        const step = cw / 6;
-                        for (let i = 1; i < 6; i++) {
-                            ctx.moveTo(cx + (i * step), cy);
-                            ctx.lineTo(cx + (i * step), cy + ch);
-                        }
+                } else {
+                    const stepX = mapped.cw < 45 ? mapped.cw / 4 : 15;
+                    for (let x = mapped.cx + stepX; x < mapped.cx + mapped.cw - 1; x += stepX) {
+                        ctx.moveTo(x, mapped.cy);
+                        ctx.lineTo(x, mapped.cy + mapped.ch);
                     }
-                    ctx.stroke();
                 }
-    
-                ctx.strokeStyle = '#8B4513';
-                ctx.lineWidth = 1.5;
-                ctx.strokeRect(cx, cy, cw, ch);
-    
-                if (cw > 20 && ch > 20) {
-                    ctx.fillStyle = '#000';
-                    ctx.font = 'bold 14px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(index + 1, cx + (cw / 2), cy + (ch / 2));
-                }
-            });
-        }
-    
-        // ==========================================
-        // 1D LUMBER RENDERING ENGINE
-        // ==========================================
-        function drawBoardGraphic(canvasId, board, fullLength, kerf, trim) {
-            const canvas = document.getElementById(canvasId);
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            const w = canvas.width;  
-            const h = canvas.height; 
-            const pxPerMm = w / fullLength;
-    
-            ctx.fillStyle = '#e9ecef';
-            ctx.fillRect(0, 0, w, h);
-    
-            let currentX = 0;
-    
-            if (trim > 0 && board.cuts.length > 0) {
-                const trimPx = trim * pxPerMm;
-                ctx.fillStyle = '#adb5bd'; 
-                ctx.fillRect(currentX, 0, trimPx, h);
-                currentX += trimPx;
+                ctx.stroke();
             }
-    
-            board.cuts.forEach((cut, index) => {
-                if (index > 0) {
-                    const kerfPx = kerf * pxPerMm;
-                    ctx.fillStyle = '#dc3545'; 
-                    ctx.fillRect(currentX, 0, kerfPx, h);
-                    currentX += kerfPx;
-                }
-    
-                const cutPx = cut.length * pxPerMm;
-                
-                ctx.fillStyle = '#8B4513'; 
-                ctx.fillRect(currentX, 0, cutPx, h);
-                
-                ctx.strokeStyle = '#5c2e0b';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(currentX, 0, cutPx, h);
-    
-                if (cutPx > 25) { 
-                    ctx.fillStyle = '#fff';
-                    ctx.font = 'bold 16px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(index + 1, currentX + (cutPx / 2), h / 2);
-                }
-    
-                currentX += cutPx;
-            });
+
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(mapped.cx, mapped.cy, mapped.cw, mapped.ch);
+
+            if (mapped.cw > 25 && mapped.ch > 25) {
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(index + 1, mapped.cx + (mapped.cw / 2), mapped.cy + (mapped.ch / 2));
+            }
+        });
+    }
+
+    // ==========================================
+    // 1D LUMBER RENDERING ENGINE
+    // ==========================================
+    function drawBoardGraphic(canvasId, board, fullLength, kerf, trim) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;  
+        const h = canvas.height; 
+        const pxPerMm = w / fullLength;
+
+        ctx.fillStyle = '#e9ecef';
+        ctx.fillRect(0, 0, w, h);
+
+        let currentX = 0;
+
+        if (trim > 0 && board.cuts.length > 0) {
+            const trimPx = trim * pxPerMm;
+            ctx.fillStyle = '#adb5bd'; 
+            ctx.fillRect(currentX, 0, trimPx, h);
+            currentX += trimPx;
         }
-    </script>
+
+        board.cuts.forEach((cut, index) => {
+            if (index > 0) {
+                const kerfPx = kerf * pxPerMm;
+                ctx.fillStyle = '#dc3545'; 
+                ctx.fillRect(currentX, 0, kerfPx, h);
+                currentX += kerfPx;
+            }
+
+            const cutPx = cut.length * pxPerMm;
+            
+            ctx.fillStyle = '#8B4513'; 
+            ctx.fillRect(currentX, 0, cutPx, h);
+
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)'; 
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            const stepY = h < 30 ? h / 3 : 10;
+            for (let y = stepY; y < h; y += stepY) {
+                ctx.moveTo(currentX, y);
+                ctx.lineTo(currentX + cutPx, y);
+            }
+            ctx.stroke();
+            
+            ctx.strokeStyle = '#5c2e0b';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(currentX, 0, cutPx, h);
+
+            if (cutPx > 25) { 
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(index + 1, currentX + (cutPx / 2), h / 2);
+            }
+
+            currentX += cutPx;
+        });
+    }
+</script>

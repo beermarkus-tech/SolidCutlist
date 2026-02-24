@@ -79,6 +79,18 @@
                                 <option value="fastener">Fastener</option>
                             </select>
                         </div>
+                        <div class="col-sm-1">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Qty</label>
+                            <input type="number" class="form-control form-control-sm text-center" id="stock-qty" value="1" min="1" required>
+                        </div>
+                        <div class="col-sm-1">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                            <input type="text" class="form-control form-control-sm" id="stock-width" disabled>
+                        </div>
+                        <div class="col-sm-1">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
+                            <input type="text" class="form-control form-control-sm" id="stock-length" required disabled>
+                        </div>
                         <div class="col-sm">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
                             <select class="form-select form-select-sm" id="stock-profile" required disabled></select>
@@ -86,18 +98,6 @@
                         <div class="col-sm">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material</label>
                             <select class="form-select form-select-sm" id="stock-material" required disabled></select>
-                        </div>
-                        <div class="col-sm-1">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Qty</label>
-                            <input type="number" class="form-control form-control-sm text-center" id="stock-qty" value="1" min="1" required>
-                        </div>
-                        <div class="col-sm-1">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
-                            <input type="text" class="form-control form-control-sm" id="stock-length" required disabled>
-                        </div>
-                        <div class="col-sm-1">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
-                            <input type="text" class="form-control form-control-sm" id="stock-width" disabled>
                         </div>
                         <div class="col-sm-1">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets Only">Grain</label>
@@ -124,10 +124,10 @@
                         <thead>
                             <tr>
                                 <th class="col-1 text-center" onclick="handleSort('stock', 'categoryId', 'string')" style="cursor: pointer;">Category ⇅</th>
-                                <th class="text-center" onclick="handleSort('stock', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</th>
-                                <th class="text-center" onclick="handleSort('stock', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</th>
                                 <th class="text-center" onclick="handleSort('stock', 'qty', 'number')" style="cursor: pointer;">Qty ⇅</th>
                                 <th class="text-center" onclick="handleSort('stock', 'length', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</th>
+                                <th class="text-center" onclick="handleSort('stock', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</th>
+                                <th class="text-center" onclick="handleSort('stock', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</th>
                                 <th class="text-center" onclick="handleSort('stock', 'grain', 'string')" style="cursor: pointer;">Grain ⇅</th>
                                 <th class="text-center" onclick="handleSort('stock', 'isCutoff', 'string')" style="cursor: pointer;">Type ⇅</th>
                                 <th class="text-end"></th>
@@ -158,9 +158,11 @@
                                 <option value="fastener">Fastener</option>
                             </select>
                         </div>
-                        <div class="col-sm">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
-                            <select class="form-select form-select-sm" id="cat-profile" required disabled></select>
+                        <div class="col-sm-1">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control form-control-sm" id="cat-width" disabled>
+                            </div>
                         </div>
                         <div class="col-sm-1">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
@@ -168,11 +170,9 @@
                                 <input type="text" class="form-control form-control-sm" id="cat-length" required disabled>
                             </div>
                         </div>
-                        <div class="col-sm-1">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
-                            <div class="input-group input-group-sm">
-                                <input type="text" class="form-control form-control-sm" id="cat-width" disabled>
-                            </div>
+                        <div class="col-sm">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
+                            <select class="form-select form-select-sm" id="cat-profile" required disabled></select>
                         </div>
                         <div class="col-sm">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material</label>
@@ -215,8 +215,8 @@
                         <thead>
                             <tr>
                                 <th class="col-1 text-center" onclick="handleSort('catalog', 'categoryId', 'string')" style="cursor: pointer;">Category ⇅</th>
-                                <th onclick="handleSort('catalog', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</th>
                                 <th class="text-center" onclick="handleSort('catalog', 'length', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</th>
+                                <th onclick="handleSort('catalog', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</th>
                                 <th onclick="handleSort('catalog', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</th>
                                 <th class="text-center" onclick="handleSort('catalog', 'grain', 'string')" style="cursor: pointer;">Grain ⇅</th>
                                 <th onclick="handleSort('catalog', 'storeId', 'string')" style="cursor: pointer;">Store ⇅</th>

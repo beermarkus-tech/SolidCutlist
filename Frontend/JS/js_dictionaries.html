@@ -123,10 +123,10 @@
                 dimHtml = `
                     <div class="d-flex align-items-center justify-content-center gap-1">
                         <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0" style="width: 50px;" 
-                               value="${displayL}" onchange="updateStock('${item.id}', 'length', this.value)" title="Tap to edit length">
+                               value="${displayW}" onchange="updateStock('${item.id}', 'width', this.value)" title="Tap to edit width">
                         <span class="text-muted text-sm">x</span>
                         <input type="text" class="form-control form-control-sm border-0 bg-transparent text-start px-0" style="width: 50px;" 
-                               value="${displayW}" onchange="updateStock('${item.id}', 'width', this.value)" title="Tap to edit width">
+                               value="${displayL}" onchange="updateStock('${item.id}', 'length', this.value)" title="Tap to edit length">
                     </div>`;
             } else {
                 dimHtml = `
@@ -165,13 +165,13 @@
                         </select>
                     </div>
                 </td>
-                <td class="p-0 align-middle text-center">${profHtml}</td>
-                <td class="p-0 align-middle text-center">${matHtml}</td>
                 <td class="text-center p-0 align-middle"><small>
                     <input type="number" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width: 50px;"
                            value="${item.qty}" onchange="updateStock('${item.id}', 'qty', this.value)" title="Tap to edit qty">
                 </small></td>
                 <td class="text-center text-nowrap p-0 align-middle">${dimHtml}</td>
+                <td class="p-0 align-middle text-center">${profHtml}</td>
+                <td class="p-0 align-middle text-center">${matHtml}</td>
                 <td class="text-center text-capitalize p-0 align-middle">${grainHtml}</td>
                 <td class="text-center p-0 align-middle">${typeHtml}</td>
                 <td class="text-end align-middle">
@@ -345,10 +345,10 @@
                 dimHtml = `
                     <div class="d-flex align-items-center justify-content-center gap-1">
                         <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0" style="width: 50px;" 
-                               value="${displayL}" onchange="updateCatalogItem('${item.id}', 'length', this.value)" title="Tap to edit length">
+                               value="${displayW}" onchange="updateCatalogItem('${item.id}', 'width', this.value)" title="Tap to edit width">
                         <span class="text-muted text-sm">x</span>
                         <input type="text" class="form-control form-control-sm border-0 bg-transparent text-start px-0" style="width: 50px;" 
-                               value="${displayW}" onchange="updateCatalogItem('${item.id}', 'width', this.value)" title="Tap to edit width">
+                               value="${displayL}" onchange="updateCatalogItem('${item.id}', 'length', this.value)" title="Tap to edit length">
                     </div>`;
             } else {
                 dimHtml = `
@@ -421,8 +421,8 @@
                         </select>
                     </div>
                 </td>
-                <td class="p-0 align-middle">${profHtml}</td>
                 <td class="text-center p-0 align-middle">${dimHtml}</td>
+                <td class="p-0 align-middle">${profHtml}</td>
                 <td class="p-0 align-middle">${matHtml}</td>
                 <td class="text-center p-0 align-middle">${grainHtml}</td>
                 <td class="p-0 align-middle">${storeHtml}</td>
