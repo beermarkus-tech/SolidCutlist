@@ -161,7 +161,7 @@
         // Initialize array if it doesn't exist
         if (!appState.parts) appState.parts = [];
         
-        appState.parts.push(newPart);
+        appState.parts.unshift(newPart);
         saveState();
         renderPartsTable();
         showToast('Part added to cutlist.');
@@ -273,7 +273,7 @@
             if (part.category === 'sheet') {
                 grainHtml = `
                     <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;" onchange="updatePart('${part.id}', 'grain', this.value)" title="Change Grain">
-                        <option value="none" ${part.grain === 'none' ? 'selected' : ''}>None</option>
+                        <option value="none" ${part.grain === 'none' ? 'selected' : ''}>-</option>
                         <option value="length" ${part.grain === 'length' ? 'selected' : ''}>Length</option>
                         <option value="width" ${part.grain === 'width' ? 'selected' : ''}>Width</option>
                     </select>

@@ -70,7 +70,7 @@
                 <div class="col-sm-1">
                     <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets">Grain</label>
                     <select class="form-select form-select-sm" id="part-grain" disabled>
-                        <option value="none">None</option>
+                        <option value="none">-</option>
                         <option value="length">Length</option>
                         <option value="width">Width</option>
                     </select>
@@ -82,9 +82,9 @@
             </div>
         </form>
         <hr>
-        <div class="table-responsive">
+        <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
             <table class="table table-sm table-hover table-striped align-middle">
-                <thead>
+                <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <tr>
                         <th onclick="handleSort('parts', 'projectId', 'string')" style="cursor: pointer;">Project ⇅</th>
                         <th onclick="handleSort('parts', 'groupId', 'string')" style="cursor: pointer;">Group ⇅</th>

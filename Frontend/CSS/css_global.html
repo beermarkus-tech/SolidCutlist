@@ -46,4 +46,20 @@
         background-position: right 0.25rem center !important; /* Push arrow neatly to the edge */
         background-size: 12px 12px !important; /* Shrink the arrow just a hair */
     }
+
+    /* 🪄 UNIVERSAL STICKY HEADER CLASS */
+    .shop-sticky-header {
+        position: sticky !important;
+        top: 52px !important;     /* Locks exactly under your top navbar */
+        z-index: 1050 !important; /* Crushes all scrolling content beneath it */
+        opacity: 1 !important;    /* Kills Bootstrap frosted-glass bleed-through */
+    }
+
+    /* Keep it clean for the printer */
+    @media print {
+        .shop-sticky-header {
+            position: relative !important;
+            top: auto !important;
+        }
+    }
 </style>

@@ -51,10 +51,8 @@
         if (!appState.projects) appState.projects = [];
 
         appState.projects.forEach(proj => {
+
             const tr = document.createElement('tr');
-            
-            // Notice the inline input field. It looks like plain text until you tap it.
-            // When you change the text and tap away, it fires onchange="updateProjectName(...)"
             tr.innerHTML = `
                 <td>
                     <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" 
@@ -139,7 +137,7 @@
             if (item.categoryId === 'sheet') {
                 grainHtml = `
                     <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;" onchange="updateStock('${item.id}', 'grain', this.value)" title="Change Grain">
-                        <option value="none" ${item.grain === 'none' ? 'selected' : ''}>None</option>
+                        <option value="none" ${item.grain === 'none' ? 'selected' : ''}>-</option>
                         <option value="length" ${item.grain === 'length' ? 'selected' : ''}>Length</option>
                         <option value="width" ${item.grain === 'width' ? 'selected' : ''}>Width</option>
                     </select>
@@ -396,7 +394,7 @@
             if (item.categoryId === 'sheet') {
                 grainHtml = `
                     <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;" onchange="updateCatalogItem('${item.id}', 'grain', this.value)" title="Change Grain">
-                        <option value="none" ${item.grain === 'none' ? 'selected' : ''}>None</option>
+                        <option value="none" ${item.grain === 'none' ? 'selected' : ''}>-</option>
                         <option value="length" ${item.grain === 'length' ? 'selected' : ''}>Length</option>
                         <option value="width" ${item.grain === 'width' ? 'selected' : ''}>Width</option>
                     </select>
@@ -467,7 +465,7 @@
             status: 'Design'
         };
         
-        appState.projects.push(newProject);
+        appState.projects.unshift(newProject);
         saveState();
         renderDictionaries();
         showToast('Project created.');
@@ -489,7 +487,7 @@
             density: parseDensityToBase(densityInput) 
         };
         
-        appState.materials.push(newMaterial);
+        appState.materials.unshift(newMaterial);
         saveState();
         renderDictionaries();
         showToast('Material added successfully.');
@@ -519,7 +517,7 @@
             width: widthBase
         };
         
-        appState.profiles.push(newProfile);
+        appState.profiles.unshift(newProfile);
         saveState();
         renderDictionaries();
         showToast('Profile added successfully.');
@@ -826,7 +824,7 @@
 
         if (!appState.groups) appState.groups = [];
         
-        appState.groups.push({
+        appState.groups.unshift({
             id: 'GRP-' + Date.now(),
             projectId: activeProjectId,
             name: nameInput.value
@@ -938,7 +936,7 @@
         
         if (!appState.stock) appState.stock = [];
 
-        appState.stock.push({
+        appState.stock.unshift({
             id: 'STK-' + Date.now(),
             categoryId: category,
             profileId: document.getElementById('stock-profile').value,
@@ -1042,7 +1040,7 @@
         event.preventDefault();
         const nameInput = document.getElementById('modal-new-store-name');
         if (!appState.stores) appState.stores = [];
-        appState.stores.push({ id: 'STR-' + Date.now(), name: nameInput.value });
+        appState.stores.unshift({ id: 'STR-' + Date.now(), name: nameInput.value });
         saveState();
         renderStoreModalTable();
         nameInput.value = ''; 
@@ -1182,7 +1180,7 @@
         
         if (!appState.catalog) appState.catalog = [];
 
-        appState.catalog.push({
+        appState.catalog.unshift({
             id: 'CAT-' + Date.now(),
             categoryId: category,
             profileId: document.getElementById('cat-profile').value,
