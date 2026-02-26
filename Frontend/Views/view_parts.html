@@ -8,7 +8,7 @@
 <div class="card shadow-sm">
     <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
         <h6 class="card-title mb-0">🧩 Current Partlist</h6>
-        <button id="btn-inline-import" class="btn btn-light btn-sm py-0" onclick="navigateTo('view-import')"><b>📥 Import parts via CSV</b></button>
+        <button id="btn-inline-import" class="btn btn-light btn-sm py-0" onclick="navigateTo('view-import')"><b>📥 Import Parts</b></button>
     </div>
     <div class="card-body">
         <form id="form-add-part" onsubmit="handleAddPart(event)">
@@ -86,21 +86,54 @@
             <table class="table table-sm table-hover table-striped align-middle">
                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <tr>
-                        <th onclick="handleSort('parts', 'projectId', 'string')" style="cursor: pointer;">Project ⇅</th>
-                        <th onclick="handleSort('parts', 'groupId', 'string')" style="cursor: pointer;">Group ⇅</th>
+                        <th class="text-nowrap">
+                            <span onclick="handleSort('parts', 'projectId', 'string')" style="cursor: pointer;">Project ⇅</span>
+                            <span id="flt-icon-parts-projectId" onclick="openFilterModal(event, 'parts', 'projectId', 'Project')" style="cursor: pointer;" title="Filter">▼</span>
+                        </th>
+                        <th class="text-nowrap">
+                            <span onclick="handleSort('parts', 'groupId', 'string')" style="cursor: pointer;">Group ⇅</span>
+                            <span id="flt-icon-parts-groupId" onclick="openFilterModal(event, 'parts', 'groupId', 'Group')" style="cursor: pointer;" title="Filter">▼</span>
+                        </th>
                         <th onclick="handleSort('parts', 'name', 'string')" style="cursor: pointer;">Part Name ⇅</th>
-                        <th onclick="handleSort('parts', 'category', 'string')" class="col-2 text-center" style="cursor: pointer;">Category ⇅</th>
-                        <th onclick="handleSort('parts', 'qty', 'number')" class="text-center" style="cursor: pointer;">Qty ⇅</th>
+                        <th class="col-2 text-center text-nowrap">
+                            <span onclick="handleSort('parts', 'category', 'string')" class="col-2 text-center" style="cursor: pointer;">Category ⇅</span>
+                            <span id="flt-icon-parts-category" onclick="openFilterModal(event, 'parts', 'category', 'Category')" style="cursor: pointer;" title="Filter">▼</span>
+                        </th>
+                        <th id="th-parts-qty" onclick="handleSort('parts', 'qty', 'number')" class="text-center" style="cursor: pointer;" title="Visible Total: 0">Qty ⇅</th>
                         <th onclick="handleSort('parts', 'length', 'number')" class="text-center" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</th>
-                        <th onclick="handleSort('parts', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</th>
-                        <th onclick="handleSort('parts', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</th>
-                        <th onclick="handleSort('parts', 'grain', 'string')" class="text-center" style="cursor: pointer;">Grain ⇅</th>
-                        <th onclick="handleSort('parts', 'weight', 'number')" class="text-center text-nowrap" style="cursor: pointer;">Weight ⇅</th>
-                        <th class="text-end"></th>
+                        <th class="text-nowrap">
+                            <span onclick="handleSort('parts', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</span>
+                            <span id="flt-icon-parts-profileId" onclick="openFilterModal(event, 'parts', 'profileId', 'Profile')" style="cursor: pointer;" title="Filter">▼</span>
+                        </th>
+                        <th class="text-nowrap">
+                            <span onclick="handleSort('parts', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</span>
+                            <span id="flt-icon-parts-materialId" onclick="openFilterModal(event, 'parts', 'materialId', 'Material')" style="cursor: pointer;" title="Filter">▼</span>
+                        </th>
+                        <th class="text-center text-nowrap">
+                            <span onclick="handleSort('parts', 'grain', 'string')" class="text-center" style="cursor: pointer;">Grain ⇅</span>
+                            <span id="flt-icon-parts-grain" onclick="openFilterModal(event, 'parts', 'grain', 'Grain')" style="cursor: pointer;" title="Filter">▼</span>
+                        </th>
+                        <th id="th-parts-weight" onclick="handleSort('parts', 'weight', 'number')" class="text-center text-nowrap" style="cursor: pointer;" title="Visible Total: 0">Weight ⇅</th>
+                        <th class="text-center">
+                            <span id="flt-clear-parts" onclick="clearAllFiltersForTable('parts')" class="text-secondary opacity-25" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
+                        </th>
                     </tr>
                 </thead>
                 <tbody id="table-parts-body">
                     </tbody>
+
+                    <tbody id="table-parts-body">
+                    </tbody>
+                
+                <tfoot style="position: sticky; bottom: 0; z-index: 10; background-color: var(--bs-secondary-bg); box-shadow: 0 -2px 4px rgba(0,0,0,0.05);">
+                    <tr class="fw-bold">
+                        <td colspan="4" class="text-end text-muted small align-middle">VISIBLE TOTALS:</td>
+                        <td id="tfoot-parts-qty" class="text-center text-primary fs-6">0</td>
+                        <td colspan="4"></td>
+                        <td id="tfoot-parts-weight" class="text-center text-primary fs-6">0</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>

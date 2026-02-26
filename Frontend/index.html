@@ -156,6 +156,34 @@
         </div>
     </div>
 
+    <!-- Global Column Filter Modal -->
+    <div class="modal fade" id="universalFilterModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content shadow">
+                <div class="modal-header bg-secondary text-white py-2">
+                    <h6 class="modal-title mb-0" id="filterModalTitle">Filter</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <input type="hidden" id="filter-array-name">
+                    <input type="hidden" id="filter-column-key">
+                    
+                    <div class="d-flex justify-content-between p-2 border-bottom">
+                        <button class="btn btn-sm btn-outline-secondary py-0" onclick="toggleAllFilters(true)">Select All</button>
+                        <button class="btn btn-sm btn-outline-secondary py-0" onclick="toggleAllFilters(false)">Clear</button>
+                    </div>
+                    
+                    <div id="filter-checkbox-list" class="p-2" style="max-height: 40vh; overflow-y: auto;">
+                        </div>
+                </div>
+                <div class="modal-footer p-2 d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-danger px-3" onclick="clearCurrentFilter()">Remove Filter</button>
+                    <button type="button" class="btn btn-sm btn-primary px-4 fw-bold" onclick="applyFilter()">Apply</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Global Toast Container (for non-intrusive notifications) -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container"></div>
 

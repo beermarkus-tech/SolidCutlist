@@ -255,6 +255,10 @@
         return (val * 0.06242796).toFixed(2); // Convert to lb/ft³
     }
 
+    // ==========================================
+    // SORTING ENGINE
+    // ==========================================
+
     // Tracks current sort directions (Ascending/Descending)
     const sortTracker = {};
 
@@ -331,6 +335,149 @@
         if (arrayName === 'stagingParts') renderStagingTable();
         if (arrayName === 'groups' && typeof renderGroupModalTable === 'function') renderGroupModalTable();
         if (arrayName === 'stores' && typeof renderStoreModalTable === 'function') renderStoreModalTable();
+    }
+
+    // ==========================================
+    // FILTER ENGINE
+    // ==========================================
+
+    // 1. The Global State Tracker
+    // Remembers which checkboxes are ticked: e.g. { parts: { category: ['lumber'] } }
+    let activeFilters = {};
+
+    // 2. Open the Modal & Populate Data
+    function openFilterModal(event, arrayName, columnKey, displayTitle) {
+        // 🪄 CRITICAL: Stop the click from triggering a column sort!
+        event.stopPropagation();
+
+        // Ensure the tracker exists for this table
+        if (!activeFilters[arrayName]) activeFilters[arrayName] = {};
+
+        // Set hidden inputs and Title
+        document.getElementById('filter-array-name').value = arrayName;
+        document.getElementById('filter-column-key').value = columnKey;
+        document.getElementById('filterModalTitle').innerText = `Filter: ${displayTitle}`;
+
+        // Extract unique values from the database
+        const uniqueValues = new Map(); // Use a Map to hold { rawValue: humanReadableText }
+
+        appState[arrayName].forEach(row => {
+            let rawValue = row[columnKey];
+            let displayText = rawValue;
+
+            // Handle Empty/Null
+            if (rawValue === '' || rawValue === null || rawValue === undefined) {
+                rawValue = '___EMPTY___';
+                displayText = '(Blank)';
+            } else {
+                // 🪄 TRANSLATION DICTIONARY: Convert IDs to Human Readable Names
+                if (columnKey === 'projectId') displayText = appState.projects.find(p => p.id === rawValue)?.name || 'Unknown Project';
+                else if (columnKey === 'groupId') displayText = appState.groups.find(g => g.id === rawValue)?.name || 'Unknown Group';
+                else if (columnKey === 'profileId') displayText = appState.profiles.find(p => p.id === rawValue)?.name || 'Unknown Profile';
+                else if (columnKey === 'materialId') displayText = appState.materials.find(m => m.id === rawValue)?.name || 'Unknown Material';
+                else if (columnKey === 'storeId') displayText = appState.stores?.find(s => s.id === rawValue)?.name || 'Unknown Store';
+            }
+
+            uniqueValues.set(rawValue, displayText);
+        });
+
+        // Sort alphabetically by the Human Readable text
+        const sortedEntries = Array.from(uniqueValues.entries()).sort((a, b) => String(a[1]).localeCompare(String(b[1])));
+
+        // Build the HTML Checkboxes
+        const listContainer = document.getElementById('filter-checkbox-list');
+        listContainer.innerHTML = '';
+
+        const currentActive = activeFilters[arrayName][columnKey] || [];
+
+        sortedEntries.forEach(([rawVal, displayTxt]) => {
+            // If there's no active filter array, default to checking everything
+            const isChecked = currentActive.length === 0 || currentActive.includes(rawVal);
+            
+            const div = document.createElement('div');
+            div.className = 'form-check mb-1';
+            div.innerHTML = `
+                <input class="form-check-input filter-option-cb" type="checkbox" value="${safeHTML(rawVal)}" id="flt-${safeHTML(rawVal)}" ${isChecked ? 'checked' : ''}>
+                <label class="form-check-label w-100" for="flt-${safeHTML(rawVal)}" style="cursor:pointer;">
+                    ${safeHTML(displayTxt)}
+                </label>
+            `;
+            listContainer.appendChild(div);
+        });
+
+        // Show the Modal
+        const modal = new bootstrap.Modal(document.getElementById('universalFilterModal'));
+        modal.show();
+    }
+
+    // 3. Modal Button Helpers
+    function toggleAllFilters(checkThem) {
+        document.querySelectorAll('.filter-option-cb').forEach(cb => cb.checked = checkThem);
+    }
+
+    function clearCurrentFilter() {
+        toggleAllFilters(true); // Visually check all
+        applyFilter(); // Applying with everything checked is the same as clearing it
+    }
+
+    // 4. Save the Filter & Redraw
+    function applyFilter() {
+        const arrayName = document.getElementById('filter-array-name').value;
+        const columnKey = document.getElementById('filter-column-key').value;
+        
+        const checkboxes = document.querySelectorAll('.filter-option-cb');
+        const checkedValues = [];
+        let allChecked = true;
+
+        checkboxes.forEach(cb => {
+            if (cb.checked) checkedValues.push(cb.value);
+            else allChecked = false;
+        });
+
+        if (!activeFilters[arrayName]) activeFilters[arrayName] = {};
+
+        // If everything is checked, we don't need to filter at all. Remove it to save math.
+        if (allChecked) {
+            delete activeFilters[arrayName][columnKey];
+        } else {
+            activeFilters[arrayName][columnKey] = checkedValues;
+        }
+
+        // Hide Modal
+        bootstrap.Modal.getInstance(document.getElementById('universalFilterModal')).hide();
+
+        // 🪄 Trigger the correct redraw function
+        if (arrayName === 'parts' && typeof renderPartsTable === 'function') renderPartsTable();
+        if (arrayName === 'materials' && typeof renderMaterialsTable === 'function') renderMaterialsTable();
+        // Add other table render triggers here as needed...
+    }
+
+    // 5. The Gatekeeper (Called inside your render loops)
+    function rowPassesFilters(row, arrayName) {
+        if (!activeFilters[arrayName]) return true; // No filters active for this table
+
+        for (const [columnKey, allowedValues] of Object.entries(activeFilters[arrayName])) {
+            let cellValue = row[columnKey];
+            if (cellValue === '' || cellValue === null || cellValue === undefined) cellValue = '___EMPTY___';
+            
+            // If the cell's value is NOT in the allowed list, kill the row immediately
+            if (!allowedValues.includes(String(cellValue))) {
+                return false; 
+            }
+        }
+        return true; // Passed all active filters!
+    }
+
+    // 6. Global Master Clear Switch
+    function clearAllFiltersForTable(arrayName) {
+        if (activeFilters[arrayName]) {
+            activeFilters[arrayName] = {}; // Wipe the filters clean for this table
+        }
+        
+        // Trigger the redraw to bring all rows back instantly
+        if (arrayName === 'parts' && typeof renderPartsTable === 'function') renderPartsTable();
+        if (arrayName === 'materials' && typeof renderMaterialsTable === 'function') renderMaterialsTable();
+        if (arrayName === 'stock' && typeof renderStockTable === 'function') renderStockTable();
     }
 
     // ==========================================

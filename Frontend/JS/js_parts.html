@@ -181,6 +181,10 @@
         if (!tbody) return;
         tbody.innerHTML = '';
 
+        // 🪄 1. Initialize the running totals
+        let totalVisibleQty = 0;
+        let totalVisibleWeightKg = 0;
+
         if (!appState.parts || appState.parts.length === 0) {
             // Updated colspan to match the new number of headers
             tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted">No parts added yet.</td></tr>';
@@ -188,6 +192,8 @@
         }
 
         appState.parts.forEach(part => {
+            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(part, 'parts')) return;
+
             const tr = document.createElement('tr');
             
             // Relational Lookups (Moved up so we can use them for validation)
@@ -252,18 +258,25 @@
                 dimHtml = `<span class="text-muted">-</span>`;
             }
 
-            // 🪄 4. WEIGHT CALCULATION
+            // 🪄 4. WEIGHT CALCULATION & TOTALS
             let displayWeight = '-';
+            let rowWeightKg = 0; 
+            
             if (part.category !== 'fastener' && prof && mat) {
-                const safeThick = prof ? prof.thickness : 0;
-                const trueWidth = part.category === 'lumber' ? (prof ? prof.width : 0) : part.width;
-                const volumeM3 = (part.length * trueWidth * safeThick) / 1000000000;
-                const weightKg = volumeM3 * (mat ? mat.density : 0) * part.qty;
+                const safeThick = prof.thickness || 0;
+                const trueWidth = part.category === 'lumber' ? (prof.width || 0) : (part.width || 0);
+                const volumeM3 = ((part.length || 0) * trueWidth * safeThick) / 1000000000;
+                rowWeightKg = volumeM3 * (mat.density || 0) * (parseInt(part.qty) || 1); 
+                
                 const isMetric = appState.settings.displayUnit === 'mm';
-                const finalWeight = isMetric ? weightKg : (weightKg * 2.20462);
+                const finalWeight = isMetric ? rowWeightKg : (rowWeightKg * 2.20462);
                 const weightUnit = isMetric ? 'kg' : 'lbs';
                 displayWeight = `<small>${finalWeight.toFixed(2)} ${weightUnit}</small>`;
             }
+
+            // 🪄 ADD TO RUNNING TOTALS (This must be OUTSIDE the if-statement so all Qty is counted!)
+            totalVisibleQty += parseInt(part.qty) || 0;
+            totalVisibleWeightKg += rowWeightKg;
 
             // COLOR CODED BADGE LOGIC
             let badgeClass = getCategoryBadgeClass(part.category);
@@ -334,6 +347,56 @@
             `;
             tbody.appendChild(tr);
         });
+        // 🪄 COLORIZE ACTIVE FILTERS & THE MASTER CLEAR BUTTON
+        const clearBtn = document.getElementById('flt-clear-parts');
+        let hasAnyFilter = false;
+
+        if (typeof activeFilters !== 'undefined' && activeFilters['parts']) {
+            // Added 'grain' to the watch list!
+            const filterableColumns = ['projectId', 'groupId', 'category', 'profileId', 'materialId', 'grain'];
+            
+            filterableColumns.forEach(col => {
+                const icon = document.getElementById(`flt-icon-parts-${col}`);
+                if (icon) {
+                    // Check if this specific column has a filter array with actual items in it
+                    if (activeFilters['parts'][col] && activeFilters['parts'][col].length > 0) {
+                        icon.classList.add('text-primary'); 
+                        hasAnyFilter = true; // We tripped the alarm! At least one filter is active.
+                    } else {
+                        icon.classList.remove('text-primary');
+                    }
+                }
+            });
+        }
+
+        // Paint the Global Clear Button
+        if (clearBtn) {
+            if (hasAnyFilter) {
+                clearBtn.classList.remove('text-secondary', 'opacity-25');
+                clearBtn.classList.add('text-danger', 'fw-bold'); // Paint it bright Red!
+            } else {
+                clearBtn.classList.add('text-secondary', 'opacity-25');
+                clearBtn.classList.remove('text-danger', 'fw-bold'); // Back to silent Grey
+            }
+        }
+
+        // 🪄 UPDATE THE STICKY FOOTER TOTALS
+        const tfootQty = document.getElementById('tfoot-parts-qty');
+        const tfootWeight = document.getElementById('tfoot-parts-weight');
+
+        if (tfootQty) {
+            tfootQty.innerText = totalVisibleQty;
+        }
+
+        if (tfootWeight) {
+            const isMetric = appState.settings.displayUnit === 'mm';
+            const finalTotalWeight = isMetric ? totalVisibleWeightKg : (totalVisibleWeightKg * 2.20462);
+            const weightUnit = isMetric ? 'kg' : 'lbs';
+            
+            // Format to 1 decimal place
+            tfootWeight.innerText = `${finalTotalWeight.toFixed(1)} ${weightUnit}`;
+        }
+
     }
 
     function updatePartCategory(partId, newCategory) {
