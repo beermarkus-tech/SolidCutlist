@@ -449,7 +449,10 @@
         // 🪄 Trigger the correct redraw function
         if (arrayName === 'parts' && typeof renderPartsTable === 'function') renderPartsTable();
         if (arrayName === 'materials' && typeof renderMaterialsTable === 'function') renderMaterialsTable();
-        // Add other table render triggers here as needed...
+        if (arrayName === 'catalog' && typeof renderCatalogTable === 'function') renderCatalogTable();
+        if (arrayName === 'stock' && typeof renderStockTable === 'function') renderStockTable();
+        if (arrayName === 'projects' && typeof renderProjectsTable === 'function') renderProjectsTable();
+        if (arrayName === 'profiles' && typeof renderProfilesTable === 'function') renderProfilesTable();
     }
 
     // 5. The Gatekeeper (Called inside your render loops)
@@ -477,9 +480,49 @@
         // Trigger the redraw to bring all rows back instantly
         if (arrayName === 'parts' && typeof renderPartsTable === 'function') renderPartsTable();
         if (arrayName === 'materials' && typeof renderMaterialsTable === 'function') renderMaterialsTable();
+        if (arrayName === 'catalog' && typeof renderCatalogTable === 'function') renderCatalogTable();
         if (arrayName === 'stock' && typeof renderStockTable === 'function') renderStockTable();
+        if (arrayName === 'projects' && typeof renderProjectsTable === 'function') renderProjectsTable();
+        if (arrayName === 'profiles' && typeof renderMaterialsTable === 'function') renderProfilesTable();
     }
 
+    // 7. Global UI Painter for Filters
+    // Call this at the end of any table's render loop to instantly update all icon colors
+    function updateFilterUI(arrayName, filterableColumns) {
+        const clearBtn = document.getElementById(`flt-clear-${arrayName}`);
+        let hasAnyFilter = false;
+
+        // 1. Paint the Column Icons
+        filterableColumns.forEach(col => {
+            const icon = document.getElementById(`flt-icon-${arrayName}-${col}`);
+            if (icon) {
+                // If this specific column has an active filter
+                if (activeFilters[arrayName] && activeFilters[arrayName][col] && activeFilters[arrayName][col].length > 0) {
+                    icon.classList.remove('text-muted');
+                    icon.classList.add('text-primary', 'fw-bold', 'fs-5'); 
+                    hasAnyFilter = true;
+                } else {
+                    icon.classList.add('text-muted');
+                    icon.classList.remove('text-primary', 'fw-bold', 'fs-5');
+                }
+            }
+        });
+
+        // 2. Paint the Master Clear Button
+        if (clearBtn) {
+            if (hasAnyFilter) {
+                clearBtn.classList.remove('text-secondary', 'opacity-25');
+                clearBtn.classList.add('text-danger', 'fw-bold');
+            } else {
+                clearBtn.classList.add('text-secondary', 'opacity-25');
+                clearBtn.classList.remove('text-danger', 'fw-bold');
+            }
+        }
+
+        // Return this boolean just in case the local table needs to know if a filter is active!
+        return hasAnyFilter; 
+    }
+    
     // ==========================================
     // BOOT SEQUENCE
     // ==========================================

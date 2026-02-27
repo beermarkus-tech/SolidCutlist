@@ -1,10 +1,3 @@
-<div class="row mt-3">
-    <div class="col-12">
-        <h2 class="border-bottom pb-2">Partlist</h2>
-        <p class="text-muted">Select a project, define the category, and enter your parts.
-    </div>
-</div>
-
 <div class="card shadow-sm">
     <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
         <h6 class="card-title mb-0">🧩 Current Partlist</h6>
@@ -82,7 +75,7 @@
             </div>
         </form>
         <hr>
-        <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+        <div class="table-responsive" style="max-height: calc(100vh - 265px); overflow-y: auto;">
             <table class="table table-sm table-hover table-striped align-middle">
                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <tr>
@@ -114,8 +107,8 @@
                             <span id="flt-icon-parts-grain" onclick="openFilterModal(event, 'parts', 'grain', 'Grain')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
                         <th id="th-parts-weight" onclick="handleSort('parts', 'weight', 'number')" class="text-center text-nowrap" style="cursor: pointer;" title="Visible Total: 0">Weight ⇅</th>
-                        <th class="text-center">
-                            <span id="flt-clear-parts" onclick="clearAllFiltersForTable('parts')" class="text-secondary opacity-25" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
+                        <th class="text-end">
+                            <span id="flt-clear-parts" onclick="clearAllFiltersForTable('parts')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
                         </th>
                     </tr>
                 </thead>

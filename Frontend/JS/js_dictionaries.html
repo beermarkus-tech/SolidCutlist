@@ -44,6 +44,7 @@
     }
 
     function renderProjectsTable() {
+
         const tbody = document.getElementById('table-projects-body');
         tbody.innerHTML = ''; 
         
@@ -52,9 +53,11 @@
 
         appState.projects.forEach(proj => {
 
+            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(proj, 'projects')) return;
+            
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>
+                <td class="p-0">
                     <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" 
                            value="${proj.name}" 
                            onchange="updateProjectName('${proj.id}', this.value)"
@@ -70,6 +73,12 @@
             `;
             tbody.appendChild(tr);
         });
+        
+        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
+        if (typeof updateFilterUI === 'function') {
+            updateFilterUI('projects', ['name', 'status']);
+        }
+
     }
 
     function renderStockTable() {
@@ -80,6 +89,9 @@
         if (!appState.stock) appState.stock = [];
 
         appState.stock.forEach(item => {
+
+            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(item, 'stock')) return;
+
             const tr = document.createElement('tr');
             const badgeClass = getCategoryBadgeClass(item.categoryId);
             
@@ -172,13 +184,18 @@
                 <td class="p-0 align-middle text-center">${matHtml}</td>
                 <td class="text-center text-capitalize p-0 align-middle">${grainHtml}</td>
                 <td class="text-center p-0 align-middle">${typeHtml}</td>
-                <td class="text-end align-middle">
-                    <button type="button" class="btn btn-sm py-0 px-2 text-danger" onclick="deleteStock('${item.id}')">🗑️</button>
+                <td class="text-end">
+                    <button class="btn btn-sm py-0 px-2" onclick="deleteStock('${item.id}')">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
         
+        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
+        if (typeof updateFilterUI === 'function') {
+            updateFilterUI('stock', ['categoryId', 'length', 'profileId', 'materialId', 'grain', 'isCutoff']);
+        }
+
         updateUnitLabels();
     }
 
@@ -187,6 +204,9 @@
         tbody.innerHTML = ''; 
         
         appState.materials.forEach(mat => {
+
+            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(mat, 'materials')) return;
+
             const tr = document.createElement('tr');
            
             let currentCat = mat.category || 'lumber';
@@ -195,7 +215,7 @@
             let badgeClass = getCategoryBadgeClass(currentCat);
 
             tr.innerHTML = `
-                <td>
+                <td class="p-0">
                     <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" 
                            value="${safeHTML(mat.name)}" 
                            onchange="updateMaterial('${mat.id}', 'name', this.value)" title="Tap to edit">
@@ -210,7 +230,7 @@
                         </select>
                     </div>
                 </td>
-                <td>
+                <td class="p-0">
                     <input type="number" step="0.01" class="form-control form-control-sm border-0 bg-transparent text-center" 
                            value="${formatDensityForDisplay(mat.density)}" 
                            onchange="updateMaterial('${mat.id}', 'density', this.value)" title="Tap to edit">
@@ -221,6 +241,12 @@
             `;
             tbody.appendChild(tr);
         });
+
+        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
+        if (typeof updateFilterUI === 'function') {
+            updateFilterUI('materials', ['name', 'category']);
+        }
+
     }
 
     function renderProfilesTable() {
@@ -228,6 +254,9 @@
         tbody.innerHTML = ''; 
         
         appState.profiles.forEach(prof => {
+
+            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(prof, 'profiles')) return;
+
             const tr = document.createElement('tr');
             
             // 🪄 MAGIC: Convert internal base mm back to UI strings (e.g., 38.1 -> "1 1/2")
@@ -242,27 +271,26 @@
             if (prof.type === 'sheet') {
                 // Sheets only show Thickness
                 dimHtml = `
-                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0" style="width: 60px;"
-                           value="${displayThick}" 
-                           onchange="updateProfile('${prof.id}', 'thickness', this.value)" title="Tap to edit thickness">
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0 py-0" style="width: 60px;"
+                           value="${displayThick}" onchange="updateProfile('${prof.id}', 'thickness', this.value)" title="Tap to edit thickness">
                 `;
             } else if (prof.type === 'lumber') {
                 // Lumber shows Thickness x Width
                 dimHtml = `
-                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0" style="width: 45px;"
-                           value="${displayThick}" 
-                           onchange="updateProfile('${prof.id}', 'thickness', this.value)" title="Tap to edit thickness">
-                    <span class="text-muted text-sm px-1">x</span>
-                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-left px-0" style="width: 45px;"
-                           value="${displayWidth}" 
-                           onchange="updateProfile('${prof.id}', 'width', this.value)" title="Tap to edit width">
+                    <div class="d-flex align-items-baseline justify-content-center gap-1">
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0 py-0" style="width: 45px;"
+                            value="${displayThick}" onchange="updateProfile('${prof.id}', 'thickness', this.value)" title="Tap to edit thickness">
+                        <span class="text-muted text-sm">x</span>
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-left px-0 py-0" style="width: 45px;"
+                            value="${displayWidth}" onchange="updateProfile('${prof.id}', 'width', this.value)" title="Tap to edit width">
+                    </div>
                 `;
             } else {
                 dimHtml = `<span class="text-muted">-</span>`;
             }
 
             tr.innerHTML = `
-                <td>
+                <td class="p-0">
                     <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" 
                            value="${safeHTML(prof.name)}"
                            onchange="updateProfile('${prof.id}', 'name', this.value)" title="Tap to edit">
@@ -277,15 +305,19 @@
                         </select>
                     </div>
                 </td>
-                <td class="d-flex align-items-center justify-content-center gap-1">
-                    ${dimHtml}
-                </td>
+                <td class="text-center p-0 align-middle">${dimHtml}</td>
                 <td class="text-end">
                     <button class="btn btn-sm py-0 px-2" onclick="deleteProfile('${prof.id}')">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
+
+        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
+        if (typeof updateFilterUI === 'function') {
+            updateFilterUI('profiles', ['name', 'type']);
+        }
+
     }
 
     function renderCatalogTable() {
@@ -299,6 +331,8 @@
         const currency = appState.settings.currency || '$'; // 🪄 ADD THIS
 
         appState.catalog.forEach(item => {
+            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(item, 'catalog')) return;
+
             const tr = document.createElement('tr');
             const store = appState.stores?.find(s => s.id === item.storeId);
             const badgeClass = getCategoryBadgeClass(item.categoryId);
@@ -341,17 +375,19 @@
             if (item.categoryId === 'sheet') {
                 const displayW = formatForDisplay(item.width);
                 dimHtml = `
-                    <div class="d-flex align-items-center justify-content-center gap-1">
+                    <div class="d-flex align-items-baseline justify-content-center gap-1">
                         <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0" style="width: 50px;" 
                                value="${displayW}" onchange="updateCatalogItem('${item.id}', 'width', this.value)" title="Tap to edit width">
                         <span class="text-muted text-sm">x</span>
                         <input type="text" class="form-control form-control-sm border-0 bg-transparent text-start px-0" style="width: 50px;" 
                                value="${displayL}" onchange="updateCatalogItem('${item.id}', 'length', this.value)" title="Tap to edit length">
-                    </div>`;
+                    </div>
+                `;
             } else {
                 dimHtml = `
                     <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width: 60px;" 
-                           value="${displayL}" onchange="updateCatalogItem('${item.id}', 'length', this.value)" title="Tap to edit length">`;
+                           value="${displayL}" onchange="updateCatalogItem('${item.id}', 'length', this.value)" title="Tap to edit length">
+                `;
             }
 
             // 🪄 2. INLINE STORE DROPDOWN
@@ -430,12 +466,15 @@
                     ${linkHtml}
                     <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${item.id}', '${safeHTML(item.link || '')}')" title="Edit Link">✏️</button>
                 </td>
-                <td class="align-middle">
-                    <button class="btn btn-sm py-0 px-1 text-danger" onclick="deleteCatalogItem('${item.id}')">🗑️</button>
+                <td class="text-end">
+                    <button class="btn btn-sm py-0 px-2" onclick="deleteCatalogItem('${item.id}')">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
+        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
+        const filterColumns = ['categoryId', 'length', 'profileId', 'materialId', 'grain', 'storeId'];
+        const hasAnyFilter = updateFilterUI('catalog', filterColumns);
     }
 
     // --- CRUD OPERATIONS ---
@@ -805,7 +844,7 @@
                            title="Tap to edit">
                 </td>
                 <td class="text-end">
-                    <button type="button" class="btn btn-sm py-0 px-2 text-danger" onclick="deleteGroup('${grp.id}')">🗑️</button>
+                    <button class="btn btn-sm py-0 px-2" onclick="deleteGroup('${grp.id}')">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -1029,7 +1068,7 @@
                            onchange="updateStoreName('${store.id}', this.value)" title="Tap to edit">
                 </td>
                 <td class="text-end">
-                    <button type="button" class="btn btn-sm py-0 px-2 text-danger" onclick="deleteStore('${store.id}')">🗑️</button>
+                    <button class="btn btn-sm py-0 px-2" onclick="deleteStore('${store.id}')">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
