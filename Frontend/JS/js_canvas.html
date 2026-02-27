@@ -147,9 +147,30 @@
                 board.cuts.forEach((cut, cIndex) => {
                     const partData = appState.parts.find(p => p.id === cut.partId);
                     const projName = appState.projects.find(p => p.id === partData?.projectId)?.name || 'Unknown';
-                    const label = appState.settings.optimizer.selectedProjects.length > 1 
-                        ? `[${safeHTML(projName)}] ${safeHTML(cut.name)}` 
-                        : safeHTML(cut.name);
+                    
+                    // 🪄 1. Extract the Group Name (if it exists)
+                    let groupName = '';
+                    if (partData && partData.groupId && appState.groups) {
+                        groupName = appState.groups.find(g => g.id === partData.groupId)?.name || '';
+                    }
+
+                    // 🪄 2. The Dynamic Label Engine
+                    const isMultiProject = appState.settings.optimizer.selectedProjects.length > 1;
+                    let label = safeHTML(cut.name);
+
+                    if (isMultiProject) {
+                        // Scenario B: Multiple Projects
+                        if (groupName) {
+                            label = `[${safeHTML(projName)}: ${safeHTML(groupName)}] ${label}`;
+                        } else {
+                            label = `[${safeHTML(projName)}] ${label}`;
+                        }
+                    } else {
+                        // Scenario A: Single Project
+                        if (groupName) {
+                            label = `[${safeHTML(groupName)}] ${label}`;
+                        }
+                    }
                     
                     const grainStr = isSheet && partData && partData.grain !== 'none' ? partData.grain : '-';
                     let grainWarningBadge = '';

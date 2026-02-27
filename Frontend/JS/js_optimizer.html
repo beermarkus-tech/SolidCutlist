@@ -259,10 +259,10 @@
         parts.forEach(part => {
             let placed = false;
             for (let i = 0; i < boards.length; i++) {
-                let requiredSpace = (boards[i].cuts.length > 0) ? (part.length + kerf) : part.length;
-                if (boards[i].remaining >= requiredSpace) {
+                // 🪄 NEW LOGIC: If it fits, instantly subtract the part AND the kerf needed to sever it
+                if (boards[i].remaining >= part.length) {
                     boards[i].cuts.push(part);
-                    boards[i].remaining -= requiredSpace;
+                    boards[i].remaining = Math.max(0, boards[i].remaining - part.length - kerf);
                     placed = true;
                     break;
                 }
@@ -270,7 +270,11 @@
             if (!placed) {
                 let usableLength = boardLength - trim;
                 if (usableLength >= part.length) {
-                    boards.push({ cuts: [part], remaining: usableLength - part.length });
+                    // 🪄 First cut also eats a kerf to separate it from the remaining scrap
+                    boards.push({ 
+                        cuts: [part], 
+                        remaining: Math.max(0, usableLength - part.length - kerf) 
+                    });
                 } else unmapped.push(part);
             }
         });
@@ -317,10 +321,10 @@
         let board = { cuts: [], remaining: usableLength };
         let unmapped = [];
         parts.forEach(part => {
-            let requiredSpace = (board.cuts.length > 0) ? (part.length + kerf) : part.length;
-            if (board.remaining >= requiredSpace) {
+            // 🪄 NEW LOGIC: Ensure the kerf is taken out of the remaining scrap
+            if (board.remaining >= part.length) {
                 board.cuts.push(part);
-                board.remaining -= requiredSpace;
+                board.remaining = Math.max(0, board.remaining - part.length - kerf);
             } else {
                 unmapped.push(part);
             }
@@ -628,13 +632,45 @@
                         
                         if (shortestEdge >= minW && longestEdge >= minL) {
                             boardOffcutVol += rectVol;
-                            usableOffcuts.push({ profName: prof.name, matName: mat.name, length: rect.l, width: rect.w });
+                            
+                            // 🪄 DYNAMIC GRAIN MAPPING
+                            let originalGrain = purchase.catalogItem.grain || 'none';
+                            let offcutGrain = 'none';
+
+                            if (originalGrain !== 'none') {
+                                // Find if the grain runs along the physically shorter edge
+                                let grainOnShortEdge = false;
+                                if (originalGrain === 'length' && shortestEdge === rect.l) grainOnShortEdge = true;
+                                if (originalGrain === 'width' && shortestEdge === rect.w) grainOnShortEdge = true;
+                                
+                                // Since we force 'width' to be the short edge, map the grain appropriately
+                                offcutGrain = grainOnShortEdge ? 'width' : 'length';
+                            }
+
+                            usableOffcuts.push({ 
+                                category: 'sheet',
+                                profileId: prof.id,
+                                materialId: mat.id,
+                                profName: prof.name, 
+                                matName: mat.name, 
+                                grain: offcutGrain,
+                                length: longestEdge, // 🪄 FORCE Length = Longest Edge
+                                width: shortestEdge  // 🪄 FORCE Width = Shortest Edge
+                            });
                         }
                     });
                 } else {
                     if (board.remaining >= threshold) {
                         boardOffcutVol += (board.remaining * sheetW * thick);
-                        usableOffcuts.push({ profName: prof.name, matName: mat.name, length: board.remaining });
+                        usableOffcuts.push({ 
+                            category: 'lumber',
+                            profileId: prof.id,
+                            materialId: mat.id,
+                            profName: prof.name, 
+                            matName: mat.name, 
+                            grain: 'none',
+                            length: board.remaining 
+                        });
                     }
                 }
                 
@@ -642,6 +678,19 @@
                 totalWasteVolume += (boardVol - boardPartsVol - boardOffcutVol);
             });
         });
+
+        // 🪄 THE STACKER: Group identical offcuts and count their quantity
+        const groupedOffcutsMap = {};
+        usableOffcuts.forEach(off => {
+            // Create a unique fingerprint for this exact piece of scrap
+            const key = `${off.category}|${off.profName}|${off.matName}|${off.grain}|${off.length}|${off.width || 0}`;
+            
+            if (!groupedOffcutsMap[key]) {
+                groupedOffcutsMap[key] = { ...off, qty: 0 };
+            }
+            groupedOffcutsMap[key].qty += 1;
+        });
+        const stackedOffcuts = Object.values(groupedOffcutsMap);
 
         let pctYield = 0, pctOffcut = 0, pctWaste = 0;
         if (totalRawVolume > 0) {
@@ -685,14 +734,17 @@
             <div class="card shadow-sm border-secondary mt-4">
                 <div class="card-header py-2 d-flex justify-content-between align-items-center">
                     <h6 class="card-title mb-0 fw-bold">📦 Usable Offcuts Generated</h6>
-                    <small class="text-muted">Filtered by Settings <span class="display-unit-label"></span></small>
+                    <button class="btn btn-warning btn-sm py-0" onclick="openCommitModal()"><b>📥 Commit to Stock</b></button>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm table-hover mb-0">
                         <thead>
                             <tr>
-                                <th class="ps-3" onclick="sortOffcuts('profName')" style="cursor: pointer;">Profile ⇅</th>
+                                <th class="ps-3" onclick="sortOffcuts('category')" style="cursor: pointer;">Category ⇅</th>
+                                <th class="text-center" onclick="sortOffcuts('qty')" style="cursor: pointer;">Qty ⇅</th>
+                                <th onclick="sortOffcuts('profName')" style="cursor: pointer;">Profile ⇅</th>
                                 <th onclick="sortOffcuts('matName')" style="cursor: pointer;">Material ⇅</th>
+                                <th class="text-center" onclick="sortOffcuts('grain')" style="cursor: pointer;">Grain ⇅</th>
                                 <th class="text-end pe-3" onclick="sortOffcuts('length')" style="cursor: pointer;">Size ⇅</th>
                             </tr>
                         </thead>
@@ -703,7 +755,7 @@
             </div>
         `;
         container.innerHTML = html;
-        window.currentOffcuts = usableOffcuts;
+        window.currentOffcuts = stackedOffcuts;
         window.currentOffcutSort = { field: 'length', asc: false };
         sortOffcuts('length'); 
     }
@@ -731,15 +783,34 @@
         let html = '';
         if (window.currentOffcuts.length > 0) {
             window.currentOffcuts.forEach(off => {
-                const sizeStr = off.width ? `${formatForDisplay(off.length)} x ${formatForDisplay(off.width)}` : formatForDisplay(off.length);
+                const sizeStr = off.width ? `${formatForDisplay(off.width)} x ${formatForDisplay(off.length)}` : formatForDisplay(off.length);
+                
+                const badgeClass = getCategoryBadgeClass(off.category);
+                const grainStr = off.grain === 'none' ? '-' : (off.grain.charAt(0).toUpperCase() + off.grain.slice(1));
+
+                // 🪄 THE UNIFORM CATEGORY BADGE
+                const categoryBadgeHtml = `
+                    <div class="d-flex justify-content-start">
+                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
+                            <option value="lumber" class="bg-light text-dark" ${off.category === 'lumber' ? 'selected' : ''}>Lumber</option>
+                            <option value="sheet" class="bg-light text-dark" ${off.category === 'sheet' ? 'selected' : ''}>Sheet</option>
+                            <option value="fastener" class="bg-light text-dark" ${off.category === 'fastener' ? 'selected' : ''}>Fastener</option>
+                        </select>
+                    </div>
+                `;
+
                 html += `<tr>
-                            <td class="ps-3 fw-bold">${safeHTML(off.profName)}</td>
-                            <td class="text-muted">${safeHTML(off.matName)}</td>
-                            <td class="text-end pe-3 fw-bold text-primary">${sizeStr} <span class="display-unit-label"></span></td>
+                            <td class="ps-3 align-middle">${categoryBadgeHtml}</td>
+                            <td class="text-center align-middle fw-bold fs-6">${off.qty}</td>
+                            <td class="fw-bold align-middle">${safeHTML(off.profName)}</td>
+                            <td class="text-muted align-middle">${safeHTML(off.matName)}</td>
+                            <td class="text-center text-muted align-middle">${grainStr}</td>
+                            <td class="text-end pe-3 fw-bold text-primary align-middle">${sizeStr} <span class="display-unit-label"></span></td>
                          </tr>`;
             });
         } else {
-            html += `<tr><td colspan="3" class="text-center text-muted py-3">No usable offcuts generated in this run.</td></tr>`;
+            html += `<tr><td colspan="5" class="text-center text-muted py-3">No usable offcuts generated in this run.</td></tr>`;
         }
         tbody.innerHTML = html;
         updateUnitLabels();
@@ -838,5 +909,134 @@
 
         printWindow.document.write(finalHtml);
         printWindow.document.close();
+    }
+
+    // ==========================================
+    // PHASE G: COMMIT TO STOCK ENGINE
+    // ==========================================
+    let commitModalInstance = null;
+
+    function openCommitModal() {
+        if (!window.currentOffcuts || window.currentOffcuts.length === 0) {
+            showToast('No offcuts available to commit.', true);
+            return;
+        }
+        
+        if (!commitModalInstance) {
+            commitModalInstance = new bootstrap.Modal(document.getElementById('modal-commit-offcuts'));
+        }
+        
+        const tbody = document.getElementById('table-commit-body');
+        let html = '';
+        
+        window.currentOffcuts.forEach((off, index) => {
+            // Track if it was already committed to prevent duplicates
+            const isCommitted = off.committed === true;
+            const rowClass = isCommitted ? 'opacity-50 bg-light' : '';
+            const disableAttr = isCommitted ? 'disabled' : '';
+            
+            const badgeClass = getCategoryBadgeClass(off.category);
+            const sizeStr = off.width ? `${formatForDisplay(off.width)} x ${formatForDisplay(off.length)}` : formatForDisplay(off.length);
+            const catStr = off.category === 'sheet' ? 'Sheet' : 'Lumber';
+
+            html += `
+                <tr class="${rowClass}">
+                    <td class="align-middle">
+                        <div class="d-flex justify-content-start">
+                            <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
+                                    style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
+                                <option value="lumber" class="bg-light text-dark" ${off.category === 'lumber' ? 'selected' : ''}>Lumber</option>
+                                <option value="sheet" class="bg-light text-dark" ${off.category === 'sheet' ? 'selected' : ''}>Sheet</option>
+                                <option value="fastener" class="bg-light text-dark" ${off.category === 'fastener' ? 'selected' : ''}>Fastener</option>
+                            </select>
+                        </div>
+                    </td>
+                    <td class="fw-bold align-middle">${safeHTML(off.profName)}</td>
+                    <td class="text-muted align-middle">${safeHTML(off.matName)}</td>
+                    <td class="fw-bold text-primary align-middle">${sizeStr} <span class="display-unit-label"></span></td>
+                    <td class="align-middle px-2">
+                        <input type="number" id="commit-qty-${index}" class="form-control form-control-sm text-center fw-bold" value="${off.qty}" min="1" max="${off.qty}" ${disableAttr}>
+                    </td>
+                    <td class="ps-3 align-middle text-center">
+                        <input class="form-check-input commit-checkbox" type="checkbox" value="${index}" ${disableAttr} onchange="toggleCommitQty(${index}, this.checked)">
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = html;
+        updateUnitLabels();
+        commitModalInstance.show();
+    }
+
+    function toggleCommitCheckboxes(checkStatus) {
+        const checkboxes = document.querySelectorAll('.commit-checkbox:not(:disabled)');
+        checkboxes.forEach(cb => {
+            cb.checked = checkStatus;
+        });
+    }
+
+    function executeCommitToStock() {
+        const checkboxes = document.querySelectorAll('.commit-checkbox:checked:not(:disabled)');
+        if (checkboxes.length === 0) {
+            showToast('No items selected.', true);
+            return;
+        }
+
+        if (!appState.stock) appState.stock = [];
+        let itemsAdded = 0;
+
+        checkboxes.forEach(cb => {
+            const index = parseInt(cb.value);
+            const off = window.currentOffcuts[index];
+            const saveQty = parseInt(document.getElementById(`commit-qty-${index}`).value) || 1;
+
+            // 1. Create the new Stock Database Object
+            const newStockItem = {
+                id: 'STK-' + Date.now() + Math.floor(Math.random() * 1000), // Ensure unique IDs in fast loops
+                categoryId: off.category,
+                profileId: off.profileId,
+                materialId: off.materialId,
+                qty: saveQty,
+                length: off.length,
+                width: off.width || 0,
+                grain: off.grain || 'none',
+                isCutoff: true // 🪄 Automatically tags it as scrap!
+            };
+
+            // 2. Push to global inventory
+            appState.stock.unshift(newStockItem);
+            
+            // 3. Mark the local optimizer memory so it can't be double-clicked
+            off.committed = true; 
+            
+            // 4. If they only saved a partial quantity, update the remaining visual number
+            off.qty = off.qty - saveQty;
+            if (off.qty > 0) off.committed = false; // Allow them to commit the rest later!
+
+            itemsAdded += saveQty;
+        });
+
+        saveState();
+        if (typeof renderStockTable === 'function') renderStockTable(); // Update the UI in the background
+        
+        commitModalInstance.hide();
+        showToast(`Successfully moved ${itemsAdded} scrap(s) to Shop Stock!`);
+        
+        // Redraw the analytics table to reflect the new remaining quantities
+        sortOffcuts(window.currentOffcutSort.field); 
+
+        setTimeout(() => {
+            // 1. Switch the main app view
+            if (typeof navigateTo === 'function') {
+                navigateTo('view-dictionaries');
+            }
+            
+            // 2. Programmatically click the "My Stock" tab to activate it
+            const stockTab = document.getElementById('tab-stock');
+            if (stockTab) {
+                stockTab.click();
+            }
+        }, 300); // 300ms delay allows the Bootstrap modal to fade out smoothly before the screen jumps
     }
 </script>

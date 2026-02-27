@@ -21,23 +21,28 @@
     <!-- Projects -->
     <div class="tab-pane fade show active" id="pane-projects" role="tabpanel" tabindex="0">
         <div class="card shadow-sm border-success">
-            <div class="card-header bg-success text-white py-2">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                 <h6 class="card-title mb-0">Active Projects</h6>
+                <div>
+                    <button class="btn btn-sm text-white py-0 me-2" onclick="toggleInputSection('projects', 320, 228, this)" title="Toggle Input Section"><b>▽</b></button>
+                </div>
             </div>
             <div class="card-body py-3">
-                <form id="form-add-project" onsubmit="handleAddProject(event)">
-                    <div class="row g-2 align-items-end">
-                        <div class="col-sm-11">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">New Project Name</label>
-                            <input type="text" class="form-control form-control-sm" id="proj-name" required>
+                <div id="input-section-projects">
+                    <form id="form-add-project" onsubmit="handleAddProject(event)">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-sm-11">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">New Project Name</label>
+                                <input type="text" class="form-control form-control-sm" id="proj-name" required>
+                            </div>
+                            <div class="col-sm-1">
+                                <button type="submit" class="btn btn-success btn-sm w-100">Add</button>
+                            </div>
                         </div>
-                        <div class="col-sm-1">
-                            <button type="submit" class="btn btn-success btn-sm w-100">Add</button>
-                        </div>
-                    </div>
-                </form>
-                <hr>
-                <div class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
+                    </form>
+                    <hr>
+                </div>
+                <div id="table-wrapper-projects" class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
                     <table class="table table-sm table-hover align-middle table-striped">
                         <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <tr>
@@ -65,62 +70,67 @@
     <!-- Stock -->
     <div class="tab-pane fade" id="pane-stock" role="tabpanel" tabindex="0">
         <div class="card shadow-sm border-info">
-            <div class="card-header bg-info text-dark py-2">
+            <div class="card-header bg-info text-black d-flex justify-content-between align-items-center">
                 <h6 class="card-title mb-0">My Shop Stock</h6>
+                <div>
+                    <button class="btn btn-sm text-black py-0 me-2" onclick="toggleInputSection('stock', 320, 228, this)" title="Toggle Input Section"><b>▽</b></button>
+                </div>
             </div>
             <div class="card-body py-3">
-                <form id="form-add-stock" onsubmit="handleAddStock(event)">
-                    <div class="row g-2 align-items-end">
-                        <div class="col-sm">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
-                            <select class="form-select form-select-sm" id="stock-category" onchange="handleStockCategoryChange()" required>
-                                <option value="" disabled selected>Select...</option>
-                                <option value="lumber">Lumber</option>
-                                <option value="sheet">Sheet</option>
-                                <option value="fastener">Fastener</option>
-                            </select>
-                        </div>
-                        <div class="col-sm-1">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Qty</label>
-                            <input type="number" class="form-control form-control-sm text-center" id="stock-qty" value="1" min="1" required>
-                        </div>
-                        <div class="col-sm-1">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
-                            <input type="text" class="form-control form-control-sm" id="stock-width" disabled>
-                        </div>
-                        <div class="col-sm-1">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
-                            <input type="text" class="form-control form-control-sm" id="stock-length" required disabled>
-                        </div>
-                        <div class="col-sm">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
-                            <select class="form-select form-select-sm" id="stock-profile" required disabled></select>
-                        </div>
-                        <div class="col-sm">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material</label>
-                            <select class="form-select form-select-sm" id="stock-material" required disabled></select>
-                        </div>
-                        <div class="col-sm-1">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets Only">Grain</label>
-                            <select class="form-select form-select-sm" id="stock-grain" disabled>
-                                <option value="none">None</option>
-                                <option value="length">Length</option>
-                                <option value="width">Width</option>
-                            </select>
-                        </div>
-                        <div class="col-sm-1 text-center">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Scrap?</label>
-                            <div class="form-check d-flex justify-content-center">
-                                <input class="form-check-input" type="checkbox" id="stock-is-cutoff">
+                <div id="input-section-stock">
+                    <form id="form-add-stock" onsubmit="handleAddStock(event)">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
+                                <select class="form-select form-select-sm" id="stock-category" onchange="handleStockCategoryChange()" required>
+                                    <option value="" disabled selected>Select...</option>
+                                    <option value="lumber">Lumber</option>
+                                    <option value="sheet">Sheet</option>
+                                    <option value="fastener">Fastener</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Qty</label>
+                                <input type="number" class="form-control form-control-sm text-center" id="stock-qty" value="1" min="1" required>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                                <input type="text" class="form-control form-control-sm" id="stock-width" disabled>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
+                                <input type="text" class="form-control form-control-sm" id="stock-length" required disabled>
+                            </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
+                                <select class="form-select form-select-sm" id="stock-profile" required disabled></select>
+                            </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material</label>
+                                <select class="form-select form-select-sm" id="stock-material" required disabled></select>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets Only">Grain</label>
+                                <select class="form-select form-select-sm" id="stock-grain" disabled>
+                                    <option value="none">None</option>
+                                    <option value="length">Length</option>
+                                    <option value="width">Width</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-1 text-center">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Scrap?</label>
+                                <div class="form-check d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" id="stock-is-cutoff">
+                                </div>
+                            </div>
+                            <div class="col-sm-1">
+                                <button type="submit" class="btn btn-info btn-sm w-100">Add</button>
                             </div>
                         </div>
-                        <div class="col-sm-1">
-                            <button type="submit" class="btn btn-info btn-sm w-100">Add</button>
-                        </div>
-                    </div>
-                </form>
-                <hr>
-                <div class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
+                    </form>
+                    <hr>
+                </div>
+                <div id="table-wrapper-stock" class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
                     <table class="table table-sm table-hover align-middle table-striped">
                         <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <tr>
@@ -130,7 +140,7 @@
                                 </th>
                                 <th class="text-center" onclick="handleSort('stock', 'qty', 'number')" style="cursor: pointer;">Qty ⇅</th>
                                 <th class="text-center text-nowrap">
-                                    <span onclick="handleSort('stock', 'length', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
+                                    <span onclick="handleSort('stock', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
                                     <span id="flt-icon-stock-length" onclick="openFilterModal(event, 'stock', 'length', 'Size')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
                                 <th class="text-center text-nowrap">
@@ -164,74 +174,79 @@
     <!-- Prices -->
     <div class="tab-pane fade" id="pane-catalog" role="tabpanel" tabindex="0">
         <div class="card shadow-sm border-warning">
-            <div class="card-header bg-warning text-dark py-2">
+            <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
                 <h6 class="card-title mb-0">Store Catalog & Prices</h6>
+                <div>
+                    <button class="btn btn-sm text-dark py-0 me-2" onclick="toggleInputSection('prices', 320, 228, this)" title="Toggle Input Section"><b>▽</b></button>
+                </div>
             </div>
             <div class="card-body py-3">
-                <form id="form-add-catalog" onsubmit="handleAddCatalogItem(event)">
-                    <div class="row g-2 align-items-end">
-                        <div class="col-sm">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
-                            <select class="form-select form-select-sm" id="cat-category" onchange="handleCatalogCategoryChange()" required>
-                                <option value="" disabled selected>Select...</option>
-                                <option value="lumber">Lumber</option>
-                                <option value="sheet">Sheet</option>
-                                <option value="fastener">Fastener</option>
-                            </select>
-                        </div>
-                        <div class="col-sm-1">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
-                            <div class="input-group input-group-sm">
-                                <input type="text" class="form-control form-control-sm" id="cat-width" disabled>
+                <div id="input-section-prices">
+                    <form id="form-add-catalog" onsubmit="handleAddCatalogItem(event)">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
+                                <select class="form-select form-select-sm" id="cat-category" onchange="handleCatalogCategoryChange()" required>
+                                    <option value="" disabled selected>Select...</option>
+                                    <option value="lumber">Lumber</option>
+                                    <option value="sheet">Sheet</option>
+                                    <option value="fastener">Fastener</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" id="cat-width" disabled>
+                                </div>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" id="cat-length" required disabled>
+                                </div>
+                            </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
+                                <select class="form-select form-select-sm" id="cat-profile" required disabled></select>
+                            </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material</label>
+                                <select class="form-select form-select-sm" id="cat-material" required disabled></select>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets">Grain</label>
+                                <select class="form-select form-select-sm" id="cat-grain" disabled>
+                                    <option value="none">-</option>
+                                    <option value="length">Length</option>
+                                    <option value="width">Width</option>
+                                </select>
+                            </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">
+                                    Store <span style="cursor: pointer; opacity: 0.7;" onclick="openStoreModal()">⚙️</span>
+                                </label>
+                                <select class="form-select form-select-sm" id="cat-store" required></select>
+                            </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Price</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text currency-label">$</span> <input type="number" step="0.01" class="form-control form-control-sm" id="cat-price" required>
+                                    <input type="hidden" id="cat-price-unit" value="piece">
+                                    <button type="button" class="btn btn-outline-secondary px-1" id="btn-cycle-unit" onclick="cyclePriceUnit()" title="Change unit">/ pc</button>
+                                </div>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Link</label>
+                                <input type="text" class="form-control form-control-sm" id="cat-link">
+                            </div>
+                            <div class="col-sm-1">
+                                <button type="submit" class="btn btn-warning btn-sm w-100" id="btn-add-catalog" disabled>Add</button>
                             </div>
                         </div>
-                        <div class="col-sm-1">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
-                            <div class="input-group input-group-sm">
-                                <input type="text" class="form-control form-control-sm" id="cat-length" required disabled>
-                            </div>
-                        </div>
-                        <div class="col-sm">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
-                            <select class="form-select form-select-sm" id="cat-profile" required disabled></select>
-                        </div>
-                        <div class="col-sm">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material</label>
-                            <select class="form-select form-select-sm" id="cat-material" required disabled></select>
-                        </div>
-                        <div class="col-sm-1">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets">Grain</label>
-                            <select class="form-select form-select-sm" id="cat-grain" disabled>
-                                <option value="none">-</option>
-                                <option value="length">Length</option>
-                                <option value="width">Width</option>
-                            </select>
-                        </div>
-                        <div class="col-sm">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">
-                                Store <span style="cursor: pointer; opacity: 0.7;" onclick="openStoreModal()">⚙️</span>
-                            </label>
-                            <select class="form-select form-select-sm" id="cat-store" required></select>
-                        </div>
-                        <div class="col-sm">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Price</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text currency-label">$</span> <input type="number" step="0.01" class="form-control form-control-sm" id="cat-price" required>
-                                <input type="hidden" id="cat-price-unit" value="piece">
-                                <button type="button" class="btn btn-outline-secondary px-1" id="btn-cycle-unit" onclick="cyclePriceUnit()" title="Change unit">/ pc</button>
-                            </div>
-                        </div>
-                        <div class="col-sm-1">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Link</label>
-                            <input type="text" class="form-control form-control-sm" id="cat-link">
-                        </div>
-                        <div class="col-sm-1">
-                            <button type="submit" class="btn btn-warning btn-sm w-100" id="btn-add-catalog" disabled>Add</button>
-                        </div>
-                    </div>
-                </form>
-                <hr>
-                <div class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
+                    </form>
+                    <hr>
+                </div>
+                <div id="table-wrapper-prices" class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
                     <table class="table table-sm table-hover align-middle table-striped">
                         <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <tr>
@@ -240,14 +255,14 @@
                                     <span id="flt-icon-catalog-categoryId" onclick="openFilterModal(event, 'catalog', 'categoryId', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
                                 <th class="text-center text-nowrap">
-                                    <span onclick="handleSort('catalog', 'length', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
+                                    <span onclick="handleSort('catalog', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
                                     <span id="flt-icon-catalog-length" onclick="openFilterModal(event, 'catalog', 'length', 'Size')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-nowrap">
+                                <th class="text-center text-nowrap">
                                     <span onclick="handleSort('catalog', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</span>
                                     <span id="flt-icon-catalog-profileId" onclick="openFilterModal(event, 'catalog', 'profileId', 'Profile')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-nowrap">
+                                <th class="text-center text-nowrap">
                                     <span onclick="handleSort('catalog', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</span>
                                     <span id="flt-icon-catalog-materialId" onclick="openFilterModal(event, 'catalog', 'materialId', 'Material')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
@@ -255,7 +270,7 @@
                                     <span onclick="handleSort('catalog', 'grain', 'string')" style="cursor: pointer;">Grain ⇅</span>
                                     <span id="flt-icon-catalog-grain" onclick="openFilterModal(event, 'catalog', 'grain', 'Grain')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-nowrap">
+                                <th class="text-center text-nowrap">
                                     <span onclick="handleSort('catalog', 'storeId', 'string')" style="cursor: pointer;">Store ⇅</span>
                                     <span id="flt-icon-catalog-storeId" onclick="openFilterModal(event, 'catalog', 'storeId', 'Store')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
@@ -291,45 +306,50 @@
             <!-- Profiles -->
             <div class="col-lg-6">
                 <div class="card shadow-sm border-secondary h-100">
-                    <div class="card-header bg-secondary text-white py-2">
+                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                         <h6 class="card-title mb-0">Master Profiles & Thicknesses</h6>
+                        <div>
+                            <button class="btn btn-sm text-white py-0 me-2"><b></b></button>
+                        </div>
                     </div>
                     <div class="card-body py-3">
-                        <form id="form-add-profile" onsubmit="handleAddProfile(event)">
-                            <div class="row g-2 align-items-end">
-                                <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile Name</label>
-                                    <input type="text" class="form-control form-control-sm" id="prof-name" required>
-                                </div>
-                                <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
-                                    <select class="form-select form-select-sm" id="prof-category" onchange="handleProfileCategoryChange()" required>
-                                        <option value="lumber">Lumber</option>
-                                        <option value="sheet">Sheet</option>
-                                        <option value="fastener">Fastener</option>
-                                    </select>
-                                </div>
-                                <div class="col-sm-2">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Thickness</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control form-control-sm" id="prof-thickness" required>
-                                        <span class="input-group-text display-unit-label">mm</span>
+                        <div id="input-section-profiles">
+                            <form id="form-add-profile" onsubmit="handleAddProfile(event)">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-sm">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile Name</label>
+                                        <input type="text" class="form-control form-control-sm" id="prof-name" required>
+                                    </div>
+                                    <div class="col-sm">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
+                                        <select class="form-select form-select-sm" id="prof-category" onchange="handleProfileCategoryChange()" required>
+                                            <option value="lumber">Lumber</option>
+                                            <option value="sheet">Sheet</option>
+                                            <option value="fastener">Fastener</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Thickness</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control form-control-sm" id="prof-thickness" required>
+                                            <span class="input-group-text display-unit-label">mm</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control form-control-sm" id="prof-width" required>
+                                            <span class="input-group-text display-unit-label">mm</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
                                     </div>
                                 </div>
-                                <div class="col-sm-2">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control form-control-sm" id="prof-width" required>
-                                        <span class="input-group-text display-unit-label">mm</span>
-                                    </div>
-                                </div>
-                                <div class="col-sm-1">
-                                    <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
-                                </div>
-                            </div>
-                        </form>
-                        <hr>
-                        <div class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
+                            </form>
+                            <hr>
+                        </div>
+                        <div id="table-wrapper-profiles" class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
                             <table class="table table-sm table-hover align-middle table-striped">
                                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                     <tr>
@@ -341,7 +361,7 @@
                                             <span onclick="handleSort('profiles', 'type', 'string')" style="cursor: pointer;">Category ⇅</span>
                                             <span id="flt-icon-profiles-type" onclick="openFilterModal(event, 'profiles', 'type', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                         </th>
-                                        <th class="text-center" onclick="handleSort('profiles', 'thickness', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</th>
+                                        <th class="text-center" onclick="handleSort('profiles', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</th>
                                         <th class="text-end">
                                             <span id="flt-clear-profiles" onclick="clearAllFiltersForTable('profiles')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
                                         </th>
@@ -357,38 +377,43 @@
             <!-- Materials -->
             <div class="col-lg-6">
                 <div class="card shadow-sm border-secondary h-100">
-                    <div class="card-header bg-secondary text-white py-2">
+                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                         <h6 class="card-title mb-0">Master Materials</h6>
+                        <div>
+                            <button class="btn btn-sm text-white py-0 me-2" onclick="toggleInputSection('materials', 320, 228, this); toggleInputSection('profiles', 320, 228, this)" title="Toggle Input Section"><b>▽</b></button>
+                        </div>
                     </div>
                     <div class="card-body py-3">
-                        <form id="form-add-material" onsubmit="handleAddMaterial(event)">
-                            <div class="row g-2 align-items-end">
-                                <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material Name</label>
-                                    <input type="text" class="form-control form-control-sm" id="mat-name" required>
-                                </div>
-                                <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
-                                    <select class="form-select form-select-sm" id="mat-category" required>
-                                        <option value="lumber">Lumber</option>
-                                        <option value="sheet">Sheet</option>
-                                        <option value="fastener">Fastener</option>
-                                    </select>
-                                </div>
-                                <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Density</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="number" step="0.01" class="form-control form-control-sm" id="mat-density" value="0" required>
-                                        <span class="input-group-text density-unit-label">kg/m³</span>
+                        <div id="input-section-materials">
+                            <form id="form-add-material" onsubmit="handleAddMaterial(event)">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-sm">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material Name</label>
+                                        <input type="text" class="form-control form-control-sm" id="mat-name" required>
+                                    </div>
+                                    <div class="col-sm">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
+                                        <select class="form-select form-select-sm" id="mat-category" required>
+                                            <option value="lumber">Lumber</option>
+                                            <option value="sheet">Sheet</option>
+                                            <option value="fastener">Fastener</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Density</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" step="0.01" class="form-control form-control-sm" id="mat-density" value="0" required>
+                                            <span class="input-group-text density-unit-label">kg/m³</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
                                     </div>
                                 </div>
-                                <div class="col-sm-1">
-                                    <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
-                                </div>
-                            </div>
-                        </form>
-                        <hr>
-                        <div class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
+                            </form>
+                            <hr>
+                        </div>
+                        <div id="table-wrapper-materials" class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
                             <table class="table table-sm table-hover align-middle table-striped">
                                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                     <tr>
@@ -418,8 +443,11 @@
     <!-- Settings -->
     <div class="tab-pane fade" id="pane-settings" role="tabpanel" tabindex="0">
         <div class="card shadow-sm border-primary">
-            <div class="card-header bg-primary text-white py-2">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h6 class="card-title mb-0">Global Settings</h6>
+                <div>
+                    <button class="btn btn-sm text-white py-0 me-2"><b></b></button>
+                </div>
             </div>
             <div class="card-body py-3">
                 <form id="form-settings">
@@ -431,6 +459,7 @@
                                 <option value="dec_in">Decimal Inches (1.75", lbs)</option>
                                 <option value="frac_in">Fractional Inches (1 3/4", lbs)</option>
                             </select>
+                            <div class="form-text" style="font-size: 0.7rem;">Units are dynamically converted throughout the tool.</div>
                         </div>
                         <div class="col-12 col-md-3">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Currency</label>
@@ -439,6 +468,7 @@
                                 <option value="€">Euros (€)</option>
                                 <option value="£">Pounds (£)</option>
                             </select>
+                            <div class="form-text" style="font-size: 0.7rem;">Display units only, no currency conversion.</div>
                         </div>
                         <div class="col-12 col-md-3">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Lumber Kerf</label>
@@ -446,6 +476,7 @@
                                 <input type="text" class="form-control" id="setting-kerf" onchange="handleSettingsValueChange()">
                                 <span class="input-group-text display-unit-label">mm</span>
                             </div>
+                            <div class="form-text" style="font-size: 0.7rem;">Thickness of your lumber cutting blade.</div>
                         </div>
                         <div class="col-12 col-md-3">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Sheet Kerf</label>
@@ -453,13 +484,23 @@
                                 <input type="text" class="form-control" id="setting-sheet-kerf" onchange="handleSettingsValueChange()">
                                 <span class="input-group-text display-unit-label">mm</span>
                             </div>
+                            <div class="form-text" style="font-size: 0.7rem;">Thickness of your sheet cutting blade.</div>
                         </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Appearance</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="setting-theme-toggle" onchange="toggleTheme()">
+                                <label class="form-check-label" for="setting-theme-toggle">🌙 Enable Dark Mode</label>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-3"></div>
                         <div class="col-12 col-md-3">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Lumber Trim</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="setting-factory-trim" onchange="handleSettingsValueChange()">
                                 <span class="input-group-text display-unit-label">mm</span>
                             </div>
+                            <div class="form-text" style="font-size: 0.7rem;">One end will be trimmed.</div>
                         </div>
                         <div class="col-12 col-md-3">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Sheet Trim</label>
@@ -467,8 +508,11 @@
                                 <input type="text" class="form-control" id="setting-sheet-trim" onchange="handleSettingsValueChange()">
                                 <span class="input-group-text display-unit-label">mm</span>
                             </div>
+                            <div class="form-text" style="font-size: 0.7rem;">Two adjacent edges will be trimmed.</div>
                         </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-3"></div>
+                        <div class="col-12 col-md-3"></div>
+                        <div class="col-12 col-md-3">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Lumber Scrap (Min Length)</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="setting-cutoff" onchange="handleSettingsValueChange()">
@@ -476,7 +520,10 @@
                             </div>
                             <div class="form-text" style="font-size: 0.7rem;">Lumber shorter than this goes in the trash.</div>
                         </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-3"></div>
+                        <div class="col-12 col-md-3"></div>
+                        <div class="col-12 col-md-3"></div>
+                        <div class="col-12 col-md-3">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Sheet Scrap (Min Width)</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="setting-sheet-scrap-width" onchange="handleSettingsValueChange()">
@@ -484,20 +531,13 @@
                             </div>
                             <div class="form-text" style="font-size: 0.7rem;">Sheet offcuts narrower than this are trash.</div>
                         </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-3">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Sheet Scrap (Min Length)</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="setting-sheet-scrap-length" onchange="handleSettingsValueChange()">
                                 <span class="input-group-text display-unit-label">mm</span>
                             </div>
                             <div class="form-text" style="font-size: 0.7rem;">Sheet offcuts shorter than this are trash.</div>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Appearance</label>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="setting-theme-toggle" onchange="toggleTheme()">
-                                <label class="form-check-label" for="setting-theme-toggle">🌙 Enable Dark Mode</label>
-                            </div>
                         </div>
                     </div>
                 </form>

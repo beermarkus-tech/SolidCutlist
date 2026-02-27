@@ -55,6 +55,13 @@
         opacity: 1 !important;    /* Kills Bootstrap frosted-glass bleed-through */
     }
 
+    /* 🪄 CONTRAST FOR TABLE WARNINGS IN DARK MODE */
+    [data-bs-theme="dark"] .table-warning {
+        --bs-table-bg: #4a3600;
+        --bs-table-striped-bg: #543d00;
+        --bs-table-hover-bg: #5e4500;
+    }
+
     /* Keep it clean for the printer */
     @media print {
         .shop-sticky-header {

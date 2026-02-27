@@ -273,7 +273,7 @@
             let valB = b[key];
 
             // 🪄 Smart Lookups for Relational IDs and Dynamic Math
-            if (arrayName === 'parts' || arrayName === 'stock' || arrayName === 'catalog') {
+            if (arrayName === 'parts' || arrayName === 'stock' || arrayName === 'catalog' || arrayName === 'profiles') {
                 if (key === 'storeId') {
                     valA = appState.stores?.find(s => s.id === a.storeId)?.name || '';
                     valB = appState.stores?.find(s => s.id === b.storeId)?.name || '';
@@ -305,7 +305,73 @@
                     };
                     valA = getWeight(a);
                     valB = getWeight(b);
+                } else if (key === 'dimensions') {
+                    // 🪄 UNIVERSAL 2D DIMENSIONAL SORTING
+                    
+                    if (arrayName === 'profiles') {
+                        // 1. Profiles Table: Tie-break Width vs Thickness
+                        let widthA = a.width || 0;
+                        let widthB = b.width || 0;
+                        if (widthA === widthB) {
+                            valA = a.thickness || 0;
+                            valB = b.thickness || 0;
+                        } else {
+                            valA = widthA;
+                            valB = widthB;
+                        }
+                    } else {
+                        // 2. Parts/Stock Tables: Tie-break Width vs Length
+                        let widthA = a.category === 'lumber' ? (appState.profiles.find(pr => pr.id === a.profileId)?.width || 0) : (a.width || 0);
+                        let widthB = b.category === 'lumber' ? (appState.profiles.find(pr => pr.id === b.profileId)?.width || 0) : (b.width || 0);
+                        
+                        if (widthA === widthB) {
+                            valA = a.length || 0;
+                            valB = b.length || 0;
+                        } else {
+                            valA = widthA;
+                            valB = widthB;
+                        }
+                    }
+                } else if (key === 'weight_cost' && arrayName === 'parts') {
+                    // 🪄 DYNAMIC PARTS COLUMN SORTING
+                    const metricMode = (appState.settings && appState.settings.partsMetricMode) ? appState.settings.partsMetricMode : 'weight';
+                    
+                    const getWeight = (p) => {
+                        if (p.category === 'fastener') return 0;
+                        const prof = appState.profiles.find(pr => pr.id === p.profileId);
+                        const mat = appState.materials.find(m => m.id === p.materialId);
+                        if (!prof || !mat) return 0;
+                        const trueWidth = p.category === 'lumber' ? (prof.width || 0) : p.width;
+                        const volumeM3 = (p.length * trueWidth * (prof.thickness || 0)) / 1000000000;
+                        return volumeM3 * (mat.density || 0) * p.qty;
+                    };
+
+                    const getEstimatedCost = (p) => {
+                        if (p.category === 'fastener' || !appState.catalog) return 0;
+                        const matchingItems = appState.catalog.filter(c => c.categoryId === p.category && c.profileId === p.profileId && c.materialId === p.materialId);
+                        if (matchingItems.length === 0) return 0;
+
+                        let totalNormPrice = 0;
+                        matchingItems.forEach(c => {
+                            const bCost = typeof calculateCostPerPiece === 'function' ? calculateCostPerPiece(c) : 0;
+                            if (p.category === 'sheet') {
+                                const cArea = c.length * c.width;
+                                if (cArea > 0) totalNormPrice += (bCost / cArea);
+                            } else {
+                                if (c.length > 0) totalNormPrice += (bCost / c.length);
+                            }
+                        });
+                        
+                        const avgUnitCost = totalNormPrice / matchingItems.length;
+                        const trueWidth = p.category === 'lumber' ? (appState.profiles.find(pr => pr.id === p.profileId)?.width || 0) : p.width;
+                        const unitSize = p.category === 'sheet' ? (p.length * trueWidth) : p.length;
+                        return avgUnitCost * unitSize * p.qty;
+                    };
+
+                    valA = metricMode === 'cost' ? getEstimatedCost(a) : getWeight(a);
+                    valB = metricMode === 'cost' ? getEstimatedCost(b) : getWeight(b);
                 }
+                
             }
             
             // Clean up values based on type
@@ -556,10 +622,49 @@
         }
     }
 
+    // --- UNIVERSAL UI TOGGLES ---
+    function toggleInputSection(arrayName, normalOffset, hiddenOffset, btnElement) {
+        const inputSection = document.getElementById(`input-section-${arrayName}`);
+        const tableWrapper = document.getElementById(`table-wrapper-${arrayName}`);
+
+        if (!inputSection || !tableWrapper) return; // Failsafe
+
+        if (inputSection.classList.contains('d-none')) {
+            // SHOW THE FORM
+            inputSection.classList.remove('d-none');
+            // Shrink the table back down
+            tableWrapper.style.maxHeight = `calc(100vh - ${normalOffset}px)`;
+            tableWrapper.style.height = `calc(100vh - ${normalOffset}px)`; 
+            btnElement.innerHTML = '<b>▽</b>';
+        } else {
+            // HIDE THE FORM
+            inputSection.classList.add('d-none');
+            // Expand the table to fill the void
+            tableWrapper.style.maxHeight = `calc(100vh - ${hiddenOffset}px)`;
+            tableWrapper.style.height = `calc(100vh - ${hiddenOffset}px)`; 
+            btnElement.innerHTML = '<b>◁</b>';
+        }
+    }
+
     // --- TOAST NOTIFICATIONS ---
     // Instead of ugly alert() boxes, we slide up a modern notification
     function showToast(message, isError = false) {
         const container = document.getElementById('toast-container');
+        const MAX_TOASTS = 3;
+
+        const currentToasts = container.querySelectorAll('.toast');
+        if (currentToasts.length >= MAX_TOASTS) {
+            // Target the oldest toast (the first one in the container)
+            const oldestToast = currentToasts[0];
+            
+            // Use Bootstrap's API to gracefully hide it (which triggers our cleanup listener)
+            const bsOldest = bootstrap.Toast.getInstance(oldestToast);
+            if (bsOldest) {
+                bsOldest.hide();
+            } else {
+                oldestToast.remove(); // Failsafe if Bootstrap loses track of it
+            }
+        }
         
         // Create the toast element
         const toastEl = document.createElement('div');
@@ -647,4 +752,83 @@
             toggle.checked = (theme === 'dark');
         }
     }
+
+    // ==========================================
+    // UNIVERSAL DUPLICATION ENGINE
+    // ==========================================
+    function duplicateRow(arrayName, rowId) {
+        // 1. Failsafe
+        if (!appState[arrayName]) return;
+
+        // 2. Find the exact index of the item we clicked
+        const index = appState[arrayName].findIndex(item => item.id === rowId);
+        if (index === -1) return;
+
+        // 3. Deep Clone the object (Severs all memory references to the original)
+        const original = appState[arrayName][index];
+        const clone = JSON.parse(JSON.stringify(original));
+
+        // 4. Generate the new ID (Extract prefix + append fresh timestamp)
+        const idParts = original.id.split('-');
+        const prefix = idParts.length > 1 ? idParts[0] + '-' : 'ID-';
+        clone.id = prefix + Date.now();
+
+        // 5. Append " (copy)" if the table uses a 'name' field
+        if (clone.name !== undefined) {
+            clone.name = clone.name + ' (copy)';
+        }
+
+        // 6. Inject the clone directly below the original (index + 1)
+        appState[arrayName].splice(index + 1, 0, clone);
+
+        // 7. Save to local storage
+        saveState();
+
+        // 8. Trigger the correct table redraw
+        if (arrayName === 'parts' && typeof renderPartsTable === 'function') renderPartsTable();
+        if (arrayName === 'materials' && typeof renderMaterialsTable === 'function') renderMaterialsTable();
+        if (arrayName === 'catalog' && typeof renderCatalogTable === 'function') renderCatalogTable();
+        if (arrayName === 'stock' && typeof renderStockTable === 'function') renderStockTable();
+        if (arrayName === 'projects' && typeof renderProjectsTable === 'function') renderProjectsTable();
+        if (arrayName === 'profiles' && typeof renderProfilesTable === 'function') renderProfilesTable();
+
+        showToast('Row duplicated.');
+    }
+
+    // ==========================================
+    // UNIVERSAL DELETE ENGINE
+    // ==========================================
+    let pendingDeleteAction = null;
+
+    function requestConfirm(message, actionCallback) {
+        document.getElementById('modal-delete-message').innerText = message;
+        pendingDeleteAction = actionCallback; // Memorize the exact delete function
+        
+        const modal = new bootstrap.Modal(document.getElementById('modal-universal-delete'));
+        modal.show();
+        
+        // Auto-focus the Confirm button so native 'Enter' works instantly
+        setTimeout(() => document.getElementById('btn-confirm-delete').focus(), 400);
+    }
+
+    function executeConfirm() {
+        if (pendingDeleteAction) {
+            pendingDeleteAction(); // Execute the memorized function
+            pendingDeleteAction = null; // Clear memory
+        }
+        const modalEl = document.getElementById('modal-universal-delete');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+    }
+
+    // The Global 'Enter' Key Listener
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            const modalEl = document.getElementById('modal-universal-delete');
+            if (modalEl && modalEl.classList.contains('show')) {
+                event.preventDefault(); // Stop Enter from triggering anything else
+                executeConfirm();
+            }
+        }
+    });
 </script>

@@ -1,11 +1,5 @@
 <script>
-    /**
-     * Frontend/JS/js_dictionaries.html
-     * Handles logic for adding/removing Materials and Profiles.
-     */
-
-    // --- RENDER FUNCTIONS ---
-
+    // --- MAIN TABLE RENDER FUNCTIONS ---
     function renderDictionaries() {
         renderProjectsTable(); 
         renderStockTable();
@@ -17,7 +11,6 @@
         if (typeof refreshPartsDropdowns === 'function') refreshPartsDropdowns();
         if (typeof renderPartsTable === 'function') renderPartsTable();
     }
-
     function renderSettings() {
         if (!appState.settings) appState.settings = {};
         if (!appState.settings.displayUnit) appState.settings.displayUnit = 'mm';
@@ -42,10 +35,9 @@
 
         updateUnitLabels();
     }
-
     function renderProjectsTable() {
-
-        const tbody = document.getElementById('table-projects-body');
+    
+    const tbody = document.getElementById('table-projects-body');
         tbody.innerHTML = ''; 
         
         // Failsafe in case appState.projects is undefined
@@ -57,18 +49,19 @@
             
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="p-0">
+                <td class="px-1 py-0">
                     <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" 
                            value="${proj.name}" 
                            onchange="updateProjectName('${proj.id}', this.value)"
                            title="Tap to edit">
                 </td>
                 <td><span class="badge bg-secondary">${proj.status || 'Design'}</span></td>
-                <td class="text-center" style="width: 40px;">
+                <td class="text-center px-1 py-0" style="width: 40px;">
                     <button class="btn btn-sm btn-light border shadow-sm py-0 px-2" onclick="openGroupModal('${proj.id}')" title="Manage Groups">⚙️</button>
                 </td>
                 <td class="text-end">
-                    <button class="btn btn-sm py-0 px-2" onclick="deleteProject('${proj.id}')">🗑️</button>
+                    <button class="btn btn-sm py-0 px-0" onclick="duplicateRow('projects', '${proj.id}')" title="Duplicate Row">➕</button>
+                    <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteProject('${proj.id}')">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -80,7 +73,6 @@
         }
 
     }
-
     function renderStockTable() {
         const tbody = document.getElementById('table-stock-body');
         if (!tbody) return;
@@ -145,7 +137,7 @@
             }
 
             // 🪄 2. INLINE GRAIN DROPDOWN
-            let grainHtml = '-';
+            let grainHtml = '<span class="text-muted">-</span>';
             if (item.categoryId === 'sheet') {
                 grainHtml = `
                     <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;" onchange="updateStock('${item.id}', 'grain', this.value)" title="Change Grain">
@@ -166,7 +158,7 @@
 
             tr.innerHTML = `
                 <td>
-                    <div class="d-flex justify-content-center">
+                    <div class="d-flex justify-content-center px-1">
                         <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
                                 style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
                             <option value="lumber" class="bg-light text-dark" ${item.categoryId === 'lumber' ? 'selected' : ''}>Lumber</option>
@@ -175,17 +167,18 @@
                         </select>
                     </div>
                 </td>
-                <td class="text-center p-0 align-middle"><small>
+                <td class="text-center px-1 py-0 align-middle"><small>
                     <input type="number" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width: 50px;"
                            value="${item.qty}" onchange="updateStock('${item.id}', 'qty', this.value)" title="Tap to edit qty">
                 </small></td>
-                <td class="text-center text-nowrap p-0 align-middle">${dimHtml}</td>
-                <td class="p-0 align-middle text-center">${profHtml}</td>
-                <td class="p-0 align-middle text-center">${matHtml}</td>
-                <td class="text-center text-capitalize p-0 align-middle">${grainHtml}</td>
-                <td class="text-center p-0 align-middle">${typeHtml}</td>
+                <td class="text-center text-nowrap px-1 py-0 align-middle">${dimHtml}</td>
+                <td class="px-1 py-0 align-middle text-center">${profHtml}</td>
+                <td class="px-1 py-0 align-middle text-center">${matHtml}</td>
+                <td class="text-center text-capitalize px-1 py-0 align-middle">${grainHtml}</td>
+                <td class="text-center px-1 py-0 align-middle">${typeHtml}</td>
                 <td class="text-end">
-                    <button class="btn btn-sm py-0 px-2" onclick="deleteStock('${item.id}')">🗑️</button>
+                    <button class="btn btn-sm py-0 px-0" onclick="duplicateRow('stock', '${item.id}')" title="Duplicate Row">➕</button>
+                    <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteStock('${item.id}')">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -198,128 +191,6 @@
 
         updateUnitLabels();
     }
-
-    function renderMaterialsTable() {
-        const tbody = document.getElementById('table-materials-body');
-        tbody.innerHTML = ''; 
-        
-        appState.materials.forEach(mat => {
-
-            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(mat, 'materials')) return;
-
-            const tr = document.createElement('tr');
-           
-            let currentCat = mat.category || 'lumber';
-
-            // 🪄 COLOR CODED BADGE LOGIC
-            let badgeClass = getCategoryBadgeClass(currentCat);
-
-            tr.innerHTML = `
-                <td class="p-0">
-                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" 
-                           value="${safeHTML(mat.name)}" 
-                           onchange="updateMaterial('${mat.id}', 'name', this.value)" title="Tap to edit">
-                </td>
-                <td>
-                    <div class="d-flex justify-content-center">
-                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
-                            <option value="lumber" class="bg-light text-dark" ${currentCat === 'lumber' ? 'selected' : ''}>Lumber</option>
-                            <option value="sheet" class="bg-light text-dark" ${currentCat === 'sheet' ? 'selected' : ''}>Sheet</option>
-                            <option value="fastener" class="bg-light text-dark" ${currentCat === 'fastener' ? 'selected' : ''}>Fastener</option>
-                        </select>
-                    </div>
-                </td>
-                <td class="p-0">
-                    <input type="number" step="0.01" class="form-control form-control-sm border-0 bg-transparent text-center" 
-                           value="${formatDensityForDisplay(mat.density)}" 
-                           onchange="updateMaterial('${mat.id}', 'density', this.value)" title="Tap to edit">
-                </td>
-                <td class="text-end">
-                    <button class="btn btn-sm py-0 px-2" onclick="deleteMaterial('${mat.id}')">🗑️</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-
-        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
-        if (typeof updateFilterUI === 'function') {
-            updateFilterUI('materials', ['name', 'category']);
-        }
-
-    }
-
-    function renderProfilesTable() {
-        const tbody = document.getElementById('table-profiles-body');
-        tbody.innerHTML = ''; 
-        
-        appState.profiles.forEach(prof => {
-
-            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(prof, 'profiles')) return;
-
-            const tr = document.createElement('tr');
-            
-            // 🪄 MAGIC: Convert internal base mm back to UI strings (e.g., 38.1 -> "1 1/2")
-            let displayThick = formatForDisplay(prof.thickness);
-            let displayWidth = formatForDisplay(prof.width);
-            
-            // 🪄 COLOR CODED BADGE LOGIC
-            let badgeClass = getCategoryBadgeClass(prof.type);
-
-            // 🪄 DYNAMIC DIMENSIONS DISPLAY
-            let dimHtml = '';
-            if (prof.type === 'sheet') {
-                // Sheets only show Thickness
-                dimHtml = `
-                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0 py-0" style="width: 60px;"
-                           value="${displayThick}" onchange="updateProfile('${prof.id}', 'thickness', this.value)" title="Tap to edit thickness">
-                `;
-            } else if (prof.type === 'lumber') {
-                // Lumber shows Thickness x Width
-                dimHtml = `
-                    <div class="d-flex align-items-baseline justify-content-center gap-1">
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0 py-0" style="width: 45px;"
-                            value="${displayThick}" onchange="updateProfile('${prof.id}', 'thickness', this.value)" title="Tap to edit thickness">
-                        <span class="text-muted text-sm">x</span>
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-left px-0 py-0" style="width: 45px;"
-                            value="${displayWidth}" onchange="updateProfile('${prof.id}', 'width', this.value)" title="Tap to edit width">
-                    </div>
-                `;
-            } else {
-                dimHtml = `<span class="text-muted">-</span>`;
-            }
-
-            tr.innerHTML = `
-                <td class="p-0">
-                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" 
-                           value="${safeHTML(prof.name)}"
-                           onchange="updateProfile('${prof.id}', 'name', this.value)" title="Tap to edit">
-                </td>
-                <td>
-                    <div class="d-flex justify-content-center">
-                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
-                            <option value="lumber" class="bg-light text-dark" ${prof.type === 'lumber' ? 'selected' : ''}>Lumber</option>
-                            <option value="sheet" class="bg-light text-dark" ${prof.type === 'sheet' ? 'selected' : ''}>Sheet</option>
-                            <option value="fastener" class="bg-light text-dark" ${prof.type === 'fastener' ? 'selected' : ''}>Fastener</option>
-                        </select>
-                    </div>
-                </td>
-                <td class="text-center p-0 align-middle">${dimHtml}</td>
-                <td class="text-end">
-                    <button class="btn btn-sm py-0 px-2" onclick="deleteProfile('${prof.id}')">🗑️</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-
-        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
-        if (typeof updateFilterUI === 'function') {
-            updateFilterUI('profiles', ['name', 'type']);
-        }
-
-    }
-
     function renderCatalogTable() {
         const tbody = document.getElementById('table-catalog-body');
         if (!tbody) return;
@@ -347,7 +218,7 @@
             });
             // Text is standard, no yellow text classes
             let profHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" style="max-width: 150px;" onchange="updateCatalogItem('${item.id}', 'profileId', this.value)" title="Tap to change Profile">
+                <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" style="max-width: 150px; margin: 0 auto;" onchange="updateCatalogItem('${item.id}', 'profileId', this.value)" title="Tap to change Profile">
                     ${profOptions}
                 </select>`;
 
@@ -360,7 +231,7 @@
             });
             // Text is standard, no yellow text classes
             let matHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" style="max-width: 150px;" onchange="updateCatalogItem('${item.id}', 'materialId', this.value)" title="Tap to change Material">
+                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" style="max-width: 150px; margin: 0 auto;" onchange="updateCatalogItem('${item.id}', 'materialId', this.value)" title="Tap to change Material">
                     ${matOptions}
                 </select>`;
 
@@ -376,16 +247,16 @@
                 const displayW = formatForDisplay(item.width);
                 dimHtml = `
                     <div class="d-flex align-items-baseline justify-content-center gap-1">
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0" style="width: 50px;" 
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0 py-0" style="width: 50px;" 
                                value="${displayW}" onchange="updateCatalogItem('${item.id}', 'width', this.value)" title="Tap to edit width">
                         <span class="text-muted text-sm">x</span>
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-start px-0" style="width: 50px;" 
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-start px-0 py-0" style="width: 50px;" 
                                value="${displayL}" onchange="updateCatalogItem('${item.id}', 'length', this.value)" title="Tap to edit length">
                     </div>
                 `;
             } else {
                 dimHtml = `
-                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width: 60px;" 
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0 py-0 mx-auto" style="width: 60px;" 
                            value="${displayL}" onchange="updateCatalogItem('${item.id}', 'length', this.value)" title="Tap to edit length">
                 `;
             }
@@ -398,7 +269,7 @@
                 });
             }
             let storeHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" onchange="updateCatalogItem('${item.id}', 'storeId', this.value)" title="Tap to change Store">
+                <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" onchange="updateCatalogItem('${item.id}', 'storeId', this.value)" title="Tap to change Store">
                     ${storeOptions}
                 </select>`;
 
@@ -408,7 +279,7 @@
             const uVol = isMetric ? 'm³' : 'BF';
 
             let unitSelectHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 text-muted" 
+                <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0 text-muted" 
                         style="width: auto; appearance: none; cursor: pointer; text-align: left;" 
                         onchange="updateCatalogItem('${item.id}', 'priceUnit', this.value)" title="Tap to change Unit">
                     <option value="piece" ${item.priceUnit === 'piece' ? 'selected' : ''}>pc</option>
@@ -426,10 +297,10 @@
                     ${unitSelectHtml}
                 </div>`;
 
-            let grainHtml = '-';
+            let grainHtml = '<span class="text-muted">-</span>';
             if (item.categoryId === 'sheet') {
                 grainHtml = `
-                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;" onchange="updateCatalogItem('${item.id}', 'grain', this.value)" title="Change Grain">
+                    <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0 mx-auto text-center" style="width: 75px;" onchange="updateCatalogItem('${item.id}', 'grain', this.value)" title="Change Grain">
                         <option value="none" ${item.grain === 'none' ? 'selected' : ''}>-</option>
                         <option value="length" ${item.grain === 'length' ? 'selected' : ''}>Length</option>
                         <option value="width" ${item.grain === 'width' ? 'selected' : ''}>Width</option>
@@ -455,19 +326,20 @@
                         </select>
                     </div>
                 </td>
-                <td class="text-center p-0 align-middle">${dimHtml}</td>
-                <td class="p-0 align-middle">${profHtml}</td>
-                <td class="p-0 align-middle">${matHtml}</td>
-                <td class="text-center p-0 align-middle">${grainHtml}</td>
-                <td class="p-0 align-middle">${storeHtml}</td>
-                <td class="text-center p-0 align-middle">${priceHtml}</td>
+                <td class="text-center px-1 py-0 align-middle">${dimHtml}</td>
+                <td class="px-1 py-0 align-middle text-center">${profHtml}</td>
+                <td class="px-1 py-0 align-middle text-center">${matHtml}</td>
+                <td class="text-center px-1 py-0 align-middle">${grainHtml}</td>
+                <td class="px-1 py-0 align-middle">${storeHtml}</td>
+                <td class="text-center px-1 py-0 align-middle">${priceHtml}</td>
                 <td class="text-center fw-bold text-success align-middle">${currency}${displayPrice}</td>
                 <td class="text-end text-nowrap align-middle">
                     ${linkHtml}
                     <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${item.id}', '${safeHTML(item.link || '')}')" title="Edit Link">✏️</button>
                 </td>
                 <td class="text-end">
-                    <button class="btn btn-sm py-0 px-2" onclick="deleteCatalogItem('${item.id}')">🗑️</button>
+                    <button class="btn btn-sm py-0 px-0" onclick="duplicateRow('catalog', '${item.id}')" title="Duplicate Row">➕</button>
+                    <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteCatalogItem('${item.id}')">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -476,153 +348,167 @@
         const filterColumns = ['categoryId', 'length', 'profileId', 'materialId', 'grain', 'storeId'];
         const hasAnyFilter = updateFilterUI('catalog', filterColumns);
     }
+    function renderProfilesTable() {
+        const tbody = document.getElementById('table-profiles-body');
+        tbody.innerHTML = ''; 
+        
+        appState.profiles.forEach(prof => {
 
-    // --- CRUD OPERATIONS ---
+            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(prof, 'profiles')) return;
 
-    function handleUnitChange() {
-        // 1. ONLY update the global display preferences. 
-        appState.settings.displayUnit = document.getElementById('setting-display-unit').value;
-        appState.settings.currency = document.getElementById('setting-currency').value; // 🪄 NOW SAVES CURRENCY
-        
-        saveState();
-        
-        // 2. Redraw the ENTIRE UI so tables instantly reflect the new symbols
-        renderSettings(); 
-        renderDictionaries();
-        showToast('Display preferences updated.');
-    }
-
-    function handleAddProject(event) {
-        event.preventDefault();
-        
-        const nameInput = document.getElementById('proj-name');
-        const newId = 'PROJ-' + Date.now(); // Generates unique ID
-        
-        const newProject = {
-            id: newId,
-            name: nameInput.value,
-            status: 'Design'
-        };
-        
-        appState.projects.unshift(newProject);
-        saveState();
-        renderDictionaries();
-        showToast('Project created.');
-        
-        nameInput.value = ''; // Clear the form
-    }
-
-    function handleAddMaterial(event) {
-        event.preventDefault(); 
-        
-        const name = document.getElementById('mat-name').value;
-        const category = document.getElementById('mat-category').value;
-        const densityInput = document.getElementById('mat-density').value;
-        
-        const newMaterial = {
-            id: 'M-' + Date.now(),
-            name: name,
-            category: category, // 🪄 Now saving the category
-            density: parseDensityToBase(densityInput) 
-        };
-        
-        appState.materials.unshift(newMaterial);
-        saveState();
-        renderDictionaries();
-        showToast('Material added successfully.');
-        
-        document.getElementById('form-add-material').reset();
-    }
-
-    function handleAddProfile(event) {
-        event.preventDefault();
-        
-        const name = document.getElementById('prof-name').value;
-        const category = document.getElementById('prof-category').value;
-        const thicknessInput = document.getElementById('prof-thickness').value;
-        const widthInput = document.getElementById('prof-width').value;
-        
-        // 🪄 MAGIC: Convert whatever the user typed into base mm before saving
-        const thicknessBase = parseToBaseUnit(thicknessInput);
-        const widthBase = parseToBaseUnit(widthInput);
-        
-        const newId = 'PR-' + Date.now();
-        
-        const newProfile = {
-            id: newId,
-            name: name,
-            type: category, 
-            thickness: thicknessBase,
-            width: widthBase
-        };
-        
-        appState.profiles.unshift(newProfile);
-        saveState();
-        renderDictionaries();
-        showToast('Profile added successfully.');
-        
-        document.getElementById('form-add-profile').reset();
-    }
-
-    function handleProfileCategoryChange() {
-        const cat = document.getElementById('prof-category').value;
-        const widthInput = document.getElementById('prof-width');
-        
-        if (cat === 'sheet' || cat === 'fastener') {
-            widthInput.value = '';
-            widthInput.disabled = true;
-        } else {
-            widthInput.disabled = false;
-        }
-    }
-
-    function updateProjectName(id, newName) {
-        // Find the project by ID and update its name
-        const project = appState.projects.find(p => p.id === id);
-        if (project) {
-            project.name = newName;
-            saveState();
-            renderDictionaries();
-            showToast('Project renamed.');
-        }
-    }
-
-    function updateMaterial(id, field, newValue) {
-        const mat = appState.materials.find(m => m.id === id);
-        if (mat) {
-            // 🪄 If changing density, parse the lb/ft3 back to kg/m3 for the database
-            mat[field] = (field === 'density') ? parseDensityToBase(newValue) : newValue;
-            saveState();
-            renderDictionaries();
-            showToast('Material updated.');
-        }
-    }
-
-    function updateProfile(id, field, newValue) {
-        const prof = appState.profiles.find(p => p.id === id);
-        if (prof) {
-            if (field === 'thickness' || field === 'width') {
-                // Intercept and parse to base unit
-                prof[field] = parseToBaseUnit(newValue);
-            } else {
-                prof[field] = newValue;
-                
-                // 🪄 PHYSICS AUTO-HEAL: If they change it to a Sheet, zero out the width so it doesn't leave bad data behind
-                if (field === 'type' && (newValue === 'sheet' || newValue === 'fastener')) {
-                    prof.width = 0;
-                }
-            }
+            const tr = document.createElement('tr');
             
-            saveState();
-            renderDictionaries();
-            showToast('Profile updated.');
+            // 🪄 MAGIC: Convert internal base mm back to UI strings (e.g., 38.1 -> "1 1/2")
+            let displayThick = formatForDisplay(prof.thickness);
+            let displayWidth = formatForDisplay(prof.width);
+            
+            // 🪄 COLOR CODED BADGE LOGIC
+            let badgeClass = getCategoryBadgeClass(prof.type);
+
+            // 🪄 DYNAMIC DIMENSIONS DISPLAY
+            let dimHtml = '';
+            if (prof.type === 'sheet') {
+                // Sheets only show Thickness
+                dimHtml = `
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width: 60px;"
+                           value="${displayThick}" onchange="updateProfile('${prof.id}', 'thickness', this.value)" title="Tap to edit thickness">
+                `;
+            } else if (prof.type === 'lumber') {
+                // Lumber shows Thickness x Width
+                dimHtml = `
+                    <div class="d-flex align-items-baseline justify-content-center gap-1">
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0 py-0" style="width: 45px;"
+                            value="${displayThick}" onchange="updateProfile('${prof.id}', 'thickness', this.value)" title="Tap to edit thickness">
+                        <span class="text-muted text-sm">x</span>
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-left px-0 py-0" style="width: 45px;"
+                            value="${displayWidth}" onchange="updateProfile('${prof.id}', 'width', this.value)" title="Tap to edit width">
+                    </div>
+                `;
+            } else {
+                dimHtml = `<span class="text-muted">-</span>`;
+            }
+
+            tr.innerHTML = `
+                <td class="px-1 py-0">
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" 
+                           value="${safeHTML(prof.name)}"
+                           onchange="updateProfile('${prof.id}', 'name', this.value)" title="Tap to edit">
+                </td>
+                <td>
+                    <div class="d-flex justify-content-center">
+                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
+                            <option value="lumber" class="bg-light text-dark" ${prof.type === 'lumber' ? 'selected' : ''}>Lumber</option>
+                            <option value="sheet" class="bg-light text-dark" ${prof.type === 'sheet' ? 'selected' : ''}>Sheet</option>
+                            <option value="fastener" class="bg-light text-dark" ${prof.type === 'fastener' ? 'selected' : ''}>Fastener</option>
+                        </select>
+                    </div>
+                </td>
+                <td class="text-center px-1 py-0 align-middle">${dimHtml}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm py-0 px-0" onclick="duplicateRow('profiles', '${prof.id}')" title="Duplicate Row">➕</button>
+                    <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteProfile('${prof.id}')">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
+        if (typeof updateFilterUI === 'function') {
+            updateFilterUI('profiles', ['name', 'type']);
         }
+
+    }
+    function renderMaterialsTable() {
+        const tbody = document.getElementById('table-materials-body');
+        tbody.innerHTML = ''; 
+        
+        appState.materials.forEach(mat => {
+
+            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(mat, 'materials')) return;
+
+            const tr = document.createElement('tr');
+           
+            let currentCat = mat.category || 'lumber';
+
+            // 🪄 COLOR CODED BADGE LOGIC
+            let badgeClass = getCategoryBadgeClass(currentCat);
+
+            tr.innerHTML = `
+                <td class="px-1 py-0">
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" 
+                           value="${safeHTML(mat.name)}" 
+                           onchange="updateMaterial('${mat.id}', 'name', this.value)" title="Tap to edit">
+                </td>
+                <td>
+                    <div class="d-flex justify-content-center">
+                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
+                            <option value="lumber" class="bg-light text-dark" ${currentCat === 'lumber' ? 'selected' : ''}>Lumber</option>
+                            <option value="sheet" class="bg-light text-dark" ${currentCat === 'sheet' ? 'selected' : ''}>Sheet</option>
+                            <option value="fastener" class="bg-light text-dark" ${currentCat === 'fastener' ? 'selected' : ''}>Fastener</option>
+                        </select>
+                    </div>
+                </td>
+                <td class="px-1 py-0">
+                    <input type="number" step="0.01" class="form-control form-control-sm border-0 bg-transparent text-center" 
+                           value="${formatDensityForDisplay(mat.density)}" 
+                           onchange="updateMaterial('${mat.id}', 'density', this.value)" title="Tap to edit">
+                </td>
+                <td class="text-end">
+                    <button class="btn btn-sm py-0 px-0" onclick="duplicateRow('materials', '${mat.id}')" title="Duplicate Row">➕</button>
+                    <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteMaterial('${mat.id}')">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
+        if (typeof updateFilterUI === 'function') {
+            updateFilterUI('materials', ['name', 'category']);
+        }
+
+    }
+    function renderGroupModalTable() {
+        const tbody = document.getElementById('table-modal-groups-body');
+        tbody.innerHTML = '';
+        
+        const activeProjectId = document.getElementById('modal-group-project-select').value;
+        if (!activeProjectId) return;
+
+        if (!appState.groups) appState.groups = [];
+
+        // Filter groups for the active project
+        const projectGroups = appState.groups.filter(g => g.projectId === activeProjectId);
+
+        if (projectGroups.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-3">No groups defined.</td></tr>';
+            return;
+        }
+
+        projectGroups.forEach(grp => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" 
+                           value="${safeHTML(grp.name)}" 
+                           onchange="updateGroupName('${grp.id}', this.value)"
+                           title="Tap to edit">
+                </td>
+                <td class="text-end">
+                    <button class="btn btn-sm py-0 px-2" onclick="deleteGroup('${grp.id}')">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
     }
 
-    function deleteProject(id) {
+    // --- MAIN TABLE DELETE FUNCTIONS ---
+    function deleteProject(id, isConfirmed = false) {
         // 1. The Safety Shield (Made extra scary for a destructive action)
-        if (!confirm("Are you sure you want to delete this Project? This will also DELETE ALL PARTS associated with it. This cannot be undone.")) {
-            return; // User got cold feet. Abort.
+        if (!isConfirmed) {
+            requestConfirm("Are you sure you want to delete this Project? This will also DELETE ALL PARTS associated with it. This cannot be undone.", () => deleteProject(id, true));
+            return; 
         }
 
         // 2. The Cascade Delete (Purge the Parts)
@@ -646,44 +532,34 @@
             showToast('Project deleted.');
         }
     }
-
-    function deleteMaterial(id) {
-        // 1. The Safety Shield
-        if (!confirm("Are you sure you want to delete this Material?")) {
+    function deleteStock(id, isConfirmed = false) {
+        if (!isConfirmed) {
+            requestConfirm("Remove this item from your stock?", () => deleteStock(id, true));
             return; 
         }
 
-        // 2. The Cascade Nullify
-        let inUseCount = 0;
-        if (appState.parts) {
-            appState.parts.forEach(part => {
-                if (part.materialId === id) {
-                    part.materialId = ''; 
-                    part.status = 'needs_mapping'; 
-                    inUseCount++;
-                }
-            });
-        }
-
-        // 3. The Execution
-        appState.materials = appState.materials.filter(m => m.id !== id);
+        appState.stock = appState.stock.filter(s => s.id !== id);
         saveState();
-        renderDictionaries();
-
-        // 5. The Alarm
-        if (inUseCount > 0) {
-            showToast(`Material deleted. ${inUseCount} part(s) using it were reset.`, true);
-        } else {
-            showToast('Material deleted.');
-        }
+        renderStockTable();
+        showToast('Item removed from stock.');
     }
-
-    function deleteProfile(id) {
-        // 1. The Safety Shield
-        if (!confirm("Are you sure you want to delete this Profile?")) {
-            return; // User clicked Cancel. Abort mission.
+    function deleteCatalogItem(id, isConfirmed = false) {
+        if (!isConfirmed) {
+            requestConfirm("Remove this item from your price list?", () => deleteCatalogItem(id, true));
+            return; 
         }
-
+        appState.catalog = appState.catalog.filter(c => c.id !== id);
+        saveState();
+        renderCatalogTable();
+        showToast('Item removed.');
+    }
+    function deleteProfile(id, isConfirmed = false) {
+        // 1. The Safety Shield
+        if (!isConfirmed) {
+            requestConfirm("Are you sure you want to delete this Profile?", () => deleteProfile(id, true));
+            return; 
+        }
+        
         // 2. The Cascade Nullify
         let inUseCount = 0;
         if (appState.parts) {
@@ -708,9 +584,98 @@
             showToast('Profile deleted.');
         }
     }
+    function deleteMaterial(id, isConfirmed = false) {
+        // 1. The Safety Shield
+        if (!isConfirmed) {
+            requestConfirm("Are you sure you want to delete this Material?", () => deleteMaterial(id, true));
+            return; 
+        }
+        
+        // 2. The Cascade Nullify
+        let inUseCount = 0;
+        if (appState.parts) {
+            appState.parts.forEach(part => {
+                if (part.materialId === id) {
+                    part.materialId = ''; 
+                    part.status = 'needs_mapping'; 
+                    inUseCount++;
+                }
+            });
+        }
+
+        // 3. The Execution
+        appState.materials = appState.materials.filter(m => m.id !== id);
+        saveState();
+        renderDictionaries();
+
+        // 5. The Alarm
+        if (inUseCount > 0) {
+            showToast(`Material deleted. ${inUseCount} part(s) using it were reset.`, true);
+        } else {
+            showToast('Material deleted.');
+        }
+    }
+    function deleteStore(id) {
+        if (!confirm("Delete this store? This will also remove the store from any catalog items using it.")) return;
+        let affected = 0;
+        if (appState.catalog) {
+            appState.catalog.forEach(item => {
+                if (item.storeId === id) {
+                    item.storeId = '';
+                    affected++;
+                }
+            });
+        }
+        appState.stores = appState.stores.filter(s => s.id !== id);
+        saveState();
+        renderStoreModalTable();
+        renderCatalogTable();
+        showToast(`Store deleted. ${affected} catalog items reset.`, true);
+    }
+
+    // --- MAIN TABLE UPDATE FUNCTIONS ---
+    function updateProjectName(id, newName) {
+        // Find the project by ID and update its name
+        const project = appState.projects.find(p => p.id === id);
+        if (project) {
+            project.name = newName;
+            saveState();
+            renderDictionaries();
+            showToast('Project renamed.');
+        }
+    }
+    function updateProfile(id, field, newValue) {
+        const prof = appState.profiles.find(p => p.id === id);
+        if (prof) {
+            if (field === 'thickness' || field === 'width') {
+                // Intercept and parse to base unit
+                prof[field] = parseToBaseUnit(newValue);
+            } else {
+                prof[field] = newValue;
+                
+                // 🪄 PHYSICS AUTO-HEAL: If they change it to a Sheet, zero out the width so it doesn't leave bad data behind
+                if (field === 'type' && (newValue === 'sheet' || newValue === 'fastener')) {
+                    prof.width = 0;
+                }
+            }
+            
+            saveState();
+            renderDictionaries();
+            showToast('Profile updated.');
+        }
+    }
+    function updateMaterial(id, field, newValue) {
+        const mat = appState.materials.find(m => m.id === id);
+        if (mat) {
+            // 🪄 If changing density, parse the lb/ft3 back to kg/m3 for the database
+            mat[field] = (field === 'density') ? parseDensityToBase(newValue) : newValue;
+            saveState();
+            renderDictionaries();
+            showToast('Material updated.');
+        }
+    }
 
     // --- HELPER FUNCTIONS ---
-
     function updateUnitLabels() {
         const isMetric = appState.settings.displayUnit === 'mm';
         const currencyText = appState.settings.currency || '$';
@@ -748,6 +713,99 @@
         }
     }
 
+    // --- HANDLER FUNCTIONS ---
+    function handleUnitChange() {
+        // 1. ONLY update the global display preferences. 
+        appState.settings.displayUnit = document.getElementById('setting-display-unit').value;
+        appState.settings.currency = document.getElementById('setting-currency').value; // 🪄 NOW SAVES CURRENCY
+        
+        saveState();
+        
+        // 2. Redraw the ENTIRE UI so tables instantly reflect the new symbols
+        renderSettings(); 
+        renderDictionaries();
+        showToast('Display preferences updated.');
+    }
+    function handleAddProject(event) {
+        event.preventDefault();
+        
+        const nameInput = document.getElementById('proj-name');
+        const newId = 'PROJ-' + Date.now(); // Generates unique ID
+        
+        const newProject = {
+            id: newId,
+            name: nameInput.value,
+            status: 'Design'
+        };
+        
+        appState.projects.unshift(newProject);
+        saveState();
+        renderDictionaries();
+        showToast('Project created.');
+        
+        nameInput.value = ''; // Clear the form
+    }
+    function handleAddMaterial(event) {
+        event.preventDefault(); 
+        
+        const name = document.getElementById('mat-name').value;
+        const category = document.getElementById('mat-category').value;
+        const densityInput = document.getElementById('mat-density').value;
+        
+        const newMaterial = {
+            id: 'M-' + Date.now(),
+            name: name,
+            category: category, // 🪄 Now saving the category
+            density: parseDensityToBase(densityInput) 
+        };
+        
+        appState.materials.unshift(newMaterial);
+        saveState();
+        renderDictionaries();
+        showToast('Material added successfully.');
+        
+        document.getElementById('form-add-material').reset();
+    }
+    function handleAddProfile(event) {
+        event.preventDefault();
+        
+        const name = document.getElementById('prof-name').value;
+        const category = document.getElementById('prof-category').value;
+        const thicknessInput = document.getElementById('prof-thickness').value;
+        const widthInput = document.getElementById('prof-width').value;
+        
+        // 🪄 MAGIC: Convert whatever the user typed into base mm before saving
+        const thicknessBase = parseToBaseUnit(thicknessInput);
+        const widthBase = parseToBaseUnit(widthInput);
+        
+        const newId = 'PR-' + Date.now();
+        
+        const newProfile = {
+            id: newId,
+            name: name,
+            type: category, 
+            thickness: thicknessBase,
+            width: widthBase
+        };
+        
+        appState.profiles.unshift(newProfile);
+        saveState();
+        renderDictionaries();
+        showToast('Profile added successfully.');
+        
+        document.getElementById('form-add-profile').reset();
+    }
+    function handleProfileCategoryChange() {
+        const cat = document.getElementById('prof-category').value;
+        const widthInput = document.getElementById('prof-width');
+        
+        if (cat === 'sheet' || cat === 'fastener') {
+            widthInput.value = '';
+            widthInput.disabled = true;
+        } else {
+            widthInput.disabled = false;
+        }
+    }
     function handleSettingsValueChange() {
         appState.settings.bladeKerf = parseToBaseUnit(document.getElementById('setting-kerf').value);
         appState.settings.sheetBladeKerf = parseToBaseUnit(document.getElementById('setting-sheet-kerf').value); // 🪄 NEW
@@ -771,11 +829,8 @@
         }, 100); 
     });
 
-    // ==========================================
     // PROJECT GROUP MANAGER
-    // ==========================================
     let groupModalInstance = null;
-
     function openGroupModal(preSelectedProjectId = '') {
         // 1. Initialize Bootstrap Modal if it doesn't exist
         if (!groupModalInstance) {
@@ -816,41 +871,6 @@
             document.getElementById('modal-new-group-name').focus();
         }, 400);
     }
-
-    function renderGroupModalTable() {
-        const tbody = document.getElementById('table-modal-groups-body');
-        tbody.innerHTML = '';
-        
-        const activeProjectId = document.getElementById('modal-group-project-select').value;
-        if (!activeProjectId) return;
-
-        if (!appState.groups) appState.groups = [];
-
-        // Filter groups for the active project
-        const projectGroups = appState.groups.filter(g => g.projectId === activeProjectId);
-
-        if (projectGroups.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-3">No groups defined.</td></tr>';
-            return;
-        }
-
-        projectGroups.forEach(grp => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>
-                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" 
-                           value="${safeHTML(grp.name)}" 
-                           onchange="updateGroupName('${grp.id}', this.value)"
-                           title="Tap to edit">
-                </td>
-                <td class="text-end">
-                    <button class="btn btn-sm py-0 px-2" onclick="deleteGroup('${grp.id}')">🗑️</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
     function handleAddGroup(event) {
         event.preventDefault();
         const activeProjectId = document.getElementById('modal-group-project-select').value;
@@ -874,7 +894,6 @@
         nameInput.value = ''; // Clear input
         nameInput.focus();
     }
-
     function updateGroupName(id, newName) {
         const grp = appState.groups.find(g => g.id === id);
         if (grp) {
@@ -883,7 +902,6 @@
             showToast('Group renamed.');
         }
     }
-
     function deleteGroup(id) {
         if (!confirm("Delete this group? All parts in this group will be reset to 'no group'.")) return;
 
@@ -906,10 +924,7 @@
         showToast(`Group deleted. ${affectedParts} part(s) reset to 'no group'.`, true);
     }
 
-    // ==========================================
     // STOCK MANAGER LOGIC
-    // ==========================================
-
     function handleStockCategoryChange() {
         const cat = document.getElementById('stock-category').value;
         const profSelect = document.getElementById('stock-profile');
@@ -958,14 +973,12 @@
             grainSelect.value = 'none';
         }
     }
-
     function populateStockDropdowns() {
         // Only refresh if a category is already selected
         if (document.getElementById('stock-category').value) {
             handleStockCategoryChange();
         }
     }
-
     function handleAddStock(event) {
         event.preventDefault();
         
@@ -995,9 +1008,7 @@
         document.getElementById('stock-length').value = '';
         document.getElementById('stock-width').value = '';
         document.getElementById('stock-qty').value = '1';
-        document.getElementById('stock-is-cutoff').checked = false;
     }
-
     function updateStock(id, field, newValue) {
         const item = appState.stock.find(s => s.id === id);
         if (item) {
@@ -1014,19 +1025,8 @@
         }
     }
 
-    function deleteStock(id) {
-        if (!confirm("Remove this item from your stock?")) return;
-        appState.stock = appState.stock.filter(s => s.id !== id);
-        saveState();
-        renderStockTable();
-        showToast('Item removed from stock.');
-    }
-
-    // ==========================================
     // STORE MANAGER LOGIC (MODAL)
-    // ==========================================
     let storeModalInstance = null;
-
     function openStoreModal() {
         const modalEl = document.getElementById('modal-store-manager');
         
@@ -1048,7 +1048,6 @@
         storeModalInstance.show();
         setTimeout(() => document.getElementById('modal-new-store-name').focus(), 400);
     }
-
     function renderStoreModalTable() {
         const tbody = document.getElementById('table-modal-stores-body');
         tbody.innerHTML = '';
@@ -1074,7 +1073,6 @@
             tbody.appendChild(tr);
         });
     }
-
     function handleAddStore(event) {
         event.preventDefault();
         const nameInput = document.getElementById('modal-new-store-name');
@@ -1084,7 +1082,6 @@
         renderStoreModalTable();
         nameInput.value = ''; 
     }
-
     function updateStoreName(id, newName) {
         const store = appState.stores.find(s => s.id === id);
         if (store) {
@@ -1095,28 +1092,7 @@
         }
     }
 
-    function deleteStore(id) {
-        if (!confirm("Delete this store? This will also remove the store from any catalog items using it.")) return;
-        let affected = 0;
-        if (appState.catalog) {
-            appState.catalog.forEach(item => {
-                if (item.storeId === id) {
-                    item.storeId = '';
-                    affected++;
-                }
-            });
-        }
-        appState.stores = appState.stores.filter(s => s.id !== id);
-        saveState();
-        renderStoreModalTable();
-        renderCatalogTable();
-        showToast(`Store deleted. ${affected} catalog items reset.`, true);
-    }
-
-    // ==========================================
     // CATALOG & PRICING LOGIC
-    // ==========================================
-
     function cyclePriceUnit() {
         const units = ['piece', 'linear', 'area', 'volume'];
         const hiddenUnit = document.getElementById('cat-price-unit');
@@ -1129,7 +1105,6 @@
         // Let the global translation engine instantly format the button text
         updateUnitLabels(); 
     }
-
     function handleCatalogCategoryChange() {
         const cat = document.getElementById('cat-category').value;
         const profSelect = document.getElementById('cat-profile');
@@ -1175,7 +1150,6 @@
             grainSelect.value = 'none';  // 🪄 ADD THIS
         }
     }
-
     function populateCatalogDropdowns() {
         const storeSelect = document.getElementById('cat-store');
         
@@ -1206,7 +1180,6 @@
             handleCatalogCategoryChange();
         }
     }
-
     function handleAddCatalogItem(event) {
         event.preventDefault();
         const category = document.getElementById('cat-category').value;
@@ -1236,6 +1209,9 @@
         saveState();
         renderCatalogTable();
         showToast('Item added to Catalog.');
+
+        // Reset form but keep category to allow rapid entry
+        document.getElementById('cat-price').value = '';
     }
 
     // THE MATH ENGINE: Calculates the true cost of ONE physical piece, no matter what unit the store uses.
@@ -1262,7 +1238,6 @@
         }
         return 0;
     }
-
     // Displays the normalized column price
     function getNormalizedPriceDisplay(item, viewUnit) {
         const costPerPiece = calculateCostPerPiece(item);
@@ -1290,7 +1265,6 @@
         if (factor === 0) return '0.00';
         return (costPerPiece / factor).toFixed(2);
     }
-
     function updateCatalogItem(id, field, newValue) {
         const item = appState.catalog.find(c => c.id === id);
         if (item) {
@@ -1311,14 +1285,6 @@
         }
     }
 
-    function deleteCatalogItem(id) {
-        if (!confirm("Remove this item from the catalog?")) return;
-        appState.catalog = appState.catalog.filter(c => c.id !== id);
-        saveState();
-        renderCatalogTable();
-        showToast('Item removed.');
-    }
-
     // --- Link Modal Logic ---
     let linkModalInstance = null;
     function openLinkModal(itemId, currentLink) {
@@ -1328,7 +1294,6 @@
         linkModalInstance.show();
         setTimeout(() => document.getElementById('modal-link-url').focus(), 400);
     }
-
     function saveCatalogLink(event) {
         if (event) event.preventDefault(); // Prevents the page from refreshing when you hit ENTER
         
