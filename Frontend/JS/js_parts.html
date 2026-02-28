@@ -247,7 +247,7 @@
             });
 
             // 🪄 NEW: Filter Groups for this specific row's Project
-            let groupOptions = '<option value="">No Group</option>';
+            let groupOptions = '<option value="">-</option>';
             if (appState.groups) {
                 const rowGroups = appState.groups.filter(g => g.projectId === part.projectId);
                 rowGroups.forEach(g => {
@@ -398,12 +398,12 @@
                            onchange="updatePart('${part.id}', 'qty', this.value)" title="Tap to edit">
                     </div>
                 </td>
-                <td class="text-center p-0 px-1 align-middle">${dimHtml}</td>
                 <td class="p-0 px-1">
-                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" style="max-width: 200px;" onchange="updatePart('${part.id}', 'profileId', this.value)" title="Tap to edit Profile">
+                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 align-middle text-center" style="max-width: 200px;" onchange="updatePart('${part.id}', 'profileId', this.value)" title="Tap to edit Profile">
                         ${profOptions}
                     </select>
                 </td>
+                <td class="text-center p-0 px-1 align-middle">${dimHtml}</td>
                 <td class="p-0 px-1">
                     <select class="form-select form-select-sm border-0 bg-transparent text-muted px-0 py-0" style="max-width: 200px;" onchange="updatePart('${part.id}', 'materialId', this.value)" title="Tap to edit Material">
                         ${matOptions}
@@ -471,7 +471,7 @@
             } else if (field === 'projectId') {
                 part.projectId = newValue;
                 part.groupId = ''; 
-                showToast('Project changed. Group reset to "No Group".');
+                showToast('Project changed. Group reset to "-".');
             } else {
                 part[field] = newValue; // For text like Name
             }
@@ -503,7 +503,7 @@
         const currentGroupId = groupSelect.value;
         
         // 2. Reset to default
-        groupSelect.innerHTML = '<option value="">No Group</option>';
+        groupSelect.innerHTML = '<option value="">-</option>';
         
         // 3. Populate filtered groups
         if (projId && appState.groups) {

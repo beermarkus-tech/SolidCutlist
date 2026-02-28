@@ -96,7 +96,7 @@
                 profOptions += `<option value="${p.id}" ${p.id === item.profileId ? 'selected' : ''}>${safeHTML(p.name)}</option>`;
             });
             let profHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" style="max-width: 150px; margin: 0 auto;" onchange="updateStock('${item.id}', 'profileId', this.value)" title="Tap to change Profile">
+                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 align-middle text-center" style="max-width: 150px; margin: 0 auto;" onchange="updateStock('${item.id}', 'profileId', this.value)" title="Tap to change Profile">
                     ${profOptions}
                 </select>`;
 
@@ -171,8 +171,8 @@
                     <input type="number" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width: 50px;"
                            value="${item.qty}" onchange="updateStock('${item.id}', 'qty', this.value)" title="Tap to edit qty">
                 </small></td>
-                <td class="text-center text-nowrap px-1 py-0 align-middle">${dimHtml}</td>
                 <td class="px-1 py-0 align-middle text-center">${profHtml}</td>
+                <td class="text-center text-nowrap px-1 py-0 align-middle">${dimHtml}</td>
                 <td class="px-1 py-0 align-middle text-center">${matHtml}</td>
                 <td class="text-center text-capitalize px-1 py-0 align-middle">${grainHtml}</td>
                 <td class="text-center px-1 py-0 align-middle">${typeHtml}</td>
@@ -218,7 +218,7 @@
             });
             // Text is standard, no yellow text classes
             let profHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" style="max-width: 150px; margin: 0 auto;" onchange="updateCatalogItem('${item.id}', 'profileId', this.value)" title="Tap to change Profile">
+                <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0 text-center align-middle" style="max-width: 150px; margin: 0 auto;" onchange="updateCatalogItem('${item.id}', 'profileId', this.value)" title="Tap to change Profile">
                     ${profOptions}
                 </select>`;
 
@@ -326,8 +326,8 @@
                         </select>
                     </div>
                 </td>
-                <td class="text-center px-1 py-0 align-middle">${dimHtml}</td>
                 <td class="px-1 py-0 align-middle text-center">${profHtml}</td>
+                <td class="text-center px-1 py-0 align-middle">${dimHtml}</td>
                 <td class="px-1 py-0 align-middle text-center">${matHtml}</td>
                 <td class="text-center px-1 py-0 align-middle">${grainHtml}</td>
                 <td class="px-1 py-0 align-middle">${storeHtml}</td>
@@ -389,11 +389,6 @@
             }
 
             tr.innerHTML = `
-                <td class="px-1 py-0">
-                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" 
-                           value="${safeHTML(prof.name)}"
-                           onchange="updateProfile('${prof.id}', 'name', this.value)" title="Tap to edit">
-                </td>
                 <td>
                     <div class="d-flex justify-content-center">
                         <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
@@ -403,6 +398,11 @@
                             <option value="fastener" class="bg-light text-dark" ${prof.type === 'fastener' ? 'selected' : ''}>Fastener</option>
                         </select>
                     </div>
+                </td>
+                <td class="px-1 py-0">
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1 text-center align-middle" 
+                           value="${safeHTML(prof.name)}"
+                           onchange="updateProfile('${prof.id}', 'name', this.value)" title="Tap to edit">
                 </td>
                 <td class="text-center px-1 py-0 align-middle">${dimHtml}</td>
                 <td class="text-end">
@@ -435,11 +435,6 @@
             let badgeClass = getCategoryBadgeClass(currentCat);
 
             tr.innerHTML = `
-                <td class="px-1 py-0">
-                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" 
-                           value="${safeHTML(mat.name)}" 
-                           onchange="updateMaterial('${mat.id}', 'name', this.value)" title="Tap to edit">
-                </td>
                 <td>
                     <div class="d-flex justify-content-center">
                         <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
@@ -449,6 +444,11 @@
                             <option value="fastener" class="bg-light text-dark" ${currentCat === 'fastener' ? 'selected' : ''}>Fastener</option>
                         </select>
                     </div>
+                </td>
+                <td class="px-1 py-0">
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1 text-center align-middle" 
+                           value="${safeHTML(mat.name)}" 
+                           onchange="updateMaterial('${mat.id}', 'name', this.value)" title="Tap to edit">
                 </td>
                 <td class="px-1 py-0">
                     <input type="number" step="0.01" class="form-control form-control-sm border-0 bg-transparent text-center" 

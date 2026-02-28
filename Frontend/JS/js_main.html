@@ -273,7 +273,7 @@
             let valB = b[key];
 
             // 🪄 Smart Lookups for Relational IDs and Dynamic Math
-            if (arrayName === 'parts' || arrayName === 'stock' || arrayName === 'catalog' || arrayName === 'profiles') {
+            if (arrayName === 'parts' || arrayName === 'stock' || arrayName === 'catalog' || arrayName === 'profiles' || arrayName === 'stagingParts') {
                 if (key === 'storeId') {
                     valA = appState.stores?.find(s => s.id === a.storeId)?.name || '';
                     valB = appState.stores?.find(s => s.id === b.storeId)?.name || '';
@@ -331,6 +331,29 @@
                             valA = widthA;
                             valB = widthB;
                         }
+                    }
+                // 🪄 ADDED: 3D Cascading Tie-Breaker (Thickness -> Width -> Length)
+                } else if (key === 'extracted_dimensions') {
+                    let tA = a.thickness || 0;
+                    let tB = b.thickness || 0;
+                    
+                    if (tA === tB) {
+                        // Thickness matches, tie-break with Width
+                        let wA = a.width || 0;
+                        let wB = b.width || 0;
+                        
+                        if (wA === wB) {
+                            // Thickness and Width match, tie-break with Length
+                            valA = a.length || 0;
+                            valB = b.length || 0;
+                        } else {
+                            valA = wA;
+                            valB = wB;
+                        }
+                    } else {
+                        // Thickness is different, sort purely by Thickness
+                        valA = tA;
+                        valB = tB;
                     }
                 } else if (key === 'weight_cost' && arrayName === 'parts') {
                     // 🪄 DYNAMIC PARTS COLUMN SORTING
@@ -519,6 +542,7 @@
         if (arrayName === 'stock' && typeof renderStockTable === 'function') renderStockTable();
         if (arrayName === 'projects' && typeof renderProjectsTable === 'function') renderProjectsTable();
         if (arrayName === 'profiles' && typeof renderProfilesTable === 'function') renderProfilesTable();
+        if (arrayName === 'stagingParts' && typeof renderStagingTable === 'function') renderStagingTable();
     }
 
     // 5. The Gatekeeper (Called inside your render loops)
@@ -550,6 +574,7 @@
         if (arrayName === 'stock' && typeof renderStockTable === 'function') renderStockTable();
         if (arrayName === 'projects' && typeof renderProjectsTable === 'function') renderProjectsTable();
         if (arrayName === 'profiles' && typeof renderMaterialsTable === 'function') renderProfilesTable();
+        if (arrayName === 'stagingParts' && typeof renderStagingTable === 'function') renderStagingTable();
     }
 
     // 7. Global UI Painter for Filters
@@ -565,11 +590,11 @@
                 // If this specific column has an active filter
                 if (activeFilters[arrayName] && activeFilters[arrayName][col] && activeFilters[arrayName][col].length > 0) {
                     icon.classList.remove('text-muted');
-                    icon.classList.add('text-primary', 'fw-bold', 'fs-5'); 
+                    icon.classList.add('text-primary'); 
                     hasAnyFilter = true;
                 } else {
                     icon.classList.add('text-muted');
-                    icon.classList.remove('text-primary', 'fw-bold', 'fs-5');
+                    icon.classList.remove('text-primary');
                 }
             }
         });
@@ -619,6 +644,20 @@
             renderImportView(); // Fills the project dropdown and resets the UI
         } else if (viewId === 'view-cutlist') {
             if (typeof renderOptimizerConfig === 'function') renderOptimizerConfig();
+        }
+
+        // 🪄 5. DYNAMIC IMPORT BUTTON STYLING
+        const importBtn = document.getElementById('nav-btn-resume-import');
+        if (importBtn) {
+            if (viewId === 'view-import') {
+                // When ON the import view: Make it solid yellow, bold, and shadowed
+                importBtn.classList.remove('btn-outline-warning', 'btn-outline-light');
+                importBtn.classList.add('btn-warning', 'fw-bold', 'shadow-sm', 'text-dark');
+            } else {
+                // When OFF the import view: Make it hollow, un-bold, and blend in
+                importBtn.classList.remove('btn-warning', 'fw-bold', 'shadow-sm', 'text-dark');
+                importBtn.classList.add('btn-outline-warning'); 
+            }
         }
     }
 

@@ -10,6 +10,21 @@
     <!-- Inject our custom styles -->
     <?!= include('Frontend/CSS/css_global'); ?>
     <?!= include('Frontend/CSS/css_custom'); ?>
+
+    <style>
+        /* 🪄 FORCE INSTANT SNAPPING: Kill all fade/slide animations on main views */
+        .app-view {
+            transition: none !important;
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+        }
+
+        /* 🪄 FORCE INSTANT SNAPPING: Kill all fade animations on sub-tabs (Projects, Stock, Prices, etc.) */
+        .tab-pane {
+            transition: none !important;
+        }
+    </style>
 </head>
 <body class="bg-light">
 
@@ -17,7 +32,8 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 sticky-top">
         <div class="container-fluid">
             <span class="navbar-brand mb-0 h1">🪵 SolidCutlist</span>
-            <div class="d-flex gap-2 nav-buttons-container">
+            <div class="d-flex gap-2 nav-buttons-container flex-wrap">
+                <button id="nav-btn-resume-import" class="btn btn-warning btn-sm d-none shadow-sm" onclick="navigateTo('view-import')">📥 Import</button>
                 <button id="nav-btn-view-dictionaries" class="btn btn-outline-light btn-sm active" onclick="navigateTo('view-dictionaries')">Setup</button>
                 <button id="nav-btn-view-parts" class="btn btn-outline-light btn-sm" onclick="navigateTo('view-parts')">Partlist</button>
                 <button id="nav-btn-view-cutlist" class="btn btn-outline-light btn-sm" onclick="navigateTo('view-cutlist')">Cutlist</button>
@@ -50,7 +66,7 @@
     </main>
 
     <!-- Global Group Modal -->
-    <div class="modal fade" id="modal-group-manager" tabindex="-1" aria-hidden="true">
+    <div class="modal" id="modal-group-manager" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow">
                 <div class="modal-header bg-dark text-white py-2">
@@ -77,7 +93,7 @@
                         </div>
                     </form>
     
-                    <div class="table-responsive bg-white border rounded">
+                    <div class="table-responsive border rounded">
                         <table class="table table-sm table-hover align-middle mb-0">
                             <thead>
                                 <tr>
@@ -99,7 +115,7 @@
     </div>
 
     <!-- Global Store Modal -->
-    <div class="modal fade" id="modal-store-manager" tabindex="-1" aria-hidden="true">
+    <div class="modal" id="modal-store-manager" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow">
                 <div class="modal-header bg-dark text-white py-2">
@@ -118,7 +134,7 @@
                             </div>
                         </div>
                     </form>
-                    <div class="table-responsive bg-white border rounded">
+                    <div class="table-responsive border rounded">
                         <table class="table table-sm table-hover align-middle mb-0">
                             <thead>
                                 <tr>
@@ -135,7 +151,7 @@
     </div>
 
     <!-- Edit Hyperlink Modal -->
-    <div class="modal fade" id="modal-link-editor" tabindex="-1" aria-hidden="true">
+    <div class="modal" id="modal-link-editor" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content shadow">
                 <div class="modal-header bg-dark text-white py-2">
@@ -157,7 +173,7 @@
     </div>
 
     <!-- Global Column Filter Modal -->
-    <div class="modal fade" id="universalFilterModal" tabindex="-1" aria-hidden="true">
+    <div class="modal" id="universalFilterModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content shadow">
                 <div class="modal-header bg-secondary text-white py-2">
@@ -205,7 +221,7 @@
     </div>
 
     <!-- Commit to Stock Modal -->
-    <div class="modal fade" id="modal-commit-offcuts" tabindex="-1" aria-hidden="true">
+    <div class="modal" id="modal-commit-offcuts" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white py-2">

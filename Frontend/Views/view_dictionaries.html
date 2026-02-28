@@ -36,7 +36,7 @@
                                 <input type="text" class="form-control form-control-sm" id="proj-name" required>
                             </div>
                             <div class="col-sm-1">
-                                <button type="submit" class="btn btn-success btn-sm w-100">Add</button>
+                                <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
                             </div>
                         </div>
                     </form>
@@ -93,6 +93,10 @@
                                 <label class="form-label form-label-sm fw-bold text-secondary mb-1">Qty</label>
                                 <input type="number" class="form-control form-control-sm text-center" id="stock-qty" value="1" min="1" required>
                             </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
+                                <select class="form-select form-select-sm" id="stock-profile" required disabled></select>
+                            </div>
                             <div class="col-sm-1">
                                 <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
                                 <input type="text" class="form-control form-control-sm" id="stock-width" disabled>
@@ -100,10 +104,6 @@
                             <div class="col-sm-1">
                                 <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
                                 <input type="text" class="form-control form-control-sm" id="stock-length" required disabled>
-                            </div>
-                            <div class="col-sm">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
-                                <select class="form-select form-select-sm" id="stock-profile" required disabled></select>
                             </div>
                             <div class="col-sm">
                                 <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material</label>
@@ -124,7 +124,7 @@
                                 </div>
                             </div>
                             <div class="col-sm-1">
-                                <button type="submit" class="btn btn-info btn-sm w-100">Add</button>
+                                <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
                             </div>
                         </div>
                     </form>
@@ -140,12 +140,12 @@
                                 </th>
                                 <th class="text-center" onclick="handleSort('stock', 'qty', 'number')" style="cursor: pointer;">Qty ⇅</th>
                                 <th class="text-center text-nowrap">
-                                    <span onclick="handleSort('stock', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
-                                    <span id="flt-icon-stock-length" onclick="openFilterModal(event, 'stock', 'length', 'Size')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
-                                </th>
-                                <th class="text-center text-nowrap">
                                     <span onclick="handleSort('stock', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</span>
                                     <span id="flt-icon-stock-profileId" onclick="openFilterModal(event, 'stock', 'profileId', 'Profile')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                </th>
+                                <th class="text-center text-nowrap">
+                                    <span onclick="handleSort('stock', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
+                                    <span id="flt-icon-stock-length" onclick="openFilterModal(event, 'stock', 'length', 'Size')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
                                 <th class="text-center text-nowrap">
                                     <span onclick="handleSort('stock', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</span>
@@ -193,6 +193,10 @@
                                     <option value="fastener">Fastener</option>
                                 </select>
                             </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
+                                <select class="form-select form-select-sm" id="cat-profile" required disabled></select>
+                            </div>
                             <div class="col-sm-1">
                                 <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
                                 <div class="input-group input-group-sm">
@@ -204,10 +208,6 @@
                                 <div class="input-group input-group-sm">
                                     <input type="text" class="form-control form-control-sm" id="cat-length" required disabled>
                                 </div>
-                            </div>
-                            <div class="col-sm">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
-                                <select class="form-select form-select-sm" id="cat-profile" required disabled></select>
                             </div>
                             <div class="col-sm">
                                 <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material</label>
@@ -240,7 +240,7 @@
                                 <input type="text" class="form-control form-control-sm" id="cat-link">
                             </div>
                             <div class="col-sm-1">
-                                <button type="submit" class="btn btn-warning btn-sm w-100" id="btn-add-catalog" disabled>Add</button>
+                                <button type="submit" class="btn btn-primary btn-sm w-100" id="btn-add-catalog" disabled>Add</button>
                             </div>
                         </div>
                     </form>
@@ -255,12 +255,12 @@
                                     <span id="flt-icon-catalog-categoryId" onclick="openFilterModal(event, 'catalog', 'categoryId', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
                                 <th class="text-center text-nowrap">
-                                    <span onclick="handleSort('catalog', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
-                                    <span id="flt-icon-catalog-length" onclick="openFilterModal(event, 'catalog', 'length', 'Size')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
-                                </th>
-                                <th class="text-center text-nowrap">
                                     <span onclick="handleSort('catalog', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</span>
                                     <span id="flt-icon-catalog-profileId" onclick="openFilterModal(event, 'catalog', 'profileId', 'Profile')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                </th>
+                                <th class="text-center text-nowrap">
+                                    <span onclick="handleSort('catalog', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
+                                    <span id="flt-icon-catalog-length" onclick="openFilterModal(event, 'catalog', 'length', 'Size')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
                                 <th class="text-center text-nowrap">
                                     <span onclick="handleSort('catalog', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</span>
@@ -317,16 +317,16 @@
                             <form id="form-add-profile" onsubmit="handleAddProfile(event)">
                                 <div class="row g-2 align-items-end">
                                     <div class="col-sm">
-                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile Name</label>
-                                        <input type="text" class="form-control form-control-sm" id="prof-name" required>
-                                    </div>
-                                    <div class="col-sm">
                                         <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
                                         <select class="form-select form-select-sm" id="prof-category" onchange="handleProfileCategoryChange()" required>
                                             <option value="lumber">Lumber</option>
                                             <option value="sheet">Sheet</option>
                                             <option value="fastener">Fastener</option>
                                         </select>
+                                    </div>
+                                    <div class="col-sm">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile Name</label>
+                                        <input type="text" class="form-control form-control-sm" id="prof-name" required>
                                     </div>
                                     <div class="col-sm-2">
                                         <label class="form-label form-label-sm fw-bold text-secondary mb-1">Thickness</label>
@@ -353,13 +353,13 @@
                             <table class="table table-sm table-hover align-middle table-striped">
                                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                     <tr>
-                                        <th class="text-nowrap">
-                                            <span onclick="handleSort('profiles', 'name', 'string')" style="cursor: pointer;">Profile Name ⇅</span>
-                                            <span id="flt-icon-profiles-name" onclick="openFilterModal(event, 'profiles', 'name', 'Profile Name')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
-                                        </th>
                                         <th class="col-2 text-center text-nowrap">
                                             <span onclick="handleSort('profiles', 'type', 'string')" style="cursor: pointer;">Category ⇅</span>
                                             <span id="flt-icon-profiles-type" onclick="openFilterModal(event, 'profiles', 'type', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                        </th>
+                                        <th class="text-nowrap text-center">
+                                            <span onclick="handleSort('profiles', 'name', 'string')" style="cursor: pointer;">Profile Name ⇅</span>
+                                            <span id="flt-icon-profiles-name" onclick="openFilterModal(event, 'profiles', 'name', 'Profile Name')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                         </th>
                                         <th class="text-center" onclick="handleSort('profiles', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</th>
                                         <th class="text-end">
@@ -388,16 +388,16 @@
                             <form id="form-add-material" onsubmit="handleAddMaterial(event)">
                                 <div class="row g-2 align-items-end">
                                     <div class="col-sm">
-                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material Name</label>
-                                        <input type="text" class="form-control form-control-sm" id="mat-name" required>
-                                    </div>
-                                    <div class="col-sm">
                                         <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
                                         <select class="form-select form-select-sm" id="mat-category" required>
                                             <option value="lumber">Lumber</option>
                                             <option value="sheet">Sheet</option>
                                             <option value="fastener">Fastener</option>
                                         </select>
+                                    </div>
+                                    <div class="col-sm">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material Name</label>
+                                        <input type="text" class="form-control form-control-sm" id="mat-name" required>
                                     </div>
                                     <div class="col-sm">
                                         <label class="form-label form-label-sm fw-bold text-secondary mb-1">Density</label>
@@ -417,13 +417,13 @@
                             <table class="table table-sm table-hover align-middle table-striped">
                                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                     <tr>
-                                        <th class="text-nowrap">
-                                            <span onclick="handleSort('materials', 'name', 'string')" style="cursor: pointer;">Material Name ⇅</span>
-                                            <span id="flt-icon-materials-name" onclick="openFilterModal(event, 'materials', 'name', 'Material Name')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
-                                        </th>
                                         <th class="col-2 text-center text-nowrap">
                                             <span onclick="handleSort('materials', 'category', 'string')" style="cursor: pointer;">Category ⇅</span>
                                             <span id="flt-icon-materials-category" onclick="openFilterModal(event, 'materials', 'category', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                        </th>
+                                        <th class="text-nowrap text-center">
+                                            <span onclick="handleSort('materials', 'name', 'string')" style="cursor: pointer;">Material Name ⇅</span>
+                                            <span id="flt-icon-materials-name" onclick="openFilterModal(event, 'materials', 'name', 'Material Name')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                         </th>
                                         <th class="text-center" onclick="handleSort('materials', 'density', 'number')" style="cursor: pointer;"> Density (<span class="density-unit-label">kg/m³</span>) ⇅</th>
                                         <th class="text-end">

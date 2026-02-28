@@ -742,10 +742,10 @@
                             <tr>
                                 <th class="ps-3" onclick="sortOffcuts('category')" style="cursor: pointer;">Category ⇅</th>
                                 <th class="text-center" onclick="sortOffcuts('qty')" style="cursor: pointer;">Qty ⇅</th>
-                                <th onclick="sortOffcuts('profName')" style="cursor: pointer;">Profile ⇅</th>
+                                <th class="text-center" onclick="sortOffcuts('profName')" style="cursor: pointer;">Profile ⇅</th>
+                                <th class="text-center pe-3" onclick="sortOffcuts('length')" style="cursor: pointer;">Size ⇅</th>
                                 <th onclick="sortOffcuts('matName')" style="cursor: pointer;">Material ⇅</th>
                                 <th class="text-center" onclick="sortOffcuts('grain')" style="cursor: pointer;">Grain ⇅</th>
-                                <th class="text-end pe-3" onclick="sortOffcuts('length')" style="cursor: pointer;">Size ⇅</th>
                             </tr>
                         </thead>
                         <tbody id="table-offcuts-body">
@@ -803,10 +803,10 @@
                 html += `<tr>
                             <td class="ps-3 align-middle">${categoryBadgeHtml}</td>
                             <td class="text-center align-middle fw-bold fs-6">${off.qty}</td>
-                            <td class="fw-bold align-middle">${safeHTML(off.profName)}</td>
+                            <td class="fw-bold text-center align-middle">${safeHTML(off.profName)}</td>
+                            <td class="text-end pe-3 fw-bold text-primary text-center align-middle">${sizeStr} <span class="display-unit-label"></span></td>
                             <td class="text-muted align-middle">${safeHTML(off.matName)}</td>
                             <td class="text-center text-muted align-middle">${grainStr}</td>
-                            <td class="text-end pe-3 fw-bold text-primary align-middle">${sizeStr} <span class="display-unit-label"></span></td>
                          </tr>`;
             });
         } else {
