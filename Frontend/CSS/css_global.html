@@ -47,14 +47,6 @@
         background-size: 12px 12px !important; /* Shrink the arrow just a hair */
     }
 
-    /* 🪄 UNIVERSAL STICKY HEADER CLASS */
-    .shop-sticky-header {
-        position: sticky !important;
-        top: 52px !important;     /* Locks exactly under your top navbar */
-        z-index: 1050 !important; /* Crushes all scrolling content beneath it */
-        opacity: 1 !important;    /* Kills Bootstrap frosted-glass bleed-through */
-    }
-
     /* 🪄 CONTRAST FOR TABLE WARNINGS IN DARK MODE */
     [data-bs-theme="dark"] .table-warning {
         --bs-table-bg: #4a3600;
@@ -62,11 +54,19 @@
         --bs-table-hover-bg: #5e4500;
     }
 
-    /* Keep it clean for the printer */
-    @media print {
-        .shop-sticky-header {
-            position: relative !important;
-            top: auto !important;
-        }
-    }
+        /* 🪄 UNIVERSAL TABLE COLUMN WIDTHS */
+    .col-project    { width: 1%; min-width: 170px; }
+    .col-group      { width: 1%; min-width: 170px; }
+    .col-sponge     { width: 100%; }
+    .col-category   { width: 1%; min-width: 100px; }
+    .col-qty        { width: 1%; min-width: 80px;  } 
+    .col-profile    { width: 1%; min-width: 170px; }
+    .col-size       { width: 1%; min-width: 130px; }
+    .col-material   { width: 1%; min-width: 170px; }
+    .col-store      { width: 1%; min-width: 130px; }
+    .col-grain      { width: 1%; min-width: 100px; }
+    .col-costweight { width: 1%; min-width: 100px; } 
+    .col-density    { width: 1%; min-width: 100px; } 
+    .col-type       { width: 1%; min-width: 100px; }
+    .col-actions    { width: 1%; min-width: 60px; }
 </style>

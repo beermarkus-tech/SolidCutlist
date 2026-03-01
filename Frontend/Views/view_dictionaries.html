@@ -42,7 +42,7 @@
                     </form>
                     <hr>
                 </div>
-                <div id="table-wrapper-projects" class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
+                <div id="table-wrapper-projects" class="table-responsive" style="max-height: calc(100vh - 320px); height: calc(100vh - 320px); overflow-y: auto;">
                     <table class="table table-sm table-hover align-middle table-striped">
                         <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <tr>
@@ -130,36 +130,38 @@
                     </form>
                     <hr>
                 </div>
-                <div id="table-wrapper-stock" class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
+                <div id="table-wrapper-stock" class="table-responsive" style="max-height: calc(100vh - 320px); height: calc(100vh - 320px); overflow-y: auto;">
                     <table class="table table-sm table-hover align-middle table-striped">
                         <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <tr>
-                                <th class="col-1 text-center text-nowrap">
+                                <th class="col-category text-center text-nowrap">
                                     <span onclick="handleSort('stock', 'categoryId', 'string')" style="cursor: pointer;">Category ⇅</span>
                                     <span id="flt-icon-stock-categoryId" onclick="openFilterModal(event, 'stock', 'categoryId', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-center" onclick="handleSort('stock', 'qty', 'number')" style="cursor: pointer;">Qty ⇅</th>
-                                <th class="text-center text-nowrap">
+                                <th class="col-qty text-center">
+                                    <span onclick="handleSort('stock', 'qty', 'number')" style="cursor: pointer;">Qty ⇅</span>
+                                </th>
+                                <th class="col-profile text-center text-nowrap">
                                     <span onclick="handleSort('stock', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</span>
                                     <span id="flt-icon-stock-profileId" onclick="openFilterModal(event, 'stock', 'profileId', 'Profile')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-center text-nowrap">
+                                <th class="col-size text-center text-nowrap">
                                     <span onclick="handleSort('stock', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
                                     <span id="flt-icon-stock-length" onclick="openFilterModal(event, 'stock', 'length', 'Size')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-center text-nowrap">
+                                <th class="col-material text-center text-nowrap">
                                     <span onclick="handleSort('stock', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</span>
                                     <span id="flt-icon-stock-materialId" onclick="openFilterModal(event, 'stock', 'materialId', 'Material')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-center text-nowrap">
+                                <th class="col-grain text-center text-nowrap">
                                     <span onclick="handleSort('stock', 'grain', 'string')" style="cursor: pointer;">Grain ⇅</span>
                                     <span id="flt-icon-stock-grain" onclick="openFilterModal(event, 'stock', 'grain', 'Grain')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-center text-nowrap">
+                                <th class="col-type text-center text-nowrap">
                                     <span onclick="handleSort('stock', 'isCutoff', 'string')" style="cursor: pointer;">Type ⇅</span>
                                     <span id="flt-icon-stock-isCutoff" onclick="openFilterModal(event, 'stock', 'isCutoff', 'Type')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-end">
+                                <th class="col-actions text-end">
                                     <span id="flt-clear-stock" onclick="clearAllFiltersForTable('stock')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
                                 </th>
                             </tr>
@@ -246,36 +248,38 @@
                     </form>
                     <hr>
                 </div>
-                <div id="table-wrapper-prices" class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
+                <div id="table-wrapper-prices" class="table-responsive" style="max-height: calc(100vh - 320px); height: calc(100vh - 320px); overflow-y: auto;">
                     <table class="table table-sm table-hover align-middle table-striped">
                         <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <tr>
-                                <th class="col-1 text-center text-nowrap">
+                                <th class="col-category text-center text-nowrap">
                                     <span onclick="handleSort('catalog', 'categoryId', 'string')" style="cursor: pointer;">Category ⇅</span>
                                     <span id="flt-icon-catalog-categoryId" onclick="openFilterModal(event, 'catalog', 'categoryId', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-center text-nowrap">
+                                <th class="col-profile text-center text-nowrap">
                                     <span onclick="handleSort('catalog', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</span>
                                     <span id="flt-icon-catalog-profileId" onclick="openFilterModal(event, 'catalog', 'profileId', 'Profile')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-center text-nowrap">
+                                <th class="col-size text-center text-nowrap">
                                     <span onclick="handleSort('catalog', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
                                     <span id="flt-icon-catalog-length" onclick="openFilterModal(event, 'catalog', 'length', 'Size')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-center text-nowrap">
+                                <th class="col-material text-center text-nowrap">
                                     <span onclick="handleSort('catalog', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</span>
                                     <span id="flt-icon-catalog-materialId" onclick="openFilterModal(event, 'catalog', 'materialId', 'Material')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-center text-nowrap">
+                                <th class="col-grain text-center text-nowrap">
                                     <span onclick="handleSort('catalog', 'grain', 'string')" style="cursor: pointer;">Grain ⇅</span>
                                     <span id="flt-icon-catalog-grain" onclick="openFilterModal(event, 'catalog', 'grain', 'Grain')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-center text-nowrap">
+                                <th class="col-store text-center text-nowrap">
                                     <span onclick="handleSort('catalog', 'storeId', 'string')" style="cursor: pointer;">Store ⇅</span>
                                     <span id="flt-icon-catalog-storeId" onclick="openFilterModal(event, 'catalog', 'storeId', 'Store')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
-                                <th class="text-center" onclick="handleSort('catalog', 'price', 'number')" style="cursor: pointer;">Shelf Price (<span class="currency-label">$</span>) ⇅</th>
-                                <th class="text-center" style="max-width: 100px;">
+                                <th class="col-costweight text-center">
+                                    <span onclick="handleSort('catalog', 'price', 'number')" style="cursor: pointer;">Shelf Price (<span class="currency-label">$</span>) ⇅</span>
+                                </th> 
+                                <th class="col-costweight text-center">
                                     <div class="d-flex align-items-center justify-content-center gap-1">
                                         <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center" id="table-price-view" onchange="renderCatalogTable()" style="width: auto; cursor: pointer; font-size: inherit;">
                                             <option value="piece">Cost/Piece</option>
@@ -286,8 +290,8 @@
                                         <span onclick="handleSort('catalog', 'calculatedPrice', 'number')" style="cursor: pointer; user-select: none;" title="Sort by Calculated Price">⇅</span>
                                     </div>
                                 </th>
-                                <th class="text-center">Links</th>
-                                <th class="text-end">
+                                <th class="col-actions text-center">Links</th>
+                                <th class="col-actions text-end">
                                     <span id="flt-clear-catalog" onclick="clearAllFiltersForTable('catalog')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
                                 </th>
                             </tr>
@@ -349,20 +353,22 @@
                             </form>
                             <hr>
                         </div>
-                        <div id="table-wrapper-profiles" class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
+                        <div id="table-wrapper-profiles" class="table-responsive" style="max-height: calc(100vh - 320px); height: calc(100vh - 320px); overflow-y: auto;">
                             <table class="table table-sm table-hover align-middle table-striped">
                                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                     <tr>
-                                        <th class="col-2 text-center text-nowrap">
+                                        <th class="col-category text-center text-nowrap">
                                             <span onclick="handleSort('profiles', 'type', 'string')" style="cursor: pointer;">Category ⇅</span>
                                             <span id="flt-icon-profiles-type" onclick="openFilterModal(event, 'profiles', 'type', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                         </th>
-                                        <th class="text-nowrap text-center">
+                                        <th class="col-profile text-nowrap text-center">
                                             <span onclick="handleSort('profiles', 'name', 'string')" style="cursor: pointer;">Profile Name ⇅</span>
                                             <span id="flt-icon-profiles-name" onclick="openFilterModal(event, 'profiles', 'name', 'Profile Name')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                         </th>
-                                        <th class="text-center" onclick="handleSort('profiles', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</th>
-                                        <th class="text-end">
+                                        <th class="col-size text-center">
+                                            <span onclick="handleSort('profiles', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
+                                        </th>
+                                        <th class="col-actions text-end">
                                             <span id="flt-clear-profiles" onclick="clearAllFiltersForTable('profiles')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
                                         </th>
                                     </tr>
@@ -413,20 +419,22 @@
                             </form>
                             <hr>
                         </div>
-                        <div id="table-wrapper-materials" class="table-responsive" style="max-height: calc(100vh - 320px); overflow-y: auto;">
+                        <div id="table-wrapper-materials" class="table-responsive" style="max-height: calc(100vh - 320px); height: calc(100vh - 320px); overflow-y: auto;">
                             <table class="table table-sm table-hover align-middle table-striped">
                                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                     <tr>
-                                        <th class="col-2 text-center text-nowrap">
+                                        <th class="col-category text-center text-nowrap">
                                             <span onclick="handleSort('materials', 'category', 'string')" style="cursor: pointer;">Category ⇅</span>
                                             <span id="flt-icon-materials-category" onclick="openFilterModal(event, 'materials', 'category', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                         </th>
-                                        <th class="text-nowrap text-center">
+                                        <th class="col-material text-nowrap text-center">
                                             <span onclick="handleSort('materials', 'name', 'string')" style="cursor: pointer;">Material Name ⇅</span>
                                             <span id="flt-icon-materials-name" onclick="openFilterModal(event, 'materials', 'name', 'Material Name')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                         </th>
-                                        <th class="text-center" onclick="handleSort('materials', 'density', 'number')" style="cursor: pointer;"> Density (<span class="density-unit-label">kg/m³</span>) ⇅</th>
-                                        <th class="text-end">
+                                        <th class="col-density text-center">
+                                            <span onclick="handleSort('materials', 'density', 'number')" style="cursor: pointer;"> Density (<span class="density-unit-label">kg/m³</span>) ⇅</span>
+                                        </th>
+                                        <th class="col-actions text-end">
                                             <span id="flt-clear-materials" onclick="clearAllFiltersForTable('materials')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
                                         </th>
                                     </tr>
@@ -444,7 +452,7 @@
     <div class="tab-pane fade" id="pane-settings" role="tabpanel" tabindex="0">
         <div class="card shadow-sm border-primary">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h6 class="card-title mb-0">Global Settings</h6>
+                <h6 class="card-title mb-0" data-i18n="hdr_settings_general">Global Settings</h6>
                 <div>
                     <button class="btn btn-sm text-white py-0 me-2"><b></b></button>
                 </div>
@@ -453,22 +461,19 @@
                 <form id="form-settings">
                     <div class="row g-3">
                         <div class="col-12 col-md-3">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Display Units</label>
-                            <select class="form-select form-select-sm" id="setting-display-unit" onchange="handleUnitChange()">
-                                <option value="mm">Metric (mm, kg)</option>
-                                <option value="dec_in">Decimal Inches (1.75", lbs)</option>
-                                <option value="frac_in">Fractional Inches (1 3/4", lbs)</option>
+                            <label class="form-label fw-bold text-secondary" data-i18n="lbl_settings_language">Language</label>
+                            <select class="form-select form-select-sm" id="setting-language" onchange="handleLanguageChange(this.value)">
+                                <option value="en">English</option>
+                                <option value="de">Deutsch</option>
+                                <option value="fr">Français</option>
                             </select>
-                            <div class="form-text" style="font-size: 0.7rem;">Units are dynamically converted throughout the tool.</div>
                         </div>
                         <div class="col-12 col-md-3">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Currency</label>
-                            <select class="form-select form-select-sm" id="setting-currency" onchange="handleUnitChange()">
-                                <option value="$">Dollars ($)</option>
-                                <option value="€">Euros (€)</option>
-                                <option value="£">Pounds (£)</option>
-                            </select>
-                            <div class="form-text" style="font-size: 0.7rem;">Display units only, no currency conversion.</div>
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_settings_appearance">Appearance</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="setting-theme-toggle" onchange="toggleTheme()">
+                                <label class="form-check-label" for="setting-theme-toggle" data-i18n="lbl_settings_dark_mode">🌙 Enable Dark Mode</label>
+                            </div>
                         </div>
                         <div class="col-12 col-md-3">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Lumber Kerf</label>
@@ -487,13 +492,23 @@
                             <div class="form-text" style="font-size: 0.7rem;">Thickness of your sheet cutting blade.</div>
                         </div>
                         <div class="col-12 col-md-3">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Appearance</label>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="setting-theme-toggle" onchange="toggleTheme()">
-                                <label class="form-check-label" for="setting-theme-toggle">🌙 Enable Dark Mode</label>
-                            </div>
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Display Units</label>
+                            <select class="form-select form-select-sm" id="setting-display-unit" onchange="handleUnitChange()">
+                                <option value="mm">Metric (mm, kg)</option>
+                                <option value="dec_in">Decimal Inches (1.75", lbs)</option>
+                                <option value="frac_in">Fractional Inches (1 3/4", lbs)</option>
+                            </select>
+                            <div class="form-text" style="font-size: 0.7rem;">Units are dynamically converted throughout the tool.</div>
                         </div>
-                        <div class="col-12 col-md-3"></div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Currency</label>
+                            <select class="form-select form-select-sm" id="setting-currency" onchange="handleUnitChange()">
+                                <option value="$">Dollars ($)</option>
+                                <option value="€">Euros (€)</option>
+                                <option value="£">Pounds (£)</option>
+                            </select>
+                            <div class="form-text" style="font-size: 0.7rem;">Display units only, no currency conversion.</div>
+                        </div>
                         <div class="col-12 col-md-3">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Lumber Trim</label>
                             <div class="input-group input-group-sm">

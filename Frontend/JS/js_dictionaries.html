@@ -33,6 +33,9 @@
         document.getElementById('setting-sheet-trim').value = formatForDisplay(appState.settings.sheetFactoryTrim); // 🪄 NEW
         document.getElementById('setting-currency').value = appState.settings.currency; // 🪄 NEW
 
+        const langDropdown = document.getElementById('setting-language');
+        if (langDropdown) langDropdown.value = appState.settings.language;
+
         updateUnitLabels();
     }
     function renderProjectsTable() {
@@ -91,24 +94,24 @@
             const filteredProfiles = appState.profiles.filter(p => p.type === item.categoryId);
             const isProfValid = filteredProfiles.some(p => p.id === item.profileId);
             
-            let profOptions = `<option value="" disabled ${!isProfValid ? 'selected' : ''}>⚠️ Select Profile...</option>`;
+            let profOptions = !isProfValid ? `<option value="" disabled selected>⚠️ Select Profile...</option>` : '';
             filteredProfiles.forEach(p => {
                 profOptions += `<option value="${p.id}" ${p.id === item.profileId ? 'selected' : ''}>${safeHTML(p.name)}</option>`;
             });
             let profHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 align-middle text-center" style="max-width: 150px; margin: 0 auto;" onchange="updateStock('${item.id}', 'profileId', this.value)" title="Tap to change Profile">
+                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 align-middle text-center" margin: 0 auto;" onchange="updateStock('${item.id}', 'profileId', this.value)" title="Tap to change Profile">
                     ${profOptions}
                 </select>`;
 
             const filteredMaterials = appState.materials.filter(m => m.category === item.categoryId);
             const isMatValid = filteredMaterials.some(m => m.id === item.materialId);
 
-            let matOptions = `<option value="" disabled ${!isMatValid ? 'selected' : ''}>⚠️ Select Material...</option>`;
+            let matOptions = !isMatValid ? `<option value="" disabled selected>⚠️ Select Material...</option>` : '';
             filteredMaterials.forEach(m => {
                 matOptions += `<option value="${m.id}" ${m.id === item.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
             });
             let matHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" style="max-width: 150px; margin: 0 auto;" onchange="updateStock('${item.id}', 'materialId', this.value)" title="Tap to change Material">
+                <select class="text-center form-select form-select-sm border-0 bg-transparent px-0 py-0" margin: 0 auto;" onchange="updateStock('${item.id}', 'materialId', this.value)" title="Tap to change Material">
                     ${matOptions}
                 </select>`;
 
@@ -212,31 +215,34 @@
             const filteredProfiles = appState.profiles.filter(p => p.type === item.categoryId);
             const isProfValid = filteredProfiles.some(p => p.id === item.profileId);
             
-            let profOptions = `<option value="" disabled ${!isProfValid ? 'selected' : ''}>⚠️ Select Profile...</option>`;
+            let profOptions = !isProfValid ? `<option value="" disabled selected>⚠️ Select Profile...</option>` : '';
             filteredProfiles.forEach(p => {
                 profOptions += `<option value="${p.id}" ${p.id === item.profileId ? 'selected' : ''}>${safeHTML(p.name)}</option>`;
             });
             // Text is standard, no yellow text classes
             let profHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0 text-center align-middle" style="max-width: 150px; margin: 0 auto;" onchange="updateCatalogItem('${item.id}', 'profileId', this.value)" title="Tap to change Profile">
+                <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0 text-center align-middle" margin: 0 auto;" onchange="updateCatalogItem('${item.id}', 'profileId', this.value)" title="Tap to change Profile">
                     ${profOptions}
                 </select>`;
 
             const filteredMaterials = appState.materials.filter(m => m.category === item.categoryId);
             const isMatValid = filteredMaterials.some(m => m.id === item.materialId);
 
-            let matOptions = `<option value="" disabled ${!isMatValid ? 'selected' : ''}>⚠️ Select Material...</option>`;
+            let matOptions = !isMatValid ? `<option value="" disabled selected>⚠️ Select Material...</option>` : '';
             filteredMaterials.forEach(m => {
                 matOptions += `<option value="${m.id}" ${m.id === item.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
             });
             // Text is standard, no yellow text classes
             let matHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0" style="max-width: 150px; margin: 0 auto;" onchange="updateCatalogItem('${item.id}', 'materialId', this.value)" title="Tap to change Material">
+                <select class="text-center form-select form-select-sm border-0 bg-transparent px-0 py-0" margin: 0 auto;" onchange="updateCatalogItem('${item.id}', 'materialId', this.value)" title="Tap to change Material">
                     ${matOptions}
                 </select>`;
 
-            // 🪄 0.5 APPLY ROW HIGHLIGHT IF INVALID
-            if (!isProfValid || !isMatValid) {
+            // 🪄 NEW: Pre-calculate if the store actually exists
+            const isStoreValid = appState.stores && appState.stores.some(s => s.id === item.storeId);
+
+            // 🪄 0.5 APPLY ROW HIGHLIGHT IF INVALID (Now includes Store)
+            if (!isProfValid || !isMatValid || !isStoreValid) {
                 tr.classList.add('table-warning');
             }
             
@@ -262,14 +268,15 @@
             }
 
             // 🪄 2. INLINE STORE DROPDOWN
-            let storeOptions = '<option value="" disabled>Select...</option>';
+            let storeOptions = !isStoreValid ? '<option value="" disabled selected>⚠️ Select Store...</option>' : '';
+            
             if (appState.stores) {
                 appState.stores.forEach(s => {
                     storeOptions += `<option value="${s.id}" ${s.id === item.storeId ? 'selected' : ''}>${safeHTML(s.name)}</option>`;
                 });
             }
             let storeHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" onchange="updateCatalogItem('${item.id}', 'storeId', this.value)" title="Tap to change Store">
+                <select class="text-center form-select form-select-sm border-0 bg-transparent px-1 py-0" onchange="updateCatalogItem('${item.id}', 'storeId', this.value)" title="Tap to change Store">
                     ${storeOptions}
                 </select>`;
 
@@ -615,8 +622,13 @@
             showToast('Material deleted.');
         }
     }
-    function deleteStore(id) {
-        if (!confirm("Delete this store? This will also remove the store from any catalog items using it.")) return;
+    function deleteStore(id, isConfirmed = false) {
+        // 🪄 The Safety Shield (Custom Modal)
+        if (!isConfirmed) {
+            requestConfirm("Delete this store? This will also remove the store from any catalog items using it.", () => deleteStore(id, true));
+            return;
+        }
+
         let affected = 0;
         if (appState.catalog) {
             appState.catalog.forEach(item => {
@@ -826,6 +838,7 @@
         setTimeout(() => {
             renderSettings();
             renderDictionaries();
+            applyTranslations();
         }, 100); 
     });
 
@@ -902,8 +915,12 @@
             showToast('Group renamed.');
         }
     }
-    function deleteGroup(id) {
-        if (!confirm("Delete this group? All parts in this group will be reset to 'no group'.")) return;
+    function deleteGroup(id, isConfirmed = false) {
+        // 🪄 The Safety Shield (Custom Modal)
+        if (!isConfirmed) {
+            requestConfirm("Delete this group? All parts in this group will be reset to '-'.", () => deleteGroup(id, true));
+            return;
+        }
 
         // 1. Cascade Nullify: Reset parts using this group
         let affectedParts = 0;
@@ -1081,6 +1098,11 @@
         saveState();
         renderStoreModalTable();
         nameInput.value = ''; 
+
+        renderCatalogTable();
+        if (typeof populateCatalogDropdowns === 'function') populateCatalogDropdowns();
+        
+        nameInput.value = '';
     }
     function updateStoreName(id, newName) {
         const store = appState.stores.find(s => s.id === id);

@@ -65,15 +65,6 @@
             return b.length - a.length;
         });
 
-        if (sortedGroups.length > 0) {
-            html += `
-                <div class="d-flex justify-content-end gap-2 mb-3 no-print border-bottom pb-2">
-                    <button class="btn btn-sm btn-outline-secondary py-0 fw-bold" onclick="toggleAllSKUs(true)">⬇️ Expand All</button>
-                    <button class="btn btn-sm btn-outline-secondary py-0 fw-bold" onclick="toggleAllSKUs(false)">⬆️ Collapse All</button>
-                </div>
-            `;
-        }
-
         sortedGroups.forEach(group => {
             const isSheet = group.category === 'sheet';
             const prof = appState.profiles.find(p => p.id === group.profileId);

@@ -40,7 +40,7 @@
     </div>
 </div>
 
-<div id="import-step-1" class="card shadow-sm mb-4">
+<div id="import-step-1" class="card shadow-sm border-primary">
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
         <h6 class="card-title mb-0">Step 1: Upload CSV Data</h6>
         <div>
@@ -76,7 +76,7 @@
     </div>
 </div>
 
-<div id="import-step-2" class="card shadow-sm mb-4 d-none">
+<div id="import-step-2" class="card shadow-sm border-warning d-none">
     <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
         <h6 class="card-title mb-0">Step 2: Map Columns</h6>
         <div>
@@ -92,7 +92,7 @@
     </div>
 </div>
 
-<div id="import-step-3" class="card shadow-sm mb-4 d-none">
+<div id="import-step-3" class="card shadow-sm border-success d-none">
     <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
         <h6 class="card-title mb-0">Step 3: Review & Clean Data</h6>
         <div>
@@ -101,41 +101,45 @@
             <button class="import-header-btn btn btn-light btn-sm py-0" id="btn-commit-import" onclick="commitImport()" disabled><b>Import to Cutlist 💾</b></button>
         </div>
     </div>
-    <div class="card-body p-0">
+    <div class="card-body">
         <div id="import-unit-warning" class="alert alert-danger d-none m-2 py-2 px-3">
             <strong>⚠️ Unit Mismatch Detected!</strong> 
             The SketchUp CSV appears to be in <strong id="csv-unit-label">...</strong>, but your shop is set to <strong id="shop-unit-label">...</strong>. Please check your math carefully or change your shop settings before importing.
         </div>
-        <div class="table-responsive" style="max-height: calc(100vh - 250px); overflow-y: auto;">
+        <div class="table-responsive" style="max-height: calc(100vh - 230px); overflow-y: auto;">
             <table class="table table-sm table-hover align-middle table-striped mb-0">
                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <tr>
-                        <th class="ps-2 text-nowrap">
+                        <th class="col-sponge text-nowrap text-start ps-2">
                             <span onclick="handleSort('stagingParts', 'name', 'string')" style="cursor: pointer;">Part Name ⇅</span>
                             <span id="flt-icon-stagingParts-name" onclick="openFilterModal(event, 'stagingParts', 'name', 'Part Name')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
-                        <th class="col-2 text-center text-nowrap">
+                        <th class="col-group text-nowrap">
+                            <span onclick="handleSort('stagingParts', 'groupId', 'string')" style="cursor: pointer;">Group ⇅</span>
+                            <span id="flt-icon-stagingParts-groupId" onclick="openFilterModal(event, 'stagingParts', 'groupId', 'Assigned Group')" style="cursor: pointer;" title="Filter">▼</span>
+                        </th>
+                        <th class="col-category text-center text-nowrap">
                             <span onclick="handleSort('stagingParts', 'category', 'string')" style="cursor: pointer;">Category ⇅</span>
                             <span id="flt-icon-stagingParts-category" onclick="openFilterModal(event, 'stagingParts', 'category', 'Category')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
-                        <th class="ps-2 text-nowrap">
-                            <span onclick="handleSort('stagingParts', 'groupId', 'string')" style="cursor: pointer;">Assigned Group ⇅</span>
-                            <span id="flt-icon-stagingParts-groupId" onclick="openFilterModal(event, 'stagingParts', 'groupId', 'Assigned Group')" style="cursor: pointer;" title="Filter">▼</span>
+                        <th class="col-qty text-nowrap text-center">
+                            <span onclick="handleSort('stagingParts', 'qty', 'number')" style="cursor: pointer;">Qty ⇅</span>
                         </th>
-                        <th class="text-center" onclick="handleSort('stagingParts', 'qty', 'number')" style="cursor: pointer;">Qty ⇅</th>
-                        <th class="text-nowrap text-center">
-                            <span onclick="handleSort('stagingParts', 'extracted_dimensions', 'number')" style="cursor: pointer;">Extracted Dimensions ⇅</span>
+                        <th class="col-size text-nowrap text-center">
+                            <span onclick="handleSort('stagingParts', 'extracted_dimensions', 'number')" style="cursor: pointer;">Imported Size ⇅</span>
                         </th>
-                        <th class="text-nowrap text-center">
-                            <span onclick="handleSort('stagingParts', 'profileId', 'string')" style="cursor: pointer;">Assigned Profile ⇅</span>
+                        <th class="col-profile text-nowrap text-center">
+                            <span onclick="handleSort('stagingParts', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</span>
                             <span id="flt-icon-stagingParts-profileId" onclick="openFilterModal(event, 'stagingParts', 'profileId', 'Profile')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
-                        <th class="text-center" onclick="handleSort('stagingParts', 'dimensions', 'number')" style="cursor: pointer;">Assigned Size ⇅</th>
-                        <th class="text-nowrap">
-                            <span onclick="handleSort('stagingParts', 'materialId', 'string')" style="cursor: pointer;">Assigned Material ⇅</span>
+                        <th class="col-size text-nowrap text-center">
+                            <span onclick="handleSort('stagingParts', 'dimensions', 'number')" style="cursor: pointer;">Size ⇅</span>
+                        </th>
+                        <th class="col-material text-nowrap text-center">
+                            <span onclick="handleSort('stagingParts', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</span>
                             <span id="flt-icon-stagingParts-materialId" onclick="openFilterModal(event, 'stagingParts', 'materialId', 'Material')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
-                        <th class="text-end pe-2">
+                        <th class="col-actions text-end pe-2">
                             <span id="flt-clear-stagingParts" onclick="clearAllFiltersForTable('stagingParts')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
                         </th>
                     </tr>
@@ -144,8 +148,12 @@
                     </tbody>
                 <tfoot style="position: sticky; bottom: -1px; z-index: 10; background-color: var(--bs-secondary-bg); outline: 1px solid var(--bs-secondary-bg); box-shadow: 0 -2px 4px rgba(0,0,0,0.05);">
                     <tr class="fw-bold">
-                        <td colspan="8" class="text-end text-muted small align-middle">IMPORT TOTALS:</td>
-                        <td id="tfoot-import-totals" class="text-end text-primary fs-6 pe-3 text-nowrap">0 Rows, 0 Parts</td>
+                        <td colspan="9" class="align-middle px-2">
+                            <div class="d-flex justify-content-end align-items-center w-100">
+                                <span class="text-muted small me-2">IMPORT TOTALS:</span>
+                                <span id="tfoot-import-totals" class="text-primary fs-6 pe-2 text-nowrap">0 Rows, 0 Parts</span>
+                            </div>
+                        </td>
                     </tr>
                 </tfoot>
             </table>

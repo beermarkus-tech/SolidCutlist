@@ -28,6 +28,8 @@
 </head>
 <body class="bg-light">
 
+    <div class="fixed-top" style="height: 75px; background-color: var(--bs-tertiary-bg); z-index: 5;"></div>
+
     <!-- Top Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 sticky-top">
         <div class="container-fluid">
@@ -237,11 +239,11 @@
                         <table class="table table-sm table-hover mb-0">
                             <thead>
                                 <tr>
-                                    <th>Category</th>
-                                    <th>Profile</th>
-                                    <th>Material</th>
-                                    <th>Size</th>
-                                    <th class="text-center" style="width: 80px;">Save Qty</th>
+                                    <th class="col-category text-center text-nowrap">Category</th>
+                                    <th class="col-profile text-center text-nowrap">Profile</th>
+                                    <th class="col-material text-center text-nowrap">Material</th>
+                                    <th class="col-size text-center text-nowrap">Size</th>
+                                    <th class="col-qty text-center text-nowrap">Save Qty</th>
                                     <th class="ps-3" style="width: 40px;"></th>
                                 </tr>
                             </thead>
@@ -272,5 +274,6 @@
     <?!= include('Frontend/JS/js_import'); ?>
     <?!= include('Frontend/JS/js_optimizer'); ?>
     <?!= include('Frontend/JS/js_canvas'); ?>
+    <?!= include('Frontend/JS/js_languages'); ?>
 </body>
 </html>

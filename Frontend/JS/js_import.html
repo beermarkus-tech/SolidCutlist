@@ -551,21 +551,9 @@
             });
 
             tr.innerHTML = `
-                <td class="fw-bold px-2 text-reset align-middle">
-                    <div class="text-truncate" style="max-width: 220px;" title="${safeHTML(part.name)}">
+                <td class="fw-bold px-2 text-reset align-middle w-100" style="max-width: 0;">
+                    <div class="text-truncate" title="${safeHTML(part.name)}">
                         <small class="text-reset">${safeHTML(part.name)}</small>
-                    </div>
-                </td>
-                <td>
-                    <div class="d-flex justify-content-center">
-                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 100px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
-                                onchange="updateStagingCategory('${part.id}', this.value)" title="Tap to change category">
-                            ${!part.category ? '<option value="" disabled selected>⚠️ Select...</option>' : ''}
-                            <option value="lumber" class="bg-light text-dark" ${part.category === 'lumber' ? 'selected' : ''}>Lumber</option>
-                            <option value="sheet" class="bg-light text-dark" ${part.category === 'sheet' ? 'selected' : ''}>Sheet</option>
-                            <option value="fastener" class="bg-light text-dark" ${part.category === 'fastener' ? 'selected' : ''}>Fastener</option>
-                        </select>
                     </div>
                 </td>
                 <td>
@@ -573,6 +561,18 @@
                             onchange="updateStagingPart('${part.id}', 'groupId', this.value)">
                         ${groupOptions}
                     </select>
+                </td>
+                <td>
+                    <div class="d-flex justify-content-center">
+                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
+                                style="width: 80px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
+                                onchange="updateStagingCategory('${part.id}', this.value)" title="Tap to change category">
+                            ${!part.category ? '<option value="" disabled selected>⚠️ Select</option>' : ''}
+                            <option value="lumber" class="bg-light text-dark" ${part.category === 'lumber' ? 'selected' : ''}>Lumber</option>
+                            <option value="sheet" class="bg-light text-dark" ${part.category === 'sheet' ? 'selected' : ''}>Sheet</option>
+                            <option value="fastener" class="bg-light text-dark" ${part.category === 'fastener' ? 'selected' : ''}>Fastener</option>
+                        </select>
+                    </div>
                 </td>
                 <td class="text-center"><small>${part.qty}</small></td>
                 <td class="text-center"><small>${dimDisplay}</small></td>
@@ -591,7 +591,7 @@
                     })()}
                 </td>
                 <td>
-                    <select class="form-select form-select-sm border-0 bg-transparent" onchange="updateStagingPart('${part.id}', 'materialId', this.value)">
+                    <select class="text-center form-select form-select-sm border-0 bg-transparent" onchange="updateStagingPart('${part.id}', 'materialId', this.value)">
                         ${matOptions}
                     </select>
                 </td>

@@ -231,7 +231,7 @@
             });
 
             // Profile Dropdown with ⚠️ Warning
-            let profOptions = `<option value="" disabled ${!prof ? 'selected' : ''}>⚠️ Select Profile...</option>`;
+            let profOptions = !prof ? `<option value="" disabled selected>⚠️ Select Profile...</option>` : '';
             const filteredProfiles = appState.profiles.filter(p => p.type === part.category);
             filteredProfiles.forEach(p => {
                 const unitText = appState.settings.displayUnit === 'mm' ? 'mm' : 'in';
@@ -240,7 +240,7 @@
             });
 
             // Material Dropdown with ⚠️ Warning
-            let matOptions = `<option value="" disabled ${!mat ? 'selected' : ''}>⚠️ Select Material...</option>`;
+            let matOptions = !mat ? `<option value="" disabled selected>⚠️ Select Material...</option>` : '';
             const filteredMaterials = appState.materials.filter(m => m.category === part.category);
             filteredMaterials.forEach(m => {
                 matOptions += `<option value="${m.id}" ${m.id === part.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
@@ -367,12 +367,12 @@
             // 🪄 5. BUILD THE ROW
             tr.innerHTML = `
                 <td class="p-0 px-1">
-                    <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" onchange="updatePart('${part.id}', 'projectId', this.value)" style="max-width: 170px;">
+                    <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" onchange="updatePart('${part.id}', 'projectId', this.value)">
                         ${projOptions}
                     </select>
                 </td>
                 <td class="p-0 px-1">
-                    <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0 text-muted" onchange="updatePart('${part.id}', 'groupId', this.value)" style="max-width: 140px;">
+                    <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" onchange="updatePart('${part.id}', 'groupId', this.value)">
                         ${groupOptions}
                     </select>
                 </td>
@@ -399,13 +399,13 @@
                     </div>
                 </td>
                 <td class="p-0 px-1">
-                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 align-middle text-center" style="max-width: 200px;" onchange="updatePart('${part.id}', 'profileId', this.value)" title="Tap to edit Profile">
+                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 align-middle text-center" onchange="updatePart('${part.id}', 'profileId', this.value)" title="Tap to edit Profile">
                         ${profOptions}
                     </select>
                 </td>
                 <td class="text-center p-0 px-1 align-middle">${dimHtml}</td>
                 <td class="p-0 px-1">
-                    <select class="form-select form-select-sm border-0 bg-transparent text-muted px-0 py-0" style="max-width: 200px;" onchange="updatePart('${part.id}', 'materialId', this.value)" title="Tap to edit Material">
+                    <select class="text-center form-select form-select-sm border-0 bg-transparent px-0 py-0" onchange="updatePart('${part.id}', 'materialId', this.value)" title="Tap to edit Material">
                         ${matOptions}
                     </select>
                 </td>

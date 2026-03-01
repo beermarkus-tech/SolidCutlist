@@ -1,0 +1,58 @@
+<script>
+    // ==========================================
+    // 🌍 INTERNATIONALIZATION (i18n) ENGINE
+    // ==========================================
+    const translations = {
+        en: {
+            lbl_settings_language: "Language",
+            lbl_settings_appearance: "Appearance",
+            lbl_settings_dark_mode: "Enable Dark Mode",
+            msg_lang_changed: "Language updated successfully.",
+            hdr_settings_general: "Global Settings"
+        },
+        de: {
+            lbl_settings_language: "Sprache",
+            lbl_settings_appearance: "Erscheinungsbild",
+            lbl_settings_dark_mode: "Dunkelmodus aktivieren",
+            msg_lang_changed: "Sprache erfolgreich aktualisiert.",
+            hdr_settings_general: "Allgemeine Einstellungen"
+        },
+        fr: {
+            lbl_settings_language: "Langue",
+            lbl_settings_appearance: "Apparence",
+            lbl_settings_dark_mode: "Activer le mode sombre",
+            msg_lang_changed: "Langue mise à jour avec succès.",
+            hdr_settings_general: "Préférences Générales"
+        }
+    };
+
+    function applyTranslations() {
+        const lang = (appState.settings && appState.settings.language) ? appState.settings.language : 'en';
+        const dict = translations[lang] || translations['en'];
+
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (dict[key]) {
+                if (el.tagName === 'INPUT' && el.hasAttribute('placeholder')) {
+                    el.setAttribute('placeholder', dict[key]);
+                } else {
+                    el.innerHTML = dict[key]; 
+                }
+            }
+        });
+    }
+
+    function t(key) {
+        const lang = (appState.settings && appState.settings.language) ? appState.settings.language : 'en';
+        const dict = translations[lang] || translations['en'];
+        return dict[key] || key;
+    }
+
+    function handleLanguageChange(newLang) {
+        if (!appState.settings) appState.settings = {};
+        appState.settings.language = newLang;
+        saveState();
+        applyTranslations(); 
+        showToast( t('msg_lang_changed') );
+    }
+</script>

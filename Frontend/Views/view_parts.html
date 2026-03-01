@@ -79,38 +79,44 @@
             <hr>
         </div>
 
-        <div id="table-wrapper-parts" class="table-responsive" style="max-height: calc(100vh - 265px); overflow-y: auto;">
+        <div id="table-wrapper-parts" class="table-responsive" style="max-height: calc(100vh - 265px); height: calc(100vh - 265px); overflow-y: auto;">
             <table class="table table-sm table-hover table-striped align-middle mb-0">
                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <tr>
-                        <th class="text-nowrap">
+                        <th class="col-project text-nowrap">
                             <span onclick="handleSort('parts', 'projectId', 'string')" style="cursor: pointer;">Project ⇅</span>
                             <span id="flt-icon-parts-projectId" onclick="openFilterModal(event, 'parts', 'projectId', 'Project')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
-                        <th class="text-center text-nowrap">
+                        <th class="col-group text-nowrap">
                             <span onclick="handleSort('parts', 'groupId', 'string')" style="cursor: pointer;">Group ⇅</span>
                             <span id="flt-icon-parts-groupId" onclick="openFilterModal(event, 'parts', 'groupId', 'Group')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
-                        <th onclick="handleSort('parts', 'name', 'string')" style="cursor: pointer;">Part Name ⇅</th>
-                        <th class="col-2 text-center text-nowrap">
-                            <span onclick="handleSort('parts', 'category', 'string')" class="col-2 text-center" style="cursor: pointer;">Category ⇅</span>
+                        <th class="col-sponge">
+                            <span onclick="handleSort('parts', 'name', 'string')" style="cursor: pointer;">Part Name ⇅</span>
+                        </th>
+                        <th class="col-category text-center text-nowrap">
+                            <span onclick="handleSort('parts', 'category', 'string')" style="cursor: pointer;">Category ⇅</span>
                             <span id="flt-icon-parts-category" onclick="openFilterModal(event, 'parts', 'category', 'Category')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
-                        <th id="th-parts-qty" onclick="handleSort('parts', 'qty', 'number')" class="text-center" style="cursor: pointer;" title="Visible Total: 0">Qty ⇅</th>
-                        <th class="text-center text-nowrap">
+                        <th class="col-qty text-center" id="th-parts-qty">
+                            <span onclick="handleSort('parts', 'qty', 'number')" style="cursor: pointer;" title="Visible Total: 0">Qty ⇅</span>
+                        </th>
+                        <th class="col-profile text-center text-nowrap">
                             <span onclick="handleSort('parts', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</span>
                             <span id="flt-icon-parts-profileId" onclick="openFilterModal(event, 'parts', 'profileId', 'Profile')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
-                        <th onclick="handleSort('parts', 'dimensions', 'number')" class="text-center" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</th>
-                        <th class="text-center text-nowrap">
+                        <th class="col-size text-center">
+                            <span onclick="handleSort('parts', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
+                        </th>
+                        <th class="col-material text-center text-nowrap">
                             <span onclick="handleSort('parts', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</span>
                             <span id="flt-icon-parts-materialId" onclick="openFilterModal(event, 'parts', 'materialId', 'Material')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
-                        <th class="text-center text-nowrap">
+                        <th class="col-grain text-center text-nowrap">
                             <span onclick="handleSort('parts', 'grain', 'string')" class="text-center" style="cursor: pointer;">Grain ⇅</span>
                             <span id="flt-icon-parts-grain" onclick="openFilterModal(event, 'parts', 'grain', 'Grain')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
-                        <th class="text-center" style="max-width: 110px;">
+                        <th class="col-costweight text-center">
                             <div class="d-flex align-items-center justify-content-center gap-1">
                                 <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center" id="table-parts-metric-view" onchange="updatePartsMetricMode()" style="width: auto; cursor: pointer; font-size: inherit;">
                                     <option value="weight">Weight</option>
@@ -119,7 +125,7 @@
                                 <span onclick="handleSort('parts', 'weight_cost', 'number')" style="cursor: pointer; user-select: none;" title="Sort Column">⇅</span>
                             </div>
                         </th>
-                        <th class="text-end">
+                        <th class="col-actions text-end">
                             <span id="flt-clear-parts" onclick="clearAllFiltersForTable('parts')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
                         </th>
                     </tr>

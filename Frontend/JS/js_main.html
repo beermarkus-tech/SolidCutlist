@@ -1,9 +1,4 @@
 <script>
-    /**
-     * Frontend/JS/js_main.html
-     * Handles UI state, View navigation, and global UI helpers (like Toasts).
-     */
-
     // ==========================================
     // GLOBAL APP STATE
     // ==========================================
@@ -273,7 +268,7 @@
             let valB = b[key];
 
             // 🪄 Smart Lookups for Relational IDs and Dynamic Math
-            if (arrayName === 'parts' || arrayName === 'stock' || arrayName === 'catalog' || arrayName === 'profiles' || arrayName === 'stagingParts') {
+            if (arrayName === 'parts' || arrayName === 'stock' || arrayName === 'catalog' || arrayName === 'profiles' || arrayName === 'stagingParts' || arrayName === 'commitStock') {
                 if (key === 'storeId') {
                     valA = appState.stores?.find(s => s.id === a.storeId)?.name || '';
                     valB = appState.stores?.find(s => s.id === b.storeId)?.name || '';

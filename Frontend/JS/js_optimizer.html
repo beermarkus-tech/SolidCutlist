@@ -448,7 +448,20 @@
         const results = runPackingEngine(optState.selectedProjects, optState.selectedStores);
         document.getElementById('optimizer-empty-state').classList.add('d-none');
         document.getElementById('optimizer-tab-content').classList.remove('d-none');
-        document.getElementById('print-controls').classList.remove('d-none');
+
+        // 🪄 1. Reveal the Shopping Controls, ensure Diagrams are hidden
+        const shopCtrl = document.getElementById('shopping-controls');
+        const diagCtrl = document.getElementById('diagram-controls');
+        if (shopCtrl) shopCtrl.classList.remove('d-none');
+        if (diagCtrl) diagCtrl.classList.add('d-none');
+
+        // 🪄 2. Force the Bootstrap tab back to "Shopping" so the UI matches the buttons
+        const defaultTabBtn = document.getElementById('tab-shopping');
+        if (defaultTabBtn) {
+            const tabInstance = new bootstrap.Tab(defaultTabBtn);
+            tabInstance.show();
+        }
+        
         renderShoppingListTab(results);
         if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
         if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
@@ -740,12 +753,12 @@
                     <table class="table table-sm table-hover mb-0">
                         <thead>
                             <tr>
-                                <th class="ps-3" onclick="sortOffcuts('category')" style="cursor: pointer;">Category ⇅</th>
-                                <th class="text-center" onclick="sortOffcuts('qty')" style="cursor: pointer;">Qty ⇅</th>
-                                <th class="text-center" onclick="sortOffcuts('profName')" style="cursor: pointer;">Profile ⇅</th>
-                                <th class="text-center pe-3" onclick="sortOffcuts('length')" style="cursor: pointer;">Size ⇅</th>
-                                <th onclick="sortOffcuts('matName')" style="cursor: pointer;">Material ⇅</th>
-                                <th class="text-center" onclick="sortOffcuts('grain')" style="cursor: pointer;">Grain ⇅</th>
+                                <th class="col-category text-center text-nowrap" onclick="sortOffcuts('category')" style="cursor: pointer;">Category ⇅</th>
+                                <th class="col-qty text-center" onclick="sortOffcuts('qty')" style="cursor: pointer;">Qty ⇅</th>
+                                <th class="col-profile text-center text-nowrap" onclick="sortOffcuts('profName')" style="cursor: pointer;">Profile ⇅</th>
+                                <th class="col-size text-center text-nowrap" onclick="sortOffcuts('length')" style="cursor: pointer;">Size ⇅</th>
+                                <th class="col-material text-center text-nowrap" onclick="sortOffcuts('matName')" style="cursor: pointer;">Material ⇅</th>
+                                <th class="col-grain text-center text-nowrap" onclick="sortOffcuts('grain')" style="cursor: pointer;">Grain ⇅</th>
                             </tr>
                         </thead>
                         <tbody id="table-offcuts-body">
@@ -790,7 +803,7 @@
 
                 // 🪄 THE UNIFORM CATEGORY BADGE
                 const categoryBadgeHtml = `
-                    <div class="d-flex justify-content-start">
+                    <div class="d-flex justify-content-center px-1">
                         <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
                                 style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
                             <option value="lumber" class="bg-light text-dark" ${off.category === 'lumber' ? 'selected' : ''}>Lumber</option>
@@ -801,12 +814,12 @@
                 `;
 
                 html += `<tr>
-                            <td class="ps-3 align-middle">${categoryBadgeHtml}</td>
-                            <td class="text-center align-middle fw-bold fs-6">${off.qty}</td>
-                            <td class="fw-bold text-center align-middle">${safeHTML(off.profName)}</td>
-                            <td class="text-end pe-3 fw-bold text-primary text-center align-middle">${sizeStr} <span class="display-unit-label"></span></td>
-                            <td class="text-muted align-middle">${safeHTML(off.matName)}</td>
-                            <td class="text-center text-muted align-middle">${grainStr}</td>
+                            <td class="text-center align-middle">${categoryBadgeHtml}</td>
+                            <td class="text-center align-middle">${off.qty}</td>
+                            <td class="text-center align-middle">${safeHTML(off.profName)}</td>
+                            <td class="text-center align-middle fw-bold text-primary">${sizeStr} <span class="display-unit-label"></span></td>
+                            <td class="text-center align-middle">${safeHTML(off.matName)}</td>
+                            <td class="text-center align-middle">${grainStr}</td>
                          </tr>`;
             });
         } else {
@@ -942,7 +955,7 @@
             html += `
                 <tr class="${rowClass}">
                     <td class="align-middle">
-                        <div class="d-flex justify-content-start">
+                        <div class="d-flex justify-content-center px-1">
                             <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
                                     style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
                                 <option value="lumber" class="bg-light text-dark" ${off.category === 'lumber' ? 'selected' : ''}>Lumber</option>
@@ -951,10 +964,10 @@
                             </select>
                         </div>
                     </td>
-                    <td class="fw-bold align-middle">${safeHTML(off.profName)}</td>
-                    <td class="text-muted align-middle">${safeHTML(off.matName)}</td>
-                    <td class="fw-bold text-primary align-middle">${sizeStr} <span class="display-unit-label"></span></td>
-                    <td class="align-middle px-2">
+                    <td class="text-center align-middle">${safeHTML(off.profName)}</td>
+                    <td class="text-center align-middle">${safeHTML(off.matName)}</td>
+                    <td class="text-center align-middle fw-bold text-primary">${sizeStr} <span class="display-unit-label"></span></td>
+                    <td class="text-center align-middle">
                         <input type="number" id="commit-qty-${index}" class="form-control form-control-sm text-center fw-bold" value="${off.qty}" min="1" max="${off.qty}" ${disableAttr}>
                     </td>
                     <td class="ps-3 align-middle text-center">
@@ -1039,4 +1052,33 @@
             }
         }, 300); // 300ms delay allows the Bootstrap modal to fade out smoothly before the screen jumps
     }
+
+    // ==========================================
+    // TAB BEHAVIOR LOGIC
+    // ==========================================
+    
+    // 🪄 Listen for Bootstrap tab changes to conditionally show the respective control buttons
+    document.addEventListener('DOMContentLoaded', () => {
+        const resultsTabs = document.getElementById('resultsTabs');
+        if (resultsTabs) {
+            resultsTabs.addEventListener('shown.bs.tab', function (event) {
+                const diagramControls = document.getElementById('diagram-controls');
+                const shoppingControls = document.getElementById('shopping-controls');
+                
+                if (!diagramControls || !shoppingControls) return;
+
+                // 1. Hide everything first
+                diagramControls.classList.add('d-none');
+                shoppingControls.classList.add('d-none');
+
+                // 2. Reveal only the controls for the active tab
+                if (event.target.id === 'tab-diagrams') {
+                    diagramControls.classList.remove('d-none');
+                } else if (event.target.id === 'tab-shopping') {
+                    shoppingControls.classList.remove('d-none');
+                }
+                // (If they click the Analytics tab, both will remain hidden!)
+            });
+        }
+    });
 </script>
