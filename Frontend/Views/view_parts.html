@@ -1,10 +1,10 @@
 <div class="card shadow-sm border-success">
     <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-        <h6 class="card-title mb-0">Current Partlist</h6>
+        <h6 class="card-title mb-0" data-i18n="hdr_current_partlist">Current Partlist</h6>
         <div>
-            <button class="btn btn-sm text-white py-0 me-2" onclick="toggleInputSection('parts', 265, 173, this)" title="Toggle Input Section"><b>▽</b></button>
-            <button class="btn btn-light btn-sm py-0" onclick="printPartsTable()" title="Print Visible Parts"><b>🖨️ Print</b></button>
-            <button id="btn-inline-import" class="btn btn-light btn-sm py-0" onclick="navigateTo('view-import')"><b>📥 Import Parts</b></button>
+            <button class="btn btn-sm text-white py-0 me-2" onclick="toggleInputSection('parts', 265, 173, this)" title="Toggle Input Section" data-i18n-title="tip_toggle_input_section"><b>▽</b></button>
+            <button class="btn btn-light btn-sm py-0" onclick="printPartsTable()" title="Print Visible Parts" data-i18n-title="tip_print_visible_parts"><b data-i18n="btn_print">🖨️ Print</b></button>
+            <button id="btn-inline-import" class="btn btn-light btn-sm py-0" onclick="navigateTo('view-import')"><b data-i18n="btn_import_parts">📥 Import Parts</b></button>
         </div>
     </div>
     <div class="card-body">
@@ -12,67 +12,67 @@
             <form id="form-add-part" onsubmit="handleAddPart(event)">
                 <div class="row g-2 align-items-end">
                     <div class="col-sm">
-                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Project</label>
+                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_project">Project</label>
                         <select class="form-select form-select-sm" id="part-project" onchange="handleProjectChange()" required>
                         </select>
                     </div>
                     <div class="col-sm">
                         <label class="form-label form-label-sm fw-bold text-secondary mb-1">
-                            Group <span style="cursor: pointer; opacity: 0.7;" onclick="openGroupModalFromParts()" title="Manage Groups">⚙️</span>
+                            <span data-i18n="lbl_group">Group</span> <span style="cursor: pointer; opacity: 0.7;" onclick="openGroupModalFromParts()" title="Manage Groups" data-i18n-title="tip_manage_groups">⚙️</span>
                         </label>
                         <select class="form-select form-select-sm" id="part-group">
                             <option value="">-</option>
                         </select>
                     </div>
                     <div class="col-sm-2">
-                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Part Name</label>
+                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_part_name">Part Name</label>
                         <input type="text" class="form-control form-control-sm" id="part-name" required>
                     </div>
                     <div class="col-sm">
-                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
+                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_category">Category</label>
                         <select class="form-select form-select-sm" id="part-category" onchange="handleCategoryChange()" required>
-                            <option value="" disabled selected>Select...</option>
-                            <option value="lumber">Lumber</option>
-                            <option value="sheet">Sheet</option>
-                            <option value="fastener">Fastener</option>
+                            <option value="" disabled selected data-i18n="opt_select">Select...</option>
+                            <option value="lumber" data-i18n="opt_lumber">Lumber</option>
+                            <option value="sheet" data-i18n="opt_sheet">Sheet</option>
+                            <option value="fastener" data-i18n="opt_fastener">Fastener</option>
                         </select>
                     </div>
                     <div class="col-sm-1" style="max-width: 80px;">
-                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Qty</label>
+                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_qty">Qty</label>
                         <input type="number" class="form-control form-control-sm text-center" id="part-qty" value="1" min="1" required>
                     </div>
                     <div class="col-sm">
-                        <label id="label-part-profile" class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
+                        <label id="label-part-profile" class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_profile">Profile</label>
                         <select class="form-select form-select-sm" id="part-profile" required disabled></select>
                     </div>
                     <div class="col-sm-1">
-                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_width">Width</label>
                         <div class="input-group input-group-sm">
                             <input type="text" class="form-control form-control-sm" id="part-width" disabled>
                             <span class="input-group-text display-unit-label">mm</span>
                         </div>
                     </div>
                     <div class="col-sm-1">
-                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
+                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_length">Length</label>
                         <div class="input-group input-group-sm">
                             <input type="text" class="form-control form-control-sm" id="part-length" required disabled>
                             <span class="input-group-text display-unit-label">mm</span>
                         </div>
                     </div>
                     <div class="col-sm">
-                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material</label>
+                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_material">Material</label>
                         <select class="form-select form-select-sm" id="part-material" required disabled></select>
                     </div>
                     <div class="col-sm-1">
-                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets">Grain</label>
+                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets" data-i18n="lbl_grain" data-i18n-title="tip_for_sheets_only">Grain</label>
                         <select class="form-select form-select-sm" id="part-grain" disabled>
                             <option value="none">-</option>
-                            <option value="length">Length</option>
-                            <option value="width">Width</option>
+                            <option value="length" data-i18n="opt_length">Length</option>
+                            <option value="width" data-i18n="opt_width">Width</option>
                         </select>
                     </div>
                     <div class="col-sm-1">
-                        <button type="submit" class="btn btn-primary btn-sm w-100" id="btn-add-part" disabled>Add</button>
+                        <button type="submit" class="btn btn-primary btn-sm w-100" id="btn-add-part" disabled data-i18n="btn_add">Add</button>
                     </div>
                 </div>
             </form>
@@ -84,49 +84,49 @@
                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <tr>
                         <th class="col-project text-nowrap">
-                            <span onclick="handleSort('parts', 'projectId', 'string')" style="cursor: pointer;">Project ⇅</span>
-                            <span id="flt-icon-parts-projectId" onclick="openFilterModal(event, 'parts', 'projectId', 'Project')" style="cursor: pointer;" title="Filter">▼</span>
+                            <span onclick="handleSort('parts', 'projectId', 'string')" style="cursor: pointer;" data-i18n="col_project">Project ⇅</span>
+                            <span id="flt-icon-parts-projectId" onclick="openFilterModal(event, 'parts', 'projectId', 'Project')" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                         </th>
                         <th class="col-group text-nowrap">
-                            <span onclick="handleSort('parts', 'groupId', 'string')" style="cursor: pointer;">Group ⇅</span>
-                            <span id="flt-icon-parts-groupId" onclick="openFilterModal(event, 'parts', 'groupId', 'Group')" style="cursor: pointer;" title="Filter">▼</span>
+                            <span onclick="handleSort('parts', 'groupId', 'string')" style="cursor: pointer;" data-i18n="col_group">Group ⇅</span>
+                            <span id="flt-icon-parts-groupId" onclick="openFilterModal(event, 'parts', 'groupId', 'Group')" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                         </th>
                         <th class="col-sponge">
-                            <span onclick="handleSort('parts', 'name', 'string')" style="cursor: pointer;">Part Name ⇅</span>
+                            <span onclick="handleSort('parts', 'name', 'string')" style="cursor: pointer;" data-i18n="col_part_name">Part Name ⇅</span>
                         </th>
                         <th class="col-category text-center text-nowrap">
-                            <span onclick="handleSort('parts', 'category', 'string')" style="cursor: pointer;">Category ⇅</span>
-                            <span id="flt-icon-parts-category" onclick="openFilterModal(event, 'parts', 'category', 'Category')" style="cursor: pointer;" title="Filter">▼</span>
+                            <span onclick="handleSort('parts', 'category', 'string')" style="cursor: pointer;" data-i18n="col_category">Category ⇅</span>
+                            <span id="flt-icon-parts-category" onclick="openFilterModal(event, 'parts', 'category', 'Category')" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                         </th>
                         <th class="col-qty text-center" id="th-parts-qty">
-                            <span onclick="handleSort('parts', 'qty', 'number')" style="cursor: pointer;" title="Visible Total: 0">Qty ⇅</span>
+                            <span onclick="handleSort('parts', 'qty', 'number')" style="cursor: pointer;" title="Visible Total: 0" data-i18n-title="tip_visible_total" data-i18n="col_qty">Qty ⇅</span>
                         </th>
                         <th class="col-profile text-center text-nowrap">
-                            <span onclick="handleSort('parts', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</span>
-                            <span id="flt-icon-parts-profileId" onclick="openFilterModal(event, 'parts', 'profileId', 'Profile')" style="cursor: pointer;" title="Filter">▼</span>
+                            <span onclick="handleSort('parts', 'profileId', 'string')" style="cursor: pointer;" data-i18n="col_profile">Profile ⇅</span>
+                            <span id="flt-icon-parts-profileId" onclick="openFilterModal(event, 'parts', 'profileId', 'Profile')" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                         </th>
                         <th class="col-size text-center">
-                            <span onclick="handleSort('parts', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
+                            <span onclick="handleSort('parts', 'dimensions', 'number')" style="cursor: pointer;" data-i18n="col_size">Size (<span class="display-unit-label">mm</span>) ⇅</span>
                         </th>
                         <th class="col-material text-center text-nowrap">
-                            <span onclick="handleSort('parts', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</span>
-                            <span id="flt-icon-parts-materialId" onclick="openFilterModal(event, 'parts', 'materialId', 'Material')" style="cursor: pointer;" title="Filter">▼</span>
+                            <span onclick="handleSort('parts', 'materialId', 'string')" style="cursor: pointer;" data-i18n="col_material">Material ⇅</span>
+                            <span id="flt-icon-parts-materialId" onclick="openFilterModal(event, 'parts', 'materialId', 'Material')" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                         </th>
                         <th class="col-grain text-center text-nowrap">
-                            <span onclick="handleSort('parts', 'grain', 'string')" class="text-center" style="cursor: pointer;">Grain ⇅</span>
-                            <span id="flt-icon-parts-grain" onclick="openFilterModal(event, 'parts', 'grain', 'Grain')" style="cursor: pointer;" title="Filter">▼</span>
+                            <span onclick="handleSort('parts', 'grain', 'string')" class="text-center" style="cursor: pointer;" data-i18n="col_grain">Grain ⇅</span>
+                            <span id="flt-icon-parts-grain" onclick="openFilterModal(event, 'parts', 'grain', 'Grain')" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                         </th>
                         <th class="col-costweight text-center">
                             <div class="d-flex align-items-center justify-content-center gap-1">
                                 <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center" id="table-parts-metric-view" onchange="updatePartsMetricMode()" style="width: auto; cursor: pointer; font-size: inherit;">
-                                    <option value="weight">Weight</option>
-                                    <option value="cost">Cost</option>
+                                    <option value="weight" data-i18n="opt_weight">Weight</option>
+                                    <option value="cost" data-i18n="opt_cost">Cost</option>
                                 </select>
-                                <span onclick="handleSort('parts', 'weight_cost', 'number')" style="cursor: pointer; user-select: none;" title="Sort Column">⇅</span>
+                                <span onclick="handleSort('parts', 'weight_cost', 'number')" style="cursor: pointer; user-select: none;" title="Sort Column" data-i18n-title="tip_sort_column">⇅</span>
                             </div>
                         </th>
                         <th class="col-actions text-end">
-                            <span id="flt-clear-parts" onclick="clearAllFiltersForTable('parts')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
+                            <span id="flt-clear-parts" onclick="clearAllFiltersForTable('parts')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters" data-i18n-title="tip_clear_all_filters">▼⨯</span>
                         </th>
                     </tr>
                 </thead>
@@ -138,7 +138,7 @@
                 
                 <tfoot style="position: sticky; bottom: -1px; z-index: 10; background-color: var(--bs-secondary-bg); outline: 1px solid var(--bs-secondary-bg); box-shadow: 0 -2px 4px rgba(0,0,0,0.05);">
                     <tr class="fw-bold">
-                        <td colspan="4" class="text-end text-muted small align-middle">VISIBLE TOTALS:</td>
+                        <td colspan="4" class="text-end text-muted small align-middle" data-i18n="lbl_visible_totals">VISIBLE TOTALS:</td>
                         <td id="tfoot-parts-qty" class="text-center text-primary fs-6">0</td>
                         <td colspan="4"></td>
                         <td id="tfoot-parts-metric" class="text-center text-primary fs-6">0</td>
