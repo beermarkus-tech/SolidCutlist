@@ -1,18 +1,18 @@
 <ul class="nav nav-tabs mb-3" id="dictionaryTabs" role="tablist">
     <li class="nav-item" role="presentation">
-        <button class="nav-link active fw-bold text-body" id="tab-projects" data-bs-toggle="tab" data-bs-target="#pane-projects" type="button" role="tab">📁 Projects</button>
+        <button class="nav-link active fw-bold text-body" id="tab-projects" data-bs-toggle="tab" data-bs-target="#pane-projects" type="button" role="tab" data-i18n="tab_projects">📁 Projects</button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link fw-bold text-body" id="tab-stock" data-bs-toggle="tab" data-bs-target="#pane-stock" type="button" role="tab" onclick="populateStockDropdowns()">📦 My Stock</button>
+        <button class="nav-link fw-bold text-body" id="tab-stock" data-bs-toggle="tab" data-bs-target="#pane-stock" type="button" role="tab" onclick="populateStockDropdowns()" data-i18n="tab_stock">📦 My Stock</button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link fw-bold text-body" id="tab-catalog" data-bs-toggle="tab" data-bs-target="#pane-catalog" type="button" role="tab" onclick="populateCatalogDropdowns()">🏷️ Store Prices</button>
+        <button class="nav-link fw-bold text-body" id="tab-catalog" data-bs-toggle="tab" data-bs-target="#pane-catalog" type="button" role="tab" onclick="populateCatalogDropdowns()" data-i18n="tab_store_prices">🏷️ Store Prices</button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link fw-bold text-body" id="tab-dictionaries" data-bs-toggle="tab" data-bs-target="#pane-dictionaries" type="button" role="tab" onclick="renderProfilesTable(); renderMaterialsTable();">📐 Profiles & Materials</button>
+        <button class="nav-link fw-bold text-body" id="tab-dictionaries" data-bs-toggle="tab" data-bs-target="#pane-dictionaries" type="button" role="tab" onclick="renderProfilesTable(); renderMaterialsTable();" data-i18n="tab_profiles_and_materials">📐 Profiles & Materials</button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link fw-bold text-body" id="tab-settings" data-bs-toggle="tab" data-bs-target="#pane-settings" type="button" role="tab">⚙️ Settings</button>
+        <button class="nav-link fw-bold text-body" id="tab-settings" data-bs-toggle="tab" data-bs-target="#pane-settings" type="button" role="tab" data-i18n="tab_settings">⚙️ Settings</button>
     </li>
 </ul>
 
@@ -22,9 +22,9 @@
     <div class="tab-pane fade show active" id="pane-projects" role="tabpanel" tabindex="0">
         <div class="card shadow-sm border-success">
             <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                <h6 class="card-title mb-0">Active Projects</h6>
+                <h6 class="card-title mb-0" data-i18n="hdr_active_projects">Active Projects</h6>
                 <div>
-                    <button class="btn btn-sm text-white py-0 me-2" onclick="toggleInputSection('projects', 320, 228, this)" title="Toggle Input Section"><b>▽</b></button>
+                    <button class="btn btn-sm text-white py-0 me-2" onclick="toggleInputSection('projects', 320, 228, this)" title="Toggle Input Section" data-i18n-title="tip_toggle_input_section"><b>▽</b></button>
                 </div>
             </div>
             <div class="card-body py-3">
@@ -32,11 +32,11 @@
                     <form id="form-add-project" onsubmit="handleAddProject(event)">
                         <div class="row g-2 align-items-end">
                             <div class="col-sm-11">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">New Project Name</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_new_project_name">New Project Name</label>
                                 <input type="text" class="form-control form-control-sm" id="proj-name" required>
                             </div>
                             <div class="col-sm-1">
-                                <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
+                                <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
                             </div>
                         </div>
                     </form>
@@ -47,16 +47,16 @@
                         <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <tr>
                                 <th class="text-nowrap">
-                                    <span onclick="handleSort('projects', 'name', 'string')" style="cursor: pointer;">Project Name ⇅</span>
-                                    <span id="flt-icon-projects-name" onclick="openFilterModal(event, 'projects', 'name', 'Project Name')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span onclick="handleSort('projects', 'name', 'string')" style="cursor: pointer;" data-i18n="col_project_name">Project Name ⇅</span>
+                                    <span id="flt-icon-projects-name" onclick="openFilterModal(event, 'projects', 'name', 'Project Name')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                 </th>
                                 <th class="text-nowrap">
-                                    <span onclick="handleSort('projects', 'status', 'string')" style="cursor: pointer;">Status ⇅</span>
-                                    <span id="flt-icon-projects-status" onclick="openFilterModal(event, 'projects', 'status', 'Status')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span onclick="handleSort('projects', 'status', 'string')" style="cursor: pointer;" data-i18n="col_status">Status ⇅</span>
+                                    <span id="flt-icon-projects-status" onclick="openFilterModal(event, 'projects', 'status', 'Status')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                 </th>
-                                <th class="text-center">Groups</th>
+                                <th class="text-center" data-i18n="col_groups">Groups</th>
                                 <th class="text-end">
-                                    <span id="flt-clear-projects" onclick="clearAllFiltersForTable('projects')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
+                                    <span id="flt-clear-projects" onclick="clearAllFiltersForTable('projects')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters" data-i18n-title="tip_clear_all_filters">▼⨯</span>
                                 </th>
                             </tr>
                         </thead>
@@ -71,9 +71,9 @@
     <div class="tab-pane fade" id="pane-stock" role="tabpanel" tabindex="0">
         <div class="card shadow-sm border-info">
             <div class="card-header bg-info text-black d-flex justify-content-between align-items-center">
-                <h6 class="card-title mb-0">My Shop Stock</h6>
+                <h6 class="card-title mb-0" data-i18n="hdr_my_shop_stock">My Shop Stock</h6>
                 <div>
-                    <button class="btn btn-sm text-black py-0 me-2" onclick="toggleInputSection('stock', 320, 228, this)" title="Toggle Input Section"><b>▽</b></button>
+                    <button class="btn btn-sm text-black py-0 me-2" onclick="toggleInputSection('stock', 320, 228, this)" title="Toggle Input Section" data-i18n-title="tip_toggle_input_section"><b>▽</b></button>
                 </div>
             </div>
             <div class="card-body py-3">
@@ -81,50 +81,50 @@
                     <form id="form-add-stock" onsubmit="handleAddStock(event)">
                         <div class="row g-2 align-items-end">
                             <div class="col-sm">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_category">Category</label>
                                 <select class="form-select form-select-sm" id="stock-category" onchange="handleStockCategoryChange()" required>
-                                    <option value="" disabled selected>Select...</option>
-                                    <option value="lumber">Lumber</option>
-                                    <option value="sheet">Sheet</option>
-                                    <option value="fastener">Fastener</option>
+                                    <option value="" disabled selected data-i18n="opt_select">Select...</option>
+                                    <option value="lumber" data-i18n="opt_lumber">Lumber</option>
+                                    <option value="sheet" data-i18n="opt_sheet">Sheet</option>
+                                    <option value="fastener" data-i18n="opt_fastener">Fastener</option>
                                 </select>
                             </div>
                             <div class="col-sm-1">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Qty</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_qty">Qty</label>
                                 <input type="number" class="form-control form-control-sm text-center" id="stock-qty" value="1" min="1" required>
                             </div>
                             <div class="col-sm">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_profile">Profile</label>
                                 <select class="form-select form-select-sm" id="stock-profile" required disabled></select>
                             </div>
                             <div class="col-sm-1">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_width">Width</label>
                                 <input type="text" class="form-control form-control-sm" id="stock-width" disabled>
                             </div>
                             <div class="col-sm-1">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_length">Length</label>
                                 <input type="text" class="form-control form-control-sm" id="stock-length" required disabled>
                             </div>
                             <div class="col-sm">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_material">Material</label>
                                 <select class="form-select form-select-sm" id="stock-material" required disabled></select>
                             </div>
                             <div class="col-sm-1">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets Only">Grain</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets Only" data-i18n="lbl_grain" data-i18n-title="tip_for_sheets_only">Grain</label>
                                 <select class="form-select form-select-sm" id="stock-grain" disabled>
-                                    <option value="none">None</option>
-                                    <option value="length">Length</option>
-                                    <option value="width">Width</option>
+                                    <option value="none" data-i18n="opt_none">None</option>
+                                    <option value="length" data-i18n="opt_length">Length</option>
+                                    <option value="width" data-i18n="opt_width">Width</option>
                                 </select>
                             </div>
                             <div class="col-sm-1 text-center">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Scrap?</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_scrap">Scrap?</label>
                                 <div class="form-check d-flex justify-content-center">
                                     <input class="form-check-input" type="checkbox" id="stock-is-cutoff">
                                 </div>
                             </div>
                             <div class="col-sm-1">
-                                <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
+                                <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
                             </div>
                         </div>
                     </form>
@@ -135,34 +135,34 @@
                         <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <tr>
                                 <th class="col-category text-center text-nowrap">
-                                    <span onclick="handleSort('stock', 'categoryId', 'string')" style="cursor: pointer;">Category ⇅</span>
-                                    <span id="flt-icon-stock-categoryId" onclick="openFilterModal(event, 'stock', 'categoryId', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span onclick="handleSort('stock', 'categoryId', 'string')" style="cursor: pointer;" data-i18n="col_category">Category ⇅</span>
+                                    <span id="flt-icon-stock-categoryId" onclick="openFilterModal(event, 'stock', 'categoryId', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                 </th>
                                 <th class="col-qty text-center">
-                                    <span onclick="handleSort('stock', 'qty', 'number')" style="cursor: pointer;">Qty ⇅</span>
+                                    <span onclick="handleSort('stock', 'qty', 'number')" style="cursor: pointer;" data-i18n="col_qty">Qty ⇅</span>
                                 </th>
                                 <th class="col-profile text-center text-nowrap">
-                                    <span onclick="handleSort('stock', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</span>
-                                    <span id="flt-icon-stock-profileId" onclick="openFilterModal(event, 'stock', 'profileId', 'Profile')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span onclick="handleSort('stock', 'profileId', 'string')" style="cursor: pointer;" data-i18n="col_profile">Profile ⇅</span>
+                                    <span id="flt-icon-stock-profileId" onclick="openFilterModal(event, 'stock', 'profileId', 'Profile')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                 </th>
                                 <th class="col-size text-center text-nowrap">
-                                    <span onclick="handleSort('stock', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
-                                    <span id="flt-icon-stock-length" onclick="openFilterModal(event, 'stock', 'length', 'Size')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span onclick="handleSort('stock', 'dimensions', 'number')" style="cursor: pointer;" data-i18n="col_size">Size (<span class="display-unit-label">mm</span>) ⇅</span>
+                                    <span id="flt-icon-stock-length" onclick="openFilterModal(event, 'stock', 'length', 'Size')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                 </th>
                                 <th class="col-material text-center text-nowrap">
-                                    <span onclick="handleSort('stock', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</span>
-                                    <span id="flt-icon-stock-materialId" onclick="openFilterModal(event, 'stock', 'materialId', 'Material')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span onclick="handleSort('stock', 'materialId', 'string')" style="cursor: pointer;" data-i18n="col_material">Material ⇅</span>
+                                    <span id="flt-icon-stock-materialId" onclick="openFilterModal(event, 'stock', 'materialId', 'Material')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                 </th>
                                 <th class="col-grain text-center text-nowrap">
-                                    <span onclick="handleSort('stock', 'grain', 'string')" style="cursor: pointer;">Grain ⇅</span>
-                                    <span id="flt-icon-stock-grain" onclick="openFilterModal(event, 'stock', 'grain', 'Grain')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span onclick="handleSort('stock', 'grain', 'string')" style="cursor: pointer;" data-i18n="col_grain">Grain ⇅</span>
+                                    <span id="flt-icon-stock-grain" onclick="openFilterModal(event, 'stock', 'grain', 'Grain')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                 </th>
                                 <th class="col-type text-center text-nowrap">
-                                    <span onclick="handleSort('stock', 'isCutoff', 'string')" style="cursor: pointer;">Type ⇅</span>
-                                    <span id="flt-icon-stock-isCutoff" onclick="openFilterModal(event, 'stock', 'isCutoff', 'Type')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span onclick="handleSort('stock', 'isCutoff', 'string')" style="cursor: pointer;" data-i18n="col_type">Type ⇅</span>
+                                    <span id="flt-icon-stock-isCutoff" onclick="openFilterModal(event, 'stock', 'isCutoff', 'Type')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                 </th>
                                 <th class="col-actions text-end">
-                                    <span id="flt-clear-stock" onclick="clearAllFiltersForTable('stock')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
+                                    <span id="flt-clear-stock" onclick="clearAllFiltersForTable('stock')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters" data-i18n-title="tip_clear_all_filters">▼⨯</span>
                                 </th>
                             </tr>
                         </thead>
@@ -177,9 +177,9 @@
     <div class="tab-pane fade" id="pane-catalog" role="tabpanel" tabindex="0">
         <div class="card shadow-sm border-warning">
             <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-                <h6 class="card-title mb-0">Store Catalog & Prices</h6>
+                <h6 class="card-title mb-0" data-i18n="hdr_store_catalog_prices">Store Catalog & Prices</h6>
                 <div>
-                    <button class="btn btn-sm text-dark py-0 me-2" onclick="toggleInputSection('prices', 320, 228, this)" title="Toggle Input Section"><b>▽</b></button>
+                    <button class="btn btn-sm text-dark py-0 me-2" onclick="toggleInputSection('prices', 320, 228, this)" title="Toggle Input Section" data-i18n-title="tip_toggle_input_section"><b>▽</b></button>
                 </div>
             </div>
             <div class="card-body py-3">
@@ -187,62 +187,62 @@
                     <form id="form-add-catalog" onsubmit="handleAddCatalogItem(event)">
                         <div class="row g-2 align-items-end">
                             <div class="col-sm">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_category">Category</label>
                                 <select class="form-select form-select-sm" id="cat-category" onchange="handleCatalogCategoryChange()" required>
-                                    <option value="" disabled selected>Select...</option>
-                                    <option value="lumber">Lumber</option>
-                                    <option value="sheet">Sheet</option>
-                                    <option value="fastener">Fastener</option>
+                                    <option value="" disabled selected data-i18n="opt_select">Select...</option>
+                                    <option value="lumber" data-i18n="opt_lumber">Lumber</option>
+                                    <option value="sheet" data-i18n="opt_sheet">Sheet</option>
+                                    <option value="fastener" data-i18n="opt_fastener">Fastener</option>
                                 </select>
                             </div>
                             <div class="col-sm">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_profile">Profile</label>
                                 <select class="form-select form-select-sm" id="cat-profile" required disabled></select>
                             </div>
                             <div class="col-sm-1">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_width">Width</label>
                                 <div class="input-group input-group-sm">
                                     <input type="text" class="form-control form-control-sm" id="cat-width" disabled>
                                 </div>
                             </div>
                             <div class="col-sm-1">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_length">Length</label>
                                 <div class="input-group input-group-sm">
                                     <input type="text" class="form-control form-control-sm" id="cat-length" required disabled>
                                 </div>
                             </div>
                             <div class="col-sm">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_material">Material</label>
                                 <select class="form-select form-select-sm" id="cat-material" required disabled></select>
                             </div>
                             <div class="col-sm-1">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets">Grain</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets" data-i18n="lbl_grain" data-i18n-title="tip_for_sheets_only">Grain</label>
                                 <select class="form-select form-select-sm" id="cat-grain" disabled>
                                     <option value="none">-</option>
-                                    <option value="length">Length</option>
-                                    <option value="width">Width</option>
+                                    <option value="length" data-i18n="opt_length">Length</option>
+                                    <option value="width" data-i18n="opt_width">Width</option>
                                 </select>
                             </div>
                             <div class="col-sm">
                                 <label class="form-label form-label-sm fw-bold text-secondary mb-1">
-                                    Store <span style="cursor: pointer; opacity: 0.7;" onclick="openStoreModal()">⚙️</span>
+                                    <span data-i18n="lbl_store">Store</span> <span style="cursor: pointer; opacity: 0.7;" onclick="openStoreModal()">⚙️</span>
                                 </label>
                                 <select class="form-select form-select-sm" id="cat-store" required></select>
                             </div>
                             <div class="col-sm">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Price</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_price">Price</label>
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text currency-label">$</span> <input type="number" step="0.01" class="form-control form-control-sm" id="cat-price" required>
                                     <input type="hidden" id="cat-price-unit" value="piece">
-                                    <button type="button" class="btn btn-outline-secondary px-1" id="btn-cycle-unit" onclick="cyclePriceUnit()" title="Change unit">/ pc</button>
+                                    <button type="button" class="btn btn-outline-secondary px-1" id="btn-cycle-unit" onclick="cyclePriceUnit()" title="Change unit" data-i18n-title="tip_change_unit" data-i18n="lbl_unit_pc">/ pc</button>
                                 </div>
                             </div>
                             <div class="col-sm-1">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Link</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_link">Link</label>
                                 <input type="text" class="form-control form-control-sm" id="cat-link">
                             </div>
                             <div class="col-sm-1">
-                                <button type="submit" class="btn btn-primary btn-sm w-100" id="btn-add-catalog" disabled>Add</button>
+                                <button type="submit" class="btn btn-primary btn-sm w-100" id="btn-add-catalog" disabled data-i18n="btn_add">Add</button>
                             </div>
                         </div>
                     </form>
@@ -253,46 +253,46 @@
                         <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <tr>
                                 <th class="col-category text-center text-nowrap">
-                                    <span onclick="handleSort('catalog', 'categoryId', 'string')" style="cursor: pointer;">Category ⇅</span>
-                                    <span id="flt-icon-catalog-categoryId" onclick="openFilterModal(event, 'catalog', 'categoryId', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span onclick="handleSort('catalog', 'categoryId', 'string')" style="cursor: pointer;" data-i18n="col_category">Category ⇅</span>
+                                    <span id="flt-icon-catalog-categoryId" onclick="openFilterModal(event, 'catalog', 'categoryId', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                 </th>
                                 <th class="col-profile text-center text-nowrap">
-                                    <span onclick="handleSort('catalog', 'profileId', 'string')" style="cursor: pointer;">Profile ⇅</span>
-                                    <span id="flt-icon-catalog-profileId" onclick="openFilterModal(event, 'catalog', 'profileId', 'Profile')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span onclick="handleSort('catalog', 'profileId', 'string')" style="cursor: pointer;" data-i18n="col_profile">Profile ⇅</span>
+                                    <span id="flt-icon-catalog-profileId" onclick="openFilterModal(event, 'catalog', 'profileId', 'Profile')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                 </th>
                                 <th class="col-size text-center text-nowrap">
-                                    <span onclick="handleSort('catalog', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
-                                    <span id="flt-icon-catalog-length" onclick="openFilterModal(event, 'catalog', 'length', 'Size')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span onclick="handleSort('catalog', 'dimensions', 'number')" style="cursor: pointer;" data-i18n="col_size">Size (<span class="display-unit-label">mm</span>) ⇅</span>
+                                    <span id="flt-icon-catalog-length" onclick="openFilterModal(event, 'catalog', 'length', 'Size')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                 </th>
                                 <th class="col-material text-center text-nowrap">
-                                    <span onclick="handleSort('catalog', 'materialId', 'string')" style="cursor: pointer;">Material ⇅</span>
-                                    <span id="flt-icon-catalog-materialId" onclick="openFilterModal(event, 'catalog', 'materialId', 'Material')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span onclick="handleSort('catalog', 'materialId', 'string')" style="cursor: pointer;" data-i18n="col_material">Material ⇅</span>
+                                    <span id="flt-icon-catalog-materialId" onclick="openFilterModal(event, 'catalog', 'materialId', 'Material')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                 </th>
                                 <th class="col-grain text-center text-nowrap">
-                                    <span onclick="handleSort('catalog', 'grain', 'string')" style="cursor: pointer;">Grain ⇅</span>
-                                    <span id="flt-icon-catalog-grain" onclick="openFilterModal(event, 'catalog', 'grain', 'Grain')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span onclick="handleSort('catalog', 'grain', 'string')" style="cursor: pointer;" data-i18n="col_grain">Grain ⇅</span>
+                                    <span id="flt-icon-catalog-grain" onclick="openFilterModal(event, 'catalog', 'grain', 'Grain')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                 </th>
                                 <th class="col-store text-center text-nowrap">
-                                    <span onclick="handleSort('catalog', 'storeId', 'string')" style="cursor: pointer;">Store ⇅</span>
-                                    <span id="flt-icon-catalog-storeId" onclick="openFilterModal(event, 'catalog', 'storeId', 'Store')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span onclick="handleSort('catalog', 'storeId', 'string')" style="cursor: pointer;" data-i18n="lbl_store">Store ⇅</span>
+                                    <span id="flt-icon-catalog-storeId" onclick="openFilterModal(event, 'catalog', 'storeId', 'Store')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                 </th>
                                 <th class="col-costweight text-center">
-                                    <span onclick="handleSort('catalog', 'price', 'number')" style="cursor: pointer;">Shelf Price (<span class="currency-label">$</span>) ⇅</span>
+                                    <span onclick="handleSort('catalog', 'price', 'number')" style="cursor: pointer;" data-i18n="col_shelf_price">Shelf Price (<span class="currency-label">$</span>) ⇅</span>
                                 </th> 
                                 <th class="col-costweight text-center">
                                     <div class="d-flex align-items-center justify-content-center gap-1">
                                         <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center" id="table-price-view" onchange="renderCatalogTable()" style="width: auto; cursor: pointer; font-size: inherit;">
-                                            <option value="piece">Cost/Piece</option>
-                                            <option value="linear">Cost/Length</option>
-                                            <option value="area">Cost/Area</option>
-                                            <option value="volume">Cost/Volume</option>
+                                            <option value="piece" data-i18n="opt_cost_piece">Cost/Piece</option>
+                                            <option value="linear" data-i18n="opt_cost_length">Cost/Length</option>
+                                            <option value="area" data-i18n="opt_cost_area">Cost/Area</option>
+                                            <option value="volume" data-i18n="opt_cost_volume">Cost/Volume</option>
                                         </select>
-                                        <span onclick="handleSort('catalog', 'calculatedPrice', 'number')" style="cursor: pointer; user-select: none;" title="Sort by Calculated Price">⇅</span>
+                                        <span onclick="handleSort('catalog', 'calculatedPrice', 'number')" style="cursor: pointer; user-select: none;" title="Sort by Calculated Price" data-i18n-title="tip_sort_by_calculated_price">⇅</span>
                                     </div>
                                 </th>
-                                <th class="col-actions text-center">Links</th>
+                                <th class="col-actions text-center" data-i18n="col_links">Links</th>
                                 <th class="col-actions text-end">
-                                    <span id="flt-clear-catalog" onclick="clearAllFiltersForTable('catalog')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
+                                    <span id="flt-clear-catalog" onclick="clearAllFiltersForTable('catalog')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters" data-i18n-title="tip_clear_all_filters">▼⨯</span>
                                 </th>
                             </tr>
                         </thead>
@@ -311,7 +311,7 @@
             <div class="col-lg-6">
                 <div class="card shadow-sm border-secondary h-100">
                     <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                        <h6 class="card-title mb-0">Master Profiles & Thicknesses</h6>
+                        <h6 class="card-title mb-0" data-i18n="hdr_master_profiles">Master Profiles & Thicknesses</h6>
                         <div>
                             <button class="btn btn-sm text-white py-0 me-2"><b></b></button>
                         </div>
@@ -321,33 +321,33 @@
                             <form id="form-add-profile" onsubmit="handleAddProfile(event)">
                                 <div class="row g-2 align-items-end">
                                     <div class="col-sm">
-                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_category">Category</label>
                                         <select class="form-select form-select-sm" id="prof-category" onchange="handleProfileCategoryChange()" required>
-                                            <option value="lumber">Lumber</option>
-                                            <option value="sheet">Sheet</option>
-                                            <option value="fastener">Fastener</option>
+                                            <option value="lumber" data-i18n="opt_lumber">Lumber</option>
+                                            <option value="sheet" data-i18n="opt_sheet">Sheet</option>
+                                            <option value="fastener" data-i18n="opt_fastener">Fastener</option>
                                         </select>
                                     </div>
                                     <div class="col-sm">
-                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Profile Name</label>
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_profile_name">Profile Name</label>
                                         <input type="text" class="form-control form-control-sm" id="prof-name" required>
                                     </div>
                                     <div class="col-sm-2">
-                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Thickness</label>
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_thickness">Thickness</label>
                                         <div class="input-group input-group-sm">
                                             <input type="text" class="form-control form-control-sm" id="prof-thickness" required>
                                             <span class="input-group-text display-unit-label">mm</span>
                                         </div>
                                     </div>
                                     <div class="col-sm-2">
-                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_width">Width</label>
                                         <div class="input-group input-group-sm">
                                             <input type="text" class="form-control form-control-sm" id="prof-width" required>
                                             <span class="input-group-text display-unit-label">mm</span>
                                         </div>
                                     </div>
                                     <div class="col-sm-1">
-                                        <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
+                                        <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
                                     </div>
                                 </div>
                             </form>
@@ -358,18 +358,18 @@
                                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                     <tr>
                                         <th class="col-category text-center text-nowrap">
-                                            <span onclick="handleSort('profiles', 'type', 'string')" style="cursor: pointer;">Category ⇅</span>
-                                            <span id="flt-icon-profiles-type" onclick="openFilterModal(event, 'profiles', 'type', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                            <span onclick="handleSort('profiles', 'type', 'string')" style="cursor: pointer;" data-i18n="col_category">Category ⇅</span>
+                                            <span id="flt-icon-profiles-type" onclick="openFilterModal(event, 'profiles', 'type', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                         </th>
                                         <th class="col-profile text-nowrap text-center">
-                                            <span onclick="handleSort('profiles', 'name', 'string')" style="cursor: pointer;">Profile Name ⇅</span>
-                                            <span id="flt-icon-profiles-name" onclick="openFilterModal(event, 'profiles', 'name', 'Profile Name')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                            <span onclick="handleSort('profiles', 'name', 'string')" style="cursor: pointer;" data-i18n="col_profile">Profile Name ⇅</span>
+                                            <span id="flt-icon-profiles-name" onclick="openFilterModal(event, 'profiles', 'name', 'Profile Name')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                         </th>
                                         <th class="col-size text-center">
-                                            <span onclick="handleSort('profiles', 'dimensions', 'number')" style="cursor: pointer;">Size (<span class="display-unit-label">mm</span>) ⇅</span>
+                                            <span onclick="handleSort('profiles', 'dimensions', 'number')" style="cursor: pointer;" data-i18n="col_size">Size (<span class="display-unit-label">mm</span>) ⇅</span>
                                         </th>
                                         <th class="col-actions text-end">
-                                            <span id="flt-clear-profiles" onclick="clearAllFiltersForTable('profiles')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
+                                            <span id="flt-clear-profiles" onclick="clearAllFiltersForTable('profiles')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters" data-i18n-title="tip_clear_all_filters">▼⨯</span>
                                         </th>
                                     </tr>
                                 </thead>
@@ -384,9 +384,9 @@
             <div class="col-lg-6">
                 <div class="card shadow-sm border-secondary h-100">
                     <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                        <h6 class="card-title mb-0">Master Materials</h6>
+                        <h6 class="card-title mb-0" data-i18n="hdr_master_materials">Master Materials</h6>
                         <div>
-                            <button class="btn btn-sm text-white py-0 me-2" onclick="toggleInputSection('materials', 320, 228, this); toggleInputSection('profiles', 320, 228, this)" title="Toggle Input Section"><b>▽</b></button>
+                            <button class="btn btn-sm text-white py-0 me-2" onclick="toggleInputSection('materials', 320, 228, this); toggleInputSection('profiles', 320, 228, this)" title="Toggle Input Section" data-i18n-title="tip_toggle_input_section"><b>▽</b></button>
                         </div>
                     </div>
                     <div class="card-body py-3">
@@ -394,26 +394,26 @@
                             <form id="form-add-material" onsubmit="handleAddMaterial(event)">
                                 <div class="row g-2 align-items-end">
                                     <div class="col-sm">
-                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Category</label>
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_category">Category</label>
                                         <select class="form-select form-select-sm" id="mat-category" required>
-                                            <option value="lumber">Lumber</option>
-                                            <option value="sheet">Sheet</option>
-                                            <option value="fastener">Fastener</option>
+                                            <option value="lumber" data-i18n="opt_lumber">Lumber</option>
+                                            <option value="sheet" data-i18n="opt_sheet">Sheet</option>
+                                            <option value="fastener" data-i18n="opt_fastener">Fastener</option>
                                         </select>
                                     </div>
                                     <div class="col-sm">
-                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Material Name</label>
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_material_name">Material Name</label>
                                         <input type="text" class="form-control form-control-sm" id="mat-name" required>
                                     </div>
                                     <div class="col-sm">
-                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1">Density</label>
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_density">Density</label>
                                         <div class="input-group input-group-sm">
                                             <input type="number" step="0.01" class="form-control form-control-sm" id="mat-density" value="0" required>
                                             <span class="input-group-text density-unit-label">kg/m³</span>
                                         </div>
                                     </div>
                                     <div class="col-sm-1">
-                                        <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
+                                        <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
                                     </div>
                                 </div>
                             </form>
@@ -424,18 +424,18 @@
                                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                     <tr>
                                         <th class="col-category text-center text-nowrap">
-                                            <span onclick="handleSort('materials', 'category', 'string')" style="cursor: pointer;">Category ⇅</span>
-                                            <span id="flt-icon-materials-category" onclick="openFilterModal(event, 'materials', 'category', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                            <span onclick="handleSort('materials', 'category', 'string')" style="cursor: pointer;" data-i18n="col_category">Category ⇅</span>
+                                            <span id="flt-icon-materials-category" onclick="openFilterModal(event, 'materials', 'category', 'Category')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                         </th>
                                         <th class="col-material text-nowrap text-center">
-                                            <span onclick="handleSort('materials', 'name', 'string')" style="cursor: pointer;">Material Name ⇅</span>
-                                            <span id="flt-icon-materials-name" onclick="openFilterModal(event, 'materials', 'name', 'Material Name')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
+                                            <span onclick="handleSort('materials', 'name', 'string')" style="cursor: pointer;" data-i18n="col_material">Material Name ⇅</span>
+                                            <span id="flt-icon-materials-name" onclick="openFilterModal(event, 'materials', 'name', 'Material Name')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
                                         </th>
                                         <th class="col-density text-center">
-                                            <span onclick="handleSort('materials', 'density', 'number')" style="cursor: pointer;"> Density (<span class="density-unit-label">kg/m³</span>) ⇅</span>
+                                            <span onclick="handleSort('materials', 'density', 'number')" style="cursor: pointer;"> <span data-i18n="lbl_density">Density</span> (<span class="density-unit-label">kg/m³</span>) ⇅</span>
                                         </th>
                                         <th class="col-actions text-end">
-                                            <span id="flt-clear-materials" onclick="clearAllFiltersForTable('materials')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
+                                            <span id="flt-clear-materials" onclick="clearAllFiltersForTable('materials')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters" data-i18n-title="tip_clear_all_filters">▼⨯</span>
                                         </th>
                                     </tr>
                                 </thead>
@@ -476,83 +476,83 @@
                             </div>
                         </div>
                         <div class="col-12 col-md-3">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Lumber Kerf</label>
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_kerf">Lumber Kerf</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="setting-kerf" onchange="handleSettingsValueChange()">
                                 <span class="input-group-text display-unit-label">mm</span>
                             </div>
-                            <div class="form-text" style="font-size: 0.7rem;">Thickness of your lumber cutting blade.</div>
+                            <div class="form-text" style="font-size: 0.7rem;" data-i18n="txt_lumber_kerf">Thickness of your lumber cutting blade.</div>
                         </div>
                         <div class="col-12 col-md-3">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Sheet Kerf</label>
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_kerf">Sheet Kerf</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="setting-sheet-kerf" onchange="handleSettingsValueChange()">
                                 <span class="input-group-text display-unit-label">mm</span>
                             </div>
-                            <div class="form-text" style="font-size: 0.7rem;">Thickness of your sheet cutting blade.</div>
+                            <div class="form-text" style="font-size: 0.7rem;" data-i18n="txt_sheet_kerf">Thickness of your sheet cutting blade.</div>
                         </div>
                         <div class="col-12 col-md-3">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Display Units</label>
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_display_units">Display Units</label>
                             <select class="form-select form-select-sm" id="setting-display-unit" onchange="handleUnitChange()">
-                                <option value="mm">Metric (mm, kg)</option>
-                                <option value="dec_in">Decimal Inches (1.75", lbs)</option>
-                                <option value="frac_in">Fractional Inches (1 3/4", lbs)</option>
+                                <option value="mm" data-i18n="opt_metric">Metric (mm, kg)</option>
+                                <option value="dec_in" data-i18n="opt_decimal_inches">Decimal Inches (1.75", lbs)</option>
+                                <option value="frac_in" data-i18n="opt_fractional_inches">Fractional Inches (1 3/4", lbs)</option>
                             </select>
-                            <div class="form-text" style="font-size: 0.7rem;">Units are dynamically converted throughout the tool.</div>
+                            <div class="form-text" style="font-size: 0.7rem;" data-i18n="txt_display_units">Units are dynamically converted throughout the tool.</div>
                         </div>
                         <div class="col-12 col-md-3">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Currency</label>
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_currency">Currency</label>
                             <select class="form-select form-select-sm" id="setting-currency" onchange="handleUnitChange()">
-                                <option value="$">Dollars ($)</option>
-                                <option value="€">Euros (€)</option>
-                                <option value="£">Pounds (£)</option>
+                                <option value="$" data-i18n="opt_dollars">Dollars ($)</option>
+                                <option value="€" data-i18n="opt_euros">Euros (€)</option>
+                                <option value="£" data-i18n="opt_pounds">Pounds (£)</option>
                             </select>
-                            <div class="form-text" style="font-size: 0.7rem;">Display units only, no currency conversion.</div>
+                            <div class="form-text" style="font-size: 0.7rem;" data-i18n="txt_currency">Display units only, no currency conversion.</div>
                         </div>
                         <div class="col-12 col-md-3">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Lumber Trim</label>
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_trim">Lumber Trim</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="setting-factory-trim" onchange="handleSettingsValueChange()">
                                 <span class="input-group-text display-unit-label">mm</span>
                             </div>
-                            <div class="form-text" style="font-size: 0.7rem;">One end will be trimmed.</div>
+                            <div class="form-text" style="font-size: 0.7rem;" data-i18n="txt_lumber_trim">One end will be trimmed.</div>
                         </div>
                         <div class="col-12 col-md-3">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Sheet Trim</label>
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_trim">Sheet Trim</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="setting-sheet-trim" onchange="handleSettingsValueChange()">
                                 <span class="input-group-text display-unit-label">mm</span>
                             </div>
-                            <div class="form-text" style="font-size: 0.7rem;">Two adjacent edges will be trimmed.</div>
+                            <div class="form-text" style="font-size: 0.7rem;" data-i18n="txt_sheet_trim">Two adjacent edges will be trimmed.</div>
                         </div>
                         <div class="col-12 col-md-3"></div>
                         <div class="col-12 col-md-3"></div>
                         <div class="col-12 col-md-3">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Lumber Scrap (Min Length)</label>
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_scrap_min_length">Lumber Scrap (Min Length)</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="setting-cutoff" onchange="handleSettingsValueChange()">
                                 <span class="input-group-text display-unit-label">mm</span>
                             </div>
-                            <div class="form-text" style="font-size: 0.7rem;">Lumber shorter than this goes in the trash.</div>
+                            <div class="form-text" style="font-size: 0.7rem;" data-i18n="txt_lumber_scrap">Lumber shorter than this goes in the trash.</div>
                         </div>
                         <div class="col-12 col-md-3"></div>
                         <div class="col-12 col-md-3"></div>
                         <div class="col-12 col-md-3"></div>
                         <div class="col-12 col-md-3">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Sheet Scrap (Min Width)</label>
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_scrap_min_width">Sheet Scrap (Min Width)</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="setting-sheet-scrap-width" onchange="handleSettingsValueChange()">
                                 <span class="input-group-text display-unit-label">mm</span>
                             </div>
-                            <div class="form-text" style="font-size: 0.7rem;">Sheet offcuts narrower than this are trash.</div>
+                            <div class="form-text" style="font-size: 0.7rem;" data-i18n="txt_sheet_scrap_width">Sheet offcuts narrower than this are trash.</div>
                         </div>
                         <div class="col-12 col-md-3">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Sheet Scrap (Min Length)</label>
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_scrap_min_length">Sheet Scrap (Min Length)</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="setting-sheet-scrap-length" onchange="handleSettingsValueChange()">
                                 <span class="input-group-text display-unit-label">mm</span>
                             </div>
-                            <div class="form-text" style="font-size: 0.7rem;">Sheet offcuts shorter than this are trash.</div>
+                            <div class="form-text" style="font-size: 0.7rem;" data-i18n="txt_sheet_scrap_length">Sheet offcuts shorter than this are trash.</div>
                         </div>
                     </div>
                 </form>
