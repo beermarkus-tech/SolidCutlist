@@ -1233,7 +1233,15 @@
         showToast('Item added to Catalog.');
 
         // Reset form but keep category to allow rapid entry
-        document.getElementById('cat-price').value = '';
+        document.getElementById('cat-length').value = '';
+
+        if (category === 'sheet') {
+            const widthInput = document.getElementById('cat-width');
+            widthInput.value = '';
+            widthInput.focus(); // Snap to width for 2D materials
+        } else {
+            document.getElementById('cat-length').focus(); // Snap to length for 1D materials
+        }
     }
 
     // THE MATH ENGINE: Calculates the true cost of ONE physical piece, no matter what unit the store uses.

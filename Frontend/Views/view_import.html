@@ -1,12 +1,26 @@
 <style>
     /* 🪄 Locks the btn-light color in place with ZERO visual reaction on hover or click */
-    .btn-light.import-header-btn,
-    .btn-light.import-header-btn:hover,
-    .btn-light.import-header-btn:focus,
-    .btn-light.import-header-btn:active {
+    .btn-light.header-btn,
+    .btn-light.header-btn:hover,
+    .btn-light.header-btn:focus,
+    .btn-light.header-btn:active {
         background-color: #f8f9fa !important; /* Forces the clean white/light-grey */
         border-color: #f8f9fa !important;
         color: #000 !important;
+        opacity: 1 !important; /* Absolutely no fade */
+        outline: none !important;
+        box-shadow: none !important; /* Kills the focus ring */
+        transform: none !important; /* Kills any native pressing movement */
+    }
+
+    /* 🪄 Locks the btn-warning color in place with ZERO visual reaction on hover or click */
+    .btn-warning.header-btn,
+    .btn-warning.header-btn:hover,
+    .btn-warning.header-btn:focus,
+    .btn-warning.header-btn:active {
+        background-color: #d35400 !important; /* Forces the clean white/light-grey */
+        border-color: #d35400 !important;
+        color: #ffffff !important;
         opacity: 1 !important; /* Absolutely no fade */
         outline: none !important;
         box-shadow: none !important; /* Kills the focus ring */
@@ -44,8 +58,8 @@
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
         <h6 class="card-title mb-0" data-i18n="hdr_step1_upload_csv">Step 1: Upload CSV Data</h6>
         <div>
-            <button class="import-header-btn btn btn-light btn-sm py-0 me-2" onclick="cancelImportProcess()" title="Cancel Import" data-i18n-title="tip_cancel_import"><b data-i18n="btn_cancel">❌ Cancel</b></button>
-            <button class="import-header-btn btn btn-light btn-sm py-0" onclick="handleCsvUpload()"><b data-i18n="btn_map_columns">Map Columns ➡️</b></button>
+            <button class="header-btn btn btn-light btn-sm py-0 me-2" onclick="cancelImportProcess()" title="Cancel Import" data-i18n-title="tip_cancel_import"><b data-i18n="btn_cancel">❌ Cancel</b></button>
+            <button class="header-btn btn btn-light btn-sm py-0" onclick="handleCsvUpload()"><b data-i18n="btn_map_columns">Map Columns ➡️</b></button>
         </div>
     </div>
     <div class="card-body">
@@ -80,9 +94,9 @@
     <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
         <h6 class="card-title mb-0" data-i18n="hdr_step2_map_columns">Step 2: Map Columns</h6>
         <div>
-            <button class="import-header-btn btn btn-light btn-sm py-0 me-2" onclick="cancelImportProcess()" title="Cancel Import" data-i18n-title="tip_cancel_import"><b data-i18n="btn_cancel">❌ Cancel</b></button>
-            <button class="import-header-btn btn btn-light btn-sm py-0" onclick="goToImportStep(1)"><b data-i18n="btn_select_file">⬅️ Select File</b></button>
-            <button class="import-header-btn btn btn-light btn-sm py-0" onclick="processMapping()"><b data-i18n="btn_review_parts">Review Parts ➡️</b></button>
+            <button class="header-btn btn btn-light btn-sm py-0 me-2" onclick="cancelImportProcess()" title="Cancel Import" data-i18n-title="tip_cancel_import"><b data-i18n="btn_cancel">❌ Cancel</b></button>
+            <button class="header-btn btn btn-light btn-sm py-0" onclick="goToImportStep(1)"><b data-i18n="btn_select_file">⬅️ Select File</b></button>
+            <button class="header-btn btn btn-light btn-sm py-0" onclick="processMapping()"><b data-i18n="btn_review_parts">Review Parts ➡️</b></button>
         </div>
     </div>
     <div class="card-body">
@@ -96,9 +110,9 @@
     <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
         <h6 class="card-title mb-0" data-i18n="hdr_step3_review_data">Step 3: Review & Clean Data</h6>
         <div>
-            <button class="import-header-btn btn btn-light btn-sm py-0 me-2" onclick="cancelImportProcess()" title="Cancel Import" data-i18n-title="tip_cancel_import"><b data-i18n="btn_cancel">❌ Cancel</b></button>
-            <button class="import-header-btn btn btn-light btn-sm py-0" onclick="goToImportStep(2)"><b data-i18n="btn_back_map_columns">⬅️ Map Columns</b></button>
-            <button class="import-header-btn btn btn-light btn-sm py-0" id="btn-commit-import" onclick="commitImport()" disabled><b data-i18n="btn_import_to_cutlist">Import to Cutlist 💾</b></button>
+            <button class="header-btn btn btn-light btn-sm py-0 me-2" onclick="cancelImportProcess()" title="Cancel Import" data-i18n-title="tip_cancel_import"><b data-i18n="btn_cancel">❌ Cancel</b></button>
+            <button class="header-btn btn btn-light btn-sm py-0" onclick="goToImportStep(2)"><b data-i18n="btn_back_map_columns">⬅️ Map Columns</b></button>
+            <button class="header-btn btn btn-light btn-sm py-0" id="btn-commit-import" onclick="commitImport()" disabled><b data-i18n="btn_import_to_cutlist">Import to Cutlist 💾</b></button>
         </div>
     </div>
     <div class="card-body">
@@ -106,7 +120,7 @@
             <strong data-i18n="wrn_unit_mismatch">⚠️ Unit Mismatch Detected!</strong> 
             <span data-i18n="txt_unit_mismatch_1">The SketchUp CSV appears to be in</span> <strong id="csv-unit-label">...</strong>, <span data-i18n="txt_unit_mismatch_2">but your shop is set to</span> <strong id="shop-unit-label">...</strong>. <span data-i18n="txt_unit_mismatch_3">Please check your math carefully or change your shop settings before importing.</span>
         </div>
-        <div class="table-responsive" style="max-height: calc(100vh - 230px); overflow-y: auto;">
+        <div class="table-responsive" style="max-height: calc(100vh - 250px); overflow-y: auto;">
             <table class="table table-sm table-hover align-middle table-striped mb-0">
                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <tr>

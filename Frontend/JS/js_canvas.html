@@ -8,13 +8,13 @@
         const container = document.getElementById('pane-diagrams');
         let html = '';
         
-        const k1D = appState.settings.bladeKerf || 3.175;
-        const t1D = appState.settings.factoryEdgeTrim || 6.35;
-        const k2D = appState.settings.sheetBladeKerf || 3.175;
-        const t2D = appState.settings.sheetFactoryTrim || 6.35;
-        const threshold = appState.settings.cutoffThreshold || 200.0; 
-        const minW = appState.settings.sheetScrapMinWidth || 50.0;   
-        const minL = appState.settings.sheetScrapMinLength || 400.0; 
+        const k1D = appState.settings.bladeKerf !== undefined ? appState.settings.bladeKerf : 3.175;
+        const t1D = appState.settings.factoryEdgeTrim !== undefined ? appState.settings.factoryEdgeTrim : 6.35;
+        const k2D = appState.settings.sheetBladeKerf !== undefined ? appState.settings.sheetBladeKerf : 3.175;
+        const t2D = appState.settings.sheetFactoryTrim !== undefined ? appState.settings.sheetFactoryTrim : 6.35;
+        const threshold = appState.settings.cutoffThreshold !== undefined ? appState.settings.cutoffThreshold : 200.0; 
+        const minW = appState.settings.sheetScrapMinWidth !== undefined ? appState.settings.sheetScrapMinWidth : 50.0;   
+        const minL = appState.settings.sheetScrapMinLength !== undefined ? appState.settings.sheetScrapMinLength : 400.0;
         
         let boardCounter = 1; 
         const canvasDrawQueue = []; 

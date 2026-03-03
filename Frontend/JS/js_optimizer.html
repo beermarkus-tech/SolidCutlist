@@ -57,10 +57,10 @@
     function runPackingEngine(projectIds, allowedStoreIds) {
         const batches = prepOptimizerData(projectIds);
         
-        const k1D = appState.settings.bladeKerf || 3.175;
-        const t1D = appState.settings.factoryEdgeTrim || 6.35;
-        const k2D = appState.settings.sheetBladeKerf || 3.175;
-        const t2D = appState.settings.sheetFactoryTrim || 6.35;
+        const k1D = appState.settings.bladeKerf !== undefined ? appState.settings.bladeKerf : 3.175;
+        const t1D = appState.settings.factoryEdgeTrim !== undefined ? appState.settings.factoryEdgeTrim : 6.35;
+        const k2D = appState.settings.sheetBladeKerf !== undefined ? appState.settings.sheetBladeKerf : 3.175;
+        const t2D = appState.settings.sheetFactoryTrim !== undefined ? appState.settings.sheetFactoryTrim : 6.35;
         const pref2D = appState.settings.optimizer.sheetCutPreference || 'auto';
         const useStock = appState.settings.optimizer.useStock;
         
@@ -224,9 +224,44 @@
             else normalLegal = false; 
         }
         
-        if (fitsNormal && normalLegal) return { fits: true, rotated: false };
-        if (fitsRotated && rotatedLegal) return { fits: true, rotated: true };
-        return { fits: false };
+        let canNormal = fitsNormal && normalLegal;
+        let canRotated = fitsRotated && rotatedLegal;
+
+        if (!canNormal && !canRotated) return { fits: false };
+        if (canNormal && !canRotated) return { fits: true, rotated: false };
+        if (canRotated && !canNormal) return { fits: true, rotated: true };
+
+        // 🪄 TIER 1: MAX TILING CAPACITY (The Grid Saver)
+        // Which orientation theoretically fits the most identical parts in this specific rectangle?
+        let normalCapacity = Math.floor(rect.w / part.width) * Math.floor(rect.l / part.length);
+        let rotatedCapacity = Math.floor(rect.w / part.length) * Math.floor(rect.l / part.width);
+
+        if (normalCapacity !== rotatedCapacity) {
+            return { fits: true, rotated: rotatedCapacity > normalCapacity };
+        }
+
+        // 🪄 TIER 2: EXACT FIT BONUS (Zero-Waste Edge)
+        // If capacity is tied, does one orientation perfectly close out an axis with zero remainder?
+        let normalExact = (rect.w % part.width === 0 ? 1 : 0) + (rect.l % part.length === 0 ? 1 : 0);
+        let rotatedExact = (rect.w % part.length === 0 ? 1 : 0) + (rect.l % part.width === 0 ? 1 : 0);
+
+        if (normalExact !== rotatedExact) {
+            return { fits: true, rotated: rotatedExact > normalExact };
+        }
+
+        // 🪄 TIER 3: SLE HEURISTIC (The Fallback)
+        // If everything is perfectly tied, fall back to leaving the tightest possible gap.
+        let normalMinEdge = Math.min(rect.w - part.width, rect.l - part.length);
+        let rotatedMinEdge = Math.min(rect.w - part.length, rect.l - part.width);
+
+        if (normalMinEdge === rotatedMinEdge) {
+            // Tie-breaker: Maximize the Longest Leftover Edge to keep scrap chunky
+            let normalMaxEdge = Math.max(rect.w - part.width, rect.l - part.length);
+            let rotatedMaxEdge = Math.max(rect.w - part.length, rect.l - part.width);
+            return { fits: true, rotated: rotatedMaxEdge > normalMaxEdge };
+        }
+
+        return { fits: true, rotated: rotatedMinEdge < normalMinEdge };
     }
 
     function place2DPart(board, rectIndex, part, rotated, kerf, pref) {
@@ -601,9 +636,9 @@
     // ==========================================
     function renderAnalyticsTab(results) {
         const container = document.getElementById('pane-analytics');
-        const threshold = appState.settings.cutoffThreshold || 200.0; 
-        const minW = appState.settings.sheetScrapMinWidth || 50.0;   
-        const minL = appState.settings.sheetScrapMinLength || 400.0; 
+        const threshold = appState.settings.cutoffThreshold !== undefined ? appState.settings.cutoffThreshold : 200.0; 
+        const minW = appState.settings.sheetScrapMinWidth !== undefined ? appState.settings.sheetScrapMinWidth : 50.0;   
+        const minL = appState.settings.sheetScrapMinLength !== undefined ? appState.settings.sheetScrapMinLength : 400.0;
         const isMetric = appState.settings.displayUnit === 'mm';
         
         let totalRawVolume = 0;
@@ -879,6 +914,7 @@
             <html lang="en">
             <head>
                 <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Cutlist Printout</title>
                 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
                 <style>
@@ -911,17 +947,14 @@
                 <div class="container-fluid pt-4">
                     ${htmlContent}
                 </div>
-                <script>
-                    window.onload = function() {
-                        setTimeout(function() { window.print(); }, 300);
-                    };
-                <\/script>
             </body>
             </html>
         `;
 
-        printWindow.document.write(finalHtml);
-        printWindow.document.close();
+        // 🪄 Convert HTML to a physical memory blob so mobile Chrome respects the viewport
+        const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
+        printWindow.location.href = blobUrl;
     }
 
     // ==========================================
