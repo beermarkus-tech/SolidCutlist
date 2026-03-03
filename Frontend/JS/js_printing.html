@@ -1,0 +1,607 @@
+<script>
+    // PRINT PARTLIST
+    function printPartsTable() {
+        // Fallback to '$' / 'letter' if currency setting isn't explicitly set yet
+        const currency = (appState.settings && appState.settings.currency) ? appState.settings.currency : '$';
+        const pageSize = (currency === '$') ? 'letter' : 'A4';
+
+        let printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            showToast(t('msg_allow_popups'), true);
+            return;
+        }
+
+        // 1. Build the Static Table Rows
+        let rowsHtml = '';
+        
+        if (!appState.parts || appState.parts.length === 0) {
+            rowsHtml = `<tr><td colspan="9" class="text-center py-4">${t('msg_no_parts_added')}</td></tr>`;
+        } else {
+            appState.parts.forEach(part => {
+                // 🪄 CRITICAL: Only print rows that pass the current active filters!
+                if (typeof rowPassesFilters === 'function' && !rowPassesFilters(part, 'parts')) return;
+
+                // Relational lookups to get human-readable names
+                const projName = appState.projects.find(p => p.id === part.projectId)?.name || '-';
+                const groupName = appState.groups?.find(g => g.id === part.groupId)?.name || '-';
+                const prof = appState.profiles.find(p => p.id === part.profileId);
+                const matName = appState.materials.find(m => m.id === part.materialId)?.name || '-';
+                const profName = prof ? prof.name : '-';
+                
+                // Format Dimensions beautifully for paper
+                const displayW = part.category === 'lumber' ? formatForDisplay(prof ? prof.width : 0) : formatForDisplay(part.width);
+                const displayL = formatForDisplay(part.length);
+                let dimText = '-';
+                
+                if (part.category === 'lumber') {
+                    dimText = displayL;
+                } else if (part.category === 'sheet') {
+                    dimText = `${displayW} x ${displayL}`;
+                }
+
+                // Format Grain
+                let grainText = '-';
+                if (part.category === 'sheet' && part.grain && part.grain !== 'none') {
+                    // Capitalize the first letter (Length / Width)
+                    grainText = t('opt_' + part.grain).charAt(0).toUpperCase() + t('opt_' + part.grain).slice(1);
+                }
+
+                rowsHtml += `
+                    <tr>
+                        <td>${projName}</td>
+                        <td><small class="text-muted">${groupName}</small></td>
+                        <td><strong>${part.name || '-'}</strong></td>
+                        <td>${t('cat_' + part.category).charAt(0).toUpperCase() + t('cat_' + part.category).slice(1)}</td>
+                        <td class="text-center"><strong>${part.qty}</strong></td>
+                        <td class="text-center">${dimText}</td>
+                        <td>${profName}</td>
+                        <td>${matName}</td>
+                        <td class="text-center">${grainText}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // 2. Assemble the Table
+        let htmlContent = `
+            <h3 class="border-bottom border-2 border-dark pb-2 mb-4">🪵 ${t('title_master_partlist')}</h3>
+            <table class="table table-sm table-striped">
+                <thead>
+                    <tr>
+                        <th>${t('header_project')}</th>
+                        <th>${t('header_group')}</th>
+                        <th>${t('header_part_name')}</th>
+                        <th>${t('header_category')}</th>
+                        <th class="text-center">${t('header_qty')}</th>
+                        <th class="text-center">${t('header_dimensions')}</th>
+                        <th>${t('header_profile')}</th>
+                        <th>${t('header_material')}</th>
+                        <th class="text-center">${t('header_grain')}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+        `;
+
+        // 3. Wrap in the Ink-Saver Print Shell
+        let finalHtml = `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>${t('title_parts_printout')}</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                <style>
+                    @page { size: ${pageSize} landscape; margin: 15mm; }
+                    
+                    /* Ink-Saver Overrides */
+                    body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; font-size: 13px; }
+                    
+                    .table { margin-bottom: 0 !important; width: 100%; border-collapse: collapse; }
+                    .table th { background-color: #f8f9fa !important; color: #000 !important; border-bottom: 2px solid #000 !important; font-size: 12px; text-transform: uppercase;}
+                    .table td, .table th { border-color: #ccc !important; padding: 6px 8px; vertical-align: middle; }
+                    
+                    /* Force alternating stripe color in print mode */
+                    .table-striped tbody tr:nth-of-type(odd) { background-color: #f4f4f4 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                </style>
+            </head>
+            <body>
+                <div class="container-fluid pt-2">
+                    ${htmlContent}
+                </div>
+            </body>
+            </html>
+        `;
+
+        const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
+        printWindow.location.href = blobUrl;
+    }
+
+    // PRINT SHOPPING LIST & DIAGRAMS
+    function printOptimizer(type) {
+        const currency = appState.settings.currency || '$';
+        const pageSize = (currency === '$') ? 'letter' : 'A4';
+
+        let printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            showToast('Please allow popups to print.', true);
+            return;
+        }
+
+        let htmlContent = '';
+        
+        // 1. Gather Shopping List
+        if (type === 'shopping' || type === 'both') {
+            htmlContent += '<h3 class="border-bottom border-2 border-dark pb-2 mb-4">🛒 Shopping List</h3>';
+            htmlContent += document.getElementById('pane-shopping').innerHTML;
+            if (type === 'both') htmlContent += '<div style="page-break-before: always;"></div>';
+        }
+
+        // 2. Gather Diagrams & Convert Canvases to Images
+        if (type === 'diagrams' || type === 'both') {
+            htmlContent += '<h3 class="border-bottom border-2 border-dark pb-2 mb-4">🔪 Cut Diagrams</h3>';
+            
+            let diagramsClone = document.getElementById('pane-diagrams').cloneNode(true);
+            let realCanvases = document.getElementById('pane-diagrams').querySelectorAll('canvas');
+            let clonedCanvases = diagramsClone.querySelectorAll('canvas');
+            
+            // 🪄 THE CANVAS TRAP FIX: Convert real drawings to static PNGs
+            for(let i = 0; i < realCanvases.length; i++) {
+                let img = document.createElement('img');
+                img.src = realCanvases[i].toDataURL('image/png');
+                img.style.width = '100%';
+                img.style.maxWidth = '1000px';
+                img.style.height = 'auto';
+                img.className = 'border border-dark';
+                clonedCanvases[i].parentNode.replaceChild(img, clonedCanvases[i]);
+            }
+            htmlContent += diagramsClone.innerHTML;
+        }
+
+        // 3. Build the Print HTML Shell
+        let finalHtml = `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Cutlist Printout</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                <style>
+                    /* 🪄 A4 vs Letter heuristic */
+                    @page { size: ${pageSize} portrait; margin: 15mm; }
+                    
+                    /* 🪄 Ink-Saver Overrides */
+                    body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; font-size: 14px; }
+                    .card { border: 2px solid #000 !important; margin-bottom: 25px !important; page-break-inside: avoid; border-radius: 0 !important; }
+                    .card-header { background-color: #f8f9fa !important; color: #000 !important; border-bottom: 2px solid #000 !important; font-weight: bold; }
+                    .bg-dark, .bg-secondary, .bg-primary, .bg-success, .bg-info { background-color: #eee !important; color: #000 !important; }
+                    .text-white, .text-success, .text-danger, .text-warning { color: #000 !important; }
+                    .badge { border: 1px solid #000; color: #000 !important; background: transparent !important; }
+                    
+                    /* Clean up UI clutter */
+                    .card-body.bg-white { padding: 0 !important; border-bottom: 2px solid #000; }
+                    .table { margin-bottom: 0 !important; }
+                    .table th { background-color: #f8f9fa !important; color: #000 !important; border-bottom: 2px solid #000 !important;}
+                    .table td, .table th { border-color: #ccc !important; }
+                    
+                    /* Print-specific spacing */
+                    h5 { margin-top: 30px !important; font-size: 1.25rem !important; }
+                    
+                    @media print {
+                        .no-print { display: none !important; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container-fluid pt-4">
+                    ${htmlContent}
+                </div>
+            </body>
+            </html>
+        `;
+
+        // 🪄 Convert HTML to a physical memory blob so mobile Chrome respects the viewport
+        const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
+        printWindow.location.href = blobUrl;
+    }
+
+    // LABEL MANAGER & PRINTING
+    let labelModalInstance = null;
+    function initLabelConfig() {
+        if (!appState.settings.labelTemplates) appState.settings.labelTemplates = [];
+        if (!appState.settings.currentLabelConfig) {
+            appState.settings.currentLabelConfig = {
+                paperSize: 'A4', cols: 3, rows: 10,
+                mt: 15, mb: 15, ml: 10, mr: 10, gx: 2.5, gy: 0,
+                rollW: 62, rollH: 29, skip: 0
+            };
+        }
+    }
+    function updateLiveLabelConfig(key, value) {
+        initLabelConfig();
+        const config = appState.settings.currentLabelConfig;
+        const dimKeys = ['mt', 'mb', 'ml', 'mr', 'gx', 'gy', 'rollW', 'rollH'];
+        
+        if (dimKeys.includes(key)) config[key] = parseToBaseUnit(value);
+        else if (['cols', 'rows', 'skip'].includes(key)) config[key] = parseInt(value, 10) || 0;
+        else config[key] = value;
+        
+        saveState();
+        renderLabelModal();
+    }
+    function renderLabelModal() {
+        initLabelConfig();
+        const cfg = appState.settings.currentLabelConfig;
+
+        document.getElementById('lbl-paper-size').value = cfg.paperSize || 'A4';
+        document.getElementById('lbl-cols').value = cfg.cols || 3;
+        document.getElementById('lbl-rows').value = cfg.rows || 10;
+        document.getElementById('lbl-skip').value = cfg.skip || 0;
+
+        document.getElementById('lbl-mt').value = formatForDisplay(cfg.mt || 0);
+        document.getElementById('lbl-mb').value = formatForDisplay(cfg.mb || 0);
+        document.getElementById('lbl-ml').value = formatForDisplay(cfg.ml || 0);
+        document.getElementById('lbl-mr').value = formatForDisplay(cfg.mr || 0);
+        document.getElementById('lbl-gx').value = formatForDisplay(cfg.gx || 0);
+        document.getElementById('lbl-gy').value = formatForDisplay(cfg.gy || 0);
+        document.getElementById('lbl-roll-w').value = formatForDisplay(cfg.rollW || 0);
+        document.getElementById('lbl-roll-h').value = formatForDisplay(cfg.rollH || 0);
+
+        if (typeof updateUnitLabels === 'function') updateUnitLabels();
+    }
+    function openLabelModal() {
+        initLabelConfig();
+        // Ensure state arrays exist
+        if (!appState.settings.labelTemplates) appState.settings.labelTemplates = [];
+        if (!appState.settings.currentLabelConfig) appState.settings.currentLabelConfig = {};
+
+        if (!labelModalInstance) {
+            labelModalInstance = new bootstrap.Modal(document.getElementById('modal-label-manager'), {
+                keyboard: true // Enables ESC to close
+            });
+        }
+
+        refreshLabelTemplateDropdown();
+        
+        // Auto-select "custom" by default unless we decide to remember the last used
+        document.getElementById('label-template-select').value = 'custom';
+        document.getElementById('label-template-name').value = '';
+        document.getElementById('btn-delete-label-template').disabled = true;
+
+        // Call this to ensure global unit texts (mm/in) are injected correctly
+        if (typeof updateUnitLabels === 'function') updateUnitLabels();
+
+        renderLabelModal();
+        labelModalInstance.show();
+    }
+    function refreshLabelTemplateDropdown() {
+        const select = document.getElementById('label-template-select');
+        // Keep the Custom option
+        select.innerHTML = '<option value="custom">Custom...</option>';
+        
+        appState.settings.labelTemplates.forEach(t => {
+            select.innerHTML += `<option value="${t.id}">${safeHTML(t.name)}</option>`;
+        });
+    }
+    function toggleLabelPrinterType() {
+        const type = document.getElementById('label-printer-type').value;
+        const sheetConfig = document.getElementById('label-config-sheet');
+        const rollConfig = document.getElementById('label-config-roll');
+
+        if (type === 'sheet') {
+            sheetConfig.classList.remove('d-none');
+            rollConfig.classList.add('d-none');
+        } else {
+            sheetConfig.classList.add('d-none');
+            rollConfig.classList.remove('d-none');
+        }
+    }
+    function handleLabelTemplateChange() {
+        const templateId = document.getElementById('label-template-select').value;
+        const nameInput = document.getElementById('label-template-name');
+        const deleteBtn = document.getElementById('btn-delete-label-template');
+
+        if (templateId === 'custom') {
+            nameInput.value = '';
+            deleteBtn.disabled = true;
+            return;
+        }
+
+        const t = appState.settings.labelTemplates.find(x => x.id === templateId);
+        if (t) {
+            nameInput.value = t.name;
+            deleteBtn.disabled = false;
+
+            // Populate Form
+            document.getElementById('label-printer-type').value = t.type || 'sheet';
+            toggleLabelPrinterType();
+
+            // 🪄 Clone the template into the Live Config, then Render!
+            appState.settings.currentLabelConfig = { ...t };
+            appState.settings.currentLabelConfig.skip = 0; // Reset skip count on template load
+            saveState();
+            renderLabelModal();
+        }
+    }
+    function saveLabelTemplate() {
+        const nameStr = document.getElementById('label-template-name').value.trim();
+        if (!nameStr) {
+            showToast('Please enter a Template Name to save.', true);
+            return;
+        }
+
+        const type = document.getElementById('label-printer-type').value;
+        
+        // Construct the data object
+        const cfg = appState.settings.currentLabelConfig; // Pull directly from AppState
+        const newTemplate = {
+            id: 'LBL-' + Date.now(),
+            name: nameStr,
+            type: type,
+            rollW: cfg.rollW || 0, rollH: cfg.rollH || 0,
+            paperSize: cfg.paperSize || 'A4',
+            cols: cfg.cols || 1, rows: cfg.rows || 1,
+            mt: cfg.mt || 0, mb: cfg.mb || 0, ml: cfg.ml || 0, mr: cfg.mr || 0,
+            gx: cfg.gx || 0, gy: cfg.gy || 0
+        };
+
+        // Check if we are overwriting an existing template by name
+        const existingIndex = appState.settings.labelTemplates.findIndex(t => t.name.toLowerCase() === nameStr.toLowerCase());
+        if (existingIndex !== -1) {
+            newTemplate.id = appState.settings.labelTemplates[existingIndex].id; // Keep the old ID
+            appState.settings.labelTemplates[existingIndex] = newTemplate;
+        } else {
+            appState.settings.labelTemplates.push(newTemplate);
+        }
+
+        saveState();
+        refreshLabelTemplateDropdown();
+        
+        // Auto-select the newly saved template
+        document.getElementById('label-template-select').value = newTemplate.id;
+        document.getElementById('btn-delete-label-template').disabled = false;
+        
+        showToast(`Label template '${nameStr}' saved.`);
+    }
+    function deleteLabelTemplate() {
+        const templateId = document.getElementById('label-template-select').value;
+        if (templateId === 'custom') return;
+
+        // 🪄 Tap into our existing universal delete mechanism
+        requestConfirm("Are you sure you want to delete this label template?", () => {
+            appState.settings.labelTemplates = appState.settings.labelTemplates.filter(t => t.id !== templateId);
+            saveState();
+            refreshLabelTemplateDropdown();
+            
+            // Snap back to Custom without wiping the currently typed numbers
+            document.getElementById('label-template-select').value = 'custom';
+            document.getElementById('label-template-name').value = '';
+            document.getElementById('btn-delete-label-template').disabled = true;
+            
+            showToast('Label template deleted.');
+        });
+    }
+    function executeLabelPrint() {
+        if (!appState.latestResults || appState.latestResults.length === 0) {
+            showToast("No optimization results found. Please run Calculate first.", true);
+            return;
+        }
+
+        // 1. Gather Configuration directly from the Single Source of Truth
+        const type = document.getElementById('label-printer-type').value;
+        const cfg = appState.settings.currentLabelConfig;
+        const skipCount = cfg.skip || 0;
+        const paperSize = cfg.paperSize || 'A4';
+        const cols = cfg.cols || 3;
+        const rows = cfg.rows || 10;
+        const mt = cfg.mt || 0;
+        const mb = cfg.mb || 0;
+        const ml = cfg.ml || 0;
+        const mr = cfg.mr || 0;
+        const gx = cfg.gx || 0;
+        const gy = cfg.gy || 0;
+        const rollW = cfg.rollW || 62;
+        const rollH = cfg.rollH || 29;
+
+        // 2. Extract strictly the parts that were successfully mapped to a board
+        const labelsToPrint = [];
+        appState.latestResults.forEach(res => {
+            const materialName = appState.materials.find(m => m.id === res.sku.materialId)?.name || 'Unknown Material';
+            const profileName = appState.profiles.find(p => p.id === res.sku.profileId)?.name || '';
+            const matString = `${profileName} ${materialName}`.trim();
+
+            // Check both Stock and Purchase boards
+            const allBoards = [...(res.stock?.layout || []), ...(res.purchase?.layout || [])];
+            
+            allBoards.forEach((board, bIndex) => {
+                board.cuts.forEach(cut => {
+                    const part = appState.parts.find(p => p.id === cut.partId);
+                    if (part) {
+                        const project = appState.projects.find(p => p.id === part.projectId);
+                        
+                        // 🪄 FETCH THE ACTUAL GROUP NAME
+                        let groupName = 'No Group';
+                        if (part.groupId && appState.groups) {
+                            const foundGroup = appState.groups.find(g => g.id === part.groupId);
+                            if (foundGroup) groupName = foundGroup.name;
+                        }
+
+                        // 🪄 FIX: Route the dimension data based on 1D vs 2D structures
+                        const isSheet = res.sku.category === 'sheet';
+                        const dimString = isSheet 
+                            ? `${cut.w} x ${cut.l}` 
+                            : `${cut.length}`;
+
+                        labelsToPrint.push({
+                            partName: part.name,
+                            projectGroup: `${project ? project.name : 'Unknown Project'} / ${groupName}`,
+                            dimensions: `${dimString} mm`, // Can be swapped to a global unit variable if needed
+                            material: matString,
+                            boardRef: `Board #${bIndex + 1}`
+                        });
+                    }
+                });
+            });
+        });
+
+        if (labelsToPrint.length === 0) {
+            showToast("No parts were mapped to boards. Nothing to print.", true);
+            return;
+        }
+
+        // 3. Construct the dynamic CSS variables
+        let cssVariables = '';
+        let pageCss = '';
+
+        if (type === 'sheet') {
+            const pWidth = paperSize === 'A4' ? '210mm' : '215.9mm';
+            const pHeight = paperSize === 'A4' ? '297mm' : '279.4mm';
+            
+            pageCss = `
+                @page { size: ${pWidth} ${pHeight}; margin: 0; }
+                body { margin: 0; padding: 0; background: #fff; }
+                .label-page {
+                    display: grid;
+                    grid-template-columns: repeat(${cols}, 1fr);
+                    grid-template-rows: repeat(${rows}, 1fr);
+                    column-gap: ${gx}mm;
+                    row-gap: ${gy}mm;
+                    padding-top: ${mt}mm;
+                    padding-bottom: ${mb}mm;
+                    padding-left: ${ml}mm;
+                    padding-right: ${mr}mm;
+                    width: ${pWidth};
+                    height: ${pHeight};
+                    box-sizing: border-box;
+                    page-break-after: always;
+                }
+                .label-sticker {
+                    box-sizing: border-box;
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    padding: 4px 8px;
+                }
+            `;
+        } else {
+            // Continuous Roll (Thermal Printer)
+            pageCss = `
+                @page { size: ${rollW}mm ${rollH}mm; margin: 0; }
+                body { margin: 0; padding: 0; background: #fff; }
+                .label-page { display: block; } /* No grid needed */
+                .label-sticker {
+                    width: ${rollW}mm;
+                    height: ${rollH}mm;
+                    box-sizing: border-box;
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    padding: 2mm 4mm;
+                    page-break-after: always;
+                }
+            `;
+        }
+
+        // 4. Generate the HTML Elements
+        let labelsHtml = '';
+        
+        if (type === 'sheet') {
+            const stickersPerPage = cols * rows;
+            let currentStickerCount = 0;
+            let inPage = false;
+
+            // Apply "Skip Labels" padding
+            if (skipCount > 0) {
+                labelsHtml += `<div class="label-page">`;
+                inPage = true;
+                for (let i = 0; i < skipCount; i++) {
+                    labelsHtml += `<div class="label-sticker empty"></div>`;
+                    currentStickerCount++;
+                }
+            }
+
+            labelsToPrint.forEach(lbl => {
+                if (currentStickerCount % stickersPerPage === 0) {
+                    if (inPage) labelsHtml += `</div>`; // Close previous page
+                    labelsHtml += `<div class="label-page">`; // Open new page
+                    inPage = true;
+                }
+                
+                labelsHtml += generateStickerHTML(lbl);
+                currentStickerCount++;
+            });
+            
+            if (inPage) labelsHtml += `</div>`; // Close final page
+            
+        } else {
+            // Roll: Every sticker is its own page natively
+            labelsHtml += `<div class="label-page">`;
+            labelsToPrint.forEach(lbl => {
+                labelsHtml += generateStickerHTML(lbl);
+            });
+            labelsHtml += `</div>`;
+        }
+
+        function generateStickerHTML(lbl) {
+            return `
+                <div class="label-sticker">
+                    <div style="font-size: 11px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${safeHTML(lbl.partName)}</div>
+                    <div style="font-size: 9px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px;">${safeHTML(lbl.projectGroup)}</div>
+                    <div style="font-size: 12px; font-weight: 900; margin-bottom: 2px;">${safeHTML(lbl.dimensions)}</div>
+                    <div style="font-size: 9px; color: #333; display: flex; justify-content: space-between;">
+                        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%;">${safeHTML(lbl.material)}</span>
+                        <span style="font-weight: bold;">${safeHTML(lbl.boardRef)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 5. Assemble final document
+        const finalHtml = `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Part Labels</title>
+                <style>
+                    * { font-family: system-ui, -apple-system, sans-serif; }
+                    ${pageCss}
+                    /* Optional: Add a light border for visual debugging before printing */
+                    @media screen {
+                        body { background: #525659; padding: 20px 0; display: flex; flex-direction: column; align-items: center; }
+                        .label-page { background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 20px; }
+                        .label-sticker { outline: 1px dashed #ccc; }
+                    }
+                    @media print {
+                        .label-sticker { outline: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${labelsHtml}
+            </body>
+            </html>
+        `;
+
+        // 6. 🪄 Execute the Tablet-Safe Blob Override
+        const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.location.href = blobUrl;
+        } else {
+            showToast("Popup blocked! Please allow popups for this site.", true);
+        }
+        
+        labelModalInstance.hide();
+    }
+</script>

@@ -729,13 +729,14 @@
     function handleUnitChange() {
         // 1. ONLY update the global display preferences. 
         appState.settings.displayUnit = document.getElementById('setting-display-unit').value;
-        appState.settings.currency = document.getElementById('setting-currency').value; // 🪄 NOW SAVES CURRENCY
+        appState.settings.currency = document.getElementById('setting-currency').value;
         
         saveState();
         
         // 2. Redraw the ENTIRE UI so tables instantly reflect the new symbols
         renderSettings(); 
         renderDictionaries();
+        if (typeof renderLabelModal === 'function') renderLabelModal();
         showToast('Display preferences updated.');
     }
     function handleAddProject(event) {

@@ -260,6 +260,143 @@
         </div>
     </div>
     
+    <!-- Print Labels Modal -->
+    <div class="modal fade" id="modal-label-manager" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content shadow border-secondary">
+                <div class="modal-header bg-light border-bottom">
+                    <h6 class="modal-title fw-bold text-dark mb-0">🏷️ Print Part Labels</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    
+                    <div class="row g-2 mb-4 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Saved Templates</label>
+                            <select class="form-select form-select-sm shadow-sm" id="label-template-select" onchange="handleLabelTemplateChange()">
+                                <option value="custom">Custom...</option>
+                                </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Template Name</label>
+                            <input type="text" class="form-control form-control-sm shadow-sm" id="label-template-name" placeholder="e.g., Avery 5160">
+                        </div>
+                        <div class="col-md-4 d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-primary w-50 fw-bold shadow-sm" onclick="saveLabelTemplate()">💾 Save</button>
+                            <button class="btn btn-sm btn-outline-danger w-50 fw-bold shadow-sm" id="btn-delete-label-template" onclick="deleteLabelTemplate()" disabled>🗑️ Delete</button>
+                        </div>
+                    </div>
+    
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Printer Type</label>
+                            <select class="form-select form-select-sm shadow-sm w-auto" id="label-printer-type" onchange="toggleLabelPrinterType()">
+                                <option value="sheet">Standard Printer (Sticker Sheets)</option>
+                                <option value="roll">Thermal Printer (Continuous Roll)</option>
+                            </select>
+                        </div>
+                    </div>
+    
+                    <div id="label-config-sheet" class="p-3 rounded-3 mb-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
+                        <h6 class="fw-bold text-secondary mb-3 text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">Sheet Geometry</h6>
+                        <div class="row g-3">
+                            <div class="col-sm-4">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Paper Size</label>
+                                <select class="form-select form-select-sm" id="lbl-paper-size" onchange="updateLiveLabelConfig('paperSize', this.value)">
+                                    <option value="A4">A4</option>
+                                    <option value="letter">US Letter</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-4">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Columns Across</label>
+                                <input type="number" class="form-control form-control-sm text-center" id="lbl-cols" min="1" onchange="updateLiveLabelConfig('cols', this.value)">
+                            </div>
+                            <div class="col-sm-4">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Rows Down</label>
+                                <input type="number" class="form-control form-control-sm text-center" id="lbl-rows" min="1" onchange="updateLiveLabelConfig('rows', this.value)">
+                            </div>
+                            
+                            <div class="col-sm-3">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Top Margin</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" id="lbl-mt" onchange="updateLiveLabelConfig('mt', this.value)">
+                                    <span class="input-group-text display-unit-label text-muted">mm</span>
+                                </div>
+                            </div>
+                            <div class="col-sm-3">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Bottom Margin</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" id="lbl-mb" onchange="updateLiveLabelConfig('mb', this.value)">
+                                    <span class="input-group-text display-unit-label text-muted">mm</span>
+                                </div>
+                            </div>
+                            <div class="col-sm-3">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Left Margin</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" id="lbl-ml" onchange="updateLiveLabelConfig('ml', this.value)">
+                                    <span class="input-group-text display-unit-label text-muted">mm</span>
+                                </div>
+                            </div>
+                            <div class="col-sm-3">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Right Margin</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" id="lbl-mr" onchange="updateLiveLabelConfig('mr', this.value)">
+                                    <span class="input-group-text display-unit-label text-muted">mm</span>
+                                </div>
+                            </div>
+    
+                            <div class="col-sm-6">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Horizontal Gap (Between Cols)</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" id="lbl-gx" onchange="updateLiveLabelConfig('gx', this.value)">
+                                    <span class="input-group-text display-unit-label text-muted">mm</span>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Vertical Gap (Between Rows)</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" id="lbl-gy" onchange="updateLiveLabelConfig('gy', this.value)">
+                                    <span class="input-group-text display-unit-label text-muted">mm</span>
+                                </div>
+                            </div>
+    
+                            <div class="col-12 border-top pt-3 mt-3">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Skip First N Labels</label>
+                                <input type="number" class="form-control form-control-sm w-25" id="lbl-skip" min="0" title="Use this if printing on a partially used sheet" onchange="updateLiveLabelConfig('skip', this.value)">
+                                <div class="form-text" style="font-size: 0.65rem;">Push printing down to bypass missing stickers on a half-used sheet.</div>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <div id="label-config-roll" class="p-3 rounded-3 d-none mb-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
+                        <h6 class="fw-bold text-secondary mb-3 text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">Thermal Roll Geometry</h6>
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Label Width</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" id="lbl-roll-w" onchange="updateLiveLabelConfig('rollW', this.value)">
+                                    <span class="input-group-text display-unit-label text-muted">mm</span>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Label Height</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" id="lbl-roll-h" onchange="updateLiveLabelConfig('rollH', this.value)">
+                                    <span class="input-group-text display-unit-label text-muted">mm</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+    
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-outline-secondary fw-bold" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary fw-bold px-4" onclick="executeLabelPrint()">🖨️ Print Labels</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Global Toast Container (for non-intrusive notifications) -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container"></div>
 
@@ -275,5 +412,6 @@
     <?!= include('Frontend/JS/js_optimizer'); ?>
     <?!= include('Frontend/JS/js_canvas'); ?>
     <?!= include('Frontend/JS/js_languages'); ?>
+    <?!= include('Frontend/JS/js_printing'); ?>
 </body>
 </html>
