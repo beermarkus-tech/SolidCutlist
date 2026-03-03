@@ -111,36 +111,52 @@
                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <tr>
                         <th class="col-sponge text-nowrap text-start ps-2">
-                            <span onclick="handleSort('stagingParts', 'name', 'string')" style="cursor: pointer;" data-i18n="col_part_name">Part Name ⇅</span>
-                            <span id="flt-icon-stagingParts-name" onclick="openFilterModal(event, 'stagingParts', 'name', 'Part Name')" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
+                            <span onclick="handleSort('stagingParts', 'name', 'string')" style="cursor: pointer;">
+                                <span data-i18n="col_part_name">Part Name</span> ⇅
+                            </span>
+                            <span id="flt-icon-stagingParts-name" onclick="openFilterModal(event, 'stagingParts', 'name', 'Part Name')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
                         <th class="col-group text-nowrap">
-                            <span onclick="handleSort('stagingParts', 'groupId', 'string')" style="cursor: pointer;" data-i18n="col_group">Group ⇅</span>
-                            <span id="flt-icon-stagingParts-groupId" onclick="openFilterModal(event, 'stagingParts', 'groupId', 'Assigned Group')" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
+                            <span onclick="handleSort('stagingParts', 'groupId', 'string')" style="cursor: pointer;">
+                                <span data-i18n="col_group">Group</span> ⇅
+                            </span>
+                            <span id="flt-icon-stagingParts-groupId" onclick="openFilterModal(event, 'stagingParts', 'groupId', 'Assigned Group')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
                         <th class="col-category text-center text-nowrap">
-                            <span onclick="handleSort('stagingParts', 'category', 'string')" style="cursor: pointer;" data-i18n="col_category">Category ⇅</span>
-                            <span id="flt-icon-stagingParts-category" onclick="openFilterModal(event, 'stagingParts', 'category', 'Category')" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
+                            <span onclick="handleSort('stagingParts', 'category', 'string')" style="cursor: pointer;">
+                                <span data-i18n="col_category">Category</span> ⇅
+                            </span>
+                            <span id="flt-icon-stagingParts-category" onclick="openFilterModal(event, 'stagingParts', 'category', 'Category')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
                         <th class="col-qty text-nowrap text-center">
-                            <span onclick="handleSort('stagingParts', 'qty', 'number')" style="cursor: pointer;" data-i18n="col_qty">Qty ⇅</span>
+                            <span onclick="handleSort('stagingParts', 'qty', 'number')" style="cursor: pointer;">
+                                <span data-i18n="col_qty">Qty</span> ⇅
+                            </span>
                         </th>
                         <th class="col-size text-nowrap text-center">
-                            <span onclick="handleSort('stagingParts', 'extracted_dimensions', 'number')" style="cursor: pointer;" data-i18n="col_imported_size">Imported Size ⇅</span>
+                            <span onclick="handleSort('stagingParts', 'extracted_dimensions', 'number')" style="cursor: pointer;">
+                                <span data-i18n="col_imported_size">Imported Size</span> ⇅
+                            </span>
                         </th>
                         <th class="col-profile text-nowrap text-center">
-                            <span onclick="handleSort('stagingParts', 'profileId', 'string')" style="cursor: pointer;" data-i18n="col_profile">Profile ⇅</span>
-                            <span id="flt-icon-stagingParts-profileId" onclick="openFilterModal(event, 'stagingParts', 'profileId', 'Profile')" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
+                            <span onclick="handleSort('stagingParts', 'profileId', 'string')" style="cursor: pointer;">
+                                <span data-i18n="col_profile">Profile</span> ⇅
+                            </span>
+                            <span id="flt-icon-stagingParts-profileId" onclick="openFilterModal(event, 'stagingParts', 'profileId', 'Profile')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
                         <th class="col-size text-nowrap text-center">
-                            <span onclick="handleSort('stagingParts', 'dimensions', 'number')" style="cursor: pointer;" data-i18n="col_size">Size ⇅</span>
+                            <span onclick="handleSort('stagingParts', 'dimensions', 'number')" style="cursor: pointer;">
+                                <span data-i18n="col_size">Size</span> ⇅
+                            </span>
                         </th>
                         <th class="col-material text-nowrap text-center">
-                            <span onclick="handleSort('stagingParts', 'materialId', 'string')" style="cursor: pointer;" data-i18n="col_material">Material ⇅</span>
-                            <span id="flt-icon-stagingParts-materialId" onclick="openFilterModal(event, 'stagingParts', 'materialId', 'Material')" style="cursor: pointer;" title="Filter" data-i18n-title="tip_filter">▼</span>
+                            <span onclick="handleSort('stagingParts', 'materialId', 'string')" style="cursor: pointer;">
+                                <span data-i18n="col_material">Material</span> ⇅
+                            </span>
+                            <span id="flt-icon-stagingParts-materialId" onclick="openFilterModal(event, 'stagingParts', 'materialId', 'Material')" style="cursor: pointer;" title="Filter">▼</span>
                         </th>
                         <th class="col-actions text-end pe-2">
-                            <span id="flt-clear-stagingParts" onclick="clearAllFiltersForTable('stagingParts')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters" data-i18n-title="tip_clear_all_filters">▼⨯</span>
+                            <span id="flt-clear-stagingParts" onclick="clearAllFiltersForTable('stagingParts')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
                         </th>
                     </tr>
                 </thead>
