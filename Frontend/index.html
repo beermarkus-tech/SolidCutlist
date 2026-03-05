@@ -205,9 +205,9 @@
     <!-- Global Confirmantion Modal -->
     <div class="modal" id="modal-universal-delete" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
         <div class="modal-dialog modal-sm modal-dialog-centered">
-            <div class="modal-content border-danger shadow-lg">
-                <div class="modal-header bg-danger text-white py-2">
-                    <h6 class="modal-title mb-0" data-i18n="hdr_confirm_deletion">⚠️ Confirm Deletion</h6>
+            <div class="modal-content border-danger shadow-lg" id="modal-confirm-content">
+                <div class="modal-header bg-danger text-white py-2" id="modal-confirm-header">
+                    <h6 class="modal-title mb-0" id="modal-confirm-title" data-i18n="hdr_confirm_deletion">⚠️ Confirm Action</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body text-center py-4">
@@ -221,7 +221,7 @@
             </div>
         </div>
     </div>
-
+    
     <!-- Commit to Stock Modal -->
     <div class="modal" id="modal-commit-offcuts" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">

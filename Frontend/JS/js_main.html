@@ -116,6 +116,7 @@
      * Call this function anytime a user adds a material, part, or changes a setting.
      */
     function saveState() {
+    if (typeof recalculateAllProjectTotals === 'function') recalculateAllProjectTotals();
     localStorage.setItem('lumberLogicState', JSON.stringify(appState));
     console.log('Shop data instantly saved to local memory.');
     
@@ -250,6 +251,65 @@
         return (val * 0.06242796).toFixed(2); // Convert to lb/ft³
     }
 
+    function calculatePartCost(part) {
+        if (part.category === 'fastener' || !appState.catalog) return 0;
+        const matchingItems = appState.catalog.filter(c => c.categoryId === part.category && c.profileId === part.profileId && c.materialId === part.materialId);
+        if (matchingItems.length === 0) return 0;
+
+        let totalNormPrice = 0;
+        matchingItems.forEach(c => {
+            const bCost = typeof calculateCostPerPiece === 'function' ? calculateCostPerPiece(c) : 0;
+            if (part.category === 'sheet') {
+                const cArea = c.length * c.width;
+                if (cArea > 0) totalNormPrice += (bCost / cArea);
+            } else {
+                if (c.length > 0) totalNormPrice += (bCost / c.length);
+            }
+        });
+        
+        const avgUnitCost = totalNormPrice / matchingItems.length;
+        const trueWidth = part.category === 'lumber' ? (appState.profiles.find(pr => pr.id === part.profileId)?.width || 0) : part.width;
+        const unitSize = part.category === 'sheet' ? (part.length * trueWidth) : part.length;
+        return avgUnitCost * unitSize * part.qty;
+    }
+
+    function calculatePartWeight(part) {
+        if (part.category === 'fastener') return 0;
+        const prof = appState.profiles.find(pr => pr.id === part.profileId);
+        const mat = appState.materials.find(m => m.id === part.materialId);
+        if (!prof || !mat) return 0;
+        const trueWidth = part.category === 'lumber' ? (prof.width || 0) : part.width;
+        const safeThick = prof.thickness || 0;
+        const volumeM3 = (part.length * trueWidth * safeThick) / 1000000000;
+        return volumeM3 * (mat.density || 0) * part.qty;
+    }
+
+    function recalculateAllProjectTotals() {
+        if (!appState.projects) return;
+        
+        // 1. Initialize empty buckets
+        const totals = {};
+        appState.projects.forEach(p => { totals[p.id] = { parts: 0, cost: 0, weight: 0 }; });
+
+        // 2. Tally up every part directly from the source of truth
+        if (appState.parts) {
+            appState.parts.forEach(part => {
+                if (totals[part.projectId]) {
+                    totals[part.projectId].parts += (parseInt(part.qty) || 0);
+                    totals[part.projectId].cost += calculatePartCost(part);
+                    totals[part.projectId].weight += calculatePartWeight(part);
+                }
+            });
+        }
+
+        // 3. Inject silently back into memory
+        appState.projects.forEach(p => {
+            p.totalParts = totals[p.id].parts;
+            p.totalCost = totals[p.id].cost;
+            p.totalWeight = totals[p.id].weight;
+        });
+    }
+    
     // ==========================================
     // SORTING ENGINE
     // ==========================================
@@ -834,15 +894,28 @@
     // ==========================================
     let pendingDeleteAction = null;
 
-    function requestConfirm(message, actionCallback) {
+    function requestConfirm(message, actionCallback, theme = 'danger', btnText = 'Delete') {
         document.getElementById('modal-delete-message').innerText = message;
-        pendingDeleteAction = actionCallback; // Memorize the exact delete function
+        pendingDeleteAction = actionCallback; 
+        
+        const modalContent = document.getElementById('modal-confirm-content');
+        const modalHeader = document.getElementById('modal-confirm-header');
+        const confirmBtn = document.getElementById('btn-confirm-delete');
+        const titleIcon = document.getElementById('modal-confirm-title');
+
+        if(modalContent && modalHeader && confirmBtn && titleIcon) {
+            // Hot-swap the CSS classes to match the vibe
+            modalContent.className = `modal-content border-${theme} shadow-lg`;
+            modalHeader.className = `modal-header bg-${theme} text-white py-2`;
+            confirmBtn.className = `btn btn-sm btn-${theme} px-4 fw-bold`;
+            
+            confirmBtn.innerText = btnText;
+            titleIcon.innerText = theme === 'danger' ? '⚠️ Confirm Deletion' : 'ℹ️ Confirm Action';
+        }
         
         const modal = new bootstrap.Modal(document.getElementById('modal-universal-delete'));
         modal.show();
-        
-        // Auto-focus the Confirm button so native 'Enter' works instantly
-        setTimeout(() => document.getElementById('btn-confirm-delete').focus(), 400);
+        setTimeout(() => confirmBtn.focus(), 400);
     }
 
     function executeConfirm() {
@@ -853,6 +926,54 @@
         const modalEl = document.getElementById('modal-universal-delete');
         const modalInstance = bootstrap.Modal.getInstance(modalEl);
         if (modalInstance) modalInstance.hide();
+    }
+
+    // DEEP CLONING ENGINE (Projects, Groups, and Parts)
+    function duplicateProject(projectId) {
+        const originalProject = appState.projects.find(p => p.id === projectId);
+        if (!originalProject) return;
+
+        // 1. Clone Project
+        const newProjId = 'PROJ-' + Date.now() + Math.floor(Math.random() * 1000);
+        const clonedProject = JSON.parse(JSON.stringify(originalProject));
+        clonedProject.id = newProjId;
+        clonedProject.name = clonedProject.name + ' (copy)';
+        // Wipe cached totals clean; they will naturally rebuild on the next saveState
+        clonedProject.totalParts = 0; 
+        clonedProject.totalCost = 0;
+        appState.projects.splice(appState.projects.findIndex(p => p.id === projectId) + 1, 0, clonedProject);
+
+        // 2. Clone Groups and Build Relationship Map
+        const groupMap = {}; // oldGrpId -> newGrpId
+        if (appState.groups) {
+            const projectGroups = appState.groups.filter(g => g.projectId === projectId);
+            projectGroups.forEach((g, index) => {
+                const newGrpId = 'GRP-' + Date.now() + index + Math.floor(Math.random() * 1000);
+                groupMap[g.id] = newGrpId;
+                const clonedGroup = JSON.parse(JSON.stringify(g));
+                clonedGroup.id = newGrpId;
+                clonedGroup.projectId = newProjId;
+                appState.groups.push(clonedGroup);
+            });
+        }
+
+        // 3. Clone Parts & Re-link them
+        if (appState.parts) {
+            const projectParts = appState.parts.filter(p => p.projectId === projectId);
+            projectParts.forEach((p, index) => {
+                const clonedPart = JSON.parse(JSON.stringify(p));
+                clonedPart.id = 'PART-' + Date.now() + index + Math.floor(Math.random() * 1000);
+                clonedPart.projectId = newProjId; // Re-link to new project
+                if (clonedPart.groupId && groupMap[clonedPart.groupId]) {
+                    clonedPart.groupId = groupMap[clonedPart.groupId]; // Re-link to new group!
+                }
+                appState.parts.push(clonedPart); 
+            });
+        }
+
+        saveState();
+        if (typeof renderDictionaries === 'function') renderDictionaries();
+        showToast('Project duplicated successfully.');
     }
 
     // The Global 'Enter' Key Listener

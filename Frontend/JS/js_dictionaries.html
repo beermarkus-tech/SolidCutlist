@@ -39,42 +39,51 @@
         updateUnitLabels();
     }
     function renderProjectsTable() {
-    
-    const tbody = document.getElementById('table-projects-body');
+        const tbody = document.getElementById('table-projects-body');
         tbody.innerHTML = ''; 
         
-        // Failsafe in case appState.projects is undefined
         if (!appState.projects) appState.projects = [];
+        const currency = appState.settings.currency || '$';
 
         appState.projects.forEach(proj => {
-
             if (typeof rowPassesFilters === 'function' && !rowPassesFilters(proj, 'projects')) return;
             
             const tr = document.createElement('tr');
+            
+            // Pull the background-calculated totals
+            const partCount = proj.totalParts || 0;
+            const displayCost = (proj.totalCost || 0).toFixed(2);
+            
             tr.innerHTML = `
                 <td class="px-1 py-0">
                     <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" 
-                           value="${proj.name}" 
-                           onchange="updateProjectName('${proj.id}', this.value)"
+                           value="${safeHTML(proj.name)}" 
+                           onchange="updateProject('${proj.id}', 'name', this.value)"
                            title="Tap to edit">
                 </td>
-                <td><span class="badge bg-secondary">${proj.status || 'Design'}</span></td>
-                <td class="text-center px-1 py-0" style="width: 40px;">
+                <td class="px-1 py-0 align-middle">
+                    <textarea class="form-control form-control-sm border-0 bg-transparent project-comment-box" 
+                              rows="1" title="${safeHTML(proj.comment || '')}" 
+                              onchange="updateProject('${proj.id}', 'comment', this.value)" 
+                              placeholder="Add notes...">${safeHTML(proj.comment || '')}</textarea>
+                </td>
+                <td class="text-center px-1 py-0 align-middle"><span class="badge bg-secondary">${partCount}</span></td>
+                <td class="text-center px-1 py-0 align-middle fw-bold text-success">${currency}${displayCost}</td>
+                <td class="text-center px-1 py-0 align-middle"><span class="badge bg-secondary">${proj.status || 'Design'}</span></td>
+                <td class="text-center px-1 py-0 align-middle" style="width: 40px;">
                     <button class="btn btn-sm btn-light border shadow-sm py-0 px-2" onclick="openGroupModal('${proj.id}')" title="Manage Groups">⚙️</button>
                 </td>
-                <td class="text-end">
-                    <button class="btn btn-sm py-0 px-0" onclick="duplicateRow('projects', '${proj.id}')" title="Duplicate Row">➕</button>
+                <td class="text-end align-middle text-nowrap">
+                    <button class="btn btn-sm py-0 px-0" onclick="duplicateProjectWarning('${proj.id}')" title="Duplicate Project">➕</button>
                     <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteProject('${proj.id}')">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
         
-        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
         if (typeof updateFilterUI === 'function') {
             updateFilterUI('projects', ['name', 'status']);
         }
-
     }
     function renderStockTable() {
         const tbody = document.getElementById('table-stock-body');
@@ -646,15 +655,22 @@
     }
 
     // --- MAIN TABLE UPDATE FUNCTIONS ---
-    function updateProjectName(id, newName) {
-        // Find the project by ID and update its name
+    function updateProject(id, field, newValue) {
         const project = appState.projects.find(p => p.id === id);
         if (project) {
-            project.name = newName;
+            project[field] = newValue;
             saveState();
             renderDictionaries();
-            showToast('Project renamed.');
+            showToast('Project updated.');
         }
+    }
+    function duplicateProjectWarning(id) {
+        requestConfirm(
+            "Duplicate this project? This will create a full copy including all associated parts and groups.", 
+            () => duplicateProject(id), 
+            'primary', 
+            'Duplicate'
+        );
     }
     function updateProfile(id, field, newValue) {
         const prof = appState.profiles.find(p => p.id === id);
