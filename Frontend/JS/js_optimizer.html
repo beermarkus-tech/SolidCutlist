@@ -398,6 +398,8 @@
             appState.settings.optimizer = { useStock: true, sheetCutPreference: 'auto', selectedProjects: [], selectedStores: [] };
         }
         if (!appState.settings.optimizer.sheetCutPreference) appState.settings.optimizer.sheetCutPreference = 'auto'; 
+        if (!Array.isArray(appState.settings.optimizer.selectedProjects)) appState.settings.optimizer.selectedProjects = [];
+        if (!Array.isArray(appState.settings.optimizer.selectedStores)) appState.settings.optimizer.selectedStores = [];
         
         const optState = appState.settings.optimizer;
         

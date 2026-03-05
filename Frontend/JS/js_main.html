@@ -75,33 +75,149 @@
     // ==========================================
 
     /**
-     * Loads the state from localStorage. 
-     * If no state exists (first time user or cleared cache), it injects the initialAppState.
-     */
-     function loadState() {
-        const savedState = localStorage.getItem('lumberLogicState');
-        
-        if (savedState) {
-            try {
-                appState = JSON.parse(savedState);
-                console.log('SolidCutlist state loaded successfully.');
-            } catch (e) {
-                console.error('Data corruption detected.', e);
-                initAppState();
-            }
-        } else {
-            initAppState();
+    * BOOT LOADER: Negotiates between Cloud Data and Local Storage
+    */
+    function loadState() {
+        // 1. Show the loader (it should be visible by default, but just in case)
+        const loader = document.getElementById('boot-loader');
+        if (loader) loader.classList.remove('d-none');
+
+        // 2. Fetch the offline backup (just in case the cloud fails or is older)
+        const localSaved = localStorage.getItem('lumberLogicState');
+        let localData = null;
+        if (localSaved) {
+            try { localData = JSON.parse(localSaved); } catch(e) { console.warn("Local data corrupted."); }
         }
 
-        // 🪄 Apply the saved theme immediately before drawing the UI
-        if (typeof applyTheme === 'function') applyTheme();
+        // 3. Call Google Scripts (The Cloud)
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(function(responseStr) {
+                    handleCloudDataResponse(responseStr, localData);
+                })
+                .withFailureHandler(function(error) {
+                    console.error("Failed to fetch from cloud. Falling back to local.", error);
+                    finalizeBoot(localData ? localData : initialAppState);
+                })
+                .getAppStateFromSheet();
+        } else {
+            // Failsafe for Local Desktop Testing (outside of Google's environment)
+            console.warn("Google Script context not found. Booting from local memory.");
+            finalizeBoot(localData ? localData : initialAppState);
+        }
+    }
 
-        // FIRE THE RENDERERS ON BOOT
+    /**
+     * The Handshake: Compares timestamps and resolves conflicts
+     */
+    function handleCloudDataResponse(responseStr, localData) {
+        try {
+            const response = JSON.parse(responseStr);
+            if (response.status === 'error') throw new Error(response.message);
+
+            const cloudData = response.appState;
+            const cloudTime = response.cloud_timestamp || 0;
+            const localTime = localData ? (localData.local_timestamp || 0) : 0;
+
+            // 🪄 THE FAILSAFE: Local is more than 10 seconds newer than the Cloud
+            if (localTime > cloudTime + 10000) {
+                // We use a native browser confirm here because it physically halts the Javascript thread 
+                // and prevents the app from rendering bad data while the user decides.
+                const useLocal = confirm(
+                    "⚠️ UNSAVED LOCAL CHANGES DETECTED!\n\n" +
+                    "Your device has newer data than the cloud (likely because you closed the app before it finished syncing last time).\n\n" +
+                    "Click OK to load your Local Data.\n" +
+                    "Click Cancel to overwrite your device with Cloud Data."
+                );
+
+                if (useLocal) {
+                    finalizeBoot(localData);
+                } else {
+                    finalizeBoot(cloudData);
+                }
+            } else {
+                // Cloud is newer, or perfectly equal. Proceed normally.
+                finalizeBoot(cloudData);
+            }
+        } catch(e) {
+            console.error("Cloud data parsing error:", e);
+            alert("Error reading Google Sheet. Loading offline backup.");
+            finalizeBoot(localData ? localData : initialAppState);
+        }
+    }
+
+    /**
+     * Executes the final render sequence and hides the loading screen
+     */
+     function finalizeBoot(dataToLoad) {
+        // 1. Assign the Master State safely
+        appState = dataToLoad || {};
+        
+        // 🪄 TIER 1 SANITIZER: Ensure all master tables exist
+        const TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores'];
+        TABS.forEach(tab => {
+            if (!appState[tab] || !Array.isArray(appState[tab])) appState[tab] = [];
+        });
+
+        // 🪄 TIER 2 SANITIZER: Deep JSON parsing & corruption repair
+        if (!appState.settings) appState.settings = {};
+        for (let key in appState.settings) {
+            let val = appState.settings[key];
+            if (typeof val === 'string') {
+                if (val === 'TRUE') appState.settings[key] = true;
+                else if (val === 'FALSE') appState.settings[key] = false;
+                else if (val.startsWith('[')) {
+                    try { appState.settings[key] = JSON.parse(val); } catch(e) { appState.settings[key] = []; }
+                }
+                else if (val.startsWith('{')) {
+                    try { appState.settings[key] = JSON.parse(val); } catch(e) { appState.settings[key] = {}; }
+                }
+            }
+        }
+
+        // 2. The Auto-Heal Engine
+        autoHealMissingIDs();
+
+        // 3. Run theme and renders
+        if (typeof applyTheme === 'function') applyTheme();
         if (typeof renderSettings === 'function') renderSettings();
         if (typeof renderDictionaries === 'function') renderDictionaries();
         if (typeof renderPartsView === 'function') renderPartsView();
+        
+        // 4. Safely apply translations only after data is fully loaded
+        if (typeof applyTranslations === 'function') applyTranslations(); 
+
+        // 5. Hide loader
+        const loader = document.getElementById('boot-loader');
+        if (loader) loader.classList.add('d-none');
+        
+        console.log('🪵 SolidCutlist successfully booted.');
+        updateSyncUI('success');
     }
 
+    function autoHealMissingIDs() {
+        // 🪄 FIX: Added 'stores' here as well
+        const TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores'];
+        let healedCount = 0;
+        TABS.forEach(tab => {
+            appState[tab].forEach((item, index) => {
+                if (!item.id) {
+                    let prefix = 'ID';
+                    if (tab === 'projects') prefix = 'PROJ';
+                    if (tab === 'parts') prefix = 'PART';
+                    if (tab === 'materials') prefix = 'M';
+                    if (tab === 'profiles') prefix = 'PR';
+                    if (tab === 'catalog') prefix = 'CAT';
+                    if (tab === 'stock') prefix = 'STK';
+                    if (tab === 'stores') prefix = 'STR';
+                    item.id = prefix + '-' + Date.now() + '-' + index;
+                    healedCount++;
+                }
+            });
+        });
+        if (healedCount > 0) saveState(); 
+    }
+    
     /**
      * Wipes current state and resets to the baseline initialAppState.
      * We use deep copy (JSON stringify/parse) so we don't accidentally mutate the original blueprint.
@@ -111,16 +227,90 @@
     saveState();
     }
 
+    // ==========================================
+    // CLOUD SYNC ENGINE (Debounced 1-Way Sync)
+    // ==========================================
+    let syncTimeout = null;
+    let lastCloudSyncTime = 0; // Tracks the last successful Google Sheet write
+
+    function updateSyncUI(status) {
+        const icon = document.getElementById('sync-icon');
+        const text = document.getElementById('sync-text');
+        if (!icon || !text) return;
+
+        if (status === 'local') {
+            icon.innerText = '🟡';
+            text.innerText = 'Saving locally...';
+        } else if (status === 'syncing') {
+            icon.innerText = '🔵';
+            text.innerText = 'Syncing to cloud...';
+        } else if (status === 'success') {
+            icon.innerText = '🟢';
+            text.innerText = 'Cloud synced';
+        } else if (status === 'error') {
+            icon.innerText = '🔴';
+            text.innerText = 'Sync failed';
+        }
+    }
+
+    function triggerCloudSync() {
+        updateSyncUI('syncing');
+
+        // Package the payload with a timestamp
+        const currentTimestamp = Date.now();
+        const payload = {
+            appState: appState,
+            timestamp: currentTimestamp
+        };
+
+        // Fire to Google Apps Script asynchronously
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(function(response) {
+                    if (response.status === 'success') {
+                        lastCloudSyncTime = response.cloud_timestamp;
+                        updateSyncUI('success');
+                    } else {
+                        console.error('Cloud Sync Error:', response.message);
+                        updateSyncUI('error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    console.error('Cloud Sync Network Failure:', error);
+                    updateSyncUI('error');
+                })
+                .saveAppStateToSheet(JSON.stringify(payload));
+        } else {
+            console.warn('Google Script context not found. Cloud sync skipped (Local Dev Mode).');
+            updateSyncUI('error');
+        }
+    }
+
     /**
-     * Commits the current appState to the browser's localStorage.
-     * Call this function anytime a user adds a material, part, or changes a setting.
+     * Commits the current appState to the browser's localStorage AND triggers the Cloud Sync.
      */
     function saveState() {
-    if (typeof recalculateAllProjectTotals === 'function') recalculateAllProjectTotals();
-    localStorage.setItem('lumberLogicState', JSON.stringify(appState));
-    console.log('Shop data instantly saved to local memory.');
-    
-    // Note: Phase 7 Debounced Cloud Sync trigger will eventually go here.
+        // 1. Recalculate totals (from our Project Dashboard update)
+        if (typeof recalculateAllProjectTotals === 'function') recalculateAllProjectTotals();
+
+        // 2. Inject a local timestamp into the state 
+        // (We will use this in Phase 3 to check if the browser crashed before the cloud sync finished)
+        appState.local_timestamp = Date.now();
+
+        // 3. Save to browser storage instantly
+        localStorage.setItem('lumberLogicState', JSON.stringify(appState));
+        console.log('Shop data instantly saved to local memory.');
+        
+        // 4. Update UI to show local save
+        updateSyncUI('local');
+
+        // 5. The Debounce Trap (3 seconds)
+        if (syncTimeout) {
+            clearTimeout(syncTimeout); // User is still typing! Reset the clock.
+        }
+        syncTimeout = setTimeout(() => {
+            triggerCloudSync(); // 3 seconds of silence have passed. Fire the payload!
+        }, 3000);
     }
 
     // ==========================================

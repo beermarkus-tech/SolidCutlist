@@ -849,16 +849,6 @@
         showToast('Settings saved.');
     }
 
-    // --- INITIALIZATION ---
-    // Ensure the tables render when the app boots up
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
-            renderSettings();
-            renderDictionaries();
-            applyTranslations();
-        }, 100); 
-    });
-
     // PROJECT GROUP MANAGER
     let groupModalInstance = null;
     function openGroupModal(preSelectedProjectId = '') {
