@@ -90,7 +90,7 @@
             <details class="sku-group mb-4" open>
                 <summary class="mt-2 mb-2 border-bottom border-2 border-dark pb-1 d-flex justify-content-between align-items-end" style="cursor: pointer; outline: none; list-style-position: inside;">
                     <h5 class="mb-0 fw-bold d-inline-block">${safeHTML(prof?.name)} - ${safeHTML(mat?.name)}</h5>
-                    <span class="badge bg-secondary">Raw Size: ${sizeString} <span class="display-unit-label"></span></span>
+                    <span class="badge bg-secondary">${t('lbl_raw_size')}: ${sizeString} <span class="display-unit-label"></span></span>
                 </summary>
                 <div class="pt-2"> 
             `;
@@ -104,7 +104,7 @@
                 } else {
                     wasteVal = board.remaining;
                 }
-                const wasteLabel = isSheet ? 'Waste Area' : 'Waste Length';
+                const wasteLabel = isSheet ? t('lbl_waste_area') : t('lbl_waste_length');
                 const wasteDisplay = isSheet 
                     ? (wasteVal / 1000000).toFixed(2) + ' m²' 
                     : formatForDisplay(wasteVal);
@@ -143,7 +143,7 @@
                 html += `
                 <div class="card shadow-sm mb-4 border-secondary" style="page-break-inside: avoid;">
                     <div class="card-header py-1 d-flex justify-content-between align-items-center">
-                        <small class="fw-bold text-muted">Board #${bIndex + 1} of ${group.layouts.length}</small>
+                        <small class="fw-bold text-muted">${t('lbl_board_num', { current: bIndex + 1, total: group.layouts.length })}</small>
                         <small class="text-muted">${wasteLabel}: ${wasteDisplay} ${isSheet ? '' : '<span class="display-unit-label"></span>'}</small>
                     </div>
                     
@@ -155,10 +155,10 @@
                         <table class="table table-sm table-hover mb-0 border-top">
                             <thead>
                                 <tr>
-                                    <th class="ps-3" style="width: 50px;">Cut</th>
-                                    <th>Part Label</th>
-                                    <th class="text-center">Grain</th>
-                                    <th class="text-end pe-3">Cut Size</th>
+                                    <th class="ps-3" style="width: 50px;">${t('col_cut')}</th>
+                                    <th>${t('col_part_label')}</th>
+                                    <th class="text-center">${t('col_grain')}</th>
+                                    <th class="text-end pe-3">${t('col_cut_size')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -168,7 +168,7 @@
 
                 board.cuts.forEach((cut, cIndex) => {
                     const partData = appState.parts.find(p => p.id === cut.partId);
-                    const projName = appState.projects.find(p => p.id === partData?.projectId)?.name || 'Unknown';
+                    const projName = appState.projects.find(p => p.id === partData?.projectId)?.name || t('lbl_unknown');
                     
                     // 🪄 1. Extract the Group Name (if it exists)
                     let groupName = '';
@@ -194,10 +194,10 @@
                         }
                     }
                     
-                    const grainStr = isSheet && partData && partData.grain !== 'none' ? partData.grain : '-';
+                    const grainStr = isSheet && partData && partData.grain !== 'none' ? t('opt_' + partData.grain) : '-';
                     let grainWarningBadge = '';
                     if (isSheet && partData && partData.grain !== 'none' && group.grain === 'none') {
-                        grainWarningBadge = ' <span title="Raw material grain not defined!">⚠️</span>';
+                        grainWarningBadge = ` <span title="${t('tip_grain_undefined')}">⚠️</span>`;
                         showBoardGrainWarning = true; // Trip the wire!
                     }
 
@@ -206,7 +206,7 @@
                         ? `${formatForDisplay(cut.w)} x ${formatForDisplay(cut.l)}` 
                         : `${formatForDisplay(cut.length)}`;
 
-                    const rotationWarning = (isSheet && cut.rotated) ? ' <span class="badge bg-warning text-dark ms-1">Rotated</span>' : '';
+                    const rotationWarning = (isSheet && cut.rotated) ? ` <span class="badge bg-warning text-dark ms-1">${t('lbl_rotated')}</span>` : '';
 
                     html += `
                                 <tr>
@@ -226,7 +226,7 @@
                 
                 if (showBoardGrainWarning) {
                     html += `<div class="card-footer text-danger py-1">
-                        ⚠️ <strong>Warning:</strong> One or more parts require a specific grain direction, but the raw material grain is not defined.
+                        ⚠️ <strong>${t('lbl_warning')}:</strong> ${t('msg_grain_warning')}
                     </div>`;
                 }
 
@@ -250,7 +250,7 @@
         });
 
         if (html === '') {
-            html = `<div class="alert alert-warning mt-3">No diagrams could be generated.</div>`;
+            html = `<div class="alert alert-warning mt-3">${t('msg_no_diagrams')}</div>`;
         }
 
         container.innerHTML = html;

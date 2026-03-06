@@ -123,12 +123,7 @@
             if (localTime > cloudTime + 10000) {
                 // We use a native browser confirm here because it physically halts the Javascript thread 
                 // and prevents the app from rendering bad data while the user decides.
-                const useLocal = confirm(
-                    "⚠️ UNSAVED LOCAL CHANGES DETECTED!\n\n" +
-                    "Your device has newer data than the cloud (likely because you closed the app before it finished syncing last time).\n\n" +
-                    "Click OK to load your Local Data.\n" +
-                    "Click Cancel to overwrite your device with Cloud Data."
-                );
+                const useLocal = confirm(t('msg_unsaved_local_changes'));
 
                 if (useLocal) {
                     finalizeBoot(localData);
@@ -141,7 +136,7 @@
             }
         } catch(e) {
             console.error("Cloud data parsing error:", e);
-            alert("Error reading Google Sheet. Loading offline backup.");
+            alert(t('err_cloud_parse'));
             finalizeBoot(localData ? localData : initialAppState);
         }
     }
@@ -242,17 +237,17 @@
         if (status === 'local' || status === 'syncing') {
             // Injects a tiny, animated Bootstrap spinner
             icon.innerHTML = '<span class="spinner-border spinner-border-sm text-warning" role="status" style="width: 0.8rem; height: 0.8rem; border-width: 0.15em;"></span>'; 
-            text.innerText = 'Saving...';
+            text.innerText = t('msg_saving');
         } 
         else if (status === 'success') {
             // The Cloud + Checkmark combo
             icon.innerHTML = '<span style="color: #00ff00;">✔</span>'; 
-            text.innerText = 'Saved'; 
+            text.innerText = t('msg_saved'); 
             // Note: If you want NO text at all, just change 'Saved' to ''
         } 
         else if (status === 'error') {
             icon.innerHTML = '⚠️'; 
-            text.innerText = 'Sync failed';
+            text.innerText = t('msg_sync_failed');
         }
     }
 
@@ -693,7 +688,7 @@
         // Set hidden inputs and Title
         document.getElementById('filter-array-name').value = arrayName;
         document.getElementById('filter-column-key').value = columnKey;
-        document.getElementById('filterModalTitle').innerText = `Filter: ${displayTitle}`;
+        document.getElementById('filterModalTitle').innerText = `${t('hdr_filter')}: ${displayTitle}`;
 
         // Extract unique values from the database
         const uniqueValues = new Map(); // Use a Map to hold { rawValue: humanReadableText }
@@ -705,14 +700,14 @@
             // Handle Empty/Null
             if (rawValue === '' || rawValue === null || rawValue === undefined) {
                 rawValue = '___EMPTY___';
-                displayText = '(Blank)';
+                displayText = t('lbl_blank');
             } else {
                 // 🪄 TRANSLATION DICTIONARY: Convert IDs to Human Readable Names
-                if (columnKey === 'projectId') displayText = appState.projects.find(p => p.id === rawValue)?.name || 'Unknown Project';
-                else if (columnKey === 'groupId') displayText = appState.groups.find(g => g.id === rawValue)?.name || 'Unknown Group';
-                else if (columnKey === 'profileId') displayText = appState.profiles.find(p => p.id === rawValue)?.name || 'Unknown Profile';
-                else if (columnKey === 'materialId') displayText = appState.materials.find(m => m.id === rawValue)?.name || 'Unknown Material';
-                else if (columnKey === 'storeId') displayText = appState.stores?.find(s => s.id === rawValue)?.name || 'Unknown Store';
+                if (columnKey === 'projectId') displayText = appState.projects.find(p => p.id === rawValue)?.name || t('lbl_unknown_project');
+                else if (columnKey === 'groupId') displayText = appState.groups.find(g => g.id === rawValue)?.name || t('lbl_unknown_group');
+                else if (columnKey === 'profileId') displayText = appState.profiles.find(p => p.id === rawValue)?.name || t('lbl_unknown_profile');
+                else if (columnKey === 'materialId') displayText = appState.materials.find(m => m.id === rawValue)?.name || t('lbl_unknown_material');
+                else if (columnKey === 'storeId') displayText = appState.stores?.find(s => s.id === rawValue)?.name || t('lbl_unknown_store');
             }
 
             uniqueValues.set(rawValue, displayText);
@@ -1065,7 +1060,7 @@
         clone.id = prefix + Date.now();
 
         if (clone.name !== undefined) {
-            clone.name = clone.name + ' (copy)';
+            clone.name = clone.name + ` (${t('lbl_copy')})`;
         }
 
         // 5. Inject the clone directly below the original
@@ -1080,7 +1075,7 @@
         if (arrayName === 'projects' && typeof renderProjectsTable === 'function') renderProjectsTable();
         if (arrayName === 'profiles' && typeof renderProfilesTable === 'function') renderProfilesTable();
 
-        showToast('Row duplicated.');
+        showToast(t('msg_row_duplicated'));
 
         // 7. 🪄 VISUAL HIGHLIGHT: Add the new row to the registry
         window.activeGlows.push({ id: clone.id, timestamp: Date.now() });
@@ -1148,8 +1143,13 @@
             modalHeader.className = `modal-header bg-${theme} text-white py-2`;
             confirmBtn.className = `btn btn-sm btn-${theme} px-4 fw-bold`;
             
-            confirmBtn.innerText = btnText;
-            titleIcon.innerText = theme === 'danger' ? '⚠️ Confirm Deletion' : 'ℹ️ Confirm Action';
+            // 🪄 i18n Fix: Handle "Delete" vs "Duplicate" vs custom text
+            // If btnText is "Delete", use translated delete. Otherwise assume it's custom and translate it if possible or pass thru.
+            if (btnText === 'Delete') confirmBtn.innerText = t('btn_delete');
+            else if (btnText === 'Duplicate') confirmBtn.innerText = t('btn_duplicate');
+            else confirmBtn.innerText = btnText;
+
+            titleIcon.innerText = theme === 'danger' ? `⚠️ ${t('hdr_confirm_deletion')}` : `ℹ️ ${t('hdr_confirm_action')}`;
         }
         
         const modal = new bootstrap.Modal(document.getElementById('modal-universal-delete'));
@@ -1176,7 +1176,7 @@
         const newProjId = 'PROJ-' + Date.now() + Math.floor(Math.random() * 1000);
         const clonedProject = JSON.parse(JSON.stringify(originalProject));
         clonedProject.id = newProjId;
-        clonedProject.name = clonedProject.name + ' (copy)';
+        clonedProject.name = clonedProject.name + ` (${t('lbl_copy')})`;
         // Wipe cached totals clean; they will naturally rebuild on the next saveState
         clonedProject.totalParts = 0; 
         clonedProject.totalCost = 0;
@@ -1212,7 +1212,7 @@
 
         saveState();
         if (typeof renderDictionaries === 'function') renderDictionaries();
-        showToast('Project duplicated successfully.');
+        showToast(t('msg_project_duplicated'));
     }
 
     // The Global 'Enter' Key Listener

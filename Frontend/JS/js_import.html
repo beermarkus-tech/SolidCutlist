@@ -41,7 +41,7 @@
         const projSelect = document.getElementById('import-project-select');
         const currentVal = projSelect.value || targetProjectId; // Remember selection
         
-        projSelect.innerHTML = '<option value="" disabled selected>Select a Project...</option>';
+        projSelect.innerHTML = `<option value="" disabled selected>${t('opt_select_project')}</option>`;
         if (appState.projects) {
             appState.projects.forEach(p => {
                 const opt = document.createElement('option');
@@ -111,7 +111,7 @@
     function cancelImportProcess() {
         resetImport();
         navigateTo('view-parts');
-        showToast('Import cancelled.', true);
+        showToast(t('msg_import_cancelled'), true);
     }
 
     // --- STEP 1: READ FILE & EXTRACT HEADERS ---
@@ -127,7 +127,7 @@
         const fileInput = document.getElementById('import-file-input');
 
         if (!projSelect.value) {
-            showToast('Please select a Target Project first.', true);
+            showToast(t('msg_select_target_project'), true);
             return;
         }
         targetProjectId = projSelect.value;
@@ -140,7 +140,7 @@
         }
 
         if (!fileInput.files.length) {
-            showToast('Please select a CSV file to upload.', true);
+            showToast(t('msg_select_csv_file'), true);
             return;
         }
 
@@ -153,7 +153,7 @@
             const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
             
             if (lines.length < 2) {
-                showToast('The CSV file appears to be empty or invalid.', true);
+                showToast(t('msg_csv_empty_invalid'), true);
                 return;
             }
 
@@ -192,7 +192,7 @@
     function updateFileNameDisplay() {
         const fileInput = document.getElementById('import-file-input');
         const display = document.getElementById('file-name-display');
-        display.value = fileInput.files.length > 0 ? fileInput.files[0].name : "No file selected";
+        display.value = fileInput.files.length > 0 ? fileInput.files[0].name : t('msg_no_file_selected');
     }
 
     // --- STEP 2: BUILD THE MAPPING UI ---
@@ -201,20 +201,20 @@
         container.innerHTML = '';
 
         const requiredFields = [
-            { id: 'map-name', label: 'Part Name', defaultIndex: 3 },           // 3 = Designation
-            { id: 'map-group', label: 'Group (Path)', defaultIndex: 1 },       // 1 = Path
-            { id: 'map-length', label: 'Length (Raw)', defaultIndex: 4 },      // 4 = Length - raw
-            { id: 'map-width', label: 'Width (Raw)', defaultIndex: 5 },        // 5 = Width - raw
-            { id: 'map-thickness', label: 'Thickness (Raw)', defaultIndex: 6 },// 6 = Thickness - raw
-            { id: 'map-material', label: 'Material (Optional)', defaultIndex: 12 } // 12 = Material
+            { id: 'map-name', label: t('lbl_part_name'), defaultIndex: 3 },           // 3 = Designation
+            { id: 'map-group', label: t('lbl_group_path'), defaultIndex: 1 },       // 1 = Path
+            { id: 'map-length', label: t('lbl_length_raw'), defaultIndex: 4 },      // 4 = Length - raw
+            { id: 'map-width', label: t('lbl_width_raw'), defaultIndex: 5 },        // 5 = Width - raw
+            { id: 'map-thickness', label: t('lbl_thickness_raw'), defaultIndex: 6 },// 6 = Thickness - raw
+            { id: 'map-material', label: t('lbl_material_optional'), defaultIndex: 12 } // 12 = Material
         ];
 
         requiredFields.forEach(field => {
-            let optionsHtml = '<option value="" disabled selected>Select column...</option>';
+            let optionsHtml = `<option value="" disabled selected>${t('opt_select_column')}</option>`;
 
             rawCsvHeaders.forEach((header, index) => {
                 const isSelected = (index === field.defaultIndex) ? 'selected' : '';
-                optionsHtml += `<option value="${index}" ${isSelected}>Col ${index + 1}: ${header}</option>`;
+                optionsHtml += `<option value="${index}" ${isSelected}>${t('lbl_col')} ${index + 1}: ${header}</option>`;
             });
 
             const colDiv = document.createElement('div');
@@ -254,7 +254,7 @@
 
         // 🛡️ Unselected State
         if (isNaN(colIndex) || colIndex === -1) {
-            previewUl.innerHTML = '<li class="fst-italic opacity-50">[ Waiting for selection... ]</li>';
+            previewUl.innerHTML = `<li class="fst-italic opacity-50">[ ${t('msg_waiting_for_selection')} ]</li>`;
             return;
         }
 
@@ -279,7 +279,7 @@
         }
 
         if (validPreviews.length === 0) {
-            previewUl.innerHTML = '<li class="fst-italic text-warning opacity-75">(Column appears empty)</li>';
+            previewUl.innerHTML = `<li class="fst-italic text-warning opacity-75">(${t('msg_column_empty')})</li>`;
         } else {
             validPreviews.forEach(text => {
                 const li = document.createElement('li');
@@ -325,7 +325,7 @@
         if (isNaN(colMap.thickness)) { mapThickness.classList.add('is-invalid', 'border-danger'); hasError = true; }
 
         if (hasError) {
-            showToast("⚠️ Please map all required columns (highlighted in red) before proceeding.", true);
+            showToast(t('msg_map_required_columns'), true);
             return;
         }
 
@@ -523,11 +523,11 @@
             
             // 🪄 FIXED: Only inject the warning and quick-create options if the group is actually unassigned
             if (part.groupId === '') {
-                let missingText = part.extractedGroup ? `⚠️ ${safeHTML(part.extractedGroup)} missing...` : '⚠️ Select...';
+                let missingText = part.extractedGroup ? `⚠️ ${safeHTML(part.extractedGroup)} ${t('msg_missing')}...` : `⚠️ ${t('opt_select')}...`;
                 groupOptions += `<option value="" disabled selected>${missingText}</option>`;
                 
                 if (part.extractedGroup) {
-                    groupOptions += `<option value="CREATE_GROUP" class="fw-bold text-success">✨ + Create "${safeHTML(part.extractedGroup)}"</option>`;
+                    groupOptions += `<option value="CREATE_GROUP" class="fw-bold text-success">✨ + ${t('opt_create')} "${safeHTML(part.extractedGroup)}"</option>`;
                 }
             }
             
@@ -537,14 +537,14 @@
                 groupOptions += `<option value="${g.id}" ${part.groupId === g.id ? 'selected' : ''}>${safeHTML(g.name)}</option>`;
             });
 
-            let profOptions = part.profileId === '' ? '<option value="" disabled selected>⚠️ Assign Profile...</option>' : '';
+            let profOptions = part.profileId === '' ? `<option value="" disabled selected>⚠️ ${t('opt_assign_profile')}...</option>` : '';
             const filteredProfiles = safeProfiles.filter(p => p.type === part.category);
             filteredProfiles.forEach(p => {
                 const label = `${safeHTML(p.name)}`;
                 profOptions += `<option value="${p.id}" ${p.id === part.profileId ? 'selected' : ''}>${label}</option>`;
             });
 
-            let matOptions = part.materialId === '' ? '<option value="" disabled selected>⚠️ Assign Material...</option>' : '';
+            let matOptions = part.materialId === '' ? `<option value="" disabled selected>⚠️ ${t('opt_assign_material')}...</option>` : '';
             const filteredMaterials = safeMaterials.filter(m => m.category === part.category);
             filteredMaterials.forEach(m => {
                 matOptions += `<option value="${m.id}" ${m.id === part.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
@@ -566,11 +566,11 @@
                     <div class="d-flex justify-content-center">
                         <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
                                 style="width: 80px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
-                                onchange="updateStagingCategory('${part.id}', this.value)" title="Tap to change category">
-                            ${!part.category ? '<option value="" disabled selected>⚠️ Select</option>' : ''}
-                            <option value="lumber" class="bg-light text-dark" ${part.category === 'lumber' ? 'selected' : ''}>Lumber</option>
-                            <option value="sheet" class="bg-light text-dark" ${part.category === 'sheet' ? 'selected' : ''}>Sheet</option>
-                            <option value="fastener" class="bg-light text-dark" ${part.category === 'fastener' ? 'selected' : ''}>Fastener</option>
+                                onchange="updateStagingCategory('${part.id}', this.value)" title="${t('title_tap_to_change_category')}">
+                            ${!part.category ? `<option value="" disabled selected>⚠️ ${t('opt_select')}</option>` : ''}
+                            <option value="lumber" class="bg-light text-dark" ${part.category === 'lumber' ? 'selected' : ''}>${t('opt_lumber')}</option>
+                            <option value="sheet" class="bg-light text-dark" ${part.category === 'sheet' ? 'selected' : ''}>${t('opt_sheet')}</option>
+                            <option value="fastener" class="bg-light text-dark" ${part.category === 'fastener' ? 'selected' : ''}>${t('opt_fastener')}</option>
                         </select>
                     </div>
                 </td>
@@ -586,7 +586,7 @@
                         if (!part.category) return '<span class="text-muted small">---</span>';
                         if (part.category === 'lumber') return `<span class="small">${formatForDisplay(part.length)}</span>`;
                         if (part.category === 'sheet') return `<span class="small">${formatForDisplay(part.width)} x ${formatForDisplay(part.length)}</span>`;
-                        if (part.category === 'fastener') return `<span class="text-muted small">Qty Only</span>`;
+                        if (part.category === 'fastener') return `<span class="text-muted small">${t('lbl_qty_only')}</span>`;
                         return '';
                     })()}
                 </td>
@@ -614,7 +614,7 @@
         
         const tfootTotals = document.getElementById('tfoot-import-totals');
         if (tfootTotals) {
-            tfootTotals.innerText = `${totalRows} Rows, ${totalQty} Parts`;
+            tfootTotals.innerText = `${totalRows} ${t('lbl_rows')}, ${totalQty} ${t('lbl_parts')}`;
         }
     }
 
@@ -637,7 +637,7 @@
                 saveState(); // Commit to memory instantly
                 
                 value = newGroupId; // Swap the fake command for the real ID so the part saves correctly
-                showToast(`✨ Group "${part.extractedGroup}" created!`);
+                showToast(t('msg_group_created', { name: part.extractedGroup }));
             }
 
             part[field] = value;
@@ -658,26 +658,26 @@
             part.materialId = '';
             part.status = 'needs_mapping'; 
             renderStagingTable(); 
-            showToast('Category changed. Please re-map Profile and Material.', true);
+            showToast(t('msg_category_changed_remap'), true);
         }
     }
 
     function deleteStagingPart(id, isConfirmed = false) {
         // 🪄 The Safety Shield (Exact match to js_parts.html)
         if (!isConfirmed) {
-            requestConfirm("Remove this part from the import queue?", () => deleteStagingPart(id, true));
+            requestConfirm(t('confirm_remove_part_import'), () => deleteStagingPart(id, true));
             return; 
         }
 
         appState.stagingParts = appState.stagingParts.filter(p => p.id !== id);
         renderStagingTable(); 
-        showToast('Part removed from import queue.', true);
+        showToast(t('msg_part_removed_import'), true);
     }
 
     function commitImport() {
         const unmapped = appState.stagingParts.filter(p => p.status !== 'ready');
         if (unmapped.length > 0) {
-            showToast('Please assign a Profile and Material to all yellow rows before importing.', true);
+            showToast(t('msg_assign_profile_material'), true);
             return;
         }
 
@@ -706,6 +706,6 @@
 
         navigateTo('view-parts');
         renderPartsView(); 
-        showToast(`Successfully imported ${importCount} parts to your cutlist!`);
+        showToast(t('msg_import_success', { count: importCount }));
     }
 </script>

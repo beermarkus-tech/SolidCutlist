@@ -128,7 +128,7 @@
 
         let printWindow = window.open('', '_blank');
         if (!printWindow) {
-            showToast('Please allow popups to print.', true);
+            showToast(t('msg_allow_popups'), true);
             return;
         }
 
@@ -136,14 +136,14 @@
         
         // 1. Gather Shopping List
         if (type === 'shopping' || type === 'both') {
-            htmlContent += '<h3 class="border-bottom border-2 border-dark pb-2 mb-4">🛒 Shopping List</h3>';
+            htmlContent += `<h3 class="border-bottom border-2 border-dark pb-2 mb-4">🛒 ${t('tab_shopping_list')}</h3>`;
             htmlContent += document.getElementById('pane-shopping').innerHTML;
             if (type === 'both') htmlContent += '<div style="page-break-before: always;"></div>';
         }
 
         // 2. Gather Diagrams & Convert Canvases to Images
         if (type === 'diagrams' || type === 'both') {
-            htmlContent += '<h3 class="border-bottom border-2 border-dark pb-2 mb-4">🔪 Cut Diagrams</h3>';
+            htmlContent += `<h3 class="border-bottom border-2 border-dark pb-2 mb-4">🔪 ${t('tab_cut_diagrams')}</h3>`;
             
             let diagramsClone = document.getElementById('pane-diagrams').cloneNode(true);
             let realCanvases = document.getElementById('pane-diagrams').querySelectorAll('canvas');
@@ -173,7 +173,7 @@
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Cutlist Printout</title>
+                <title>${t('title_cutlist_printout')}</title>
                 ${parentLinks}
                 ${parentStyles}
                 <style>
@@ -297,7 +297,7 @@
     function refreshLabelTemplateDropdown() {
         const select = document.getElementById('label-template-select');
         // Keep the Custom option
-        select.innerHTML = '<option value="custom">Custom...</option>';
+        select.innerHTML = `<option value="custom">${t('opt_custom')}</option>`;
         
         appState.settings.labelTemplates.forEach(t => {
             select.innerHTML += `<option value="${t.id}">${safeHTML(t.name)}</option>`;
@@ -346,7 +346,7 @@
     function saveLabelTemplate() {
         const nameStr = document.getElementById('label-template-name').value.trim();
         if (!nameStr) {
-            showToast('Please enter a Template Name to save.', true);
+            showToast(t('msg_enter_template_name'), true);
             return;
         }
 
@@ -381,14 +381,14 @@
         document.getElementById('label-template-select').value = newTemplate.id;
         document.getElementById('btn-delete-label-template').disabled = false;
         
-        showToast(`Label template '${nameStr}' saved.`);
+        showToast(t('msg_template_saved', { name: nameStr }));
     }
     function deleteLabelTemplate() {
         const templateId = document.getElementById('label-template-select').value;
         if (templateId === 'custom') return;
 
         // 🪄 Tap into our existing universal delete mechanism
-        requestConfirm("Are you sure you want to delete this label template?", () => {
+        requestConfirm(t('confirm_delete_template'), () => {
             appState.settings.labelTemplates = appState.settings.labelTemplates.filter(t => t.id !== templateId);
             saveState();
             refreshLabelTemplateDropdown();
@@ -398,12 +398,12 @@
             document.getElementById('label-template-name').value = '';
             document.getElementById('btn-delete-label-template').disabled = true;
             
-            showToast('Label template deleted.');
+            showToast(t('msg_template_deleted'));
         });
     }
     function executeLabelPrint() {
         if (!appState.latestResults || appState.latestResults.length === 0) {
-            showToast("No optimization results found. Please run Calculate first.", true);
+            showToast(t('msg_no_opt_results'), true);
             return;
         }
 
@@ -440,7 +440,7 @@
                         const project = appState.projects.find(p => p.id === part.projectId);
                         
                         // 🪄 FETCH THE ACTUAL GROUP NAME
-                        let groupName = 'No Group';
+                        let groupName = t('lbl_no_group');
                         if (part.groupId && appState.groups) {
                             const foundGroup = appState.groups.find(g => g.id === part.groupId);
                             if (foundGroup) groupName = foundGroup.name;
@@ -454,10 +454,10 @@
 
                         labelsToPrint.push({
                             partName: part.name,
-                            projectGroup: `${project ? project.name : 'Unknown Project'} / ${groupName}`,
+                            projectGroup: `${project ? project.name : t('lbl_unknown_project')} / ${groupName}`,
                             dimensions: `${dimString} mm`, // Can be swapped to a global unit variable if needed
                             material: matString,
-                            boardRef: `Board #${bIndex + 1}`
+                            boardRef: `${t('lbl_board')} #${bIndex + 1}`
                         });
                     }
                 });
@@ -465,7 +465,7 @@
         });
 
         if (labelsToPrint.length === 0) {
-            showToast("No parts were mapped to boards. Nothing to print.", true);
+            showToast(t('msg_no_mapped_parts'), true);
             return;
         }
 
@@ -585,7 +585,7 @@
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Part Labels</title>
+                <title>${t('title_part_labels')}</title>
                 <style>
                     * { font-family: system-ui, -apple-system, sans-serif; }
                     ${pageCss}
@@ -613,7 +613,7 @@
         if (printWindow) {
             printWindow.location.href = blobUrl;
         } else {
-            showToast("Popup blocked! Please allow popups for this site.", true);
+            showToast(t('msg_popup_blocked'), true);
         }
         
         labelModalInstance.hide();
