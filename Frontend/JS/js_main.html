@@ -238,17 +238,20 @@
         const text = document.getElementById('sync-text');
         if (!icon || !text) return;
 
-        if (status === 'local') {
-            icon.innerText = '🟡';
-            text.innerText = 'Saving locally...';
-        } else if (status === 'syncing') {
-            icon.innerText = '🔵';
-            text.innerText = 'Syncing to cloud...';
-        } else if (status === 'success') {
-            icon.innerText = '🟢';
-            text.innerText = 'Cloud synced';
-        } else if (status === 'error') {
-            icon.innerText = '🔴';
+        // Combine both local and cloud saving into one seamless state
+        if (status === 'local' || status === 'syncing') {
+            // Injects a tiny, animated Bootstrap spinner
+            icon.innerHTML = '<span class="spinner-border spinner-border-sm text-warning" role="status" style="width: 0.8rem; height: 0.8rem; border-width: 0.15em;"></span>'; 
+            text.innerText = 'Saving...';
+        } 
+        else if (status === 'success') {
+            // The Cloud + Checkmark combo
+            icon.innerHTML = '<span style="color: #00ff00;">✔</span>'; 
+            text.innerText = 'Saved'; 
+            // Note: If you want NO text at all, just change 'Saved' to ''
+        } 
+        else if (status === 'error') {
+            icon.innerHTML = '⚠️'; 
             text.innerText = 'Sync failed';
         }
     }
@@ -1040,6 +1043,10 @@
     // ==========================================
     // UNIVERSAL DUPLICATION ENGINE
     // ==========================================
+    
+    // 🪄 The Glow Registry: Remembers active animations across table redraws
+    if (!window.activeGlows) window.activeGlows = [];
+
     function duplicateRow(arrayName, rowId) {
         // 1. Failsafe
         if (!appState[arrayName]) return;
@@ -1048,27 +1055,24 @@
         const index = appState[arrayName].findIndex(item => item.id === rowId);
         if (index === -1) return;
 
-        // 3. Deep Clone the object (Severs all memory references to the original)
+        // 3. Deep Clone the object
         const original = appState[arrayName][index];
         const clone = JSON.parse(JSON.stringify(original));
 
-        // 4. Generate the new ID (Extract prefix + append fresh timestamp)
+        // 4. Generate the new ID
         const idParts = original.id.split('-');
         const prefix = idParts.length > 1 ? idParts[0] + '-' : 'ID-';
         clone.id = prefix + Date.now();
 
-        // 5. Append " (copy)" if the table uses a 'name' field
         if (clone.name !== undefined) {
             clone.name = clone.name + ' (copy)';
         }
 
-        // 6. Inject the clone directly below the original (index + 1)
+        // 5. Inject the clone directly below the original
         appState[arrayName].splice(index + 1, 0, clone);
 
-        // 7. Save to local storage
+        // 6. Save and Redraw
         saveState();
-
-        // 8. Trigger the correct table redraw
         if (arrayName === 'parts' && typeof renderPartsTable === 'function') renderPartsTable();
         if (arrayName === 'materials' && typeof renderMaterialsTable === 'function') renderMaterialsTable();
         if (arrayName === 'catalog' && typeof renderCatalogTable === 'function') renderCatalogTable();
@@ -1077,6 +1081,51 @@
         if (arrayName === 'profiles' && typeof renderProfilesTable === 'function') renderProfilesTable();
 
         showToast('Row duplicated.');
+
+        // 7. 🪄 VISUAL HIGHLIGHT: Add the new row to the registry
+        window.activeGlows.push({ id: clone.id, timestamp: Date.now() });
+
+        // Clean up memory: Remove any rows from the registry that are older than 4 seconds
+        window.activeGlows = window.activeGlows.filter(g => Date.now() - g.timestamp < 4000);
+
+        // 8. Re-apply animations to ALL active rows
+        setTimeout(() => {
+            const renderTime = Date.now();
+            
+            window.activeGlows.forEach(glowObj => {
+                const newRowElement = document.querySelector(`[onclick*="${glowObj.id}"]`);
+                if (newRowElement) {
+                    const tr = newRowElement.closest('tr');
+                    if (tr) {
+                        const cells = tr.querySelectorAll('td, th');
+                        
+                        // Calculate exact time and opacity remaining for this specific row
+                        const elapsed = renderTime - glowObj.timestamp;
+                        const remainingMs = Math.max(0, 4000 - elapsed);
+                        const currentOpacity = 0.4 * (remainingMs / 4000);
+
+                        if (remainingMs > 0) {
+                            // Step A: Snap to the exact color it should be right now
+                            cells.forEach(cell => {
+                                cell.style.transition = 'none';
+                                cell.style.backgroundColor = `rgba(25, 135, 84, ${currentOpacity})`;
+                                cell.style.boxShadow = 'none'; 
+                            });
+
+                            // Step B: Force the browser to draw it
+                            void tr.offsetWidth;
+
+                            // Step C: Resume the fade-out for the remaining time
+                            cells.forEach(cell => {
+                                cell.style.transition = `background-color ${remainingMs}ms ease-out, box-shadow ${remainingMs}ms ease-out`;
+                                cell.style.backgroundColor = 'transparent';
+                                cell.style.boxShadow = ''; 
+                            });
+                        }
+                    }
+                }
+            });
+        }, 150); 
     }
 
     // ==========================================

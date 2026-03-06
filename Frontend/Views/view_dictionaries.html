@@ -328,6 +328,11 @@
                                         <span onclick="handleSort('catalog', 'calculatedPrice', 'number')" style="cursor: pointer; user-select: none;" title="Sort by Calculated Price">⇅</span>
                                     </div>
                                 </th>
+                                <th class="col-freshness text-center">
+                                    <span onclick="handleSort('catalog', 'lastVerified', 'number')" style="cursor: pointer;">
+                                        d/m ⇅
+                                    </span>
+                                </th>
                                 <th class="col-actions text-center" data-i18n="col_links">Links</th>
                                 <th class="col-actions text-end">
                                     <span id="flt-clear-catalog" onclick="clearAllFiltersForTable('catalog')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
@@ -385,7 +390,7 @@
                                                 <span class="input-group-text display-unit-label">mm</span>
                                             </div>
                                         </div>
-                                        <div class="col-sm-1">
+                                        <div class="col-sm-2">
                                             <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
                                         </div>
                                     </div>
@@ -458,7 +463,7 @@
                                                 <span class="input-group-text density-unit-label">kg/m³</span>
                                             </div>
                                         </div>
-                                        <div class="col-sm-1">
+                                        <div class="col-sm-2">
                                             <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
                                         </div>
                                     </div>

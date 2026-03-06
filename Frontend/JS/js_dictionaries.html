@@ -327,9 +327,38 @@
             // Calculate normalized comparison price
             const displayPrice = getNormalizedPriceDisplay(item, viewUnit);
 
+            // 🪄 FRESHNESS BADGE ENGINE
+            const verifiedTime = item.lastVerified || Date.now(); // Fallback to today for old data
+            const daysOld = (Date.now() - verifiedTime) / (1000 * 60 * 60 * 24);
+            
+            // Custom Signal Colors (Bypasses Bootstrap variables)
+            let badgeBg = '#198754'; // Solid Green (< 14 days)
+            let badgeColor = '#ffffff';
+            if (daysOld >= 28) {
+                badgeBg = '#dc3545'; // Solid Red (> 4 weeks)
+            } else if (daysOld >= 14) {
+                badgeBg = '#ffc107'; // Solid Amber (> 2 weeks)
+                badgeColor = '#000000'; // Black text for readability on yellow
+            }
+
+            // Universal dd/mm formatting
+            const dateObj = new Date(verifiedTime);
+            const dd = String(dateObj.getDate()).padStart(2, '0');
+            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+            
+            // fixed width: 6ch guarantees it won't warp the table columns
+            let freshnessHtml = `
+                <span class="badge shadow-sm" 
+                      style="background-color: ${badgeBg}; color: ${badgeColor}; cursor: pointer; width: 6ch; display: inline-flex; text-align: center; justify-content: center; align-items: center; user-select: none;" 
+                      onclick="verifyPrice('${item.id}')" 
+                      title="Click to verify price is still accurate today">
+                    ${dd}/${mm}
+                </span>
+            `;
+
             let linkHtml = item.link 
-                ? `<a href="${safeHTML(item.link)}" target="_blank" class="text-decoration-none me-2" title="Open Link">🔗</a>` 
-                : `<span class="text-muted me-2" style="opacity: 0.3;">🔗</span>`;
+                ? `<a href="${safeHTML(item.link)}" target="_blank" class="text-decoration-none" title="Open Link">🔗</a>` 
+                : `<span class="text-muted" style="opacity: 0.3;">🔗</span>`;
 
                 tr.innerHTML = `
                 <td>
@@ -349,9 +378,12 @@
                 <td class="px-1 py-0 align-middle">${storeHtml}</td>
                 <td class="text-center px-1 py-0 align-middle">${priceHtml}</td>
                 <td class="text-center fw-bold text-success align-middle">${currency}${displayPrice}</td>
-                <td class="text-end text-nowrap align-middle">
-                    ${linkHtml}
-                    <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${item.id}', '${safeHTML(item.link || '')}')" title="Edit Link">✏️</button>
+                <td class="text-center align-middle">${freshnessHtml}</td>
+                <td class="text-nowrap align-middle">
+                    <div class="d-flex justify-content-end align-items-center">
+                        ${linkHtml}
+                        <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${item.id}', '${safeHTML(item.link || '')}')" title="Edit Link">✏️</button>
+                    </div>
                 </td>
                 <td class="text-end">
                     <button class="btn btn-sm py-0 px-0" onclick="duplicateRow('catalog', '${item.id}')" title="Duplicate Row">➕</button>
@@ -1232,7 +1264,8 @@
             grain: document.getElementById('cat-grain').value, // 🪄 NEW
             price: parseFloat(document.getElementById('cat-price').value) || 0,
             priceUnit: document.getElementById('cat-price-unit').value,
-            link: rawLink
+            link: rawLink,
+            lastVerified: Date.now()
         });
         
         saveState();
@@ -1311,6 +1344,7 @@
             } else if (field === 'price') {
                 // Ensure price is a clean float
                 item[field] = parseFloat(newValue) || 0;
+                item.lastVerified = Date.now(); // 🪄 AUTO-TAGGING: Instantly reset freshness
             } else {
                 // For storeId or generic text
                 item[field] = newValue;
@@ -1349,5 +1383,15 @@
             renderCatalogTable();
         }
         linkModalInstance.hide();
+    }
+    
+    function verifyPrice(id) {
+        const item = appState.catalog.find(c => c.id === id);
+        if (item) {
+            item.lastVerified = Date.now();
+            saveState();
+            renderCatalogTable();
+            showToast('Price verified as current.');
+        }
     }
 </script>
