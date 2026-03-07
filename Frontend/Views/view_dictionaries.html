@@ -32,12 +32,13 @@
                     <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
                         <form id="form-add-project" onsubmit="handleAddProject(event)">
                             <div class="row g-2 align-items-end">
-                                <div class="col-sm-11">
+                                <div class="col-sm-10">
                                     <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_new_project_name">New Project Name</label>
                                     <input type="text" class="form-control form-control-sm" id="proj-name" required>
                                 </div>
-                                <div class="col-sm-1">
-                                    <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
+                                <div class="col-sm-2 d-flex gap-1">
+                                    <button type="submit" class="btn btn-primary btn-sm flex-grow-1 px-2" data-i18n="btn_add">Add</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm px-2 text-nowrap" onclick="openArchiveModal()" title="Open Archive Manager">🗄️ Archive</button>
                                 </div>
                             </div>
                         </form>

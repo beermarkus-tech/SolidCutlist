@@ -1162,6 +1162,14 @@
             pendingDeleteAction(); // Execute the memorized function
             pendingDeleteAction = null; // Clear memory
         }
+        
+        // 🪄 THE FIX: If the invisible shield is up, a server call is running. 
+        // Do NOT close the modal yet! Let the server success handler close it.
+        const blocker = document.getElementById('invisible-ui-blocker');
+        if (blocker && blocker.style.display === 'block') {
+            return; 
+        }
+
         const modalEl = document.getElementById('modal-universal-delete');
         const modalInstance = bootstrap.Modal.getInstance(modalEl);
         if (modalInstance) modalInstance.hide();
@@ -1225,4 +1233,16 @@
             }
         }
     });
+
+    // ==========================================
+    // GLOBAL LOADING SPINNER
+    // ==========================================
+    function showSpinner() {
+        const loader = document.getElementById('boot-loader');
+        if (loader) loader.classList.remove('d-none');
+    }
+    function hideSpinner() {
+        const loader = document.getElementById('boot-loader');
+        if (loader) loader.classList.add('d-none');
+    }
 </script>

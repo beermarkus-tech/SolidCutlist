@@ -215,3 +215,106 @@ function readArrayFromSheet(sheet) {
   }
   return rows;
 }
+
+/**
+ * ==========================================
+ * 3. ARCHIVE SYSTEM (DEEP FREEZE)
+ * ==========================================
+ */
+function archiveProjectToSheet(payloadString) {
+  try {
+    const payload = JSON.parse(payloadString);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let archiveSheet = ss.getSheetByName('Archive');
+    
+    if (!archiveSheet) {
+      archiveSheet = ss.insertSheet('Archive');
+      archiveSheet.appendRow(['Project ID', 'Archive Date', 'Project JSON', 'Groups JSON', 'Parts JSON']);
+      archiveSheet.getRange('A1:E1').setFontWeight('bold').setBackground('#f8f9fa');
+      archiveSheet.setFrozenRows(1);
+    }
+
+    const timestamp = new Date().toISOString();
+    archiveSheet.appendRow([
+      payload.id,
+      timestamp,
+      JSON.stringify(payload.project),
+      JSON.stringify(payload.groups),
+      JSON.stringify(payload.parts)
+    ]);
+
+    return { status: 'success' };
+  } catch(e) {
+    return { status: 'error', message: e.toString() };
+  }
+}
+
+function getArchiveList() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const archiveSheet = ss.getSheetByName('Archive');
+    if (!archiveSheet) return JSON.stringify({ status: 'success', data: [] });
+
+    const data = archiveSheet.getDataRange().getValues();
+    if (data.length < 2) return JSON.stringify({ status: 'success', data: [] });
+
+    const list = [];
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      let projData = {};
+      try { projData = JSON.parse(row[2]); } catch(e) {}
+
+      list.push({
+        id: row[0],
+        date: row[1],
+        name: projData.name || 'Unknown Project',
+        notes: projData.comment || ''
+      });
+    }
+    return JSON.stringify({ status: 'success', data: list });
+  } catch(e) {
+    return JSON.stringify({ status: 'error', message: e.toString() });
+  }
+}
+
+function loadProjectFromArchive(projectId) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const archiveSheet = ss.getSheetByName('Archive');
+    if (!archiveSheet) throw new Error('Archive tab not found.');
+
+    const data = archiveSheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === projectId) {
+        return JSON.stringify({
+          status: 'success',
+          project: JSON.parse(data[i][2]),
+          groups: JSON.parse(data[i][3]),
+          parts: JSON.parse(data[i][4])
+        });
+      }
+    }
+    throw new Error('Project not found in archive.');
+  } catch(e) {
+    return JSON.stringify({ status: 'error', message: e.toString() });
+  }
+}
+
+function deleteProjectFromArchive(projectId) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const archiveSheet = ss.getSheetByName('Archive');
+    if (!archiveSheet) throw new Error('Archive tab not found.');
+
+    const data = archiveSheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === projectId) {
+        archiveSheet.deleteRow(i + 1);
+        return JSON.stringify({ status: 'success' });
+      }
+    }
+    throw new Error('Project not found in archive.');
+  } catch(e) {
+    return JSON.stringify({ status: 'error', message: e.toString() });
+  }
+}
