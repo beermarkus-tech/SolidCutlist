@@ -1,3 +1,466 @@
 <script>
-    
+    // ==========================================
+    // MOBILE EXECUTION ENGINE (JOBS)
+    // ==========================================
+
+    /** Generates a new isolated Job sandbox from selected projects/groups. */
+    function createJobSandbox(jobName, selections) {
+        if (!jobName || !selections || selections.length === 0) {
+            console.error("Job Generator: Cannot create job without a name and selections.");
+            if (typeof showToast === 'function') showToast("Please select items to build.", "warning");
+            return null;
+        }
+
+        let clonedParts = [];
+        let partCounter = 1;
+
+        // 1. THE EXTRACTOR & CLONER
+        selections.forEach(sel => {
+            let targetParts = [];
+
+            // Find the parts based on what the user selected (Project vs. Group)
+            if (sel.type === 'project') {
+                targetParts = appState.parts.filter(p => p.projectId === sel.id);
+                // NEW: Filter out any groups the user explicitly unchecked
+                if (sel.excludedGroups && sel.excludedGroups.length > 0) {
+                    targetParts = targetParts.filter(p => !sel.excludedGroups.includes(p.groupId));
+                }
+            } else if (sel.type === 'group') {
+                targetParts = appState.parts.filter(p => p.groupId === sel.id);
+            }
+
+            // Clone the parts and apply the multiplier
+            targetParts.forEach(originalPart => {
+                // Create a deep, disconnected copy of the part
+                let newPart = JSON.parse(JSON.stringify(originalPart));
+                
+                // Assign a temporary execution ID so it never overwrites master parts
+                newPart.id = 'JOB-PART-' + Date.now() + '-' + partCounter++;
+                
+                // Keep a breadcrumb to the original part (useful for future UI)
+                newPart.originalPartId = originalPart.id;
+
+                // Multiply the quantity (e.g., "Build 4 of this chair")
+                let multi = parseInt(sel.multiplier) || 1;
+                newPart.qty = (parseInt(originalPart.qty) || 1) * multi;
+
+                clonedParts.push(newPart);
+            });
+        });
+
+        if (clonedParts.length === 0) {
+            if (typeof showToast === 'function') showToast("No parts found in the selected items. Job not created.", "warning");
+            return null;
+        }
+
+        // 2. MINT THE JOB OBJECT (The Sandbox Capsule)
+        const newJob = {
+            id: 'JOB-' + Date.now() + Math.floor(Math.random() * 1000),
+            name: jobName,
+            status: 'draft',
+            timestamp: Date.now(),
+            parts: partsToOptimize,
+            catalog: JSON.parse(JSON.stringify(appState.catalog)),
+            settings: JSON.parse(JSON.stringify(appState.settings)),
+            selections: selections // 🪄 MAKE SURE THIS LINE EXISTS!
+        };
+
+        // 3. PUSH & SYNC
+        appState.jobs.push(newJob);
+        saveState(); // Instantly triggers local storage and debounces the Google Sheet sync
+        
+        console.log(`🪵 Job Sandbox '${jobName}' minted successfully with ${clonedParts.length} execution parts.`);
+        if (typeof showToast === 'function') showToast(`Job '${jobName}' created successfully!`, "success");
+        
+        return newJob;
+    }
+
+    // ==========================================
+    // PHASE 3: LOAD JOB & SANDBOX EXECUTION
+    // ==========================================
+    function renderLoadJobList() {
+        const listContainer = document.getElementById('job-load-list');
+        listContainer.innerHTML = '';
+
+        if (!appState.jobs || appState.jobs.length === 0) {
+            listContainer.innerHTML = '<div class="text-center text-muted p-4"><em>No saved jobs found.</em></div>';
+            return;
+        } 
+        
+        const sortedJobs = [...appState.jobs].sort((a, b) => b.timestamp - a.timestamp);
+
+        sortedJobs.forEach(job => {
+            const dateStr = new Date(job.timestamp).toLocaleDateString();
+            const partsCount = job.parts ? job.parts.length : 0;
+
+            listContainer.innerHTML += `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-0 fw-bold">${safeHTML(job.name)}</h6>
+                        <small class="text-muted">Created: ${dateStr} &nbsp;•&nbsp; ${partsCount} Parts</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-danger" title="Delete Job" onclick="deleteJobSandbox('${job.id}')">🗑️</button>
+                        <button class="btn btn-sm btn-primary fw-bold" onclick="executeLoadJob('${job.id}')">Load</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    function openLoadJobModal() {
+        // 1. Draw the fresh list
+        renderLoadJobList();
+        
+        // 2. 🪄 FIX: Use getOrCreateInstance to prevent stacking multiple backdrops
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('loadJobModal'));
+        modal.show();
+    }
+    function deleteJobSandbox(jobId) {
+        requestConfirm("Are you sure you want to delete this saved job? This cannot be undone.", () => {
+            const jobIndex = appState.jobs.findIndex(j => j.id === jobId);
+            if (jobIndex === -1) return;
+            
+            appState.jobs.splice(jobIndex, 1);
+            saveState();
+            
+            if (typeof showToast === 'function') showToast("Job deleted.", "success");
+            
+            // 🪄 FIX: Only redraw the HTML list. Do not spawn a new modal!
+            renderLoadJobList();
+            
+        }, 'danger', 'Delete');
+    }
+    function executeLoadJob(jobId) {
+        const job = appState.jobs.find(j => j.id === jobId);
+        if (!job) {
+            if (typeof showToast === 'function') showToast("Error: Job not found.", true);
+            return;
+        }
+
+        // 1. Hide the modal
+        const modalEl = document.getElementById('loadJobModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+
+        if (typeof showToast === 'function') showToast(`Loading Job: ${job.name}...`, "info");
+
+        // 🪄 2. RECONSTRUCT THE UI STATE BEFORE LOCKING
+        // Clear everything first
+        document.querySelectorAll('.proj-check, .grp-check').forEach(chk => chk.checked = false);
+        document.querySelectorAll('.proj-multi, .grp-multi').forEach(m => m.value = 1);
+        
+        // Restore Checkboxes and Multipliers
+        if (job.selections) {
+            job.selections.forEach(sel => {
+                if (sel.type === 'project') {
+                    const pChk = document.getElementById('chk-' + sel.id);
+                    if (pChk) pChk.checked = true;
+                    
+                    const pMulti = document.getElementById('multi-' + sel.id);
+                    if (pMulti) pMulti.value = sel.multiplier || 1;
+                    
+                    // Check all child groups EXCEPT the excluded ones
+                    document.querySelectorAll(`.grp-of-${sel.id}`).forEach(gChk => {
+                        const gId = gChk.id.replace('chk-', ''); 
+                        if (sel.excludedGroups && sel.excludedGroups.includes(gId)) {
+                            gChk.checked = false;
+                        } else {
+                            gChk.checked = true;
+                        }
+                    });
+                } else if (sel.type === 'group') {
+                    const gChk = document.getElementById('chk-' + sel.id);
+                    if (gChk) gChk.checked = true;
+                    
+                    const gMulti = document.getElementById('multi-' + sel.id);
+                    if (gMulti) gMulti.value = sel.multiplier || 1;
+                    
+                    // Visually check the parent project so the UI makes sense
+                    const projIdClass = Array.from(gChk.classList).find(c => c.startsWith('grp-of-'));
+                    if (projIdClass) {
+                        const parentId = projIdClass.replace('grp-of-', '');
+                        const pChk = document.getElementById('chk-' + parentId);
+                        if (pChk) pChk.checked = true;
+                    }
+                }
+            });
+        }
+
+        // Restore Settings Inputs (Bulletproofed)
+        if (job.settings) {
+            const kerfInput = document.getElementById('opt-kerf');
+            if (kerfInput) {
+                kerfInput.value = job.settings.bladeKerf !== undefined ? job.settings.bladeKerf : 3.175;
+            }
+            
+            const trimInput = document.getElementById('opt-trim');
+            if (trimInput) {
+                trimInput.value = job.settings.factoryEdgeTrim !== undefined ? job.settings.factoryEdgeTrim : 6.35;
+            }
+            
+            const stockInput = document.getElementById('opt-use-stock');
+            if (stockInput) {
+                if (job.settings.optimizer && job.settings.optimizer.useStock !== undefined) {
+                    stockInput.checked = job.settings.optimizer.useStock;
+                } else {
+                    stockInput.checked = true; // Safe fallback
+                }
+            }
+        }
+
+        // 3. Lock the UI into the "Saved" state and display the badge
+        if (typeof toggleConfiguratorState === 'function') toggleConfiguratorState(true, true);
+        if (typeof setCurrentJobLabel === 'function') setCurrentJobLabel(job.name);
+
+        // 4. 🪄 THE MAGIC TRICK: Temporarily shadow master data with Sandbox data
+        const masterCatalog = appState.catalog;
+        const masterSettings = appState.settings;
+
+        appState.catalog = job.catalog;
+        appState.settings = job.settings;
+
+        // 5. Run the packing engine using the frozen parts array
+        let allowedStores = appState.stores ? appState.stores.map(s => s.id) : [];
+        const results = runPackingEngine(job.parts, allowedStores);
+
+        // 6. Instantly restore master data to protect the database!
+        appState.catalog = masterCatalog;
+        appState.settings = masterSettings;
+
+        // 7. Track the active job globally (Crucial for Phase 5 Mobile Editing!)
+        window.activeJobId = job.id;
+
+        // 8. Render the UI exactly like a normal calculation
+        document.getElementById('optimizer-empty-state').classList.add('d-none');
+        document.getElementById('optimizer-tab-content').classList.remove('d-none');
+        appState.latestResults = results;
+
+        const shopCtrl = document.getElementById('shopping-controls');
+        const diagCtrl = document.getElementById('diagram-controls');
+        if (shopCtrl) shopCtrl.classList.remove('d-none');
+        if (diagCtrl) diagCtrl.classList.add('d-none');
+
+        const defaultTabBtn = document.getElementById('tab-shopping');
+        if (defaultTabBtn) {
+            const tabInstance = new bootstrap.Tab(defaultTabBtn);
+            tabInstance.show();
+        }
+
+        if (typeof renderShoppingListTab === 'function') renderShoppingListTab(results);
+        if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
+        if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
+    }
+
+    // ==========================================
+    // JOB CONFIGURATOR UI BRIDGES
+    // ==========================================
+    function openSaveJobModal() {
+        document.getElementById('new-job-name').value = '';
+        const modal = new bootstrap.Modal(document.getElementById('saveJobModal'));
+        modal.show();
+    }
+    function executeSaveJob() {
+        const jobName = document.getElementById('new-job-name').value.trim();
+        if (!jobName) {
+            if (typeof showToast === 'function') showToast("Please enter a name for this job.", "warning");
+            return;
+        }
+
+        let selections = [];
+        let partsToOptimize = [];
+
+        // 1. RECORD UI SELECTIONS (Used by the Load Modal to re-check the boxes)
+        document.querySelectorAll('.proj-check:checked').forEach(chk => {
+            const projId = chk.id.replace('chk-', '');
+            const multi = parseInt(document.getElementById('multi-' + projId).value) || 1;
+            
+            let excludedGroupIds = [];
+            // Find manually unchecked groups (this includes our 'Ungrouped Parts' pseudo-group)
+            document.querySelectorAll(`.grp-of-${projId}:not(:checked)`).forEach(unChk => {
+                excludedGroupIds.push(unChk.id.replace('chk-', ''));
+            });
+
+            selections.push({ type: 'project', id: projId, multiplier: multi, excludedGroups: excludedGroupIds });
+        });
+
+        // 2. EXTRACT PARTS EXACTLY LIKE RUNOPTIMIZATION() (Bulletproof Math Sync)
+        if (!appState.parts || appState.parts.length === 0) {
+            if (typeof showToast === 'function') showToast("No parts found in database.", "warning");
+            return;
+        }
+
+        let partCounter = 1;
+
+        appState.parts.forEach(originalPart => {
+            const projCheckbox = document.getElementById('chk-' + originalPart.projectId);
+            if (!projCheckbox || !projCheckbox.checked) return; 
+            
+            const projMulti = parseInt(document.getElementById('multi-' + originalPart.projectId).value) || 1;
+            let finalMulti = projMulti;
+
+            if (!originalPart.groupId || originalPart.groupId.trim() === '') {
+                const noGroupCheckbox = document.getElementById('chk-nogroup-' + originalPart.projectId);
+                if (!noGroupCheckbox || !noGroupCheckbox.checked) return;
+                const grpMulti = parseInt(document.getElementById('multi-nogroup-' + originalPart.projectId).value) || 1;
+                finalMulti = projMulti * grpMulti;
+            } else {
+                const grpCheckbox = document.getElementById('chk-' + originalPart.groupId);
+                if (!grpCheckbox || !grpCheckbox.checked) return;
+                const grpMulti = parseInt(document.getElementById('multi-' + originalPart.groupId).value) || 1;
+                finalMulti = projMulti * grpMulti;
+            }
+
+            // Clone and stamp the execution parts
+            let newPart = JSON.parse(JSON.stringify(originalPart));
+            newPart.id = 'JOB-PART-' + Date.now() + '-' + partCounter++;
+            newPart.originalPartId = originalPart.id;
+            newPart.qty = (parseInt(originalPart.qty) || 1) * finalMulti;
+            partsToOptimize.push(newPart);
+        });
+
+        if (partsToOptimize.length === 0) {
+            if (typeof showToast === 'function') showToast("Please select at least one project or group.", "warning");
+            return;
+        }
+
+        // 3. MINT THE JOB SANDBOX
+        const newJob = {
+            id: 'JOB-' + Date.now() + Math.floor(Math.random() * 1000),
+            name: jobName,
+            status: 'draft',
+            timestamp: Date.now(),
+            parts: partsToOptimize,
+            catalog: JSON.parse(JSON.stringify(appState.catalog)),
+            settings: JSON.parse(JSON.stringify(appState.settings)),
+            selections: selections 
+        };
+
+        // 4. PUSH TO STATE & CLEANUP
+        appState.jobs.push(newJob);
+        saveState();
+
+        const modalEl = document.getElementById('saveJobModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+        
+        window.activeJobId = newJob.id; // 🪄 TRACK THE JOB IMMEDIATELY
+        
+        if (typeof setCurrentJobLabel === 'function') setCurrentJobLabel(newJob.name);
+        if (typeof toggleConfiguratorState === 'function') toggleConfiguratorState(true, true); 
+        if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('clean'); // 🪄 FORCE CLEAN STATE
+
+        if (typeof showToast === 'function') showToast(`Job '${jobName}' saved!`, "success");
+    }
+
+    // ==========================================
+    // PHASE 4: SMART RE-OPTIMIZATION
+    // ==========================================
+    function setUnsavedChangesState(state) {
+        // Find buttons dynamically
+        const btnNewOpt = document.querySelector('#job-config-actions-active button[onclick="resetConfigurator()"]') || 
+                          document.querySelector('#job-config-actions-active button[onclick="executeRecalculate()"]');
+        const btnLoad = document.getElementById('btn-active-load');
+        
+        if (!btnNewOpt || !btnLoad) return;
+
+        if (state === 'clean') {
+            btnNewOpt.innerText = 'New Opt.';
+            btnNewOpt.className = 'btn btn-warning flex-grow-1 fw-bold';
+            btnNewOpt.onclick = resetConfigurator;
+            
+            btnLoad.innerText = 'Load Job';
+            btnLoad.className = 'btn btn-outline-secondary flex-grow-1 fw-bold d-none'; // Hidden by default config lock
+            btnLoad.onclick = openLoadJobModal;
+        } 
+        else if (state === 'dirty_input') {
+            btnNewOpt.innerText = 'Recalculate';
+            btnNewOpt.className = 'btn btn-info flex-grow-1 fw-bold text-white shadow-lg border-info';
+            btnNewOpt.onclick = executeRecalculate;
+            
+            btnLoad.innerText = 'Save Changes';
+            btnLoad.className = 'btn btn-success flex-grow-1 fw-bold shadow-lg';
+            btnLoad.onclick = executeSaveChanges;
+            btnLoad.classList.remove('d-none');
+        }
+        else if (state === 'dirty_recalculated') {
+            btnNewOpt.innerText = 'New Opt.';
+            btnNewOpt.className = 'btn btn-warning flex-grow-1 fw-bold';
+            btnNewOpt.onclick = resetConfigurator;
+            
+            btnLoad.innerText = 'Save Changes';
+            btnLoad.className = 'btn btn-success flex-grow-1 fw-bold shadow-lg';
+            btnLoad.onclick = executeSaveChanges;
+            btnLoad.classList.remove('d-none');
+        }
+    }
+    function handleInlineEdit(catalogId, field, value) {
+        if (!window.activeJobId) return;
+        
+        const job = appState.jobs.find(j => j.id === window.activeJobId);
+        if (!job || !job.catalog) return;
+        
+        const catalogItem = job.catalog.find(c => c.id === catalogId);
+        if (!catalogItem) {
+            console.error("Item not found in sandbox catalog:", catalogId);
+            return;
+        }
+        
+        let numVal = parseFloat(value);
+        if (isNaN(numVal) || numVal <= 0) {
+            if (typeof showToast === 'function') showToast("Invalid dimension entered.", "warning");
+            return;
+        }
+        
+        // Mutate the local sandbox catalog directly!
+        catalogItem[field] = numVal;
+        
+        // Shift UI state to require recalculation
+        setUnsavedChangesState('dirty_input');
+    }
+    function executeRecalculate() {
+        if (!window.activeJobId) return;
+        const job = appState.jobs.find(j => j.id === window.activeJobId);
+        if (!job) return;
+
+        if (typeof showToast === 'function') showToast(`Recalculating Shopping List...`, "info");
+
+        // 🪄 THE MAGIC TRICK: Temporarily shadow master data with Sandbox data
+        const masterCatalog = appState.catalog;
+        const masterSettings = appState.settings;
+
+        appState.catalog = job.catalog;
+        appState.settings = job.settings;
+
+        // Run the packing engine using the frozen parts array
+        let allowedStores = appState.stores ? appState.stores.map(s => s.id) : [];
+        const results = runPackingEngine(job.parts, allowedStores);
+
+        // Instantly restore master data to protect the database!
+        appState.catalog = masterCatalog;
+        appState.settings = masterSettings;
+
+        // Render the UI
+        appState.latestResults = results;
+        if (typeof renderShoppingListTab === 'function') renderShoppingListTab(results);
+        if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
+        if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
+
+        // Shift UI state to allow saving
+        setUnsavedChangesState('dirty_recalculated');
+    }
+    function executeSaveChanges() {
+        if (!window.activeJobId) return;
+        
+        // Push everything to persistent storage
+        saveState(); 
+        
+        setUnsavedChangesState('clean');
+        
+        // 🪄 Re-lock the UI into 'Saved' state so Load Job button appears normal
+        if (typeof toggleConfiguratorState === 'function') {
+            toggleConfiguratorState(true, true);
+        }
+        
+        if (typeof showToast === 'function') showToast("Job changes saved successfully!", "success");
+    }
 </script>

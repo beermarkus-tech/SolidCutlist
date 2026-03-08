@@ -2,11 +2,11 @@
     // ==========================================
     // PHASE A: DATA PREP (THE TRIAGE)
     // ==========================================
-    function prepOptimizerData(projectIds) {
-        if (!appState.parts || appState.parts.length === 0) return [];
+    function prepOptimizerData(partsToOptimize) {
+        if (!partsToOptimize || partsToOptimize.length === 0) return [];
 
-        const validParts = appState.parts.filter(p => 
-            projectIds.includes(p.projectId) && 
+        // 🪄 NEW: Filter the injected array directly instead of appState.parts
+        const validParts = partsToOptimize.filter(p => 
             p.status === 'ready' && 
             (p.category === 'lumber' || p.category === 'sheet')
         );
@@ -23,6 +23,7 @@
                     partsToCut: []
                 };
             }
+            // Explode the quantities
             for (let i = 0; i < part.qty; i++) {
                 groupedSKUs[skuKey].partsToCut.push({
                     partId: part.id,
@@ -45,12 +46,12 @@
 
         return batches;
     }
-
+    
     // ==========================================
     // PHASE B: THE TWO-STAGE PACKING ENGINE
     // ==========================================
-    function runPackingEngine(projectIds, allowedStoreIds) {
-        const batches = prepOptimizerData(projectIds);
+    function runPackingEngine(partsToOptimize, allowedStoreIds) {
+        const batches = prepOptimizerData(partsToOptimize);
         
         const k1D = appState.settings.bladeKerf !== undefined ? appState.settings.bladeKerf : 3.175;
         const t1D = appState.settings.factoryEdgeTrim !== undefined ? appState.settings.factoryEdgeTrim : 6.35;
@@ -381,61 +382,164 @@
     // PHASE C: OPTIMIZER UI & CONFIG STATE
     // ==========================================
     function renderOptimizerConfig() {
-        if (!appState.settings.optimizer) {
-            appState.settings.optimizer = { useStock: true, sheetCutPreference: 'auto', selectedProjects: [], selectedStores: [] };
+        // 1. Pre-fill Settings from appState
+        document.getElementById('opt-kerf').value = appState.settings.bladeKerf || 3.175;
+        document.getElementById('opt-trim').value = appState.settings.factoryEdgeTrim || 6.35;
+
+        // 2. Build the Selection Tree
+        const treeContainer = document.getElementById('job-configurator-tree');
+        treeContainer.innerHTML = '';
+
+        if (!appState.projects || appState.projects.length === 0) {
+            treeContainer.innerHTML = '<div class="text-muted small">No projects available.</div>';
+            return;
         }
-        if (!appState.settings.optimizer.sheetCutPreference) appState.settings.optimizer.sheetCutPreference = 'auto'; 
-        if (!Array.isArray(appState.settings.optimizer.selectedProjects)) appState.settings.optimizer.selectedProjects = [];
-        if (!Array.isArray(appState.settings.optimizer.selectedStores)) appState.settings.optimizer.selectedStores = [];
-        
-        const optState = appState.settings.optimizer;
-        
-        let html = `
-            <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" id="opt-use-stock" ${optState.useStock ? 'checked' : ''} onchange="saveOptConfig()">
-                <label class="form-check-label fw-bold text-secondary" for="opt-use-stock">Use Shop Stock</label>
-            </div>
-            <div class="mb-4 p-2 rounded border">
-                <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.85rem;">Sheet Cut Preference</label>
-                <select class="form-select form-select-sm" id="opt-sheet-cut" onchange="saveOptConfig()">
-                    <option value="auto" ${optState.sheetCutPreference === 'auto' ? 'selected' : ''}>Automatic (Least Waste)</option>
-                    <option value="rip" ${optState.sheetCutPreference === 'rip' ? 'selected' : ''}>Rip Cut First (Length)</option>
-                    <option value="cross" ${optState.sheetCutPreference === 'cross' ? 'selected' : ''}>Cross Cut First (Width)</option>
-                </select>
-            </div>
-            <h6 class="fw-bold text-secondary border-bottom pb-1 mb-2 mt-3">Projects to Cut</h6>
-            <div id="opt-project-list" class="mb-3">`;
+
+        let html = '';
+        const allParts = appState.parts || []; 
+
+        // 🪄 SORT 1: Alphabetize the Projects array
+        const sortedProjects = [...appState.projects].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+        sortedProjects.forEach(proj => {
+            // 🪄 SORT 2: Filter AND Alphabetize the Groups array
+            const projGroups = appState.groups
+                .filter(g => g.projectId === proj.id)
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
             
-        if (appState.projects && appState.projects.length > 0) {
-            appState.projects.forEach(p => {
-                const isChecked = optState.selectedProjects.includes(p.id) ? 'checked' : '';
-                html += `
-                <div class="form-check">
-                    <input class="form-check-input opt-project-checkbox" type="checkbox" value="${p.id}" id="chk-proj-${p.id}" ${isChecked} onchange="saveOptConfig()">
-                    <label class="form-check-label" for="chk-proj-${p.id}">${safeHTML(p.name)}</label>
-                </div>`;
-            });
-        } else {
-            html += `<small class="text-danger">No projects available.</small>`;
-        }
-        
-        html += `</div><h6 class="fw-bold text-secondary border-bottom pb-1 mb-2 mt-3">Allowed Stores</h6><div id="opt-store-list">`;
+            // Project Row
+            html += `
+            <div class="d-flex align-items-center mb-1">
+                <input class="form-check-input me-2 proj-check" type="checkbox" id="chk-${proj.id}" onchange="toggleProjectTree('${proj.id}', this.checked)">
+                
+                <label class="form-check-label flex-grow-1 fw-bold text-truncate project-fold-icon collapsed" style="font-size: 0.9rem; cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-${proj.id}" aria-expanded="false">
+                    ${safeHTML(proj.name)}
+                </label>
+                
+                <input type="number" class="form-control form-control-sm text-center proj-multi" id="multi-${proj.id}" value="1" min="1" style="width: 50px; height: 24px; font-size: 0.8rem;">
+            </div>
+            `;
+
+            // Groups Container 
+            html += `<div class="collapse ms-3 mb-2 border-start border-2 ps-2" id="collapse-${proj.id}">`;
             
-        if (appState.stores && appState.stores.length > 0) {
-            appState.stores.forEach(s => {
-                const isChecked = optState.selectedStores.includes(s.id) ? 'checked' : '';
+            // "Ungrouped Parts" pseudo-group
+            const ungroupedCount = allParts.filter(p => p.projectId === proj.id && (!p.groupId || p.groupId.trim() === '')).length;
+            
+            html += `
+            <div class="d-flex align-items-center mb-1">
+                <input class="form-check-input me-2 grp-check grp-of-${proj.id}" type="checkbox" id="chk-nogroup-${proj.id}" onchange="toggleGroupTree('${proj.id}', this.checked)">
+                <label class="form-check-label flex-grow-1 text-truncate text-muted font-italic" for="chk-nogroup-${proj.id}" style="font-size: 0.85rem; cursor: pointer;">
+                    <em>Ungrouped Parts</em> <span style="font-size: 0.75rem;">(${ungroupedCount} parts)</span>
+                </label>
+                <input type="number" class="form-control form-control-sm text-center grp-multi" id="multi-nogroup-${proj.id}" value="1" min="1" style="width: 50px; height: 24px; font-size: 0.8rem;">
+            </div>
+            `;
+
+            // Render actual groups
+            projGroups.forEach(grp => {
+                const grpCount = allParts.filter(p => p.groupId === grp.id).length;
+                
                 html += `
-                <div class="form-check">
-                    <input class="form-check-input opt-store-checkbox" type="checkbox" value="${s.id}" id="chk-store-${s.id}" ${isChecked} onchange="saveOptConfig()">
-                    <label class="form-check-label" for="chk-store-${s.id}">${safeHTML(s.name)}</label>
-                </div>`;
+                <div class="d-flex align-items-center mb-1">
+                    <input class="form-check-input me-2 grp-check grp-of-${proj.id}" type="checkbox" id="chk-${grp.id}" onchange="toggleGroupTree('${proj.id}', this.checked)">
+                    <label class="form-check-label flex-grow-1 text-truncate" for="chk-${grp.id}" style="font-size: 0.85rem; cursor: pointer;">
+                        ${safeHTML(grp.name)} <span class="text-muted" style="font-size: 0.75rem;">(${grpCount} parts)</span>
+                    </label>
+                    <input type="number" class="form-control form-control-sm text-center grp-multi" id="multi-${grp.id}" value="1" min="1" style="width: 50px; height: 24px; font-size: 0.8rem;">
+                </div>
+                `;
             });
-        } else {
-             html += `<small class="text-danger">No stores configured.</small>`;
+            html += `</div>`;
+        });
+
+        treeContainer.innerHTML = html;
+    }
+    // --- CASCADING CHECKBOX LOGIC ---
+    function toggleProjectTree(projId, isChecked) {
+        // If I check a project, check all its child groups
+        const groupChecks = document.querySelectorAll(`.grp-of-${projId}`);
+        groupChecks.forEach(chk => chk.checked = isChecked);
+    }
+    function toggleGroupTree(projId, isChecked) {
+        // If I check any group, automatically check the parent project
+        if (isChecked) {
+            document.getElementById(`chk-${projId}`).checked = true;
         }
-        html += `</div>`;
-        document.getElementById('optimizer-config-form').innerHTML = html;
-        validateOptConfig();
+    }
+    function updateTempSetting(key, val) {
+        // Saves local UI tweaks directly to state instantly
+        appState.settings[key] = parseFloat(val) || 0;
+        saveState();
+    }
+    function toggleUseStock(isChecked) {
+        if (!appState.settings.optimizer) appState.settings.optimizer = {};
+        appState.settings.optimizer.useStock = isChecked;
+        saveState();
+    }
+    // --- UI LOCK STATES ---
+    function toggleConfiguratorState(isLocked, isSaved = false) {
+        const settingsDiv = document.getElementById('job-config-settings');
+        const treeDiv = document.getElementById('job-configurator-tree');
+        const defaultActions = document.getElementById('job-config-actions-default');
+        const activeActions = document.getElementById('job-config-actions-active');
+
+        // Target the two dynamic buttons
+        const btnSave = document.getElementById('btn-active-save');
+        const btnLoad = document.getElementById('btn-active-load');
+
+        // Target inputs
+        const allInputs = document.querySelectorAll('#job-config-settings input, #job-config-settings select, #job-configurator-tree input');
+
+        if (isLocked) {
+            // Apply Grey-Out Visuals
+            if (settingsDiv) settingsDiv.classList.add('opacity-50', 'pointer-events-none');
+            if (treeDiv) treeDiv.classList.add('opacity-50', 'pointer-events-none');
+            if (defaultActions) defaultActions.classList.add('d-none');
+            if (activeActions) activeActions.classList.remove('d-none');
+            
+            // 🪄 Toggle the Save/Load buttons based on the isSaved flag
+            if (btnSave) {
+                if (isSaved) btnSave.classList.add('d-none');
+                else btnSave.classList.remove('d-none');
+            }
+            if (btnLoad) {
+                if (isSaved) btnLoad.classList.remove('d-none');
+                else btnLoad.classList.add('d-none');
+            }
+
+            // Physically disable the DOM elements
+            allInputs.forEach(input => input.disabled = true);
+        } else {
+            // Unlock Visuals
+            if (settingsDiv) settingsDiv.classList.remove('opacity-50', 'pointer-events-none');
+            if (treeDiv) treeDiv.classList.remove('opacity-50', 'pointer-events-none');
+            if (defaultActions) defaultActions.classList.remove('d-none');
+            if (activeActions) activeActions.classList.add('d-none');
+            
+            // Restore functionality
+            allInputs.forEach(input => input.disabled = false);
+        }
+    }
+    function resetConfigurator() {
+        // Unlock the UI
+        toggleConfiguratorState(false);
+        
+        // Hide the current job label
+        const jobLabel = document.getElementById('current-job-label-container');
+        if (jobLabel) jobLabel.classList.add('d-none');
+        
+        // (Optional: You can also add code here to clear the shopping list/canvas 
+        //  if you want "New Opt." to completely blank the screen!)
+        window.activeJobId = null;
+    }
+    function setCurrentJobLabel(jobName) {
+        const container = document.getElementById('current-job-label-container');
+        const display = document.getElementById('current-job-name-display');
+        if (container && display && jobName) {
+            display.innerText = jobName;
+            container.classList.remove('d-none');
+        }
     }
     function saveOptConfig() {
         appState.settings.optimizer.useStock = document.getElementById('opt-use-stock').checked;
@@ -465,20 +569,77 @@
     // ==========================================
     // PHASE D: EXECUTION & RENDERING
     // ==========================================
-    function triggerCalculation() {
-        const optState = appState.settings.optimizer;
-        const results = runPackingEngine(optState.selectedProjects, optState.selectedStores);
+    function runOptimization() {
+        let partsToOptimize = [];
+
+        if (!appState.parts || appState.parts.length === 0) {
+            if (typeof showToast === 'function') showToast("No parts found in database.", "warning");
+            return;
+        }
+
+        appState.parts.forEach(originalPart => {
+            // Check: Is the Project selected?
+            const projCheckbox = document.getElementById('chk-' + originalPart.projectId);
+            if (!projCheckbox || !projCheckbox.checked) return; 
+            
+            const projMulti = parseInt(document.getElementById('multi-' + originalPart.projectId).value) || 1;
+            let finalMulti = projMulti;
+
+            // Check: Does it have a Group?
+            if (!originalPart.groupId || originalPart.groupId.trim() === '') {
+                // 🪄 IT HAS NO GROUP -> Explicitly check the artificial 'Ungrouped Parts' checkbox
+                const noGroupCheckbox = document.getElementById('chk-nogroup-' + originalPart.projectId);
+                
+                // Is the 'Ungrouped Parts' group selected?
+                if (!noGroupCheckbox || !noGroupCheckbox.checked) return;
+                
+                // Stack the multipliers
+                const grpMulti = parseInt(document.getElementById('multi-nogroup-' + originalPart.projectId).value) || 1;
+                finalMulti = projMulti * grpMulti;
+
+            } else {
+                // IT HAS A REAL GROUP -> Check the real group checkbox
+                const grpCheckbox = document.getElementById('chk-' + originalPart.groupId);
+                
+                // Is the Group selected?
+                if (!grpCheckbox || !grpCheckbox.checked) return;
+                
+                // Stack the multipliers
+                const grpMulti = parseInt(document.getElementById('multi-' + originalPart.groupId).value) || 1;
+                finalMulti = projMulti * grpMulti;
+            }
+
+            // Select the part! Clone it and apply the math
+            let tempPart = JSON.parse(JSON.stringify(originalPart));
+            tempPart.qty = (parseInt(originalPart.qty) || 1) * finalMulti;
+            partsToOptimize.push(tempPart);
+        });
+
+        if (partsToOptimize.length === 0) {
+            if (typeof showToast === 'function') showToast("Please select at least one project or group.", "warning");
+            return;
+        }
+
+        // Lock the UI
+        toggleConfiguratorState(true);
+        if (typeof showToast === 'function') showToast("Calculating cutlist...", "info");
+
+        // Gather Allowed Stores
+        let allowedStores = appState.stores.map(s => s.id);
+
+        // FEED THE ENGINE
+        const results = runPackingEngine(partsToOptimize, allowedStores);
+        
+        // Render the UI
         document.getElementById('optimizer-empty-state').classList.add('d-none');
         document.getElementById('optimizer-tab-content').classList.remove('d-none');
         appState.latestResults = results;
 
-        // 🪄 1. Reveal the Shopping Controls, ensure Diagrams are hidden
         const shopCtrl = document.getElementById('shopping-controls');
         const diagCtrl = document.getElementById('diagram-controls');
         if (shopCtrl) shopCtrl.classList.remove('d-none');
         if (diagCtrl) diagCtrl.classList.add('d-none');
 
-        // 🪄 2. Force the Bootstrap tab back to "Shopping" so the UI matches the buttons
         const defaultTabBtn = document.getElementById('tab-shopping');
         if (defaultTabBtn) {
             const tabInstance = new bootstrap.Tab(defaultTabBtn);
@@ -506,7 +667,6 @@
             const purchase = res.purchase;
             const storeId = purchase.catalogItem.storeId;
             
-            // 🪄 NEW: Gracefully handle the Pseudo-Store
             const storeName = (storeId === 'shop_stock') 
                 ? '🏪 My Shop Stock' 
                 : (appState.stores.find(s => s.id === storeId)?.name || 'Unknown Store');
@@ -530,15 +690,15 @@
             totalCost += purchase.totalCost;
             totalWeightKg += batchWeight;
 
-            const lengthDisplay = res.sku.category === 'sheet' 
-                ? `${formatForDisplay(purchase.catalogItem.length)} x ${formatForDisplay(purchase.catalogItem.width)}`
-                : formatForDisplay(purchase.catalogItem.length);
-
+            // 🪄 FIX: Store the raw dimensions and the catalog ID so we can edit them!
             storeBuckets[storeName].push({
+                catalogId: purchase.catalogItem.id, 
+                category: res.sku.category, 
+                length: purchase.catalogItem.length, 
+                width: purchase.catalogItem.width, 
                 qty: purchase.boardsNeeded,
                 profName: prof?.name || 'Unknown',
                 matName: mat?.name || 'Unknown',
-                lengthDisplay: lengthDisplay,
                 cost: purchase.totalCost,
                 weight: batchWeight,
                 url: purchase.catalogItem.url || purchase.catalogItem.link || ''
@@ -560,7 +720,6 @@
             </div>
         `;
 
-        // 🪄 NEW: Push Shop Stock to the very top of the list if it exists
         const sortedStores = Object.keys(storeBuckets).sort((a, b) => {
             if (a === '🏪 My Shop Stock') return -1;
             if (b === '🏪 My Shop Stock') return 1;
@@ -581,10 +740,30 @@
             
             items.forEach(item => {
                 const wDisplay = isMetric ? item.weight : (item.weight * 2.20462);
-
                 const linkIcon = (item.url && storeName !== '🏪 My Shop Stock') 
-                    ? `<a href="${item.url}" target="_blank" class="text-decoration-none ms-2 fs-5" title="Open in Store">🔗</a>` 
-                    : '';
+                    ? `<a href="${item.url}" target="_blank" class="text-decoration-none ms-2 fs-5" title="Open in Store">🔗</a>` : '';
+
+                // 🪄 SMART RE-OPTIMIZATION: Inline Editable Dimensions
+                let lengthDisplayHTML = '';
+                const isEditable = window.activeJobId && storeName !== '🏪 My Shop Stock';
+                
+                if (isEditable) {
+                    if (item.category === 'sheet') {
+                        lengthDisplayHTML = `
+                            <input type="number" step="any" class="form-control form-control-sm d-inline-block text-center px-1 py-0 mx-1" style="width: 70px;" value="${item.length}" onchange="handleInlineEdit('${item.catalogId}', 'length', this.value)">
+                            x 
+                            <input type="number" step="any" class="form-control form-control-sm d-inline-block text-center px-1 py-0 mx-1" style="width: 70px;" value="${item.width}" onchange="handleInlineEdit('${item.catalogId}', 'width', this.value)">
+                        `;
+                    } else {
+                        lengthDisplayHTML = `
+                            <input type="number" step="any" class="form-control form-control-sm d-inline-block text-center px-1 py-0 mx-1" style="width: 80px;" value="${item.length}" onchange="handleInlineEdit('${item.catalogId}', 'length', this.value)">
+                        `;
+                    }
+                } else {
+                    lengthDisplayHTML = item.category === 'sheet' 
+                        ? `${formatForDisplay(item.length)} x ${formatForDisplay(item.width)}`
+                        : formatForDisplay(item.length);
+                }
 
                 html += `
                     <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -592,7 +771,7 @@
                             <span class="badge bg-primary rounded-pill me-2 fs-6">${item.qty} x</span>
                             <span class="fw-bold">${safeHTML(item.profName)}</span>
                             <span class="text-muted"> - ${safeHTML(item.matName)}</span>
-                            ${linkIcon} <br><small class="text-muted ms-5">Size: ${item.lengthDisplay} <span class="display-unit-label"></span></small>
+                            ${linkIcon} <br><small class="text-muted ms-5 d-flex align-items-center mt-1">Size: ${lengthDisplayHTML} <span class="display-unit-label ms-1"></span></small>
                         </div>
                         <div class="text-end">
                             <div class="fw-bold text-success">${currency}${item.cost.toFixed(2)}</div>

@@ -2,7 +2,7 @@
 // SOLID CUTLIST - GOOGLE SHEETS BACKEND API
 // ==========================================
 
-const TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores'];
+const TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores', 'jobs'];
 
 /**
  * ==========================================

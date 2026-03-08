@@ -4,7 +4,6 @@
     // ==========================================
 
     const initialAppState = {
-    
     // ==========================================
     // TIER 1: THE DICTIONARIES (Design Building Blocks)
     // ==========================================
@@ -15,13 +14,11 @@
         // { id: 'M-002', name: 'Oak (White)', density: 0.77, category: 'lumber' },
         // { id: 'M-003', name: 'Birch Plywood', density: 0.68, category: 'sheet' }
     ],
-
     // 2. Profiles (Cross-sections and sheet thicknesses. NO LENGTHS HERE)
     profiles: [
         // { id: 'PR-001', name: '2x4 Nominal', thickness: 38.0, width: 89.0, type: 'lumber' },
         // { id: 'PR-002', name: '3/4" Sheet', thickness: 19.05, width: 1220.0, type: 'sheet' }
     ],
-
     // ==========================================
     // TIER 2: SOURCING & INVENTORY (Physical Reality)
     // ==========================================
@@ -31,12 +28,10 @@
         // { id: 'CAT-001', store: 'Local Big Box', materialId: 'M-001', profileId: 'PR-001', length: 2438.4, price: 4.50 },
         // { id: 'CAT-002', store: 'Local Big Box', materialId: 'M-001', profileId: 'PR-001', length: 3048.0, price: 6.00 }
     ],
-
     // 4. Stock (What is actually sitting in your shop right now)
     stock: [
         // { id: 'STK-001', materialId: 'M-002', profileId: 'PR-001', length: 950.0, qty: 2, isCutoff: true }
     ],
-
     // ==========================================
     // TIER 3: THE WORK (Projects & Cutlists)
     // ==========================================
@@ -45,17 +40,16 @@
     projects: [
         // { id: 'PROJ-001', name: 'Workbench', status: 'Design' }
     ],
-
     // 0.5 Groups (Sub-assemblies attached to Projects)
     groups: [
         // { id: 'GRP-001', projectId: 'PROJ-001', name: 'South Wall' }
     ],
-    
     // 5. Parts (The Master Cutlist - every piece of wood to be cut)
     parts: [
         // { id: 'PART-001', projectId: 'PROJ-001', name: 'Front Left Leg', materialId: 'M-001', profileId: 'PR-001', length: 850.0, qty: 1 }
     ],
-
+    // 6. Jobs (Mobile Execution Sandboxes)
+    jobs: [],
     // Settings
     settings: {
         baseUnit: 'mm',           // The immutable backend unit
@@ -138,7 +132,7 @@
         appState = dataToLoad || {};
         
         // 🪄 TIER 1 SANITIZER: Ensure all master tables exist
-        const TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores'];
+        const TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores', 'jobs'];
         TABS.forEach(tab => {
             if (!appState[tab] || !Array.isArray(appState[tab])) appState[tab] = [];
         });
@@ -180,7 +174,7 @@
     }
     function autoHealMissingIDs() {
         // 🪄 FIX: Added 'stores' here as well
-        const TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores'];
+        const TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores', 'jobs'];
         let healedCount = 0;
         TABS.forEach(tab => {
             appState[tab].forEach((item, index) => {
@@ -193,6 +187,7 @@
                     if (tab === 'catalog') prefix = 'CAT';
                     if (tab === 'stock') prefix = 'STK';
                     if (tab === 'stores') prefix = 'STR';
+                    if (tab === 'jobs') prefix = 'JOB';
                     item.id = prefix + '-' + Date.now() + '-' + index;
                     healedCount++;
                 }

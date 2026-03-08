@@ -4,12 +4,12 @@
     // ==========================================
 
     /** Prevents inch marks (") from breaking HTML input values */
-     function safeHTML(str) {
+    function safeHTML(str) {
         if (!str) return '';
         return String(str).replace(/"/g, '&quot;');
     }
     /** Parses user UI input (string or number) into Base Units (decimal mm) for the AppState. */
-     function parseToBaseUnit(input) {
+    function parseToBaseUnit(input) {
         if (!input) return 0;
         let val = String(input).trim();
         let unit = appState.settings.displayUnit;
