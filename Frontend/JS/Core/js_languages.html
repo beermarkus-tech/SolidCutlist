@@ -964,7 +964,6 @@
             }
         });
     }
-
     function t(key, replacements = {}) {
         const lang = (appState.settings && appState.settings.language) ? appState.settings.language : 'en';
         const dict = translations[lang] || translations['en'];
@@ -977,7 +976,6 @@
 
         return text;
     }
-
     function handleLanguageChange(newLang) {
         if (!appState.settings) appState.settings = {};
         appState.settings.language = newLang;

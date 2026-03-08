@@ -1,0 +1,535 @@
+<script>
+    // ==========================================
+    // PROJECTS
+    // ==========================================
+    function renderProjectsTable() {
+        const tbody = document.getElementById('table-projects-body');
+        tbody.innerHTML = ''; 
+        
+        if (!appState.projects) appState.projects = [];
+        const currency = appState.settings.currency || '$';
+
+        appState.projects.forEach(proj => {
+            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(proj, 'projects')) return;
+            
+            const tr = document.createElement('tr');
+            
+            // Pull the background-calculated totals
+            const partCount = proj.totalParts || 0;
+            const displayCost = (proj.totalCost || 0).toFixed(2);
+            
+            // 🪄 PROJECT LINK ENGINE
+            let linkHtml = proj.link 
+                ? `<a href="${safeHTML(proj.link)}" target="_blank" class="text-decoration-none" title="Open Link">🔗</a>` 
+                : `<span class="text-muted" style="opacity: 0.3;">🔗</span>`;
+
+            // 🪄 STATUS DROPDOWN ENGINE (Fixed Width Badges)
+            const currentStatus = proj.status || 'Design';
+            
+            // Default to Design (Yellow background, Black text)
+            let statusColor = '#ffc107'; 
+            let textColor = '#000000'; 
+            
+            if (currentStatus === 'Quoting') { statusColor = '#6f42c1'; textColor = '#ffffff'; }
+            else if (currentStatus === 'Ready') { statusColor = '#0d6efd'; textColor = '#ffffff'; }
+            else if (currentStatus === 'In Progress') { statusColor = '#fd7e14'; textColor = '#ffffff'; }
+            else if (currentStatus === 'Completed') { statusColor = '#198754'; textColor = '#ffffff'; }
+
+            let statusHtml = `
+                <div class="dropdown">
+                    <button class="btn btn-sm dropdown-toggle badge shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 15ch; background-color: ${statusColor}; color: ${textColor}; font-size: 0.85rem; padding: 0.35em 0.65em;">
+                        ${safeHTML(currentStatus)}
+                    </button>
+                    <ul class="dropdown-menu shadow-sm" style="min-width: 12rem;">
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Design')">🟡 Design</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Quoting')">🟣 Quoting</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Ready')">🔵 Ready</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'In Progress')">🟠 In Progress</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Completed')">🟢 Completed</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger fw-bold" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Archive')">🗄️ Archive Project...</a></li>
+                    </ul>
+                </div>
+            `;
+            
+            tr.innerHTML = `
+                <td class="px-1 py-0">
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" 
+                           value="${safeHTML(proj.name)}" 
+                           onchange="updateProject('${proj.id}', 'name', this.value)"
+                           title="${t('title_tap_to_edit')}">
+                </td>
+                <td class="px-1 py-0 align-middle">
+                    <textarea class="form-control form-control-sm border-0 bg-transparent project-comment-box" 
+                              rows="1" title="${safeHTML(proj.comment || '')}" 
+                              onchange="updateProject('${proj.id}', 'comment', this.value)" 
+                              placeholder="${t('ph_add_notes')}">${safeHTML(proj.comment || '')}</textarea>
+                </td>
+                <td class="text-center px-1 py-0 align-middle"><span class="badge bg-secondary">${partCount}</span></td>
+                <td class="text-center px-1 py-0 align-middle fw-bold text-success">${currency}${displayCost}</td>
+                <td class="text-center align-middle">${statusHtml}</td>
+                <td class="text-center px-1 py-0 align-middle" style="width: 40px;">
+                    <button class="btn btn-sm btn-light border shadow-sm py-0 px-2" onclick="openGroupModal('${proj.id}')" title="${t('tip_manage_groups')}">⚙️</button>
+                </td>
+                <td class="text-nowrap align-middle">
+                    <div class="d-flex justify-content-end align-items-center">
+                        ${linkHtml}
+                        <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${proj.id}', '${safeHTML(proj.link || '')}')" title="Edit Link">✏️</button>
+                    </div>
+                </td>                   
+                <td class="text-end">
+                    <button class="btn btn-sm py-0 px-0" onclick="duplicateProjectWarning('${proj.id}')" title="Duplicate Project">➕</button>
+                    <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteProject('${proj.id}')" title="Delete">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        if (typeof updateFilterUI === 'function') {
+            updateFilterUI('projects', ['name', 'status']);
+        }
+    }
+    function handleAddProject(event) {
+        event.preventDefault();
+        
+        const nameInput = document.getElementById('proj-name');
+        const newId = 'PROJ-' + Date.now(); // Generates unique ID
+        
+        const newProject = {
+            id: newId,
+            name: nameInput.value,
+            status: 'Design'
+        };
+        
+        appState.projects.unshift(newProject);
+        saveState();
+        renderDictionaries();
+        showToast(t('msg_project_created'));
+        
+        nameInput.value = ''; // Clear the form
+    }
+    function updateProject(id, field, newValue) {
+        const project = appState.projects.find(p => p.id === id);
+        if (project) {
+            project[field] = newValue;
+            saveState();
+            renderDictionaries();
+            showToast(t('msg_project_updated'));
+        }
+    }
+    function deleteProject(id, isConfirmed = false) {
+        // 1. The Safety Shield (Made extra scary for a destructive action)
+        if (!isConfirmed) {
+            requestConfirm(t('confirm_delete_project'), () => deleteProject(id, true));
+            return; 
+        }
+
+        // 2. The Cascade Delete (Purge the Parts)
+        let deletedPartsCount = 0;
+        if (appState.parts) {
+            const originalLength = appState.parts.length;
+            // Keep only the parts that DO NOT belong to this project
+            appState.parts = appState.parts.filter(part => part.projectId !== id);
+            deletedPartsCount = originalLength - appState.parts.length;
+        }
+
+        // 3. The Execution (Purge the Project)
+        appState.projects = appState.projects.filter(p => p.id !== id);
+        saveState();
+        renderDictionaries();
+
+        // 5. The Alarm
+        if (deletedPartsCount > 0) {
+            showToast(t('msg_project_deleted_parts', { count: deletedPartsCount }), true);
+        } else {
+            showToast(t('msg_project_deleted'));
+        }
+    }
+    function editProjectLink(id) {
+        const proj = appState.projects.find(p => p.id === id);
+        if (!proj) return;
+        
+        const currentLink = proj.link || "";
+        const newLink = prompt("Paste the link to your SketchUp file, Drive folder, or Image:", currentLink);
+        
+        // If the user clicks 'Cancel', newLink is null. If they click 'OK', save it.
+        if (newLink !== null) {
+            let formattedLink = newLink.trim();
+            // Smart URL Formatter
+            if (formattedLink && !/^https?:\/\//i.test(formattedLink)) {
+                formattedLink = 'https://' + formattedLink;
+            }
+            
+            proj.link = formattedLink;
+            saveState();
+            renderProjectsTable();
+            showToast("Project link updated.");
+        }
+    }
+    function duplicateProjectWarning(id) {
+        requestConfirm(
+            t('confirm_duplicate_project'), 
+            () => duplicateProject(id), 
+            'primary', 
+            t('btn_duplicate')
+        );
+    }
+
+    // ==========================================
+    // GROUPS WITHIN PROJECTS
+    // ==========================================
+    let groupModalInstance = null;
+    function openGroupModal(preSelectedProjectId = '') {
+        // 1. Initialize Bootstrap Modal if it doesn't exist
+        if (!groupModalInstance) {
+            groupModalInstance = new bootstrap.Modal(document.getElementById('modal-group-manager'), {
+                keyboard: true // Enables ESC to close natively
+            });
+
+            // When modal closes, forcefully update the Parts UI so new groups appear
+            document.getElementById('modal-group-manager').addEventListener('hidden.bs.modal', function () {
+                // Also trigger handleProjectChange to refresh the specific part-group dropdown 
+                // without wiping out what the user was currently doing
+                if (typeof handleProjectChange === 'function') handleProjectChange();
+                if (typeof renderPartsTable === 'function') renderPartsTable();
+            });
+        }
+
+        // 2. Populate the Project Dropdown
+        const projSelect = document.getElementById('modal-group-project-select');
+        projSelect.innerHTML = `<option value="" disabled selected>${t('opt_select_project')}</option>`;
+        if (appState.projects) {
+            appState.projects.forEach(p => {
+                projSelect.innerHTML += `<option value="${p.id}">${safeHTML(p.name)}</option>`;
+            });
+        }
+
+        // 3. Set Context (Pre-select or stay blank)
+        if (preSelectedProjectId) {
+            projSelect.value = preSelectedProjectId;
+        } else {
+            projSelect.value = ""; // Force it to stay on "Select a Project..."
+        }
+
+        renderGroupModalTable();
+        groupModalInstance.show();
+
+        // Bonus UX: Auto-focus the text input when modal opens (needs a tiny delay for the animation)
+        setTimeout(() => {
+            document.getElementById('modal-new-group-name').focus();
+        }, 400);
+    }
+    function renderGroupModalTable() {
+        const tbody = document.getElementById('table-modal-groups-body');
+        tbody.innerHTML = '';
+        
+        const activeProjectId = document.getElementById('modal-group-project-select').value;
+        if (!activeProjectId) return;
+
+        if (!appState.groups) appState.groups = [];
+
+        // Filter groups for the active project
+        const projectGroups = appState.groups.filter(g => g.projectId === activeProjectId);
+
+        if (projectGroups.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="2" class="text-center text-muted py-3">${t('msg_no_groups_defined')}</td></tr>`;
+            return;
+        }
+
+        projectGroups.forEach(grp => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" 
+                           value="${safeHTML(grp.name)}" 
+                           onchange="updateGroupName('${grp.id}', this.value)"
+                           title="${t('title_tap_to_edit')}">
+                </td>
+                <td class="text-end">
+                    <button class="btn btn-sm py-0 px-2" onclick="deleteGroup('${grp.id}')">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    function handleAddGroup(event) {
+        event.preventDefault();
+        const activeProjectId = document.getElementById('modal-group-project-select').value;
+        const nameInput = document.getElementById('modal-new-group-name');
+        
+        if (!activeProjectId) {
+            showToast(t('msg_select_project_first'), true);
+            return;
+        }
+
+        if (!appState.groups) appState.groups = [];
+        
+        appState.groups.unshift({
+            id: 'GRP-' + Date.now(),
+            projectId: activeProjectId,
+            name: nameInput.value
+        });
+        
+        saveState();
+        renderGroupModalTable();
+        nameInput.value = ''; // Clear input
+        nameInput.focus();
+    }
+    function updateGroupName(id, newName) {
+        const grp = appState.groups.find(g => g.id === id);
+        if (grp) {
+            grp.name = newName;
+            saveState();
+            showToast(t('msg_group_renamed'));
+        }
+    }
+    function deleteGroup(id, isConfirmed = false) {
+        // 🪄 The Safety Shield (Custom Modal)
+        if (!isConfirmed) {
+            requestConfirm(t('confirm_delete_group'), () => deleteGroup(id, true));
+            return;
+        }
+
+        // 1. Cascade Nullify: Reset parts using this group
+        let affectedParts = 0;
+        if (appState.parts) {
+            appState.parts.forEach(part => {
+                if (part.groupId === id) {
+                    part.groupId = ''; // Snap back to 'no group'
+                    affectedParts++;
+                }
+            });
+        }
+
+        // 2. Delete the group
+        appState.groups = appState.groups.filter(g => g.id !== id);
+        saveState();
+        renderGroupModalTable();
+        
+        showToast(t('msg_group_deleted_parts', { count: affectedParts }), true);
+    }
+
+    // ==========================================
+    // DEEP FREEZE ARCHIVE ENGINE
+    // ==========================================
+    let archiveModalInstance;
+    let currentArchiveData = [];
+    let archiveSortCol = 'date';
+    let archiveSortAsc = false;
+    function changeProjectStatus(projectId, newStatus) {
+        if (newStatus === 'Archive') {
+            // 🪄 UNIVERSAL CONFIRM MODAL (Warning Theme)
+            requestConfirm(
+                'Archive this project?\n\nIt will be safely moved to cold storage to keep your workspace fast and clean. You can restore it anytime.', 
+                () => {
+                    executeDeepFreeze(projectId);
+                }, 
+                'warning', 
+                'Archive'
+            );
+            return;
+        }
+        
+        const proj = appState.projects.find(p => p.id === projectId);
+        if (proj) {
+            proj.status = newStatus;
+            saveState();
+            renderProjectsTable();
+        }
+    }
+    function openArchiveModal() {
+        if (!archiveModalInstance) archiveModalInstance = new bootstrap.Modal(document.getElementById('modal-archive'));
+        
+        // 🪄 ADDED: Spinner to the loading text
+        document.getElementById('archive-table-body').innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading cold storage...</td></tr>';
+        archiveModalInstance.show();
+
+        google.script.run
+            .withSuccessHandler((responseStr) => {
+                const response = JSON.parse(responseStr);
+                if (response.status === 'success') {
+                    currentArchiveData = response.data;
+                    renderArchiveTable();
+                } else {
+                    document.getElementById('archive-table-body').innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">Error: ${response.message}</td></tr>`;
+                }
+            })
+            .withFailureHandler((err) => {
+                document.getElementById('archive-table-body').innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">Server Error: ${err}</td></tr>`;
+            })
+            .getArchiveList();
+    }
+    function renderArchiveTable() {
+        const tbody = document.getElementById('archive-table-body');
+        if (currentArchiveData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No archived projects found.</td></tr>';
+            return;
+        }
+
+        // Sort Logic
+        currentArchiveData.sort((a, b) => {
+            let valA = a[archiveSortCol] || '';
+            let valB = b[archiveSortCol] || '';
+            if (valA < valB) return archiveSortAsc ? -1 : 1;
+            if (valA > valB) return archiveSortAsc ? 1 : -1;
+            return 0;
+        });
+
+        tbody.innerHTML = currentArchiveData.map(proj => {
+            const d = new Date(proj.date);
+            const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+            return `
+            <tr>
+                <td class="ps-3">${dateStr}</td>
+                <td class="fw-bold">${safeHTML(proj.name)}</td>
+                <td class="text-truncate text-muted" style="max-width: 150px;" title="${safeHTML(proj.notes)}">${safeHTML(proj.notes)}</td>
+                <td class="text-end pe-3 text-nowrap">
+                    <button class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="restoreArchivedProject('${proj.id}', this)" title="Restore to Workspace">Load</button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteArchivedProjectUI('${proj.id}')" title="Permanently Delete">🗑️</button>
+                </td>
+            </tr>
+            `;
+        }).join('');
+    }
+    function sortArchive(col) {
+        if (archiveSortCol === col) archiveSortAsc = !archiveSortAsc;
+        else { archiveSortCol = col; archiveSortAsc = true; }
+        renderArchiveTable();
+    }
+    function executeDeepFreeze(projectId) {
+        // 🪄 1. Setup Spinner & Shield
+        const confirmBtn = document.getElementById('btn-confirm-delete');
+        let originalText = 'Archive';
+        if (confirmBtn) {
+            originalText = confirmBtn.innerText;
+            confirmBtn.innerHTML = `<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Working...`;
+        }
+        freezeUI();
+
+        const projIndex = appState.projects.findIndex(p => p.id === projectId);
+        if (projIndex === -1) {
+            unfreezeUI();
+            if (confirmBtn) confirmBtn.innerHTML = originalText;
+            return;
+        }
+
+        const payload = {
+            id: projectId,
+            project: appState.projects[projIndex],
+            groups: (appState.groups || []).filter(g => g.projectId === projectId),
+            parts: (appState.parts || []).filter(p => p.projectId === projectId)
+        };
+
+        google.script.run
+            .withSuccessHandler((response) => {
+                // 🪄 2. Remove Shield & Restore UI
+                unfreezeUI();
+                if (confirmBtn) confirmBtn.innerHTML = originalText;
+
+                if (response.status === 'success') {
+                    appState.projects.splice(projIndex, 1);
+                    if (appState.groups) appState.groups = appState.groups.filter(g => g.projectId !== projectId);
+                    if (appState.parts) appState.parts = appState.parts.filter(p => p.projectId !== projectId);
+                    
+                    saveState(); 
+                    renderProjectsTable();
+                    showToast('Project archived safely.');
+                    
+                    // 🪄 NOW we safely hide the modal because the data is saved
+                    const confirmModalEl = document.getElementById('modal-universal-delete');
+                    if (confirmModalEl) bootstrap.Modal.getInstance(confirmModalEl)?.hide();
+                } else {
+                    alert('Archiving failed: ' + response.message);
+                }
+            })
+            .withFailureHandler((err) => {
+                unfreezeUI();
+                if (confirmBtn) confirmBtn.innerHTML = originalText;
+                alert('Server error: ' + err);
+            })
+            .archiveProjectToSheet(JSON.stringify(payload));
+    }
+    function restoreArchivedProject(id, btnElement) {
+        // 🪄 1. Setup Spinner & Shield
+        const originalText = btnElement.innerHTML;
+        btnElement.innerHTML = `<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>`;
+        freezeUI();
+
+        google.script.run
+            .withSuccessHandler((responseStr) => {
+                // 🪄 2. Remove Shield & Restore UI
+                unfreezeUI();
+                btnElement.innerHTML = originalText;
+
+                const response = typeof responseStr === 'string' ? JSON.parse(responseStr) : responseStr;
+                if (response.status === 'success') {
+                    appState.projects.push(response.project);
+                    if(response.groups) appState.groups.push(...response.groups);
+                    if(response.parts) appState.parts.push(...response.parts);
+
+                    saveState();
+                    renderProjectsTable();
+
+                    google.script.run.deleteProjectFromArchive(id);
+
+                    // 🪄 FIXED: Remove the project from the list and redraw, leaving the modal open
+                    currentArchiveData = currentArchiveData.filter(p => p.id !== id);
+                    renderArchiveTable();
+                    
+                    showToast('Project restored to workspace.');
+                } else {
+                    alert('Error restoring: ' + response.message);
+                }
+            })
+            .withFailureHandler((err) => {
+                unfreezeUI();
+                btnElement.innerHTML = originalText;
+                alert('Server Error: ' + err);
+            })
+            .loadProjectFromArchive(id);
+    }
+    function deleteArchivedProjectUI(id) {
+        requestConfirm(
+            '⚠️ Are you sure you want to PERMANENTLY delete this project?\n\nThis will destroy the data forever. This cannot be undone.',
+            () => {
+                // 🪄 1. Setup Spinner & Shield
+                const confirmBtn = document.getElementById('btn-confirm-delete');
+                let originalText = 'Delete Forever';
+                if (confirmBtn) {
+                    originalText = confirmBtn.innerText;
+                    confirmBtn.innerHTML = `<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Deleting...`;
+                }
+                freezeUI();
+
+                google.script.run
+                    .withSuccessHandler((responseStr) => {
+                        // 🪄 2. Remove Shield & Restore UI
+                        unfreezeUI();
+                        if (confirmBtn) confirmBtn.innerHTML = originalText;
+
+                        const response = typeof responseStr === 'string' ? JSON.parse(responseStr) : responseStr;
+                        if (response.status === 'success') {
+                            currentArchiveData = currentArchiveData.filter(p => p.id !== id);
+                            renderArchiveTable();
+                            showToast('Project permanently deleted.');
+                            
+                            // Safely hide the confirmation modal
+                            const confirmModalEl = document.getElementById('modal-universal-delete');
+                            if (confirmModalEl) bootstrap.Modal.getInstance(confirmModalEl)?.hide();
+                        } else {
+                            alert('Error deleting: ' + response.message);
+                        }
+                    })
+                    .withFailureHandler((err) => {
+                        unfreezeUI();
+                        if (confirmBtn) confirmBtn.innerHTML = originalText;
+                        alert('Server Error: ' + err);
+                    })
+                    .deleteProjectFromArchive(id);
+            },
+            'danger',
+            'Delete Forever'
+        );
+    }
+</script>

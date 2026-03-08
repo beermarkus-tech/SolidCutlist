@@ -1,0 +1,305 @@
+<script>
+    // ==========================================
+    // GLOBAL APP STATE
+    // ==========================================
+
+    const initialAppState = {
+    
+    // ==========================================
+    // TIER 1: THE DICTIONARIES (Design Building Blocks)
+    // ==========================================
+    
+    // 1. Materials (Wood species, treatments)
+    materials: [
+        // { id: 'M-001', name: 'Pine (Untreated)', density: 0.45, category: 'lumber' },
+        // { id: 'M-002', name: 'Oak (White)', density: 0.77, category: 'lumber' },
+        // { id: 'M-003', name: 'Birch Plywood', density: 0.68, category: 'sheet' }
+    ],
+
+    // 2. Profiles (Cross-sections and sheet thicknesses. NO LENGTHS HERE)
+    profiles: [
+        // { id: 'PR-001', name: '2x4 Nominal', thickness: 38.0, width: 89.0, type: 'lumber' },
+        // { id: 'PR-002', name: '3/4" Sheet', thickness: 19.05, width: 1220.0, type: 'sheet' }
+    ],
+
+    // ==========================================
+    // TIER 2: SOURCING & INVENTORY (Physical Reality)
+    // ==========================================
+
+    // 3. Catalog (What stores sell, lengths, and prices)
+    catalog: [
+        // { id: 'CAT-001', store: 'Local Big Box', materialId: 'M-001', profileId: 'PR-001', length: 2438.4, price: 4.50 },
+        // { id: 'CAT-002', store: 'Local Big Box', materialId: 'M-001', profileId: 'PR-001', length: 3048.0, price: 6.00 }
+    ],
+
+    // 4. Stock (What is actually sitting in your shop right now)
+    stock: [
+        // { id: 'STK-001', materialId: 'M-002', profileId: 'PR-001', length: 950.0, qty: 2, isCutoff: true }
+    ],
+
+    // ==========================================
+    // TIER 3: THE WORK (Projects & Cutlists)
+    // ==========================================
+
+    // 0. Projects
+    projects: [
+        // { id: 'PROJ-001', name: 'Workbench', status: 'Design' }
+    ],
+
+    // 0.5 Groups (Sub-assemblies attached to Projects)
+    groups: [
+        // { id: 'GRP-001', projectId: 'PROJ-001', name: 'South Wall' }
+    ],
+    
+    // 5. Parts (The Master Cutlist - every piece of wood to be cut)
+    parts: [
+        // { id: 'PART-001', projectId: 'PROJ-001', name: 'Front Left Leg', materialId: 'M-001', profileId: 'PR-001', length: 850.0, qty: 1 }
+    ],
+
+    // Settings
+    settings: {
+        baseUnit: 'mm',           // The immutable backend unit
+        displayUnit: 'frac_in',   // The UI mask: 'mm', 'dec_in', or 'frac_in'
+        bladeKerf: 3.175,         // mm (Default to 1/8" standard blade)
+        cutoffThreshold: 200.0,    // mm. Anything smaller goes in the trash.
+        factoryEdgeTrim: 6.35     // mm. Amount to chop off a new board to square it up.
+    }
+    };
+    let appState = {}; 
+
+    // ==========================================
+    // STATE MANAGEMENT ENGINE (Local Storage)
+    // ==========================================
+
+    /** BOOT LOADER: Negotiates between Cloud Data and Local Storage */
+    function loadState() {
+        // 1. Show the loader (it should be visible by default, but just in case)
+        const loader = document.getElementById('boot-loader');
+        if (loader) loader.classList.remove('d-none');
+
+        // 2. Fetch the offline backup (just in case the cloud fails or is older)
+        const localSaved = localStorage.getItem('lumberLogicState');
+        let localData = null;
+        if (localSaved) {
+            try { localData = JSON.parse(localSaved); } catch(e) { console.warn("Local data corrupted."); }
+        }
+
+        // 3. Call Google Scripts (The Cloud)
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(function(responseStr) {
+                    handleCloudDataResponse(responseStr, localData);
+                })
+                .withFailureHandler(function(error) {
+                    console.error("Failed to fetch from cloud. Falling back to local.", error);
+                    finalizeBoot(localData ? localData : initialAppState);
+                })
+                .getAppStateFromSheet();
+        } else {
+            // Failsafe for Local Desktop Testing (outside of Google's environment)
+            console.warn("Google Script context not found. Booting from local memory.");
+            finalizeBoot(localData ? localData : initialAppState);
+        }
+    }
+    /** The Handshake: Compares timestamps and resolves conflicts */
+    function handleCloudDataResponse(responseStr, localData) {
+        try {
+            const response = JSON.parse(responseStr);
+            if (response.status === 'error') throw new Error(response.message);
+
+            const cloudData = response.appState;
+            const cloudTime = response.cloud_timestamp || 0;
+            const localTime = localData ? (localData.local_timestamp || 0) : 0;
+
+            // 🪄 THE FAILSAFE: Local is more than 10 seconds newer than the Cloud
+            if (localTime > cloudTime + 10000) {
+                // We use a native browser confirm here because it physically halts the Javascript thread 
+                // and prevents the app from rendering bad data while the user decides.
+                const useLocal = confirm(t('msg_unsaved_local_changes'));
+
+                if (useLocal) {
+                    finalizeBoot(localData);
+                } else {
+                    finalizeBoot(cloudData);
+                }
+            } else {
+                // Cloud is newer, or perfectly equal. Proceed normally.
+                finalizeBoot(cloudData);
+            }
+        } catch(e) {
+            console.error("Cloud data parsing error:", e);
+            alert(t('err_cloud_parse'));
+            finalizeBoot(localData ? localData : initialAppState);
+        }
+    }
+    /** Executes the final render sequence and hides the loading screen */
+    function finalizeBoot(dataToLoad) {
+        // 1. Assign the Master State safely
+        appState = dataToLoad || {};
+        
+        // 🪄 TIER 1 SANITIZER: Ensure all master tables exist
+        const TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores'];
+        TABS.forEach(tab => {
+            if (!appState[tab] || !Array.isArray(appState[tab])) appState[tab] = [];
+        });
+
+        // 🪄 TIER 2 SANITIZER: Deep JSON parsing & corruption repair
+        if (!appState.settings) appState.settings = {};
+        for (let key in appState.settings) {
+            let val = appState.settings[key];
+            if (typeof val === 'string') {
+                if (val === 'TRUE') appState.settings[key] = true;
+                else if (val === 'FALSE') appState.settings[key] = false;
+                else if (val.startsWith('[')) {
+                    try { appState.settings[key] = JSON.parse(val); } catch(e) { appState.settings[key] = []; }
+                }
+                else if (val.startsWith('{')) {
+                    try { appState.settings[key] = JSON.parse(val); } catch(e) { appState.settings[key] = {}; }
+                }
+            }
+        }
+
+        // 2. The Auto-Heal Engine
+        autoHealMissingIDs();
+
+        // 3. Run theme and renders
+        if (typeof applyTheme === 'function') applyTheme();
+        if (typeof renderSettings === 'function') renderSettings();
+        if (typeof renderDictionaries === 'function') renderDictionaries();
+        if (typeof renderPartsView === 'function') renderPartsView();
+        
+        // 4. Safely apply translations only after data is fully loaded
+        if (typeof applyTranslations === 'function') applyTranslations(); 
+
+        // 5. Hide loader
+        const loader = document.getElementById('boot-loader');
+        if (loader) loader.classList.add('d-none');
+        
+        console.log('🪵 SolidCutlist successfully booted.');
+        updateSyncUI('success');
+    }
+    function autoHealMissingIDs() {
+        // 🪄 FIX: Added 'stores' here as well
+        const TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores'];
+        let healedCount = 0;
+        TABS.forEach(tab => {
+            appState[tab].forEach((item, index) => {
+                if (!item.id) {
+                    let prefix = 'ID';
+                    if (tab === 'projects') prefix = 'PROJ';
+                    if (tab === 'parts') prefix = 'PART';
+                    if (tab === 'materials') prefix = 'M';
+                    if (tab === 'profiles') prefix = 'PR';
+                    if (tab === 'catalog') prefix = 'CAT';
+                    if (tab === 'stock') prefix = 'STK';
+                    if (tab === 'stores') prefix = 'STR';
+                    item.id = prefix + '-' + Date.now() + '-' + index;
+                    healedCount++;
+                }
+            });
+        });
+        if (healedCount > 0) saveState(); 
+    }
+    /** Wipes current state and resets to the baseline initialAppState. */
+    function initAppState() {
+    appState = JSON.parse(JSON.stringify(initialAppState));
+    saveState();
+    }
+
+    // ==========================================
+    // CLOUD SYNC ENGINE (Debounced 1-Way Sync)
+    // ==========================================
+    let syncTimeout = null;
+    let lastCloudSyncTime = 0; // Tracks the last successful Google Sheet write
+
+    function updateSyncUI(status) {
+        const icon = document.getElementById('sync-icon');
+        const text = document.getElementById('sync-text');
+        if (!icon || !text) return;
+
+        // Combine both local and cloud saving into one seamless state
+        if (status === 'local' || status === 'syncing') {
+            // Injects a tiny, animated Bootstrap spinner
+            icon.innerHTML = '<span class="spinner-border spinner-border-sm text-warning" role="status" style="width: 0.8rem; height: 0.8rem; border-width: 0.15em;"></span>'; 
+            text.innerText = t('msg_saving');
+        } 
+        else if (status === 'success') {
+            // The Cloud + Checkmark combo
+            icon.innerHTML = '<span style="color: #00ff00;">✔</span>'; 
+            text.innerText = t('msg_saved'); 
+            // Note: If you want NO text at all, just change 'Saved' to ''
+        } 
+        else if (status === 'error') {
+            icon.innerHTML = '⚠️'; 
+            text.innerText = t('msg_sync_failed');
+        }
+    }
+    function triggerCloudSync() {
+        updateSyncUI('syncing');
+
+        // Package the payload with a timestamp
+        const currentTimestamp = Date.now();
+        const payload = {
+            appState: appState,
+            timestamp: currentTimestamp
+        };
+
+        // Fire to Google Apps Script asynchronously
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(function(response) {
+                    if (response.status === 'success') {
+                        lastCloudSyncTime = response.cloud_timestamp;
+                        updateSyncUI('success');
+                    } else {
+                        console.error('Cloud Sync Error:', response.message);
+                        updateSyncUI('error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    console.error('Cloud Sync Network Failure:', error);
+                    updateSyncUI('error');
+                })
+                .saveAppStateToSheet(JSON.stringify(payload));
+        } else {
+            console.warn('Google Script context not found. Cloud sync skipped (Local Dev Mode).');
+            updateSyncUI('error');
+        }
+    }
+    function saveState() {
+        // 1. Recalculate totals (from our Project Dashboard update)
+        if (typeof recalculateAllProjectTotals === 'function') recalculateAllProjectTotals();
+
+        // 2. Inject a local timestamp into the state 
+        // (We will use this in Phase 3 to check if the browser crashed before the cloud sync finished)
+        appState.local_timestamp = Date.now();
+
+        // 3. Save to browser storage instantly
+        localStorage.setItem('lumberLogicState', JSON.stringify(appState));
+        console.log('Shop data instantly saved to local memory.');
+        
+        // 4. Update UI to show local save
+        updateSyncUI('local');
+
+        // 5. The Debounce Trap (3 seconds)
+        if (syncTimeout) {
+            clearTimeout(syncTimeout); // User is still typing! Reset the clock.
+        }
+        syncTimeout = setTimeout(() => {
+            triggerCloudSync(); // 3 seconds of silence have passed. Fire the payload!
+        }, 3000);
+    }
+
+    // ==========================================
+    // APP IGNITION SWITCH
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log("Ignition switch fired! Triggering loadState()...");
+        if (typeof loadState === 'function') {
+            loadState();
+        } else {
+            console.error("FATAL: loadState() function is missing!");
+        }
+    });
+
+</script>

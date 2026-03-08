@@ -1,0 +1,290 @@
+<script>
+    function renderMaterialsTable() {
+        const tbody = document.getElementById('table-materials-body');
+        tbody.innerHTML = ''; 
+        
+        appState.materials.forEach(mat => {
+
+            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(mat, 'materials')) return;
+
+            const tr = document.createElement('tr');
+           
+            let currentCat = mat.category || 'lumber';
+
+            // 🪄 COLOR CODED BADGE LOGIC
+            let badgeClass = getCategoryBadgeClass(currentCat);
+
+            tr.innerHTML = `
+                <td>
+                    <div class="d-flex justify-content-center">
+                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
+                            <option value="lumber" class="bg-light text-dark" ${currentCat === 'lumber' ? 'selected' : ''}>${t('opt_lumber')}</option>
+                            <option value="sheet" class="bg-light text-dark" ${currentCat === 'sheet' ? 'selected' : ''}>${t('opt_sheet')}</option>
+                            <option value="fastener" class="bg-light text-dark" ${currentCat === 'fastener' ? 'selected' : ''}>${t('opt_fastener')}</option>
+                        </select>
+                    </div>
+                </td>
+                <td class="px-1 py-0">
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1 text-center align-middle" 
+                           value="${safeHTML(mat.name)}" 
+                           onchange="updateMaterial('${mat.id}', 'name', this.value)" title="${t('title_tap_to_edit')}">
+                </td>
+                <td class="px-1 py-0">
+                    <input type="number" step="0.01" class="form-control form-control-sm border-0 bg-transparent text-center" 
+                           value="${formatDensityForDisplay(mat.density)}" 
+                           onchange="updateMaterial('${mat.id}', 'density', this.value)" title="${t('title_tap_to_edit')}">
+                </td>
+                <td class="text-end">
+                    <button class="btn btn-sm py-0 px-0" onclick="duplicateRow('materials', '${mat.id}')" title="${t('title_duplicate_row')}">➕</button>
+                    <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteMaterial('${mat.id}')">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
+        if (typeof updateFilterUI === 'function') {
+            updateFilterUI('materials', ['name', 'category']);
+        }
+
+    }
+    function handleAddMaterial(event) {
+        event.preventDefault(); 
+        
+        const name = document.getElementById('mat-name').value;
+        const category = document.getElementById('mat-category').value;
+        const densityInput = document.getElementById('mat-density').value;
+        
+        const newMaterial = {
+            id: 'M-' + Date.now(),
+            name: name,
+            category: category, // 🪄 Now saving the category
+            density: parseDensityToBase(densityInput) 
+        };
+        
+        appState.materials.unshift(newMaterial);
+        saveState();
+        renderDictionaries();
+        showToast(t('msg_material_added'));
+        
+        document.getElementById('form-add-material').reset();
+    }
+    function updateMaterial(id, field, newValue) {
+        const mat = appState.materials.find(m => m.id === id);
+        if (mat) {
+            // 🪄 If changing density, parse the lb/ft3 back to kg/m3 for the database
+            mat[field] = (field === 'density') ? parseDensityToBase(newValue) : newValue;
+            saveState();
+            renderDictionaries();
+            showToast(t('msg_material_updated'));
+        }
+    }
+    function deleteMaterial(id, isConfirmed = false) {
+        // 1. The Safety Shield
+        if (!isConfirmed) {
+            requestConfirm(t('confirm_delete_material'), () => deleteMaterial(id, true));
+            return; 
+        }
+        
+        // 2. The Cascade Nullify
+        let inUseCount = 0;
+        if (appState.parts) {
+            appState.parts.forEach(part => {
+                if (part.materialId === id) {
+                    part.materialId = ''; 
+                    part.status = 'needs_mapping'; 
+                    inUseCount++;
+                }
+            });
+        }
+
+        // 3. The Execution
+        appState.materials = appState.materials.filter(m => m.id !== id);
+        saveState();
+        renderDictionaries();
+
+        // 5. The Alarm
+        if (inUseCount > 0) {
+            showToast(t('msg_material_deleted_parts', { count: inUseCount }), true);
+        } else {
+            showToast(t('msg_material_deleted'));
+        }
+    }
+    function handleUnitChange() {
+        // 1. ONLY update the global display preferences. 
+        appState.settings.displayUnit = document.getElementById('setting-display-unit').value;
+        appState.settings.currency = document.getElementById('setting-currency').value;
+        
+        saveState();
+        
+        // 2. Redraw the ENTIRE UI so tables instantly reflect the new symbols
+        renderSettings(); 
+        renderDictionaries();
+        if (typeof renderLabelModal === 'function') renderLabelModal();
+        showToast(t('msg_display_prefs_updated'));
+    }
+    function handleProfileCategoryChange() {
+        const cat = document.getElementById('prof-category').value;
+        const widthInput = document.getElementById('prof-width');
+        
+        if (cat === 'sheet' || cat === 'fastener') {
+            widthInput.value = '';
+            widthInput.disabled = true;
+        } else {
+            widthInput.disabled = false;
+        }
+    }
+
+    function renderProfilesTable() {
+        const tbody = document.getElementById('table-profiles-body');
+        tbody.innerHTML = ''; 
+        
+        appState.profiles.forEach(prof => {
+
+            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(prof, 'profiles')) return;
+
+            const tr = document.createElement('tr');
+            
+            // 🪄 MAGIC: Convert internal base mm back to UI strings (e.g., 38.1 -> "1 1/2")
+            let displayThick = formatForDisplay(prof.thickness);
+            let displayWidth = formatForDisplay(prof.width);
+            
+            // 🪄 COLOR CODED BADGE LOGIC
+            let badgeClass = getCategoryBadgeClass(prof.type);
+
+            // 🪄 DYNAMIC DIMENSIONS DISPLAY
+            let dimHtml = '';
+            if (prof.type === 'sheet') {
+                // Sheets only show Thickness
+                dimHtml = `
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width: 60px;"
+                           value="${displayThick}" onchange="updateProfile('${prof.id}', 'thickness', this.value)" title="${t('title_tap_to_edit_thickness')}">
+                `;
+            } else if (prof.type === 'lumber') {
+                // Lumber shows Thickness x Width
+                dimHtml = `
+                    <div class="d-flex align-items-baseline justify-content-center gap-1">
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0 py-0" style="width: 45px;"
+                            value="${displayThick}" onchange="updateProfile('${prof.id}', 'thickness', this.value)" title="${t('title_tap_to_edit_thickness')}">
+                        <span class="text-muted text-sm">x</span>
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-left px-0 py-0" style="width: 45px;"
+                            value="${displayWidth}" onchange="updateProfile('${prof.id}', 'width', this.value)" title="${t('title_tap_to_edit_width')}">
+                    </div>
+                `;
+            } else {
+                dimHtml = `<span class="text-muted">-</span>`;
+            }
+
+            tr.innerHTML = `
+                <td>
+                    <div class="d-flex justify-content-center">
+                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
+                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
+                            <option value="lumber" class="bg-light text-dark" ${prof.type === 'lumber' ? 'selected' : ''}>${t('opt_lumber')}</option>
+                            <option value="sheet" class="bg-light text-dark" ${prof.type === 'sheet' ? 'selected' : ''}>${t('opt_sheet')}</option>
+                            <option value="fastener" class="bg-light text-dark" ${prof.type === 'fastener' ? 'selected' : ''}>${t('opt_fastener')}</option>
+                        </select>
+                    </div>
+                </td>
+                <td class="px-1 py-0">
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1 text-center align-middle" 
+                           value="${safeHTML(prof.name)}"
+                           onchange="updateProfile('${prof.id}', 'name', this.value)" title="${t('title_tap_to_edit')}">
+                </td>
+                <td class="text-center px-1 py-0 align-middle">${dimHtml}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm py-0 px-0" onclick="duplicateRow('profiles', '${prof.id}')" title="${t('title_duplicate_row')}">➕</button>
+                    <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteProfile('${prof.id}')">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
+        if (typeof updateFilterUI === 'function') {
+            updateFilterUI('profiles', ['name', 'type']);
+        }
+
+    }
+    function handleAddProfile(event) {
+        event.preventDefault();
+        
+        const name = document.getElementById('prof-name').value;
+        const category = document.getElementById('prof-category').value;
+        const thicknessInput = document.getElementById('prof-thickness').value;
+        const widthInput = document.getElementById('prof-width').value;
+        
+        // 🪄 MAGIC: Convert whatever the user typed into base mm before saving
+        const thicknessBase = parseToBaseUnit(thicknessInput);
+        const widthBase = parseToBaseUnit(widthInput);
+        
+        const newId = 'PR-' + Date.now();
+        
+        const newProfile = {
+            id: newId,
+            name: name,
+            type: category, 
+            thickness: thicknessBase,
+            width: widthBase
+        };
+        
+        appState.profiles.unshift(newProfile);
+        saveState();
+        renderDictionaries();
+        showToast(t('msg_profile_added'));
+        
+        document.getElementById('form-add-profile').reset();
+    }
+    function updateProfile(id, field, newValue) {
+        const prof = appState.profiles.find(p => p.id === id);
+        if (prof) {
+            if (field === 'thickness' || field === 'width') {
+                // Intercept and parse to base unit
+                prof[field] = parseToBaseUnit(newValue);
+            } else {
+                prof[field] = newValue;
+                
+                // 🪄 PHYSICS AUTO-HEAL: If they change it to a Sheet, zero out the width so it doesn't leave bad data behind
+                if (field === 'type' && (newValue === 'sheet' || newValue === 'fastener')) {
+                    prof.width = 0;
+                }
+            }
+            
+            saveState();
+            renderDictionaries();
+            showToast(t('msg_profile_updated'));
+        }
+    }
+    function deleteProfile(id, isConfirmed = false) {
+        // 1. The Safety Shield
+        if (!isConfirmed) {
+            requestConfirm(t('confirm_delete_profile'), () => deleteProfile(id, true));
+            return; 
+        }
+        
+        // 2. The Cascade Nullify
+        let inUseCount = 0;
+        if (appState.parts) {
+            appState.parts.forEach(part => {
+                if (part.profileId === id) {
+                    part.profileId = ''; // Snap back to "(!) Select..."
+                    part.status = 'needs_mapping'; // Turn the row Yellow
+                    inUseCount++;
+                }
+            });
+        }
+
+        // 3. The Execution
+        appState.profiles = appState.profiles.filter(p => p.id !== id);
+        saveState();
+        renderDictionaries();
+
+        // 5. The Alarm
+        if (inUseCount > 0) {
+            showToast(t('msg_profile_deleted_parts', { count: inUseCount }), true);
+        } else {
+            showToast(t('msg_profile_deleted'));
+        }
+    }
+</script>

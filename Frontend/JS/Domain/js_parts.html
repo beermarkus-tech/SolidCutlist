@@ -1,17 +1,8 @@
 <script>
-    /**
-     * Frontend/JS/js_parts.html
-     * Handles dynamic form logic, math calculations, and part CRUD operations.
-     */
-
-    // --- INITIALIZATION ---
-    
-    // Call this when the app boots or when navigating to the Parts view
     function renderPartsView() {
         populateProjectDropdown();
         renderPartsTable();
     }
-
     function populateProjectDropdown() {
         const projSelect = document.getElementById('part-project');
         projSelect.innerHTML = `<option value="" disabled selected>${t('opt_select_project')}</option>`;
@@ -25,10 +16,6 @@
             projSelect.appendChild(opt);
         });
     }
-
-    // --- DYNAMIC FORM ENGINE ---
-
-    // Forces the Parts form to refresh its dropdowns if the dictionaries or units change
     function refreshPartsDropdowns() {
         populateProjectDropdown();
         
@@ -66,8 +53,6 @@
         if (currentProfId) profSelect.value = currentProfId;
         if (currentMatId) matSelect.value = currentMatId;
     }
-
-    // Fires when the user selects Lumber, Sheet, or Fastener
     function handleCategoryChange() {
         const cat = document.getElementById('part-category').value;
         const widthInput = document.getElementById('part-width');
@@ -129,7 +114,6 @@
     }
 
     // --- CRUD OPERATIONS ---
-
     function handleAddPart(event) {
         event.preventDefault();
 
@@ -174,7 +158,6 @@
         // Snap focus back to name so you can keep typing
         nameInput.focus();
     }
-
     function updatePartsMetricMode() {
         const mode = document.getElementById('table-parts-metric-view').value;
         if (!appState.settings) appState.settings = {};
@@ -182,7 +165,6 @@
         saveState();
         renderPartsTable();
     }
-
     function renderPartsTable() {
         const tbody = document.getElementById('table-parts-body');
         if (!tbody) return;
@@ -443,7 +425,6 @@
         }
 
     }
-
     function updatePartCategory(partId, newCategory) {
         const part = appState.parts.find(p => p.id === partId);
         if (part) {
@@ -458,7 +439,6 @@
             showToast(t('msg_category_changed'));
         }
     }
-
     function updatePart(partId, field, newValue) {
         const part = appState.parts.find(p => p.id === partId);
         if (part) {
@@ -480,7 +460,6 @@
             showToast(t('msg_part_updated'));
         }
     }
-    
     function deletePart(id, isConfirmed = false) {
         // The Safety Shield
         if (!isConfirmed) {
@@ -493,7 +472,6 @@
         renderPartsTable();
         showToast(t('msg_part_removed'), true);
     }
-
     function handleProjectChange() {
         const projId = document.getElementById('part-project').value;
         const groupSelect = document.getElementById('part-group');
@@ -520,11 +498,9 @@
             groupSelect.value = currentGroupId;
         }
     }
-
     function openGroupModalFromParts() {
         const currentProjId = document.getElementById('part-project').value;
         // Pass the ID if one is selected, otherwise pass the empty string
         if (typeof openGroupModal === 'function') openGroupModal(currentProjId);
     }
-    
 </script>

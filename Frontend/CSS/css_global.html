@@ -179,4 +179,31 @@
         background-color: var(--bs-body-bg) !important;
         box-shadow: inset 0 1px 3px rgba(0,0,0,0.1), 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
     }
+
+    /* You can add custom CSS styles here */
+    .bg-lumber {
+    background-color: #8B4513 !important; /* SaddleBrown */
+    }
+    .bg-sheet {
+    background-color: #DEB887 !important; /* BurlyWood */
+    }
+    .bg-fastener {
+    background-color: #4682B4 !important; /* SteelBlue */
+    }
+
+    /* 🪄 5-Second Green Fade (Beats Bootstrap Striped Tables) */
+    @keyframes pulseGreen {
+            0% { 
+                background-color: rgba(25, 135, 84, 0.4) !important; 
+                box-shadow: none !important; 
+            }
+            100% { 
+                background-color: transparent !important; 
+                box-shadow: none !important; 
+            }
+        }
+        .highlight-new-row > td {
+            animation: pulseGreen 5s ease-out forwards !important;
+        }
+
 </style>

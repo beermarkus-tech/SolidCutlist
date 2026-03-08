@@ -1,0 +1,305 @@
+<script>
+    // ==========================================
+    // MATH & UTILITY ENGINE
+    // ==========================================
+
+    /** Prevents inch marks (") from breaking HTML input values */
+     function safeHTML(str) {
+        if (!str) return '';
+        return String(str).replace(/"/g, '&quot;');
+    }
+    /** Parses user UI input (string or number) into Base Units (decimal mm) for the AppState. */
+     function parseToBaseUnit(input) {
+        if (!input) return 0;
+        let val = String(input).trim();
+        let unit = appState.settings.displayUnit;
+        let decimalInches = 0;
+
+        if (unit === 'mm') {
+            return parseFloat(val) || 0;
+        }
+
+        // If Fractional Inches
+        if (unit === 'frac_in') {
+            if (val.includes('/')) {
+                let parts = val.split(' ');
+                if (parts.length === 2) {
+                    // It's a mixed fraction (e.g., "1 3/4")
+                    let whole = parseFloat(parts[0]) || 0;
+                    let frac = parts[1].split('/');
+                    let num = parseFloat(frac[0]) || 0;
+                    let den = parseFloat(frac[1]) || 1;
+                    decimalInches = whole + (num / den);
+                } else {
+                    // It's just a fraction (e.g., "3/4")
+                    let frac = val.split('/');
+                    let num = parseFloat(frac[0]) || 0;
+                    let den = parseFloat(frac[1]) || 1;
+                    decimalInches = num / den;
+                }
+            } else {
+                // It's just a whole number typed into the fraction setting (e.g., "2")
+                decimalInches = parseFloat(val) || 0;
+            }
+            return decimalInches * 25.4; // Convert inches to mm
+        }
+
+        // If Decimal Inches
+        if (unit === 'dec_in') {
+            decimalInches = parseFloat(val) || 0;
+            return decimalInches * 25.4;
+        }
+
+        return parseFloat(val) || 0; // Fallback
+    }
+    /** Formats Base Units (decimal mm) from the AppState back into a user-friendly string. Snaps fractional inches to the nearest 1/16th. */
+    function formatForDisplay(mmValue) {
+        let val = parseFloat(mmValue) || 0;
+        let unit = appState.settings.displayUnit;
+
+        if (unit === 'mm') {
+            return (Math.round(val * 100) / 100).toString(); // Max 2 decimal places
+        }
+
+        let inches = val / 25.4;
+
+        if (unit === 'dec_in') {
+            return (Math.round(inches * 1000) / 1000).toString(); // Max 3 decimal places
+        }
+
+        if (unit === 'frac_in') {
+            let whole = Math.floor(inches);
+            let remainder = inches - whole;
+            let denominator = 16; // Lock accuracy to 1/16th
+            let numerator = Math.round(remainder * denominator);
+
+            // Edge Case: perfectly whole number
+            if (numerator === 0) {
+                return whole > 0 ? whole.toString() : "0";
+            }
+            
+            // Edge Case: rounded up to the next whole number (e.g., 16/16)
+            if (numerator === denominator) {
+                return (whole + 1).toString();
+            }
+
+            // Simplify the fraction (e.g., 8/16 becomes 1/2)
+            while (numerator % 2 === 0 && denominator % 2 === 0) {
+                numerator /= 2;
+                denominator /= 2;
+            }
+
+            if (whole === 0) {
+                return `${numerator}/${denominator}`;
+            } else {
+                return `${whole} ${numerator}/${denominator}`;
+            }
+        }
+        
+        return val.toString();
+    }
+    /** Converts UI density input into Base kg/m³ for storage. */
+     function parseDensityToBase(input) {
+        let val = parseFloat(input) || 0;
+        if (appState.settings.displayUnit === 'mm') return val; // Already kg/m³
+        return val / 0.06242796; // Convert lb/ft³ back to kg/m³
+    }
+    /** Formats Base kg/m³ into UI display density (kg/m³ or lb/ft³). */
+    function formatDensityForDisplay(kgm3) {
+        let val = parseFloat(kgm3) || 0;
+        if (appState.settings.displayUnit === 'mm') return val.toFixed(2);
+        return (val * 0.06242796).toFixed(2); // Convert to lb/ft³
+    }
+
+    function calculatePartCost(part) {
+        if (part.category === 'fastener' || !appState.catalog) return 0;
+        const matchingItems = appState.catalog.filter(c => c.categoryId === part.category && c.profileId === part.profileId && c.materialId === part.materialId);
+        if (matchingItems.length === 0) return 0;
+
+        let totalNormPrice = 0;
+        matchingItems.forEach(c => {
+            const bCost = typeof calculateCostPerPiece === 'function' ? calculateCostPerPiece(c) : 0;
+            if (part.category === 'sheet') {
+                const cArea = c.length * c.width;
+                if (cArea > 0) totalNormPrice += (bCost / cArea);
+            } else {
+                if (c.length > 0) totalNormPrice += (bCost / c.length);
+            }
+        });
+        
+        const avgUnitCost = totalNormPrice / matchingItems.length;
+        const trueWidth = part.category === 'lumber' ? (appState.profiles.find(pr => pr.id === part.profileId)?.width || 0) : part.width;
+        const unitSize = part.category === 'sheet' ? (part.length * trueWidth) : part.length;
+        return avgUnitCost * unitSize * part.qty;
+    }
+    function calculatePartWeight(part) {
+        if (part.category === 'fastener') return 0;
+        const prof = appState.profiles.find(pr => pr.id === part.profileId);
+        const mat = appState.materials.find(m => m.id === part.materialId);
+        if (!prof || !mat) return 0;
+        const trueWidth = part.category === 'lumber' ? (prof.width || 0) : part.width;
+        const safeThick = prof.thickness || 0;
+        const volumeM3 = (part.length * trueWidth * safeThick) / 1000000000;
+        return volumeM3 * (mat.density || 0) * part.qty;
+    }
+    function recalculateAllProjectTotals() {
+        if (!appState.projects) return;
+        
+        // 1. Initialize empty buckets
+        const totals = {};
+        appState.projects.forEach(p => { totals[p.id] = { parts: 0, cost: 0, weight: 0 }; });
+
+        // 2. Tally up every part directly from the source of truth
+        if (appState.parts) {
+            appState.parts.forEach(part => {
+                if (totals[part.projectId]) {
+                    totals[part.projectId].parts += (parseInt(part.qty) || 0);
+                    totals[part.projectId].cost += calculatePartCost(part);
+                    totals[part.projectId].weight += calculatePartWeight(part);
+                }
+            });
+        }
+
+        // 3. Inject silently back into memory
+        appState.projects.forEach(p => {
+            p.totalParts = totals[p.id].parts;
+            p.totalCost = totals[p.id].cost;
+            p.totalWeight = totals[p.id].weight;
+        });
+    }
+
+    // ==========================================
+    // DUPLICATION ENGINE
+    // ==========================================
+    
+    // 🪄 The Glow Registry: Remembers active animations across table redraws
+    if (!window.activeGlows) window.activeGlows = [];
+    function duplicateRow(arrayName, rowId) {
+        // 1. Failsafe
+        if (!appState[arrayName]) return;
+
+        // 2. Find the exact index of the item we clicked
+        const index = appState[arrayName].findIndex(item => item.id === rowId);
+        if (index === -1) return;
+
+        // 3. Deep Clone the object
+        const original = appState[arrayName][index];
+        const clone = JSON.parse(JSON.stringify(original));
+
+        // 4. Generate the new ID
+        const idParts = original.id.split('-');
+        const prefix = idParts.length > 1 ? idParts[0] + '-' : 'ID-';
+        clone.id = prefix + Date.now();
+
+        if (clone.name !== undefined) {
+            clone.name = clone.name + ` (${t('lbl_copy')})`;
+        }
+
+        // 5. Inject the clone directly below the original
+        appState[arrayName].splice(index + 1, 0, clone);
+
+        // 6. Save and Redraw
+        saveState();
+        if (arrayName === 'parts' && typeof renderPartsTable === 'function') renderPartsTable();
+        if (arrayName === 'materials' && typeof renderMaterialsTable === 'function') renderMaterialsTable();
+        if (arrayName === 'catalog' && typeof renderCatalogTable === 'function') renderCatalogTable();
+        if (arrayName === 'stock' && typeof renderStockTable === 'function') renderStockTable();
+        if (arrayName === 'projects' && typeof renderProjectsTable === 'function') renderProjectsTable();
+        if (arrayName === 'profiles' && typeof renderProfilesTable === 'function') renderProfilesTable();
+
+        showToast(t('msg_row_duplicated'));
+
+        // 7. 🪄 VISUAL HIGHLIGHT: Add the new row to the registry
+        window.activeGlows.push({ id: clone.id, timestamp: Date.now() });
+
+        // Clean up memory: Remove any rows from the registry that are older than 4 seconds
+        window.activeGlows = window.activeGlows.filter(g => Date.now() - g.timestamp < 4000);
+
+        // 8. Re-apply animations to ALL active rows
+        setTimeout(() => {
+            const renderTime = Date.now();
+            
+            window.activeGlows.forEach(glowObj => {
+                const newRowElement = document.querySelector(`[onclick*="${glowObj.id}"]`);
+                if (newRowElement) {
+                    const tr = newRowElement.closest('tr');
+                    if (tr) {
+                        const cells = tr.querySelectorAll('td, th');
+                        
+                        // Calculate exact time and opacity remaining for this specific row
+                        const elapsed = renderTime - glowObj.timestamp;
+                        const remainingMs = Math.max(0, 4000 - elapsed);
+                        const currentOpacity = 0.4 * (remainingMs / 4000);
+
+                        if (remainingMs > 0) {
+                            // Step A: Snap to the exact color it should be right now
+                            cells.forEach(cell => {
+                                cell.style.transition = 'none';
+                                cell.style.backgroundColor = `rgba(25, 135, 84, ${currentOpacity})`;
+                                cell.style.boxShadow = 'none'; 
+                            });
+
+                            // Step B: Force the browser to draw it
+                            void tr.offsetWidth;
+
+                            // Step C: Resume the fade-out for the remaining time
+                            cells.forEach(cell => {
+                                cell.style.transition = `background-color ${remainingMs}ms ease-out, box-shadow ${remainingMs}ms ease-out`;
+                                cell.style.backgroundColor = 'transparent';
+                                cell.style.boxShadow = ''; 
+                            });
+                        }
+                    }
+                }
+            });
+        }, 150); 
+    }
+
+    // DEEP CLONING ENGINE (Projects, Groups, and Parts)
+    function duplicateProject(projectId) {
+        const originalProject = appState.projects.find(p => p.id === projectId);
+        if (!originalProject) return;
+
+        // 1. Clone Project
+        const newProjId = 'PROJ-' + Date.now() + Math.floor(Math.random() * 1000);
+        const clonedProject = JSON.parse(JSON.stringify(originalProject));
+        clonedProject.id = newProjId;
+        clonedProject.name = clonedProject.name + ` (${t('lbl_copy')})`;
+        // Wipe cached totals clean; they will naturally rebuild on the next saveState
+        clonedProject.totalParts = 0; 
+        clonedProject.totalCost = 0;
+        appState.projects.splice(appState.projects.findIndex(p => p.id === projectId) + 1, 0, clonedProject);
+
+        // 2. Clone Groups and Build Relationship Map
+        const groupMap = {}; // oldGrpId -> newGrpId
+        if (appState.groups) {
+            const projectGroups = appState.groups.filter(g => g.projectId === projectId);
+            projectGroups.forEach((g, index) => {
+                const newGrpId = 'GRP-' + Date.now() + index + Math.floor(Math.random() * 1000);
+                groupMap[g.id] = newGrpId;
+                const clonedGroup = JSON.parse(JSON.stringify(g));
+                clonedGroup.id = newGrpId;
+                clonedGroup.projectId = newProjId;
+                appState.groups.push(clonedGroup);
+            });
+        }
+
+        // 3. Clone Parts & Re-link them
+        if (appState.parts) {
+            const projectParts = appState.parts.filter(p => p.projectId === projectId);
+            projectParts.forEach((p, index) => {
+                const clonedPart = JSON.parse(JSON.stringify(p));
+                clonedPart.id = 'PART-' + Date.now() + index + Math.floor(Math.random() * 1000);
+                clonedPart.projectId = newProjId; // Re-link to new project
+                if (clonedPart.groupId && groupMap[clonedPart.groupId]) {
+                    clonedPart.groupId = groupMap[clonedPart.groupId]; // Re-link to new group!
+                }
+                appState.parts.push(clonedPart); 
+            });
+        }
+
+        saveState();
+        if (typeof renderDictionaries === 'function') renderDictionaries();
+        showToast(t('msg_project_duplicated'));
+    }
+</script>

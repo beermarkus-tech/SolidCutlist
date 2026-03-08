@@ -1,0 +1,90 @@
+<script>
+    function renderDictionaries() {
+        renderProjectsTable(); 
+        renderStockTable();
+        renderCatalogTable();
+        renderMaterialsTable();
+        renderProfilesTable();
+        
+        // 🪄 Tell the Parts view to instantly update its dropdowns
+        if (typeof refreshPartsDropdowns === 'function') refreshPartsDropdowns();
+        if (typeof renderPartsTable === 'function') renderPartsTable();
+    }
+
+    function renderSettings() {
+        if (!appState.settings) appState.settings = {};
+        if (!appState.settings.displayUnit) appState.settings.displayUnit = 'mm';
+        if (appState.settings.bladeKerf === undefined) appState.settings.bladeKerf = 3.175;
+        if (appState.settings.sheetBladeKerf === undefined) appState.settings.sheetBladeKerf = 3.175; // 🪄 NEW
+        if (appState.settings.cutoffThreshold === undefined) appState.settings.cutoffThreshold = 200.0;
+        if (appState.settings.sheetScrapMinWidth === undefined) appState.settings.sheetScrapMinWidth = 50.0; // 🪄 NEW
+        if (appState.settings.sheetScrapMinLength === undefined) appState.settings.sheetScrapMinLength = 400.0; // 🪄 NEW
+        if (appState.settings.factoryEdgeTrim === undefined) appState.settings.factoryEdgeTrim = 6.35;
+        if (appState.settings.sheetFactoryTrim === undefined) appState.settings.sheetFactoryTrim = 6.35; // 🪄 NEW
+        if (!appState.settings.currency) appState.settings.currency = '$'; // 🪄 NEW
+        
+        document.getElementById('setting-display-unit').value = appState.settings.displayUnit;
+        document.getElementById('setting-kerf').value = formatForDisplay(appState.settings.bladeKerf);
+        document.getElementById('setting-sheet-kerf').value = formatForDisplay(appState.settings.sheetBladeKerf); // 🪄 NEW
+        document.getElementById('setting-cutoff').value = formatForDisplay(appState.settings.cutoffThreshold);
+        document.getElementById('setting-sheet-scrap-width').value = formatForDisplay(appState.settings.sheetScrapMinWidth); // 🪄 NEW
+        document.getElementById('setting-sheet-scrap-length').value = formatForDisplay(appState.settings.sheetScrapMinLength); // 🪄 NEW
+        document.getElementById('setting-factory-trim').value = formatForDisplay(appState.settings.factoryEdgeTrim);
+        document.getElementById('setting-sheet-trim').value = formatForDisplay(appState.settings.sheetFactoryTrim); // 🪄 NEW
+        document.getElementById('setting-currency').value = appState.settings.currency; // 🪄 NEW
+
+        const langDropdown = document.getElementById('setting-language');
+        if (langDropdown) langDropdown.value = appState.settings.language;
+
+        updateUnitLabels();
+    }
+    function handleSettingsValueChange() {
+        appState.settings.bladeKerf = parseToBaseUnit(document.getElementById('setting-kerf').value);
+        appState.settings.sheetBladeKerf = parseToBaseUnit(document.getElementById('setting-sheet-kerf').value); // 🪄 NEW
+        appState.settings.cutoffThreshold = parseToBaseUnit(document.getElementById('setting-cutoff').value);
+        appState.settings.sheetScrapMinWidth = parseToBaseUnit(document.getElementById('setting-sheet-scrap-width').value); // 🪄 NEW
+        appState.settings.sheetScrapMinLength = parseToBaseUnit(document.getElementById('setting-sheet-scrap-length').value); // 🪄 NEW
+        appState.settings.factoryEdgeTrim = parseToBaseUnit(document.getElementById('setting-factory-trim').value);
+        appState.settings.sheetFactoryTrim = parseToBaseUnit(document.getElementById('setting-sheet-trim').value); // 🪄 NEW
+        
+        saveState();
+        renderSettings();
+        showToast(t('msg_settings_saved'));
+    }
+    function updateUnitLabels() {
+        const isMetric = appState.settings.displayUnit === 'mm';
+        const currencyText = appState.settings.currency || '$';
+        const unitText = isMetric ? 'mm' : 'in';
+        const densityText = isMetric ? 'kg/m³' : 'lb/ft³';
+        const weightText = isMetric ? 'kg' : 'lbs';
+        const linearText = isMetric ? 'm' : 'ft';
+        const areaText = isMetric ? 'm²' : 'sqft';
+        const volText = isMetric ? 'm³' : 'BF';
+        
+        // Update basic global labels
+        document.querySelectorAll('.display-unit-label').forEach(label => label.innerText = unitText);
+        document.querySelectorAll('.density-unit-label').forEach(label => label.innerText = densityText);
+        document.querySelectorAll('.density-weight-label').forEach(label => label.innerText = weightText);
+        document.querySelectorAll('.currency-label').forEach(label => label.innerText = currencyText);
+        
+        // Update the header drop-down in the Catalog table (safely checks if it exists first)
+        const tableViewSelect = document.getElementById('table-price-view');
+        if (tableViewSelect && tableViewSelect.options && tableViewSelect.options.length > 3) {
+            tableViewSelect.options[1].text = `${t('opt_cost')} / ${linearText}`;
+            tableViewSelect.options[2].text = `${t('opt_cost')} / ${areaText}`;
+            tableViewSelect.options[3].text = `${t('opt_cost')} / ${volText}`;
+        }
+
+        // 🪄 Update the new Cycle Button text safely
+        const btnCycle = document.getElementById('btn-cycle-unit');
+        const hiddenUnit = document.getElementById('cat-price-unit');
+        if (btnCycle && hiddenUnit) {
+            let u = hiddenUnit.value;
+            let display = t('opt_pc');
+            if (u === 'linear') display = linearText;
+            if (u === 'area') display = areaText;
+            if (u === 'volume') display = volText;
+            btnCycle.innerText = `/ ${display}`;
+        }
+    }
+</script>

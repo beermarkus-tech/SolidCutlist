@@ -1,0 +1,182 @@
+<script>
+    // --- NAVIGATION ---
+    function navigateTo(viewId) {
+        // 1. Hide all views
+        const views = document.querySelectorAll('.app-view');
+        views.forEach(view => view.classList.add('d-none'));
+
+        // 2. Show requested view
+        const targetView = document.getElementById(viewId);
+        if (targetView) targetView.classList.remove('d-none');
+
+        // 3. Highlight the active nav button
+        document.querySelectorAll('.nav-buttons-container .btn').forEach(btn => {
+            btn.classList.remove('active', 'bg-light', 'text-dark', 'fw-bold');
+        });
+        const activeBtn = document.getElementById('nav-btn-' + viewId);
+        if (activeBtn) activeBtn.classList.add('active', 'bg-light', 'text-dark', 'fw-bold');
+
+        // 4. View-Specific Initializations 🪄 ADDED THIS BLOCK
+        if (viewId === 'view-import') {
+            renderImportView(); // Fills the project dropdown and resets the UI
+        } else if (viewId === 'view-cutlist') {
+            if (typeof renderOptimizerConfig === 'function') renderOptimizerConfig();
+        }
+
+        // 🪄 5. DYNAMIC IMPORT BUTTON STYLING
+        const importBtn = document.getElementById('nav-btn-resume-import');
+        if (importBtn) {
+            if (viewId === 'view-import') {
+                // When ON the import view: Make it solid yellow, bold, and shadowed
+                importBtn.classList.remove('btn-outline-warning', 'btn-outline-light');
+                importBtn.classList.add('btn-warning', 'fw-bold', 'shadow-sm', 'text-dark');
+            } else {
+                // When OFF the import view: Make it hollow, un-bold, and blend in
+                importBtn.classList.remove('btn-warning', 'fw-bold', 'shadow-sm', 'text-dark');
+                importBtn.classList.add('btn-outline-warning'); 
+            }
+        }
+    }
+    function toggleInputSection(arrayName, normalOffset, hiddenOffset, btnElement) {
+        const inputSection = document.getElementById(`input-section-${arrayName}`);
+        const tableWrapper = document.getElementById(`table-wrapper-${arrayName}`);
+
+        if (!inputSection || !tableWrapper) return; // Failsafe
+
+        if (inputSection.classList.contains('d-none')) {
+            // SHOW THE FORM
+            inputSection.classList.remove('d-none');
+            // Shrink the table back down
+            tableWrapper.style.maxHeight = `calc(100vh - ${normalOffset}px)`;
+            tableWrapper.style.height = `calc(100vh - ${normalOffset}px)`; 
+            btnElement.innerHTML = '<b>▽</b>';
+        } else {
+            // HIDE THE FORM
+            inputSection.classList.add('d-none');
+            // Expand the table to fill the void
+            tableWrapper.style.maxHeight = `calc(100vh - ${hiddenOffset}px)`;
+            tableWrapper.style.height = `calc(100vh - ${hiddenOffset}px)`; 
+            btnElement.innerHTML = '<b>◁</b>';
+        }
+    }
+
+    // --- TOAST NOTIFICATIONS ---
+    // Instead of ugly alert() boxes, we slide up a modern notification
+    function showToast(message, isError = false) {
+        const container = document.getElementById('toast-container');
+        const MAX_TOASTS = 3;
+
+        const currentToasts = container.querySelectorAll('.toast');
+        if (currentToasts.length >= MAX_TOASTS) {
+            // Target the oldest toast (the first one in the container)
+            const oldestToast = currentToasts[0];
+            
+            // Use Bootstrap's API to gracefully hide it (which triggers our cleanup listener)
+            const bsOldest = bootstrap.Toast.getInstance(oldestToast);
+            if (bsOldest) {
+                bsOldest.hide();
+            } else {
+                oldestToast.remove(); // Failsafe if Bootstrap loses track of it
+            }
+        }
+        
+        // Create the toast element
+        const toastEl = document.createElement('div');
+        toastEl.className = `toast align-items-center text-white border-0 ${isError ? 'bg-danger' : 'bg-success'}`;
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        
+        // Inner HTML of the toast
+        toastEl.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        
+        container.appendChild(toastEl);
+        
+        // Initialize and show using Bootstrap's JS API
+        const bsToast = new bootstrap.Toast(toastEl, { delay: 3000 });
+        bsToast.show();
+        
+        // Clean up DOM after it hides
+        toastEl.addEventListener('hidden.bs.toast', () => {
+            toastEl.remove();
+        });
+    }
+
+    /**
+     * Returns the exact Bootstrap classes for a given category badge.
+     * Centralizes color management so it can be updated in one place.
+     * @param {string} category - The category name ('lumber', 'sheet', 'fastener')
+     * @returns {string} The CSS class list for the badge.
+     */
+     function getCategoryBadgeClass(category) {
+        const badgeMap = {
+            lumber: 'bg-lumber text-white',
+            sheet: 'bg-sheet text-dark',
+            fastener: 'bg-fastener text-white'
+        };
+
+        // Return the mapped color, or fallback to the default gray if unknown
+        return badgeMap[category] || 'bg-secondary text-white';
+    }
+
+    // THEME & DARK MODE LOGIC
+    function toggleTheme() {
+        const isDark = document.getElementById('setting-theme-toggle').checked;
+        
+        // Ensure settings object exists
+        if (!appState.settings) appState.settings = {};
+        
+        // Save choice to database
+        appState.settings.theme = isDark ? 'dark' : 'light';
+        saveState();
+        
+        // Apply instantly
+        applyTheme();
+    }
+    function applyTheme() {
+        // Default to light if not set
+        const theme = (appState.settings && appState.settings.theme) ? appState.settings.theme : 'light';
+        
+        // 1. Tell Bootstrap to flip the global component colors (tables, inputs, etc.)
+        document.documentElement.setAttribute('data-bs-theme', theme);
+        
+        // 2. 🪄 The Bulletproof Background Fix: Manually swap the body classes
+        if (theme === 'dark') {
+            document.body.classList.remove('bg-light', 'bg-white');
+            document.body.classList.add('bg-dark');
+        } else {
+            document.body.classList.remove('bg-dark');
+            document.body.classList.add('bg-light'); 
+        }
+        
+        // 3. Keep the switch UI perfectly synced with the data
+        const toggle = document.getElementById('setting-theme-toggle');
+        if (toggle) {
+            toggle.checked = (theme === 'dark');
+        }
+    }
+
+    // Freeze and Unfreeze UI while archiving
+    function freezeUI() {
+        let blocker = document.getElementById('invisible-ui-blocker');
+        if (!blocker) {
+            blocker = document.createElement('div');
+            blocker.id = 'invisible-ui-blocker';
+            blocker.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 999999; cursor: wait; background: transparent;';
+            document.body.appendChild(blocker);
+        }
+        blocker.style.display = 'block';
+    }
+    function unfreezeUI() {
+        const blocker = document.getElementById('invisible-ui-blocker');
+        if (blocker) blocker.style.display = 'none';
+    }
+
+</script>

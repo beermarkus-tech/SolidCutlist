@@ -1,10 +1,4 @@
 <script>
-    /**
-     * Frontend/JS/js_import.html
-     * Handles reading CSVs, column mapping, dictionary triage, and merging.
-     * Upgraded: Non-blocking 3-Step Wizard with memory caching.
-     */
-
     // --- TEMPORARY STATE VARIABLES ---
     let rawCsvHeaders = [];
     let rawCsvRows = [];
@@ -36,7 +30,6 @@
             toggleResumeButton(true); // 🪄 Turn the yellow button ON immediately!
         }
     }
-
     function populateImportProjectDropdown() {
         const projSelect = document.getElementById('import-project-select');
         const currentVal = projSelect.value || targetProjectId; // Remember selection
@@ -52,7 +45,6 @@
         }
         if (currentVal) projSelect.value = currentVal;
     }
-
     function toggleResumeButton(show) {
         isImportActive = show;
         const btn = document.getElementById('nav-btn-resume-import');
@@ -91,7 +83,6 @@
             }
         }
     }
-
     // Completely annihilates the cache and hides the resume button
     function resetImport() {
         rawCsvHeaders = [];
@@ -107,13 +98,11 @@
         toggleResumeButton(false);
         goToImportStep(1);
     }
-
     function cancelImportProcess() {
         resetImport();
         navigateTo('view-parts');
         showToast(t('msg_import_cancelled'), true);
     }
-
     // --- STEP 1: READ FILE & EXTRACT HEADERS ---
     
     // Called when Project Dropdown changes
@@ -121,7 +110,6 @@
         isMappingDirty = true;
         targetProjectId = document.getElementById('import-project-select').value;
     }
-
     function handleCsvUpload() {
         const projSelect = document.getElementById('import-project-select');
         const fileInput = document.getElementById('import-file-input');
@@ -175,7 +163,6 @@
 
         reader.readAsText(file);
     }
-
     function clearCachedFile() {
         rawCsvRows = [];
         rawCsvHeaders = [];
@@ -188,13 +175,11 @@
         document.getElementById('import-loaded-ui').classList.remove('d-flex');
         isMappingDirty = true;
     }
-
     function updateFileNameDisplay() {
         const fileInput = document.getElementById('import-file-input');
         const display = document.getElementById('file-name-display');
         display.value = fileInput.files.length > 0 ? fileInput.files[0].name : t('msg_no_file_selected');
     }
-
     // --- STEP 2: BUILD THE MAPPING UI ---
     function renderMappingUI() {
         const container = document.getElementById('mapping-dropdowns-container');
@@ -241,7 +226,6 @@
             updateColumnPreview(field.id);
         });
     }
-
     // 🪄 THE PREVIEW ENGINE
     function updateColumnPreview(selectId) {
         const selectEl = document.getElementById(selectId);
@@ -291,7 +275,6 @@
             });
         }
     }
-    
     // --- STEP 3: PROCESS & MATCH DATA ---
     function processMapping() {
         if (!isMappingDirty && appState.stagingParts.length > 0) {
@@ -441,7 +424,6 @@
         goToImportStep(3);
         renderStagingTable();
     }
-
     // --- STEP 4: RENDER THE STAGING TABLE ---
     function renderStagingTable() {
         const tbody = document.getElementById('table-staging-body');
@@ -617,7 +599,6 @@
             tfootTotals.innerText = `${totalRows} ${t('lbl_rows')}, ${totalQty} ${t('lbl_parts')}`;
         }
     }
-
     function updateStagingPart(id, field, value) {
         const part = appState.stagingParts.find(p => p.id === id);
         if (part) {
@@ -649,7 +630,6 @@
             renderStagingTable(); 
         }
     }
-
     function updateStagingCategory(id, newCategory) {
         const part = appState.stagingParts.find(p => p.id === id);
         if (part) {
@@ -661,7 +641,6 @@
             showToast(t('msg_category_changed_remap'), true);
         }
     }
-
     function deleteStagingPart(id, isConfirmed = false) {
         // 🪄 The Safety Shield (Exact match to js_parts.html)
         if (!isConfirmed) {
@@ -673,7 +652,6 @@
         renderStagingTable(); 
         showToast(t('msg_part_removed_import'), true);
     }
-
     function commitImport() {
         const unmapped = appState.stagingParts.filter(p => p.status !== 'ready');
         if (unmapped.length > 0) {

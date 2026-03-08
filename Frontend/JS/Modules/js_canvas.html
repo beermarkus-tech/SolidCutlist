@@ -1,9 +1,4 @@
 <script>
-    /**
-     * Frontend/JS/js_canvas.html
-     * Renders visual board cards with Pixel Scaling, Dynamic Grain, Collapsible SKUs, and Bulletproof Merging.
-     */
-
     function renderDiagramsTab(results) {
         const container = document.getElementById('pane-diagrams');
         let html = '';
@@ -264,7 +259,6 @@
             }
         });
     }
-
     function toggleAllSKUs(expand) {
         document.querySelectorAll('details.sku-group').forEach(el => {
             if (expand) el.setAttribute('open', '');

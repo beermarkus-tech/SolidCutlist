@@ -1,9 +1,4 @@
 <script>
-    /**
-     * Frontend/JS/js_optimizer.html
-     * 1D/2D Bin Packing Engine - Two-Stage Siphon (Stock + Store)
-     */
-
     // ==========================================
     // PHASE A: DATA PREP (THE TRIAGE)
     // ==========================================
@@ -209,9 +204,6 @@
 
         return finalCutlist;
     }
-
-    // --- ALGORITHM HELPERS ---
-    
     // Evaluates 2D constraints and Grain
     function checkFit(part, rect, sheetGrain) {
         let fitsNormal = (part.width <= rect.w && part.length <= rect.l);
@@ -263,7 +255,6 @@
 
         return { fits: true, rotated: rotatedMinEdge < normalMinEdge };
     }
-
     function place2DPart(board, rectIndex, part, rotated, kerf, pref) {
         let rect = board.freeRects.splice(rectIndex, 1)[0]; 
         let pw = rotated ? part.length : part.width;
@@ -285,7 +276,6 @@
         if (rect1.w > 0 && rect1.l > 0) board.freeRects.push(rect1);
         if (rect2.w > 0 && rect2.l > 0) board.freeRects.push(rect2);
     }
-
     // --- INFINITE SUPPLY ENGINES (Store Loop) ---
     function pack1D(parts, boardLength, kerf, trim) {
         let boards = [];
@@ -316,7 +306,6 @@
         boards.forEach(b => totalWaste += b.remaining);
         return { boards, unmapped, totalWaste };
     }
-
     function pack2D(parts, sheetLength, sheetWidth, sheetGrain, kerf, trim, pref) {
         let boards = [];
         let unmapped = [];
@@ -349,7 +338,6 @@
         boards.forEach(b => b.freeRects.forEach(r => totalWaste += (r.w * r.l)));
         return { boards, unmapped, totalWaste };
     }
-
     // --- FINITE SUPPLY ENGINES (Stock Loop) ---
     function packSingle1D(parts, length, kerf, trim) {
         let usableLength = length - trim;
@@ -366,7 +354,6 @@
         });
         return { board, unmapped, totalWaste: board.remaining };
     }
-
     function packSingle2D(parts, sheetLength, sheetWidth, sheetGrain, kerf, trim, pref) {
         let wUsable = Math.max(0, sheetWidth - trim);
         let lUsable = Math.max(0, sheetLength - trim);
@@ -450,7 +437,6 @@
         document.getElementById('optimizer-config-form').innerHTML = html;
         validateOptConfig();
     }
-    
     function saveOptConfig() {
         appState.settings.optimizer.useStock = document.getElementById('opt-use-stock').checked;
         appState.settings.optimizer.sheetCutPreference = document.getElementById('opt-sheet-cut').value;
@@ -461,7 +447,6 @@
         saveState();
         validateOptConfig();
     }
-    
     function validateOptConfig() {
         const btn = document.getElementById('btn-calculate-cutlist');
         const optState = appState.settings.optimizer;
@@ -504,7 +489,6 @@
         if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
         if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
     }
-
     function renderShoppingListTab(results) {
         const container = document.getElementById('pane-shopping');
         let totalCost = 0;
@@ -810,7 +794,6 @@
         window.currentOffcutSort = { field: 'length', asc: false };
         sortOffcuts('length'); 
     }
-
     function sortOffcuts(field) {
         if (window.currentOffcutSort.field === field) {
             window.currentOffcutSort.asc = !window.currentOffcutSort.asc;
@@ -871,7 +854,6 @@
     // PHASE F: COMMIT TO STOCK ENGINE
     // ==========================================
     let commitModalInstance = null;
-
     function openCommitModal() {
         if (!window.currentOffcuts || window.currentOffcuts.length === 0) {
             showToast('No offcuts available to commit.', true);
@@ -924,14 +906,12 @@
         updateUnitLabels();
         commitModalInstance.show();
     }
-
     function toggleCommitCheckboxes(checkStatus) {
         const checkboxes = document.querySelectorAll('.commit-checkbox:not(:disabled)');
         checkboxes.forEach(cb => {
             cb.checked = checkStatus;
         });
     }
-
     function executeCommitToStock() {
         const checkboxes = document.querySelectorAll('.commit-checkbox:checked:not(:disabled)');
         if (checkboxes.length === 0) {
@@ -999,7 +979,6 @@
     // ==========================================
     // TAB BEHAVIOR LOGIC
     // ==========================================
-    
     // 🪄 Listen for Bootstrap tab changes to conditionally show the respective control buttons
     document.addEventListener('DOMContentLoaded', () => {
         const resultsTabs = document.getElementById('resultsTabs');

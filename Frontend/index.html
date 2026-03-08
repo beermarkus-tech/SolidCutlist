@@ -9,7 +9,6 @@
     
     <!-- Inject our custom styles -->
     <?!= include('Frontend/CSS/css_global'); ?>
-    <?!= include('Frontend/CSS/css_custom'); ?>
 
     <style>
         /* 🪄 FORCE INSTANT SNAPPING: Kill all fade/slide animations on main views */
@@ -27,40 +26,6 @@
     </style>
 </head>
 <body class="bg-light">
-
-
-    <!-- Debug Console -->
-    <div id="mobile-debug-console" style="position: fixed; bottom: 0; left: 0; width: 100%; height: 25vh; background: rgba(0,0,0,0.9); color: #ff5555; font-family: monospace; font-size: 12px; overflow-y: scroll; z-index: 999999; padding: 10px; display: none; border-top: 3px solid #ff5555;">
-        <button onclick="document.getElementById('mobile-debug-console').style.display='none'" style="position: absolute; top: 5px; right: 5px; background: white; color: black; border: none; padding: 2px 8px; font-weight: bold;">X</button>
-        <b style="color: white;">🔴 MOBILE ERROR LOG:</b><br><br>
-    </div>
-    <script>
-        const debugConsole = document.getElementById('mobile-debug-console');
-        function logErrorToScreen(msg) {
-            debugConsole.style.display = 'block';
-            const safeMsg = typeof msg === 'object' ? JSON.stringify(msg) : msg;
-            debugConsole.innerHTML += `<div style="margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 5px;">- ${safeMsg}</div>`;
-        }
-        
-        // Catch standard errors
-        window.onerror = function(message, source, lineno, colno, error) {
-            logErrorToScreen(`Error: ${message} (Line: ${lineno})`);
-        };
-        
-        // Catch Google Apps Script & Promise errors
-        window.addEventListener('unhandledrejection', function(event) {
-            logErrorToScreen(`Unhandled: ${event.reason}`);
-        });
-        
-        // Catch console.error
-        const originalError = console.error;
-        console.error = function(...args) {
-            logErrorToScreen(args.join(' '));
-            originalError.apply(console, args);
-        };
-    </script>
-
-
 
     <!-- Boot Screen -->
     <div id="boot-loader" class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center bg-dark z-3" style="z-index: 9999 !important;">
@@ -483,14 +448,23 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Inject our client-side logic -->
-    <?!= include('Frontend/JS/js_api'); ?>
-    <?!= include('Frontend/JS/js_main'); ?>
-    <?!= include('Frontend/JS/js_dictionaries'); ?>
-    <?!= include('Frontend/JS/js_parts'); ?>
-    <?!= include('Frontend/JS/js_import'); ?>
-    <?!= include('Frontend/JS/js_optimizer'); ?>
-    <?!= include('Frontend/JS/js_canvas'); ?>
-    <?!= include('Frontend/JS/js_languages'); ?>
-    <?!= include('Frontend/JS/js_printing'); ?>
+    <?!= include('Frontend/JS/Core/js_languages'); ?>
+    <?!= include('Frontend/JS/Core/js_modals'); ?>
+    <?!= include('Frontend/JS/Core/js_state'); ?>
+    <?!= include('Frontend/JS/Core/js_tables'); ?>
+    <?!= include('Frontend/JS/Core/js_ui_core'); ?>
+    <?!= include('Frontend/JS/Core/js_utils'); ?>
+    
+    <?!= include('Frontend/JS/Domain/js_jobs'); ?>
+    <?!= include('Frontend/JS/Domain/js_materials'); ?>
+    <?!= include('Frontend/JS/Domain/js_parts'); ?>
+    <?!= include('Frontend/JS/Domain/js_projects'); ?>
+    <?!= include('Frontend/JS/Domain/js_settings'); ?>
+    <?!= include('Frontend/JS/Domain/js_sourcing'); ?>
+    
+    <?!= include('Frontend/JS/Modules/js_canvas'); ?>
+    <?!= include('Frontend/JS/Modules/js_import'); ?>
+    <?!= include('Frontend/JS/Modules/js_optimizer'); ?>
+    <?!= include('Frontend/JS/Modules/js_printing'); ?>
 </body>
 </html>

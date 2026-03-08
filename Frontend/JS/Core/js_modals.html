@@ -1,0 +1,63 @@
+<script>
+    // ==========================================
+    // UNIVERSAL DELETE ENGINE
+    // ==========================================
+    let pendingDeleteAction = null;
+
+    function requestConfirm(message, actionCallback, theme = 'danger', btnText = 'Delete') {
+        document.getElementById('modal-delete-message').innerText = message;
+        pendingDeleteAction = actionCallback; 
+        
+        const modalContent = document.getElementById('modal-confirm-content');
+        const modalHeader = document.getElementById('modal-confirm-header');
+        const confirmBtn = document.getElementById('btn-confirm-delete');
+        const titleIcon = document.getElementById('modal-confirm-title');
+
+        if(modalContent && modalHeader && confirmBtn && titleIcon) {
+            // Hot-swap the CSS classes to match the vibe
+            modalContent.className = `modal-content border-${theme} shadow-lg`;
+            modalHeader.className = `modal-header bg-${theme} text-white py-2`;
+            confirmBtn.className = `btn btn-sm btn-${theme} px-4 fw-bold`;
+            
+            // 🪄 i18n Fix: Handle "Delete" vs "Duplicate" vs custom text
+            // If btnText is "Delete", use translated delete. Otherwise assume it's custom and translate it if possible or pass thru.
+            if (btnText === 'Delete') confirmBtn.innerText = t('btn_delete');
+            else if (btnText === 'Duplicate') confirmBtn.innerText = t('btn_duplicate');
+            else confirmBtn.innerText = btnText;
+
+            titleIcon.innerText = theme === 'danger' ? `⚠️ ${t('hdr_confirm_deletion')}` : `ℹ️ ${t('hdr_confirm_action')}`;
+        }
+        
+        const modal = new bootstrap.Modal(document.getElementById('modal-universal-delete'));
+        modal.show();
+        setTimeout(() => confirmBtn.focus(), 400);
+    }
+    function executeConfirm() {
+        if (pendingDeleteAction) {
+            pendingDeleteAction(); // Execute the memorized function
+            pendingDeleteAction = null; // Clear memory
+        }
+        
+        // 🪄 THE FIX: If the invisible shield is up, a server call is running. 
+        // Do NOT close the modal yet! Let the server success handler close it.
+        const blocker = document.getElementById('invisible-ui-blocker');
+        if (blocker && blocker.style.display === 'block') {
+            return; 
+        }
+
+        const modalEl = document.getElementById('modal-universal-delete');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+    }
+
+    // The Global 'Enter' Key Listener
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            const modalEl = document.getElementById('modal-universal-delete');
+            if (modalEl && modalEl.classList.contains('show')) {
+                event.preventDefault(); // Stop Enter from triggering anything else
+                executeConfirm();
+            }
+        }
+    });
+</script>
