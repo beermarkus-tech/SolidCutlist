@@ -382,10 +382,6 @@
     // PHASE C: OPTIMIZER UI & CONFIG STATE
     // ==========================================
     function renderOptimizerConfig() {
-        // 1. Pre-fill Settings from appState
-        document.getElementById('opt-kerf').value = appState.settings.bladeKerf || 3.175;
-        document.getElementById('opt-trim').value = appState.settings.factoryEdgeTrim || 6.35;
-
         // 2. Build the Selection Tree
         const treeContainer = document.getElementById('job-configurator-tree');
         treeContainer.innerHTML = '';
@@ -455,6 +451,77 @@
 
         treeContainer.innerHTML = html;
     }
+    function renderSavedJobTree(job) {
+        const treeContainer = document.getElementById('job-configurator-tree');
+        treeContainer.innerHTML = '';
+
+        if (!job || !job.selections || job.selections.length === 0) {
+            treeContainer.innerHTML = '<div class="text-muted small">No items in this job.</div>';
+            return;
+        }
+
+        let html = '';
+        const jobParts = job.parts || []; 
+
+        job.selections.forEach(sel => {
+            if (sel.type === 'project') {
+                const projId = sel.id;
+                const proj = appState.projects.find(p => p.id === projId) || { id: projId, name: 'Saved Project' };
+                const projMulti = sel.multiplier || 1;
+
+                // 🪄 FIX: Removed 'disabled', added 'readonly' to the number input
+                html += `
+                <div class="d-flex align-items-center mb-1">
+                    <input class="form-check-input me-2" type="checkbox" checked tabindex="-1" onclick="return false;">
+                    <label class="form-check-label flex-grow-1 fw-bold text-truncate project-fold-icon collapsed" style="font-size: 0.9rem; cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-${proj.id}">
+                        ${safeHTML(proj.name)}
+                    </label>
+                    <input type="number" class="form-control form-control-sm text-center bg-white" value="${projMulti}" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem;">
+                </div>
+                `;
+
+                html += `<div class="collapse ms-3 mb-2 border-start border-2 ps-2" id="collapse-${proj.id}">`;
+
+                const partsInProject = jobParts.filter(p => p.projectId === projId);
+                const activeGroupIds = [...new Set(partsInProject.map(p => p.groupId || 'nogroup'))];
+
+                activeGroupIds.forEach(grpId => {
+                    if (grpId === 'nogroup') {
+                        const ungroupedCount = partsInProject.filter(p => !p.groupId || p.groupId.trim() === '').length;
+                        if (ungroupedCount > 0) {
+                            html += `
+                            <div class="d-flex align-items-center mb-1">
+                                <input class="form-check-input me-2" type="checkbox" checked tabindex="-1" onclick="return false;">
+                                <label class="form-check-label flex-grow-1 text-truncate font-italic" style="font-size: 0.85rem;">
+                                    <em>Ungrouped Parts</em> <span class="text-muted" style="font-size: 0.75rem;">(${ungroupedCount} parts)</span>
+                                </label>
+                                <input type="number" class="form-control form-control-sm text-center bg-white" value="1" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem;">
+                            </div>
+                            `;
+                        }
+                    } else {
+                        const grpParts = partsInProject.filter(p => p.groupId === grpId);
+                        if (grpParts.length > 0) {
+                            const grp = appState.groups.find(g => g.id === grpId) || { name: 'Saved Group' };
+                            html += `
+                            <div class="d-flex align-items-center mb-1">
+                                <input class="form-check-input me-2" type="checkbox" checked tabindex="-1" onclick="return false;">
+                                <label class="form-check-label flex-grow-1 text-truncate" style="font-size: 0.85rem;">
+                                    ${safeHTML(grp.name)} <span class="text-muted" style="font-size: 0.75rem;">(${grpParts.length} parts)</span>
+                                </label>
+                                <input type="number" class="form-control form-control-sm text-center bg-white" value="1" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem;">
+                            </div>
+                            `;
+                        }
+                    }
+                });
+                
+                html += `</div>`;
+            }
+        });
+
+        treeContainer.innerHTML = html;
+    }
     // --- CASCADING CHECKBOX LOGIC ---
     function toggleProjectTree(projId, isChecked) {
         // If I check a project, check all its child groups
@@ -492,13 +559,12 @@
         const allInputs = document.querySelectorAll('#job-config-settings input, #job-config-settings select, #job-configurator-tree input');
 
         if (isLocked) {
-            // Apply Grey-Out Visuals
-            if (settingsDiv) settingsDiv.classList.add('opacity-50', 'pointer-events-none');
-            if (treeDiv) treeDiv.classList.add('opacity-50', 'pointer-events-none');
+            if (settingsDiv) settingsDiv.classList.add('pointer-events-none');
+            if (treeDiv) treeDiv.classList.add('pointer-events-none');
             if (defaultActions) defaultActions.classList.add('d-none');
             if (activeActions) activeActions.classList.remove('d-none');
             
-            // 🪄 Toggle the Save/Load buttons based on the isSaved flag
+            // Toggle the Save/Load buttons based on the isSaved flag
             if (btnSave) {
                 if (isSaved) btnSave.classList.add('d-none');
                 else btnSave.classList.remove('d-none');
@@ -512,8 +578,8 @@
             allInputs.forEach(input => input.disabled = true);
         } else {
             // Unlock Visuals
-            if (settingsDiv) settingsDiv.classList.remove('opacity-50', 'pointer-events-none');
-            if (treeDiv) treeDiv.classList.remove('opacity-50', 'pointer-events-none');
+            if (settingsDiv) settingsDiv.classList.remove('pointer-events-none');
+            if (treeDiv) treeDiv.classList.remove('pointer-events-none');
             if (defaultActions) defaultActions.classList.remove('d-none');
             if (activeActions) activeActions.classList.add('d-none');
             
@@ -522,16 +588,38 @@
         }
     }
     function resetConfigurator() {
-        // Unlock the UI
         toggleConfiguratorState(false);
         
-        // Hide the current job label
         const jobLabel = document.getElementById('current-job-label-container');
         if (jobLabel) jobLabel.classList.add('d-none');
         
-        // (Optional: You can also add code here to clear the shopping list/canvas 
-        //  if you want "New Opt." to completely blank the screen!)
         window.activeJobId = null;
+        window.activeJobBackup = null; 
+
+        // Blank out the editable results container
+        const emptyState = document.getElementById('optimizer-empty-state');
+        const tabContent = document.getElementById('optimizer-tab-content');
+        if (emptyState && tabContent) {
+            emptyState.classList.remove('d-none');
+            tabContent.classList.add('d-none');
+        }
+
+        // 🪄 FIX: Hard-reset the dynamic buttons back to default using their IDs
+        const btnAction1 = document.getElementById('btn-active-action1');
+        const btnSave = document.getElementById('btn-active-save');
+        
+        if (btnAction1) {
+            btnAction1.innerText = '↻ Restart';
+            btnAction1.className = 'btn btn-primary flex-grow-1';
+            btnAction1.onclick = resetConfigurator;
+        }
+        if (btnSave) {
+            btnSave.innerText = 'Save Job';
+            btnSave.className = 'btn btn-success flex-grow-1 fw-bold';
+            btnSave.onclick = openSaveJobModal;
+        }
+
+        if (typeof renderOptimizerConfig === 'function') renderOptimizerConfig();
     }
     function setCurrentJobLabel(jobName) {
         const container = document.getElementById('current-job-label-container');
@@ -690,7 +778,7 @@
             totalCost += purchase.totalCost;
             totalWeightKg += batchWeight;
 
-            // 🪄 FIX: Store the raw dimensions and the catalog ID so we can edit them!
+            // 🪄 Stores catalogId and raw dimensions for handleInlineEdit
             storeBuckets[storeName].push({
                 catalogId: purchase.catalogItem.id, 
                 category: res.sku.category, 
@@ -720,6 +808,7 @@
             </div>
         `;
 
+        // 🪄 Ensure "My Shop Stock" remains securely at the top
         const sortedStores = Object.keys(storeBuckets).sort((a, b) => {
             if (a === '🏪 My Shop Stock') return -1;
             if (b === '🏪 My Shop Stock') return 1;
@@ -743,20 +832,20 @@
                 const linkIcon = (item.url && storeName !== '🏪 My Shop Stock') 
                     ? `<a href="${item.url}" target="_blank" class="text-decoration-none ms-2 fs-5" title="Open in Store">🔗</a>` : '';
 
-                // 🪄 SMART RE-OPTIMIZATION: Inline Editable Dimensions
+                // 🪄 INLINE EDITING: Uses oninput for instant state updates!
                 let lengthDisplayHTML = '';
                 const isEditable = window.activeJobId && storeName !== '🏪 My Shop Stock';
                 
                 if (isEditable) {
                     if (item.category === 'sheet') {
                         lengthDisplayHTML = `
-                            <input type="number" step="any" class="form-control form-control-sm d-inline-block text-center px-1 py-0 mx-1" style="width: 70px;" value="${item.length}" onchange="handleInlineEdit('${item.catalogId}', 'length', this.value)">
+                            <input type="number" step="any" class="form-control form-control-sm d-inline-block text-center px-1 py-0 mx-1" style="width: 70px;" value="${item.length}" oninput="handleInlineEdit('${item.catalogId}', 'length', this.value)">
                             x 
-                            <input type="number" step="any" class="form-control form-control-sm d-inline-block text-center px-1 py-0 mx-1" style="width: 70px;" value="${item.width}" onchange="handleInlineEdit('${item.catalogId}', 'width', this.value)">
+                            <input type="number" step="any" class="form-control form-control-sm d-inline-block text-center px-1 py-0 mx-1" style="width: 70px;" value="${item.width}" oninput="handleInlineEdit('${item.catalogId}', 'width', this.value)">
                         `;
                     } else {
                         lengthDisplayHTML = `
-                            <input type="number" step="any" class="form-control form-control-sm d-inline-block text-center px-1 py-0 mx-1" style="width: 80px;" value="${item.length}" onchange="handleInlineEdit('${item.catalogId}', 'length', this.value)">
+                            <input type="number" step="any" class="form-control form-control-sm d-inline-block text-center px-1 py-0 mx-1" style="width: 80px;" value="${item.length}" oninput="handleInlineEdit('${item.catalogId}', 'length', this.value)">
                         `;
                     }
                 } else {
@@ -794,7 +883,7 @@
             html += `</ul>`;
         }
         container.innerHTML = html;
-        updateUnitLabels(); 
+        if (typeof updateUnitLabels === 'function') updateUnitLabels(); 
     }
 
     // ==========================================

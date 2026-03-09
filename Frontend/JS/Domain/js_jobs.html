@@ -145,66 +145,31 @@
         if (typeof showToast === 'function') showToast(`Loading Job: ${job.name}...`, "info");
 
         // 🪄 2. RECONSTRUCT THE UI STATE BEFORE LOCKING
-        // Clear everything first
-        document.querySelectorAll('.proj-check, .grp-check').forEach(chk => chk.checked = false);
-        document.querySelectorAll('.proj-multi, .grp-multi').forEach(m => m.value = 1);
-        
-        // Restore Checkboxes and Multipliers
-        if (job.selections) {
-            job.selections.forEach(sel => {
-                if (sel.type === 'project') {
-                    const pChk = document.getElementById('chk-' + sel.id);
-                    if (pChk) pChk.checked = true;
-                    
-                    const pMulti = document.getElementById('multi-' + sel.id);
-                    if (pMulti) pMulti.value = sel.multiplier || 1;
-                    
-                    // Check all child groups EXCEPT the excluded ones
-                    document.querySelectorAll(`.grp-of-${sel.id}`).forEach(gChk => {
-                        const gId = gChk.id.replace('chk-', ''); 
-                        if (sel.excludedGroups && sel.excludedGroups.includes(gId)) {
-                            gChk.checked = false;
-                        } else {
-                            gChk.checked = true;
-                        }
-                    });
-                } else if (sel.type === 'group') {
-                    const gChk = document.getElementById('chk-' + sel.id);
-                    if (gChk) gChk.checked = true;
-                    
-                    const gMulti = document.getElementById('multi-' + sel.id);
-                    if (gMulti) gMulti.value = sel.multiplier || 1;
-                    
-                    // Visually check the parent project so the UI makes sense
-                    const projIdClass = Array.from(gChk.classList).find(c => c.startsWith('grp-of-'));
-                    if (projIdClass) {
-                        const parentId = projIdClass.replace('grp-of-', '');
-                        const pChk = document.getElementById('chk-' + parentId);
-                        if (pChk) pChk.checked = true;
-                    }
-                }
-            });
+        // Replace the master tree with the Read-Only Sandbox Tree
+        if (typeof renderSavedJobTree === 'function') {
+            renderSavedJobTree(job);
         }
 
-        // Restore Settings Inputs (Bulletproofed)
+        // Restore Settings Inputs (Bulletproofed & Formatted)
         if (job.settings) {
-            const kerfInput = document.getElementById('opt-kerf');
-            if (kerfInput) {
-                kerfInput.value = job.settings.bladeKerf !== undefined ? job.settings.bladeKerf : 3.175;
-            }
-            
-            const trimInput = document.getElementById('opt-trim');
-            if (trimInput) {
-                trimInput.value = job.settings.factoryEdgeTrim !== undefined ? job.settings.factoryEdgeTrim : 6.35;
-            }
+            const setVal = (id, val, fallback) => {
+                const el = document.getElementById(id);
+                if (el) el.value = formatForDisplay(val !== undefined ? val : fallback);
+            };
+
+            setVal('setting-kerf', job.settings.bladeKerf, 3.175);
+            setVal('setting-sheet-kerf', job.settings.sheetBladeKerf, 3.175);
+            setVal('setting-factory-trim', job.settings.factoryEdgeTrim, 6.35);
+            setVal('setting-sheet-trim', job.settings.sheetFactoryTrim, 6.35);
+            setVal('setting-cutoff', job.settings.cutoffThreshold, 200.0);
+            setVal('setting-sheet-scrap-width', job.settings.sheetScrapMinWidth, 50.0);
+            setVal('setting-sheet-scrap-length', job.settings.sheetScrapMinLength, 400.0);
             
             const stockInput = document.getElementById('opt-use-stock');
             if (stockInput) {
-                if (job.settings.optimizer && job.settings.optimizer.useStock !== undefined) {
-                    stockInput.checked = job.settings.optimizer.useStock;
-                } else {
-                    stockInput.checked = true; // Safe fallback
-                }
+                stockInput.checked = (job.settings.optimizer && job.settings.optimizer.useStock !== undefined) 
+                    ? job.settings.optimizer.useStock 
+                    : true;
             }
         }
 
@@ -229,6 +194,7 @@
 
         // 7. Track the active job globally (Crucial for Phase 5 Mobile Editing!)
         window.activeJobId = job.id;
+        window.activeJobBackup = JSON.stringify(job);
 
         // 8. Render the UI exactly like a normal calculation
         document.getElementById('optimizer-empty-state').classList.add('d-none');
@@ -249,6 +215,8 @@
         if (typeof renderShoppingListTab === 'function') renderShoppingListTab(results);
         if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
         if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
+        
+        if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('clean'); // 🪄 FORCE CLEAN STATE
     }
 
     // ==========================================
@@ -343,11 +311,17 @@
         const modalInstance = bootstrap.Modal.getInstance(modalEl);
         if (modalInstance) modalInstance.hide();
         
-        window.activeJobId = newJob.id; // 🪄 TRACK THE JOB IMMEDIATELY
+        window.activeJobId = newJob.id; 
+        window.activeJobBackup = JSON.stringify(newJob); // 🪄 CREATE THE RAM BACKUP
         
         if (typeof setCurrentJobLabel === 'function') setCurrentJobLabel(newJob.name);
         if (typeof toggleConfiguratorState === 'function') toggleConfiguratorState(true, true); 
-        if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('clean'); // 🪄 FORCE CLEAN STATE
+        if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('clean');
+
+        // 🪄 CHANGE: Re-render the shopping list right now so it instantly becomes editable!
+        if (typeof renderShoppingListTab === 'function' && appState.latestResults) {
+            renderShoppingListTab(appState.latestResults);
+        }
 
         if (typeof showToast === 'function') showToast(`Job '${jobName}' saved!`, "success");
     }
@@ -356,42 +330,67 @@
     // PHASE 4: SMART RE-OPTIMIZATION
     // ==========================================
     function setUnsavedChangesState(state) {
-        // Find buttons dynamically
-        const btnNewOpt = document.querySelector('#job-config-actions-active button[onclick="resetConfigurator()"]') || 
-                          document.querySelector('#job-config-actions-active button[onclick="executeRecalculate()"]');
+        // 🪄 FIX: Targeting exactly by ID so it never fails!
+        const btnAction1 = document.getElementById('btn-active-action1');
+        const btnSave = document.getElementById('btn-active-save');
         const btnLoad = document.getElementById('btn-active-load');
         
-        if (!btnNewOpt || !btnLoad) return;
+        if (!btnAction1 || !btnSave || !btnLoad) return;
 
         if (state === 'clean') {
-            btnNewOpt.innerText = 'New Opt.';
-            btnNewOpt.className = 'btn btn-warning flex-grow-1 fw-bold';
-            btnNewOpt.onclick = resetConfigurator;
+            btnAction1.innerText = '↻ Restart';
+            btnAction1.className = 'btn btn-primary flex-grow-1';
+            btnAction1.onclick = resetConfigurator;
+            
+            // Explicitly repair the Save button back to defaults before hiding
+            btnSave.innerText = 'Save Job';
+            btnSave.className = 'btn btn-success flex-grow-1 fw-bold';
+            btnSave.onclick = openSaveJobModal;
+            btnSave.classList.add('d-none'); // Hide Save
             
             btnLoad.innerText = 'Load Job';
-            btnLoad.className = 'btn btn-outline-secondary flex-grow-1 fw-bold d-none'; // Hidden by default config lock
+            btnLoad.className = 'btn btn-outline-secondary flex-grow-1';
             btnLoad.onclick = openLoadJobModal;
+            btnLoad.classList.remove('d-none'); // Show Load
         } 
         else if (state === 'dirty_input') {
-            btnNewOpt.innerText = 'Recalculate';
-            btnNewOpt.className = 'btn btn-info flex-grow-1 fw-bold text-white shadow-lg border-info';
-            btnNewOpt.onclick = executeRecalculate;
+            btnAction1.innerText = 'Recalculate';
+            btnAction1.className = 'btn btn-info flex-grow-1';
+            btnAction1.onclick = executeRecalculate;
             
-            btnLoad.innerText = 'Save Changes';
-            btnLoad.className = 'btn btn-success flex-grow-1 fw-bold shadow-lg';
-            btnLoad.onclick = executeSaveChanges;
-            btnLoad.classList.remove('d-none');
+            btnSave.classList.add('d-none'); // Hide Save
+            
+            btnLoad.innerText = 'Load Job';
+            btnLoad.className = 'btn btn-outline-secondary flex-grow-1';
+            btnLoad.onclick = openLoadJobModal;
+            btnLoad.classList.remove('d-none'); // Show Load
         }
         else if (state === 'dirty_recalculated') {
-            btnNewOpt.innerText = 'New Opt.';
-            btnNewOpt.className = 'btn btn-warning flex-grow-1 fw-bold';
-            btnNewOpt.onclick = resetConfigurator;
+            btnAction1.innerText = 'Undo Changes';
+            btnAction1.className = 'btn btn-danger flex-grow-1';
+            btnAction1.onclick = executeUndoChanges;
             
-            btnLoad.innerText = 'Save Changes';
-            btnLoad.className = 'btn btn-success flex-grow-1 fw-bold shadow-lg';
-            btnLoad.onclick = executeSaveChanges;
-            btnLoad.classList.remove('d-none');
+            btnSave.innerText = 'Save Changes';
+            btnSave.className = 'btn btn-success flex-grow-1';
+            btnSave.onclick = executeSaveChanges;
+            btnSave.classList.remove('d-none'); // Show Save Changes
+            
+            btnLoad.classList.add('d-none'); // Hide Load
         }
+    }
+    function executeUndoChanges() {
+        if (!window.activeJobId || !window.activeJobBackup) return;
+        
+        const jobIndex = appState.jobs.findIndex(j => j.id === window.activeJobId);
+        if (jobIndex === -1) return;
+        
+        // 1. Overwrite the dirty RAM job with our pristine photograph
+        appState.jobs[jobIndex] = JSON.parse(window.activeJobBackup);
+        
+        // 2. Run the load sequence to revert the math and redraw the UI
+        executeLoadJob(window.activeJobId);
+        
+        if (typeof showToast === 'function') showToast("Changes undone. Original layout restored.", "info");
     }
     function handleInlineEdit(catalogId, field, value) {
         if (!window.activeJobId) return;
@@ -454,9 +453,12 @@
         // Push everything to persistent storage
         saveState(); 
         
+        // 🪄 Update our pristine RAM photograph so future Undos revert to THIS new save!
+        const job = appState.jobs.find(j => j.id === window.activeJobId);
+        if (job) window.activeJobBackup = JSON.stringify(job);
+        
         setUnsavedChangesState('clean');
         
-        // 🪄 Re-lock the UI into 'Saved' state so Load Job button appears normal
         if (typeof toggleConfiguratorState === 'function') {
             toggleConfiguratorState(true, true);
         }

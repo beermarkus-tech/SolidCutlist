@@ -27,56 +27,150 @@
 </style>
 
 <div class="row g-3">
-    
-    <div class="col-md-3 bg-light border-end p-3 d-flex flex-column" style="height: calc(100vh - 120px);">
-    
-        <div id="job-config-settings">
-            <h5 class="mb-3" data-i18n="title_optimizer_settings">Optimizer Settings</h5>
+    <!-- Configuration Area -->
+    <div class="col-lg-3 col-md-4 d-flex flex-column" style="height: calc(100vh - 100px);">
+        <div class="card shadow-sm border-primary h-100" id="optimizer-config-form">
             
-            <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" id="opt-use-stock" onchange="toggleUseStock(this.checked)">
-                <label class="form-check-label" for="opt-use-stock" data-i18n="lbl_use_shop_stock">Use Shop Stock</label>
-            </div>
-            
-            <div class="row g-2 mb-2">
-                <div class="col-6">
-                    <label class="form-label mb-0 small text-muted">Blade Kerf</label>
-                    <div class="input-group input-group-sm">
-                        <input type="number" class="form-control" id="opt-kerf" step="0.1" onchange="updateTempSetting('bladeKerf', this.value)">
+            <!-- Configuration Card & Tabs -->
+            <div style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); border-top-left-radius: inherit; border-top-right-radius: inherit;">
+                <div class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0" data-i18n="title_optimizer_settings">⚙️ Configuration</h6>
+                    <div>
+                        <button class="btn btn-sm text-white py-0 me-2"><b></b></button>
                     </div>
                 </div>
-                <div class="col-6">
-                    <label class="form-label mb-0 small text-muted">Edge Trim</label>
-                    <div class="input-group input-group-sm">
-                        <input type="number" class="form-control" id="opt-trim" step="0.1" onchange="updateTempSetting('factoryEdgeTrim', this.value)">
+                <div class="card-header border-bottom p-0">
+                    <ul class="nav nav-tabs nav-fill border-0" id="configTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold text-secondary border-0" id="tab-job-settings" data-bs-toggle="tab" data-bs-target="#pane-job-settings" type="button" role="tab" style="font-size: 0.9rem;">⚙️ Settings</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-bold text-secondary border-0" id="tab-job-setup" data-bs-toggle="tab" data-bs-target="#pane-job-setup" type="button" role="tab" style="font-size: 0.9rem;">🛠️ Job Setup</button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card-body p-0 d-flex flex-column overflow-hidden">
+                <div class="tab-content flex-grow-1 overflow-hidden" id="configTabsContent">
+                    
+                    <!-- Settings -->
+                    <div class="tab-pane fade p-3 h-100 overflow-auto" id="pane-job-settings" role="tabpanel" tabindex="0">
+                        <div id="job-config-settings">
+
+                            <!-- Use Shop Stock -->
+                            <div class="form-check form-switch mb-4 pb-3 border-bottom">
+                                <input class="form-check-input" type="checkbox" id="opt-use-stock" onchange="toggleUseStock(this.checked)">
+                                <label class="form-check-label fw-bold" for="opt-use-stock" data-i18n="lbl_use_shop_stock">Use Shop Stock</label>
+                            </div>
+
+                            <!-- Kerf Settings -->
+                            <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_kerf">Lumber Kerf</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control form-control-sm" id="setting-kerf" onchange="handleSettingsValueChange()">
+                                            <span class="input-group-text display-unit-label">mm</span>
+                                        </div>
+                                        <div class="form-text mt-1" style="font-size: 0.65rem;" data-i18n="txt_lumber_kerf">Thickness of your lumber blade.</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_kerf">Sheet Kerf</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control form-control-sm" id="setting-sheet-kerf" onchange="handleSettingsValueChange()">
+                                            <span class="input-group-text display-unit-label">mm</span>
+                                        </div>
+                                        <div class="form-text mt-1" style="font-size: 0.65rem;" data-i18n="txt_sheet_kerf">Thickness of your sheet blade.</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Trim Settings -->
+                            <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_trim">Lumber Trim</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control form-control-sm" id="setting-factory-trim" onchange="handleSettingsValueChange()">
+                                            <span class="input-group-text display-unit-label">mm</span>
+                                        </div>
+                                        <div class="form-text mt-1" style="font-size: 0.65rem;" data-i18n="txt_lumber_trim">One end will be trimmed.</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_trim">Sheet Trim</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control form-control-sm" id="setting-sheet-trim" onchange="handleSettingsValueChange()">
+                                            <span class="input-group-text display-unit-label">mm</span>
+                                        </div>
+                                        <div class="form-text mt-1" style="font-size: 0.65rem;" data-i18n="txt_sheet_trim">Two adjacent edges will be trimmed.</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Scrap Settings -->
+                            <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_scrap_min_length">Lumber Scrap (Min Length)</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control form-control-sm" id="setting-cutoff" onchange="handleSettingsValueChange()">
+                                            <span class="input-group-text display-unit-label">mm</span>
+                                        </div>
+                                        <div class="form-text mt-1" style="font-size: 0.65rem;" data-i18n="txt_lumber_scrap">Lumber shorter than this is trash.</div>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_scrap_min_size">Sheet Scrap (Min Size)</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control form-control-sm text-end" id="setting-sheet-scrap-width" onchange="handleSettingsValueChange()" title="Min Width">
+                                            <span class="input-group-text px-1 border-start-0 border-end-0">x</span>
+                                            <input type="text" class="form-control form-control-sm" id="setting-sheet-scrap-length" onchange="handleSettingsValueChange()" title="Min Length">
+                                            <span class="input-group-text display-unit-label">mm</span>
+                                        </div>
+                                        <div class="form-text mt-1" style="font-size: 0.65rem;" data-i18n="txt_sheet_scrap_length">Offcuts smaller than this are trash.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Job Setup -->
+                    <div class="tab-pane fade show active h-100" id="pane-job-setup" role="tabpanel" tabindex="0">
+                        
+                        <div class="d-flex flex-column h-100 p-3">
+                            <h6 class="mb-2 fw-bold text-uppercase text-muted" style="font-size: 0.8rem;">Select to Build</h6>
+                            <div id="job-configurator-tree" class="flex-grow-1 overflow-auto pe-2 ps-1" style="min-height: 150px;">
+                                <div class="text-center text-muted small">Loading...</div>
+                            </div>
+
+                            <div class="mt-0 mb-3"></div>
+                            <div id="current-job-label-container" class="text-center mb-2 d-none">
+                                <small class="text-muted fw-bold">Current Job: </small>
+                                <small class="text-muted fw-bold" id="current-job-name-display"></small>
+                            </div>                         
+                            <hr class="mt-0 mb-3">
+
+                            <div>
+                                <div id="job-config-actions-default" class="d-flex gap-2">
+                                    <button class="btn btn-primary flex-grow-1" id="btn-calc-cutlist" onclick="runOptimization()">Calculate</button>
+                                    <button class="btn btn-outline-secondary flex-grow-1" id="btn-load-job" onclick="openLoadJobModal()">Load Job</button>
+                                </div>
+                                <div id="job-config-actions-active" class="d-flex gap-2 d-none">
+                                    <button class="btn btn-primary flex-grow-1" id="btn-active-action1" onclick="resetConfigurator()">↻ Restart</button>
+                                    <button class="btn btn-success flex-grow-1" id="btn-active-save" onclick="openSaveJobModal()">Save Job</button>
+                                    <button class="btn btn-outline-secondary flex-grow-1 d-none" id="btn-active-load" onclick="openLoadJobModal()">Load Job</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
                 </div>
             </div>
         </div>
-        
-        <hr class="my-3">
-    
-        <h6 class="mb-2 fw-bold text-uppercase text-muted" style="font-size: 0.8rem;">Select to Build</h6>
-        <div id="job-configurator-tree" class="flex-grow-1 overflow-auto pe-2" style="min-height: 150px;">
-            </div>
-        
-        <hr class="my-3">
-    
-        <div id="job-config-actions-default" class="d-flex gap-2">
-            <button class="btn btn-primary flex-grow-1" id="btn-calc-cutlist" onclick="runOptimization()">Calculate</button>
-            <button class="btn btn-outline-secondary flex-grow-1" id="btn-load-job" onclick="openLoadJobModal()">Load Job</button>
-        </div>
-        <div id="job-config-actions-active" class="d-flex gap-2 d-none">
-            <button class="btn btn-warning flex-grow-1 fw-bold" onclick="resetConfigurator()">New Optimization</button>
-            <button class="btn btn-success flex-grow-1 fw-bold" id="btn-active-save" onclick="openSaveJobModal()">Save Job</button>
-            <button class="btn btn-outline-secondary flex-grow-1 fw-bold d-none" id="btn-active-load" onclick="openLoadJobModal()">Load Job</button>
-        </div>
-        <div id="current-job-label-container" class="mt-3 text-center d-none">
-            <small class="text-muted fw-bold">Current Job:</small><br>
-            <span id="current-job-name-display" class="badge bg-info text-dark fs-6 mt-1 shadow-sm"></span>
-        </div>    
     </div>
 
+    <!-- Results Area -->
     <div class="col-lg-9 col-md-8">
         <div class="card shadow-sm h-100 border-success">
             
@@ -137,6 +231,7 @@
         </div>
     </div>
 
+    <!-- Save Job Modal -->
     <div class="modal fade" id="saveJobModal" tabindex="-1">
         <div class="modal-dialog modal-sm">
             <div class="modal-content">
@@ -156,6 +251,7 @@
         </div>
     </div>
 
+    <!-- Load Job Modal -->
     <div class="modal fade" id="loadJobModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
