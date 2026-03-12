@@ -59,6 +59,38 @@
             btnElement.innerHTML = '<b>◁</b>';
         }
     }
+    let globalInputsVisible = true;
+    function toggleAllInputSections() {
+        globalInputsVisible = !globalInputsVisible;
+        
+        // 🪄 FIX: Find EVERY button with the global class and update them all at once
+        const toggleButtons = document.querySelectorAll('.global-toggle-btn');
+        toggleButtons.forEach(button => {
+            button.innerHTML = globalInputsVisible ? '<b>▽</b>' : '<b>◁</b>';
+        });
+        
+        // Define all the IDs that need to be targeted across the tabs (including 'parts')
+        const sections = ['projects', 'stock', 'prices', 'profiles', 'materials', 'parts'];
+        
+        sections.forEach(id => {
+            const inputEl = document.getElementById('input-section-' + id);
+            const tableEl = document.getElementById('table-wrapper-' + id);
+            
+            if (inputEl && tableEl) {
+                if (globalInputsVisible) {
+                    // Show Input, Shrink Table
+                    inputEl.classList.remove('d-none');
+                    tableEl.style.maxHeight = 'calc(100vh - 282px)';
+                    tableEl.style.height = 'calc(100vh - 282px)';
+                } else {
+                    // Hide Input, Expand Table
+                    inputEl.classList.add('d-none');
+                    tableEl.style.maxHeight = 'calc(100vh - 173px)';
+                    tableEl.style.height = 'calc(100vh - 173px)';
+                }
+            }
+        });
+    }
 
     // --- TOAST NOTIFICATIONS ---
     // Instead of ugly alert() boxes, we slide up a modern notification
