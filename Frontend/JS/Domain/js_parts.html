@@ -9,7 +9,8 @@
         
         if (!appState.projects || appState.projects.length === 0) return;
 
-        appState.projects.forEach(p => {
+        // 🪄 FIX: Copy the array and sort it alphabetically before building the options
+        [...appState.projects].sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
             opt.innerText = p.name;
@@ -31,7 +32,7 @@
 
         // 🪄 2. REBUILD Profile Dropdown
         profSelect.innerHTML = `<option value="" disabled selected>${t('opt_select')}</option>`;
-        const filteredProfiles = appState.profiles.filter(p => p.type === cat);
+        const filteredProfiles = appState.profiles.filter(p => p.type === part.category).sort((a, b) => a.name.localeCompare(b.name));
         filteredProfiles.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
@@ -41,7 +42,7 @@
 
         // 🪄 3. REBUILD Material Dropdown
         matSelect.innerHTML = `<option value="" disabled selected>${t('opt_select')}</option>`;
-        const filteredMaterials = appState.materials.filter(m => m.category === cat);
+        const filteredMaterials = appState.materials.filter(m => m.category === part.category).sort((a, b) => a.name.localeCompare(b.name));
         filteredMaterials.forEach(m => {
             const opt = document.createElement('option');
             opt.value = m.id;
@@ -87,7 +88,7 @@
         }
 
         // 3. Populate Profile Dropdown (Filtered by Category)
-        const filteredProfiles = appState.profiles.filter(p => p.type === cat);
+        const filteredProfiles = appState.profiles.filter(p => p.type === part.category).sort((a, b) => a.name.localeCompare(b.name));
         const unitText = appState.settings.displayUnit === 'mm' ? 'mm' : 'in'; // Get current global unit
         
         filteredProfiles.forEach(p => {
@@ -99,7 +100,7 @@
         });
 
         // 4. Populate Material Dropdown (Filtered by Category)
-        const filteredMaterials = appState.materials.filter(m => m.category === cat);
+        const filteredMaterials = appState.materials.filter(m => m.category === part.category).sort((a, b) => a.name.localeCompare(b.name));
 
         filteredMaterials.forEach(m => {
             const opt = document.createElement('option');
@@ -207,13 +208,13 @@
             
             // 🪄 2. INLINE DROPDOWNS & WARNINGS
             let projOptions = `<option value="" disabled>${t('opt_select')}</option>`;
-            appState.projects.forEach(p => {
+            [...appState.projects].sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
                 projOptions += `<option value="${p.id}" ${p.id === part.projectId ? 'selected' : ''}>${safeHTML(p.name)}</option>`;
             });
 
             // Profile Dropdown with ⚠️ Warning
             let profOptions = !prof ? `<option value="" disabled selected>⚠️ ${t('opt_select_profile')}</option>` : '';
-            const filteredProfiles = appState.profiles.filter(p => p.type === part.category);
+            const filteredProfiles = appState.profiles.filter(p => p.type === part.category).sort((a, b) => a.name.localeCompare(b.name));
             filteredProfiles.forEach(p => {
                 const unitText = appState.settings.displayUnit === 'mm' ? 'mm' : 'in';
                 const dimLabel = `${formatForDisplay(p.thickness)} x ${formatForDisplay(p.width)} ${unitText}`;
@@ -222,7 +223,7 @@
 
             // Material Dropdown with ⚠️ Warning
             let matOptions = !mat ? `<option value="" disabled selected>⚠️ ${t('opt_select_material')}</option>` : '';
-            const filteredMaterials = appState.materials.filter(m => m.category === part.category);
+            const filteredMaterials = appState.materials.filter(m => m.category === part.category).sort((a, b) => a.name.localeCompare(b.name));
             filteredMaterials.forEach(m => {
                 matOptions += `<option value="${m.id}" ${m.id === part.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
             });
@@ -230,7 +231,7 @@
             // 🪄 NEW: Filter Groups for this specific row's Project
             let groupOptions = '<option value="">-</option>';
             if (appState.groups) {
-                const rowGroups = appState.groups.filter(g => g.projectId === part.projectId);
+                const rowGroups = appState.groups.filter(g => g.projectId === part.projectId).sort((a, b) => a.name.localeCompare(b.name));
                 rowGroups.forEach(g => {
                     groupOptions += `<option value="${g.id}" ${g.id === part.groupId ? 'selected' : ''}>${safeHTML(g.name)}</option>`;
                 });
@@ -484,7 +485,9 @@
         
         // 3. Populate filtered groups
         if (projId && appState.groups) {
-            const projectGroups = appState.groups.filter(g => g.projectId === projId);
+            // 🪄 FIX: Chain the alphabetical sort right after filtering for the project!
+            const projectGroups = appState.groups.filter(g => g.projectId === projId).sort((a, b) => a.name.localeCompare(b.name));
+            
             projectGroups.forEach(g => {
                 const opt = document.createElement('option');
                 opt.value = g.id;

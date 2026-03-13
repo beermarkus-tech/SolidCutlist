@@ -201,7 +201,7 @@
         const projSelect = document.getElementById('modal-group-project-select');
         projSelect.innerHTML = `<option value="" disabled selected>${t('opt_select_project')}</option>`;
         if (appState.projects) {
-            appState.projects.forEach(p => {
+            [...appState.projects].sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
                 projSelect.innerHTML += `<option value="${p.id}">${safeHTML(p.name)}</option>`;
             });
         }

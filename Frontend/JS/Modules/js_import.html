@@ -36,7 +36,7 @@
         
         projSelect.innerHTML = `<option value="" disabled selected>${t('opt_select_project')}</option>`;
         if (appState.projects) {
-            appState.projects.forEach(p => {
+            [...appState.projects].sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
                 const opt = document.createElement('option');
                 opt.value = p.id;
                 opt.innerText = p.name;
@@ -481,7 +481,7 @@
 
             // 🪄 CONTINUOUS AUTO-MATCHING ENGINE
             const activeProjId = part.projectId;
-            const projGroups = appState.groups ? appState.groups.filter(g => g.projectId === activeProjId) : [];
+            const projGroups = appState.groups ? appState.groups.filter(g => g.projectId === activeProjId).sort((a, b) => a.name.localeCompare(b.name)) : [];
             
             // 1. Re-evaluate Group (If empty)
             if (part.groupId === undefined || part.groupId === '') {
@@ -561,14 +561,14 @@
             });
 
             let profOptions = part.profileId === '' ? `<option value="" disabled selected>⚠️ ${t('opt_assign_profile')}...</option>` : '';
-            const filteredProfiles = safeProfiles.filter(p => p.type === part.category);
+            const filteredProfiles = safeProfiles.filter(p => p.type === part.category).sort((a, b) => a.name.localeCompare(b.name));
             filteredProfiles.forEach(p => {
                 const label = `${safeHTML(p.name)}`;
                 profOptions += `<option value="${p.id}" ${p.id === part.profileId ? 'selected' : ''}>${label}</option>`;
             });
 
             let matOptions = part.materialId === '' ? `<option value="" disabled selected>⚠️ ${t('opt_assign_material')}...</option>` : '';
-            const filteredMaterials = safeMaterials.filter(m => m.category === part.category);
+            const filteredMaterials = safeMaterials.filter(m => m.category === part.category).sort((a, b) => a.name.localeCompare(b.name));
             filteredMaterials.forEach(m => {
                 matOptions += `<option value="${m.id}" ${m.id === part.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
             });

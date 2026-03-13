@@ -14,7 +14,7 @@
             const badgeClass = getCategoryBadgeClass(item.categoryId);
             
             // 🪄 0. VALIDATE REALITY & DYNAMIC DROPDOWNS FOR PROFILE/MATERIAL
-            const filteredProfiles = appState.profiles.filter(p => p.type === item.categoryId);
+            const filteredProfiles = appState.profiles.filter(p => p.type === item.categoryId).sort((a, b) => a.name.localeCompare(b.name));
             const isProfValid = filteredProfiles.some(p => p.id === item.profileId);
             
             let profOptions = !isProfValid ? `<option value="" disabled selected>⚠️ ${t('opt_select_profile')}</option>` : '';
@@ -26,7 +26,7 @@
                     ${profOptions}
                 </select>`;
 
-            const filteredMaterials = appState.materials.filter(m => m.category === item.categoryId);
+            const filteredMaterials = appState.materials.filter(m => m.category === item.categoryId).sort((a, b) => a.name.localeCompare(b.name));
             const isMatValid = filteredMaterials.some(m => m.id === item.materialId);
 
             let matOptions = !isMatValid ? `<option value="" disabled selected>⚠️ ${t('opt_select_material')}</option>` : '';
@@ -188,9 +188,9 @@
         matSelect.disabled = false;
         lengthInput.disabled = false;
         
-        // Filter and Populate Profile Dropdown
+        /// Filter and Populate Profile Dropdown
         if (appState.profiles) {
-            appState.profiles.filter(p => p.type === cat).forEach(p => {
+            appState.profiles.filter(p => p.type === cat).sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
                 const opt = document.createElement('option');
                 opt.value = p.id;
                 opt.innerText = p.name;
@@ -200,7 +200,7 @@
         
         // Filter and Populate Material Dropdown
         if (appState.materials) {
-            appState.materials.filter(m => m.category === cat).forEach(m => {
+            appState.materials.filter(m => m.category === cat).sort((a, b) => a.name.localeCompare(b.name)).forEach(m => {
                 const opt = document.createElement('option');
                 opt.value = m.id;
                 opt.innerText = m.name;
@@ -246,7 +246,7 @@
             const badgeClass = getCategoryBadgeClass(item.categoryId);
             
             // 🪄 0. VALIDATE REALITY & DYNAMIC DROPDOWNS
-            const filteredProfiles = appState.profiles.filter(p => p.type === item.categoryId);
+            const filteredProfiles = appState.profiles.filter(p => p.type === item.categoryId).sort((a, b) => a.name.localeCompare(b.name));
             const isProfValid = filteredProfiles.some(p => p.id === item.profileId);
             
             let profOptions = !isProfValid ? `<option value="" disabled selected>⚠️ ${t('opt_select_profile')}</option>` : '';
@@ -259,7 +259,7 @@
                     ${profOptions}
                 </select>`;
 
-            const filteredMaterials = appState.materials.filter(m => m.category === item.categoryId);
+            const filteredMaterials = appState.materials.filter(m => m.category === item.categoryId).sort((a, b) => a.name.localeCompare(b.name));
             const isMatValid = filteredMaterials.some(m => m.id === item.materialId);
 
             let matOptions = !isMatValid ? `<option value="" disabled selected>⚠️ ${t('opt_select_material')}</option>` : '';
@@ -305,7 +305,7 @@
             let storeOptions = !isStoreValid ? `<option value="" disabled selected>⚠️ ${t('opt_select_store')}</option>` : '';
             
             if (appState.stores) {
-                appState.stores.forEach(s => {
+                [...appState.stores].sort((a, b) => a.name.localeCompare(b.name)).forEach(s => {
                     storeOptions += `<option value="${s.id}" ${s.id === item.storeId ? 'selected' : ''}>${safeHTML(s.name)}</option>`;
                 });
             }
@@ -530,7 +530,7 @@
         btnAdd.disabled = false;
         
         if (appState.profiles) {
-            appState.profiles.filter(p => p.type === cat).forEach(p => {
+            appState.profiles.filter(p => p.type === cat).sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
                 const opt = document.createElement('option');
                 opt.value = p.id;
                 opt.innerText = p.name;
@@ -538,7 +538,7 @@
             });
         }
         if (appState.materials) {
-            appState.materials.filter(m => m.category === cat).forEach(m => {
+            appState.materials.filter(m => m.category === cat).sort((a, b) => a.name.localeCompare(b.name)).forEach(m => {
                 const opt = document.createElement('option');
                 opt.value = m.id;
                 opt.innerText = m.name;
@@ -569,7 +569,7 @@
             // 🪄 2. REBUILD the list safely
             storeSelect.innerHTML = `<option value="" disabled selected>${t('opt_select_store')}</option>`;
             if (appState.stores) {
-                appState.stores.forEach(s => {
+                [...appState.stores].sort((a, b) => a.name.localeCompare(b.name)).forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.id;
                     opt.innerText = s.name;
@@ -710,7 +710,7 @@
             return;
         }
 
-        appState.stores.forEach(store => {
+        [...appState.stores].sort((a, b) => a.name.localeCompare(b.name)).forEach(store => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>

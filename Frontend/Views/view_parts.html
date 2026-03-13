@@ -50,8 +50,16 @@
                                     <span id="flt-icon-projects-name" onclick="openFilterModal(event, 'projects', 'name', 'Project Name')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
                                 <th class="text-nowrap" style="width: 25%;">Notes</th>
-                                <th class="text-center text-nowrap" style="width: 10%;">Parts</th>
-                                <th class="text-center text-nowrap" style="width: 15%;" title="Estimate assumes 100% yield">Est. Cost</th>
+                                <th class="text-center text-nowrap" style="width: 10%;">
+                                    <span onclick="handleSort('projects', 'totalParts', 'number')" style="cursor: pointer;">
+                                        <span data-i18n="col_parts">Parts</span> ⇅
+                                    </span>
+                                </th>
+                                <th class="text-center text-nowrap" style="width: 10%;">
+                                    <span onclick="handleSort('projects', 'totalParts', 'number')" style="cursor: pointer;">
+                                        <span data-i18n="col_parts">Parts</span> ⇅
+                                    </span>
+                                </th>
                                 <th class="text-center text-nowrap">
                                     <span onclick="handleSort('projects', 'status', 'string')" style="cursor: pointer;">
                                         <span data-i18n="col_status">Status</span> ⇅
