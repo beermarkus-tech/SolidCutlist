@@ -64,13 +64,17 @@
     </div>
     <div class="card-body">
         <div class="row align-items-end g-3" id="import-upload-ui">
-            <div class="col-md-5">
+            <div class="col-md-3">
                 <label class="form-label fw-bold text-secondary" data-i18n="lbl_target_project">Target Project</label>
-                <select class="form-select border-primary" id="import-project-select" onchange="markImportDirty()" required>
-                    <option value="" disabled selected data-i18n="opt_select_a_project">Select a Project...</option>
+                <select class="form-select border-primary" id="import-project-select" onchange="markImportDirty()">
+                    <option value="" disabled selected data-i18n="opt_select_a_project">Select...</option>
                 </select>
             </div>
-            <div class="col-md-7">
+            <div class="col-md-3">
+                <label class="form-label fw-bold text-secondary" data-i18n="lbl_or_new_project">Or Create New</label>
+                <input type="text" class="form-control border-primary" id="import-new-project-name" placeholder="Project Name..." oninput="markImportDirty()">
+            </div>
+            <div class="col-md-6">
                 <label class="form-label fw-bold text-secondary" data-i18n="lbl_select_csv_file">Select CSV File</label>
                 <div class="input-group">
                     <input type="file" id="import-file-input" accept=".csv" class="d-none" onchange="updateFileNameDisplay()">

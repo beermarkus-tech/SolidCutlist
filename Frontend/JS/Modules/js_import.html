@@ -93,6 +93,11 @@
         isMappingDirty = true;
         
         document.getElementById('import-project-select').value = '';
+        
+        // 🪄 NEW: Clear the new project input field
+        const newProjInput = document.getElementById('import-new-project-name');
+        if (newProjInput) newProjInput.value = '';
+        
         clearCachedFile();
         
         toggleResumeButton(false);
@@ -112,23 +117,59 @@
     }
     function handleCsvUpload() {
         const projSelect = document.getElementById('import-project-select');
+        const newProjInput = document.getElementById('import-new-project-name');
         const fileInput = document.getElementById('import-file-input');
 
-        if (!projSelect.value) {
-            showToast(t('msg_select_target_project'), true);
+        let finalProjectId = projSelect.value;
+        const newProjName = newProjInput ? newProjInput.value.trim() : '';
+
+        // 🪄 1. PROJECT CREATION ENGINE: Prioritize the input field!
+        if (newProjName !== '') {
+            finalProjectId = 'PROJ-' + Date.now();
+            
+            if (!appState.projects) appState.projects = [];
+            
+            // Mint the new project in the global database
+            appState.projects.unshift({
+                id: finalProjectId,
+                name: newProjName,
+                status: 'Design'
+            });
+            
+            saveState(); // Commit to memory instantly
+            
+            // Update dropdowns so it shows up natively
+            populateImportProjectDropdown();
+            projSelect.value = finalProjectId;
+            
+            // Clear the input box so going back and forth doesn't clone it repeatedly
+            newProjInput.value = '';
+            
+            if (typeof showToast === 'function') showToast(`Project '${newProjName}' created!`, "success");
+            
+        } else if (!finalProjectId) {
+            // Neither dropdown nor input field was filled
+            if (typeof showToast === 'function') showToast("Please select or create a Target Project.", true);
             return;
         }
-        targetProjectId = projSelect.value;
 
-        // 🪄 TRAP 1 FIX: If file is already cached, bypass the upload entirely
+        targetProjectId = finalProjectId;
+
+        // 🪄 2. TRAP 1 FIX (Upgraded): If file is already cached, bypass the upload entirely
         if (rawCsvRows.length > 0) {
+            // Because the user may have changed the target project, we MUST retroactively 
+            // update all staging parts that were previously mapped!
+            if (appState.stagingParts && appState.stagingParts.length > 0) {
+                 appState.stagingParts.forEach(p => p.projectId = targetProjectId);
+            }
             toggleResumeButton(true);
             goToImportStep(2);
             return;
         }
 
+        // 3. PROCEED TO STANDARD FILE UPLOAD
         if (!fileInput.files.length) {
-            showToast(t('msg_select_csv_file'), true);
+            if (typeof showToast === 'function') showToast("Please select a CSV file.", true);
             return;
         }
 
@@ -141,7 +182,7 @@
             const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
             
             if (lines.length < 2) {
-                showToast(t('msg_csv_empty_invalid'), true);
+                if (typeof showToast === 'function') showToast("The CSV file is empty or invalid.", true);
                 return;
             }
 
@@ -665,6 +706,8 @@
             appState.parts.push({
                 id: 'PART-' + Date.now() + '-' + index,
                 projectId: stg.projectId,
+                // 🪄 FIX: Correctly pass the group ID to the final part object!
+                groupId: (stg.groupId === 'none' ? '' : stg.groupId), 
                 category: stg.category,
                 name: stg.name,
                 qty: stg.qty,
@@ -676,14 +719,29 @@
         });
 
         const importCount = appState.stagingParts.length;
+        
+        const importedProjectId = targetProjectId;
 
         saveState();
         
-        // 🪄 TRAP 5 FIX: Ruthless wipe!
         resetImport();
 
+        if (typeof activeFilters !== 'undefined') {
+            activeFilters['parts'] = {}; 
+            if (importedProjectId) {
+                activeFilters['parts']['projectId'] = [importedProjectId];
+            }
+        }
+
         navigateTo('view-parts');
-        renderPartsView(); 
+        
+        const partsTabBtn = document.getElementById('tab-parts');
+        if (partsTabBtn) {
+            partsTabBtn.click(); 
+        } else {
+            if (typeof renderPartsView === 'function') renderPartsView(); 
+        }
+        
         showToast(t('msg_import_success', { count: importCount }));
     }
 </script>
