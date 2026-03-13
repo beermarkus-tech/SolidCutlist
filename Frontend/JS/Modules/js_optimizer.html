@@ -382,6 +382,13 @@
     // PHASE C: OPTIMIZER UI & CONFIG STATE
     // ==========================================
     function renderOptimizerConfig() {
+        // Abort if the configurator is currently locked by an active calculation or loaded job.
+        // Redrawing the tree now would destroy unsaved multipliers and accidentally unlock the inputs!
+        const activeActions = document.getElementById('job-config-actions-active');
+        if (activeActions && !activeActions.classList.contains('d-none')) {
+            return; 
+        }
+
         // 2. Build the Selection Tree
         const treeContainer = document.getElementById('job-configurator-tree');
         treeContainer.innerHTML = '';

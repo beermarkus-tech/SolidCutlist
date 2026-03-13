@@ -1,18 +1,33 @@
 <style>
-    /* 1. Make the Configuration Card sticky (Left side) */
-    .col-lg-3 .card.border-primary {
+    /* 1. Left Card: Sticky Configuration Area */
+    #optimizer-config-form {
         position: sticky;
-        top: 74px;
+        top: 74px; /* Offset to clear your top navbar */
         z-index: 1000;
-        max-height: calc(100vh - 2rem);
-        display: flex;
-        flex-direction: column;
+        height: calc(100vh - 90px); /* Locks the card to the height of the screen */
     }
-    .col-lg-3 .card.border-primary .card-body {
+
+    /* Allows the configuration tabs to scroll independently */
+    #optimizer-config-form .tab-content {
         overflow-y: auto;
     }
 
-    /* 2. Project Folder Arrows */
+    /* 2. Right Card: Sticky Results Header */
+    #optimizer-results-form .card-header {
+        position: sticky;
+        top: 74px; 
+        z-index: 1050;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); 
+    }
+
+    /* 🪄 FIX: Trap the hardware-accelerated canvases so they cannot punch through the Z-index */
+    #optimizer-tab-content {
+        position: relative;
+        z-index: 1;
+        isolation: isolate; 
+    }
+
+    /* 3. Project Folder Arrows */
     .project-fold-icon::before {
         content: '▼';
         font-size: 0.7rem;
@@ -27,43 +42,35 @@
 </style>
 
 <div class="row g-3">
+
     <!-- Configuration Area -->
-    <div class="col-lg-3 col-md-4 d-flex flex-column" style="height: calc(100vh - 100px);">
-        <div class="card shadow-sm border-primary h-100" id="optimizer-config-form">
+    <div class="col-lg-3 col-md-4 d-flex flex-column">
+        <div class="card shadow-sm border-primary" id="optimizer-config-form">
             
-            <!-- Configuration Card & Tabs -->
-            <div style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); border-top-left-radius: inherit; border-top-right-radius: inherit;">
-                <div class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
-                    <h6 class="card-title mb-0" data-i18n="title_optimizer_settings">⚙️ Configuration</h6>
-                    <div>
-                        <button class="btn btn-sm text-white py-0 me-2"><b></b></button>
-                    </div>
-                </div>
-                <div class="card-header border-bottom p-0">
-                    <ul class="nav nav-tabs nav-fill border-0" id="configTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link fw-bold text-secondary border-0" id="tab-job-settings" data-bs-toggle="tab" data-bs-target="#pane-job-settings" type="button" role="tab" style="font-size: 0.9rem;">⚙️ Settings</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active fw-bold text-secondary border-0" id="tab-job-setup" data-bs-toggle="tab" data-bs-target="#pane-job-setup" type="button" role="tab" style="font-size: 0.9rem;">🛠️ Job Setup</button>
-                        </li>
-                    </ul>
-                </div>
+            <!-- Card Header -->
+            <div class="card-header bg-primary pt-2 pb-0 border-bottom-0 d-flex justify-content-between align-items-end" style="border-top-left-radius: inherit; border-top-right-radius: inherit;">
+                <ul class="nav nav-tabs card-header-tabs border-bottom-0 m-0" id="configTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-job-settings" data-bs-toggle="tab" data-bs-target="#pane-job-settings" type="button" role="tab" onclick="populateStockDropdowns()">⚙️ Settings</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-job-setup" data-bs-toggle="tab" data-bs-target="#pane-job-setup" type="button" role="tab" onclick="populateCatalogDropdowns()">🛠️ Job Setup</button>
+                    </li>
+                </ul>
             </div>
+           
+            <!-- Tab Content -->
+            <div class="tab-content d-flex flex-column flex-grow-1" id="dictionaryTabsContent">
 
-            <div class="card-body p-0 d-flex flex-column overflow-hidden">
-                <div class="tab-content flex-grow-1 overflow-hidden" id="configTabsContent">
-                    
-                    <!-- Settings -->
-                    <div class="tab-pane fade p-3 h-100 overflow-auto" id="pane-job-settings" role="tabpanel" tabindex="0">
+                <!-- Job Settings -->
+                <div class="tab-pane flex-grow-1" id="pane-job-settings" role="tabpanel" tabindex="0">
+                    <div class="card-body py-3">
                         <div id="job-config-settings">
-
                             <!-- Use Shop Stock -->
                             <div class="form-check form-switch mb-4 pb-3 border-bottom">
                                 <input class="form-check-input" type="checkbox" id="opt-use-stock" onchange="toggleUseStock(this.checked)">
                                 <label class="form-check-label fw-bold" for="opt-use-stock" data-i18n="lbl_use_shop_stock">Use Shop Stock</label>
                             </div>
-
                             <!-- Kerf Settings -->
                             <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
                                 <div class="row g-3">
@@ -85,7 +92,6 @@
                                     </div>
                                 </div>
                             </div>
-
                             <!-- Trim Settings -->
                             <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
                                 <div class="row g-3">
@@ -107,7 +113,6 @@
                                     </div>
                                 </div>
                             </div>
-
                             <!-- Scrap Settings -->
                             <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
                                 <div class="row g-3">
@@ -133,54 +138,60 @@
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Job Setup -->
-                    <div class="tab-pane fade show active h-100" id="pane-job-setup" role="tabpanel" tabindex="0">
-                        
-                        <div class="d-flex flex-column h-100 p-3">
-                            <h6 class="mb-2 fw-bold text-uppercase text-muted" style="font-size: 0.8rem;">Select to Build</h6>
-                            <div id="job-configurator-tree" class="flex-grow-1 overflow-auto pe-2 ps-1" style="min-height: 150px;">
-                                <div class="text-center text-muted small">Loading...</div>
-                            </div>
-
-                            <div class="mt-0 mb-3"></div>
-                            <div id="current-job-label-container" class="text-center mb-2 d-none">
-                                <small class="text-muted fw-bold">Current Job: </small>
-                                <small class="text-muted fw-bold" id="current-job-name-display"></small>
-                            </div>                         
-                            <hr class="mt-0 mb-3">
-
-                            <div>
-                                <div id="job-config-actions-default" class="d-flex gap-2">
-                                    <button class="btn btn-primary flex-grow-1" id="btn-calc-cutlist" onclick="runOptimization()">Calculate</button>
-                                    <button class="btn btn-outline-secondary flex-grow-1" id="btn-load-job" onclick="openLoadJobModal()">Load Job</button>
-                                </div>
-                                <div id="job-config-actions-active" class="d-flex gap-2 d-none">
-                                    <button class="btn btn-primary flex-grow-1" id="btn-active-action1" onclick="resetConfigurator()">↻ Restart</button>
-                                    <button class="btn btn-success flex-grow-1" id="btn-active-save" onclick="openSaveJobModal()">Save Job</button>
-                                    <button class="btn btn-outline-secondary flex-grow-1 d-none" id="btn-active-load" onclick="openLoadJobModal()">Load Job</button>
-                                </div>
-                            </div>
+                <!-- Job Setup -->
+                <div class="tab-pane flex-grow-1 show active" id="pane-job-setup" role="tabpanel" tabindex="0">
+                    <div class="d-flex flex-column h-100 p-3">
+                        <h6 class="mb-2 fw-bold text-uppercase text-muted" style="font-size: 0.8rem;">Select to Build</h6>
+                        <div id="job-configurator-tree" class="flex-grow-1 overflow-auto pe-2 ps-1" style="min-height: 150px;">
+                            <div class="text-center text-muted small">Loading...</div>
                         </div>
 
-                    </div>
+                        <div class="mt-0 mb-3"></div>
+                        <div id="current-job-label-container" class="text-center mb-2 d-none">
+                            <small class="text-muted fw-bold">Current Job: </small>
+                            <small class="text-muted fw-bold" id="current-job-name-display"></small>
+                        </div>                         
+                        <hr class="mt-0 mb-3">
 
+                        <div>
+                            <div id="job-config-actions-default" class="d-flex gap-2">
+                                <button class="btn btn-primary flex-grow-1" id="btn-calc-cutlist" onclick="runOptimization()">Calculate</button>
+                                <button class="btn btn-outline-secondary flex-grow-1" id="btn-load-job" onclick="openLoadJobModal()">Load Job</button>
+                            </div>
+                            <div id="job-config-actions-active" class="d-flex gap-2 d-none">
+                                <button class="btn btn-primary flex-grow-1" id="btn-active-action1" onclick="resetConfigurator()">↻ Restart</button>
+                                <button class="btn btn-success flex-grow-1" id="btn-active-save" onclick="openSaveJobModal()">Save Job</button>
+                                <button class="btn btn-outline-secondary flex-grow-1 d-none" id="btn-active-load" onclick="openLoadJobModal()">Load Job</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
             </div>
+
         </div>
     </div>
 
     <!-- Results Area -->
     <div class="col-lg-9 col-md-8">
-        <div class="card shadow-sm h-100 border-success">
-            
-            <div style="position: sticky; top: 75px; z-index: 10; background-color: var(--bs-card-bg); border-top-left-radius: inherit; border-top-right-radius: inherit;">
-                
-                <div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">
-                    <h6 class="card-title mb-0" data-i18n="hdr_cutlist_results">📊 Results</h6>
-                    <div>
-                        <button class="btn btn-sm text-white py-0 me-2"><b></b></button>
-                    </div>
+        <div class="card shadow-sm border-primary h-100" id="optimizer-results-form">
+
+            <!-- Card Header -->
+            <div class="card-header bg-primary pt-2 pb-0 border-bottom-0 d-flex justify-content-between align-items-end" style="border-top-left-radius: inherit; border-top-right-radius: inherit;">
+                <ul class="nav nav-tabs card-header-tabs border-bottom-0 m-0" id="resultsTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-shopping" data-bs-toggle="tab" data-bs-target="#pane-shopping" type="button" role="tab" onclick="populateStockDropdowns()">🛒 Shopping List</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-diagrams" data-bs-toggle="tab" data-bs-target="#pane-diagrams" type="button" role="tab" onclick="populateCatalogDropdowns()">🔪 Cut Diagrams</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-analytics" data-bs-toggle="tab" data-bs-target="#pane-analytics" type="button" role="tab" onclick="populateCatalogDropdowns()">♻️ Analytics & Offcuts</button>
+                    </li>
+                </ul>
+                <div class="align-self-center mb-2">
                     <div id="shopping-controls" class="d-none">                     
                         <button class="header-btn btn btn-sm btn-warning py-0 fw-bold" onclick="printOptimizer('shopping')" data-i18n="btn_print_shopping_list">🖨️ Shopping List</button>
                     </div>
@@ -191,43 +202,24 @@
                         <button class="header-btn btn btn-sm btn-warning py-0 fw-bold" onclick="openLabelModal()" data-i18n="btn_print_labels">🖨️ Part Labels</button>
                     </div>
                 </div>
-                
-                <div class="card-header border-bottom p-0">
-                    <ul class="nav nav-tabs nav-fill border-0" id="resultsTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active fw-bold text-secondary border-0" id="tab-shopping" data-bs-toggle="tab" data-bs-target="#pane-shopping" type="button" role="tab" data-i18n="tab_shopping_list">🛒 Shopping List</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link fw-bold text-secondary border-0" id="tab-diagrams" data-bs-toggle="tab" data-bs-target="#pane-diagrams" type="button" role="tab" data-i18n="tab_cut_diagrams">🔪 Cut Diagrams</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link fw-bold text-secondary border-0" id="tab-analytics" data-bs-toggle="tab" data-bs-target="#pane-analytics" type="button" role="tab" data-i18n="tab_analytics_offcuts">♻️ Analytics & Offcuts</button>
-                        </li>
-                    </ul>
-                </div>
-                
             </div>
-            <div class="card-body" id="optimizer-results-container">
-                <div id="optimizer-empty-state" class="text-center text-muted mt-5">
-                    <h1>🧮</h1>
-                    <p class="mt-2" data-i18n="txt_optimizer_empty_state">Select your configuration on the left and click Calculate<br>to generate your optimized shopping list and cut diagrams.</p>
-                </div>
-                
-                <div class="tab-content d-none" id="optimizer-tab-content">
-                    
-                    <div class="tab-pane fade show active" id="pane-shopping" role="tabpanel" tabindex="0">
-                        </div>
-                    
-                    <div class="tab-pane fade" id="pane-diagrams" role="tabpanel" tabindex="0">
-                        <div class="text-center text-muted mt-4"><em data-i18n="txt_diagrams_coming_soon">Cut diagrams coming in next phase...</em></div>
-                    </div>
-                    
-                    <div class="tab-pane fade" id="pane-analytics" role="tabpanel" tabindex="0">
-                        <div class="text-center text-muted mt-4"><em data-i18n="txt_analytics_coming_soon">Analytics coming in next phase...</em></div>
-                    </div>
-    
-                </div>
+
+            <!-- Card Empty State -->
+            <div id="optimizer-empty-state" class="text-center text-muted mt-5">
+                <h1>🧮</h1>
+                <p class="mt-2" data-i18n="txt_optimizer_empty_state">Select your configuration on the left and click Calculate<br>to generate your optimized shopping list and cut diagrams.</p>
             </div>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="optimizer-tab-content">
+                <!-- Shopping List -->
+                <div class="tab-pane show active p-3" id="pane-shopping" role="tabpanel" tabindex="0"></div>
+                <!-- Cut Diagrams -->
+                <div class="tab-pane p-3" id="pane-diagrams" role="tabpanel" tabindex="0"></div>
+                <!-- Analytics & Offcuts -->
+                <div class="tab-pane p-3" id="pane-analytics" role="tabpanel" tabindex="0"></div>
+            </div>
+            
         </div>
     </div>
 

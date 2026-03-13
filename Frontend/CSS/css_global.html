@@ -207,28 +207,38 @@
         }
 
     /* Elegant File Cabinet Tabs */
-    #dictionaryTabs {
-            gap: 4px; /* Small breathing room between folders */
-        }
-        #dictionaryTabs .nav-link {
-            color: rgba(255, 255, 255, 0.7) !important; 
-            background-color: rgba(255, 255, 255, 0.06); 
-            border: none;
-            border-radius: 0.5rem 0.5rem 0 0; 
-            /* 🪄 FIX: Reduced vertical padding and font-size for a sleeker profile */
-            padding: 0.35rem 1.25rem; 
-            font-size: 0.9rem; 
-            font-weight: 600; 
-            transition: none !important;
-        }
-        #dictionaryTabs .nav-link:hover:not(.active) {
-            color: #ffffff !important;
-            background-color: rgba(255, 255, 255, 0.15); /* Brighten on hover */
-        }
-        #dictionaryTabs .nav-link.active {
-            color: var(--bs-primary) !important; /* Brand blue text for the active tab */
-            background-color: var(--bs-card-bg); /* Perfectly matches the pane below */
-            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15); /* Elegant upward drop-shadow */
-            z-index: 2; /* Ensures the shadow renders over the blue header */
-        }
+    #dictionaryTabs,
+    #configTabs, 
+    #resultsTabs {
+        gap: 4px; /* Small breathing room between folders */
+    }
+    
+    #dictionaryTabs .nav-link, 
+    #configTabs .nav-link,
+    #resultsTabs .nav-link {
+        color: rgba(255, 255, 255, 0.7) !important; 
+        background-color: rgba(255, 255, 255, 0.06); 
+        border: none;
+        border-radius: 0.5rem 0.5rem 0 0; 
+        padding: 0.35rem 1.25rem; 
+        font-size: 0.9rem; 
+        font-weight: 600; 
+        transition: none !important;
+    }
+    
+    #dictionaryTabs .nav-link:hover:not(.active),
+    #configTabs .nav-link:hover:not(.active), 
+    #resultsTabs .nav-link:hover:not(.active) {
+        color: #ffffff !important;
+        background-color: rgba(255, 255, 255, 0.15); /* Brighten on hover */
+    }
+    
+    #dictionaryTabs .nav-link.active, 
+    #configTabs .nav-link.active, 
+    #resultsTabs .nav-link.active {
+        color: var(--bs-primary) !important; /* Brand blue text for the active tab */
+        background-color: var(--bs-card-bg); /* Perfectly matches the pane below */
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15); /* Elegant upward drop-shadow */
+        z-index: 2; /* Ensures the shadow renders over the blue header */
+    }
 </style>
