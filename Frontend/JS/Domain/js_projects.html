@@ -65,7 +65,9 @@
                               onchange="updateProject('${proj.id}', 'comment', this.value)" 
                               placeholder="${t('ph_add_notes')}">${safeHTML(proj.comment || '')}</textarea>
                 </td>
-                <td class="text-center px-1 py-0 align-middle"><span class="badge bg-secondary">${partCount}</span></td>
+                <td class="text-center px-1 py-0 align-middle">
+                    <span class="badge bg-primary shadow-sm" style="cursor: pointer;" onclick="jumpToProjectParts('${proj.id}')" title="View Parts for this Project" data-i18n-title="tip_view_project_parts">${partCount}</span>
+                </td>
                 <td class="text-center px-1 py-0 align-middle fw-bold text-success">${currency}${displayCost}</td>
                 <td class="text-center align-middle">${statusHtml}</td>
                 <td class="text-center px-1 py-0 align-middle" style="width: 40px;">
@@ -531,5 +533,29 @@
             'danger',
             'Delete Forever'
         );
+    }
+
+    // ==========================================
+    // CROSS-TAB NAVIGATION
+    // ==========================================
+    function jumpToProjectParts(projectId) {
+        // 1. Wipe out any existing filters on the parts table to ensure a clean slate
+        if (typeof activeFilters !== 'undefined') {
+            activeFilters['parts'] = {}; 
+            
+            // 2. Inject the specific project ID into the filter engine
+            activeFilters['parts']['projectId'] = [projectId];
+        }
+
+        // 3. Virtually click the "Current Partlist" tab
+        const partsTabBtn = document.getElementById('tab-parts');
+        if (partsTabBtn) {
+            // Because your HTML button has onclick="renderPartsView()", 
+            // clicking it will natively trigger Bootstrap's animation AND our render loop!
+            partsTabBtn.click(); 
+        } else {
+            // Fallback (just in case)
+            if (typeof renderPartsTable === 'function') renderPartsTable();
+        }
     }
 </script>
