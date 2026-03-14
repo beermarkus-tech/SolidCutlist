@@ -87,5 +87,7 @@
             if (u === 'volume') display = volText;
             btnCycle.innerText = `/ ${display}`;
         }
+
+        if (typeof checkUnitMismatch === 'function') checkUnitMismatch();
     }
 </script>

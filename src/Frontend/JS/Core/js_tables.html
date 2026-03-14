@@ -48,11 +48,23 @@
                     };
                     valA = getWeight(a);
                     valB = getWeight(b);
-                } else if (key === 'dimensions') {
-                    // 🪄 UNIVERSAL 2D DIMENSIONAL SORTING
+                } else if (key === 'name' && arrayName === 'profiles') {
+                    // 🪄 THE PROFILE NAME GROUPING ENGINE
                     
+                    // 1. Group by Category FIRST (Safely falls back to checking width for Lumber vs Sheet)
+                    let catA = String(a.category || a.categoryId || (a.width > 0 ? 'lumber' : 'sheet')).toLowerCase();
+                    let catB = String(b.category || b.categoryId || (b.width > 0 ? 'lumber' : 'sheet')).toLowerCase();
+                    
+                    if (catA !== catB) return catA.localeCompare(catB) * dir;
+
+                    // 2. Sort Alphabetically by Name inside the category group
+                    let nameA = String(a.name || '').toLowerCase();
+                    let nameB = String(b.name || '').toLowerCase();
+                    
+                    return nameA.localeCompare(nameB) * dir;
+                } else if (key === 'dimensions') {
+                    // 🪄 UNIVERSAL DIMENSIONAL SORTING (For Parts, Stock, and Catalog)
                     if (arrayName === 'profiles') {
-                        // 1. Profiles Table: Tie-break Width vs Thickness
                         let widthA = a.width || 0;
                         let widthB = b.width || 0;
                         if (widthA === widthB) {
@@ -63,41 +75,80 @@
                             valB = widthB;
                         }
                     } else {
-                        // 2. Parts/Stock Tables: Tie-break Width vs Length
-                        let widthA = a.category === 'lumber' ? (appState.profiles.find(pr => pr.id === a.profileId)?.width || 0) : (a.width || 0);
-                        let widthB = b.category === 'lumber' ? (appState.profiles.find(pr => pr.id === b.profileId)?.width || 0) : (b.width || 0);
+                        // 1. Group by Category FIRST (Naturally separates Lumber vs Sheet)
+                        // 🪄 FIX: Safely check both `category` (Parts/Stock) and `categoryId` (Catalog)
+                        let catA = String(a.category || a.categoryId || '').toLowerCase();
+                        let catB = String(b.category || b.categoryId || '').toLowerCase();
+                        if (catA !== catB) return catA.localeCompare(catB) * dir;
+
+                        // 2. Sort by Length inside the category group
+                        let lenA = a.length || 0;
+                        let lenB = b.length || 0;
+                        if (lenA !== lenB) return (lenA - lenB) * dir;
                         
-                        if (widthA === widthB) {
-                            valA = a.length || 0;
-                            valB = b.length || 0;
-                        } else {
-                            valA = widthA;
-                            valB = widthB;
+                        // 3. Tie-break with Width (Pulling from profile if it is lumber)
+                        let trueWidthA = a.width || 0;
+                        let trueWidthB = b.width || 0;
+                        if (catA === 'lumber' && appState.profiles) {
+                            trueWidthA = appState.profiles.find(pr => pr.id === a.profileId)?.width || trueWidthA;
                         }
+                        if (catB === 'lumber' && appState.profiles) {
+                            trueWidthB = appState.profiles.find(pr => pr.id === b.profileId)?.width || trueWidthB;
+                        }
+                        if (trueWidthA !== trueWidthB) return (trueWidthA - trueWidthB) * dir;
+
+                        // 4. Tie-break with Thickness (Pulling from profile)
+                        let thickA = a.thickness || 0;
+                        let thickB = b.thickness || 0;
+                        if (appState.profiles) {
+                            thickA = appState.profiles.find(pr => pr.id === a.profileId)?.thickness || thickA;
+                            thickB = appState.profiles.find(pr => pr.id === b.profileId)?.thickness || thickB;
+                        }
+                        if (thickA !== thickB) return (thickA - thickB) * dir;
+                        
+                        return 0;
                     }
-                // 🪄 ADDED: 3D Cascading Tie-Breaker (Thickness -> Width -> Length)
+                    
                 } else if (key === 'extracted_dimensions') {
+                    // 🪄 THE CATEGORY GROUPING ENGINE (For Imported Size)
+                    
+                    // 1. Group by Category FIRST (Naturally separates Lumber vs Sheet)
+                    let catA = String(a.category || '').toLowerCase();
+                    let catB = String(b.category || '').toLowerCase();
+                    if (catA !== catB) return catA.localeCompare(catB) * dir;
+
+                    // 2. Sort the raw text natively inside the category group
+                    let rawA = String(a.extracted_dimensions || '').toLowerCase().trim();
+                    let rawB = String(b.extracted_dimensions || '').toLowerCase().trim();
+                    
+                    // 'numeric: true' ensures "1500" is sorted higher than "800"
+                    return rawA.localeCompare(rawB, undefined, { numeric: true }) * dir;
+
+                } else if (key === 'weight_cost' && arrayName === 'parts') {
+                    // 🪄 3D Cascading Tie-Breaker (Grouping -> Length -> Width -> Thickness)
+                    let wA = a.width || 0;
+                    let wB = b.width || 0;
+
+                    let dimA = wA > 0 ? 2 : 1;
+                    let dimB = wB > 0 ? 2 : 1;
+
+                    // 🪄 Group by Dimensionality first! (1D vs 2D)
+                    if (dimA !== dimB) return (dimA - dimB) * dir;
+
+                    // Then sort by Length
+                    let lenA = a.length || 0;
+                    let lenB = b.length || 0;
+                    if (lenA !== lenB) return (lenA - lenB) * dir;
+
+                    // Then Width
+                    if (wA !== wB) return (wA - wB) * dir;
+
+                    // Finally Thickness
                     let tA = a.thickness || 0;
                     let tB = b.thickness || 0;
-                    
-                    if (tA === tB) {
-                        // Thickness matches, tie-break with Width
-                        let wA = a.width || 0;
-                        let wB = b.width || 0;
-                        
-                        if (wA === wB) {
-                            // Thickness and Width match, tie-break with Length
-                            valA = a.length || 0;
-                            valB = b.length || 0;
-                        } else {
-                            valA = wA;
-                            valB = wB;
-                        }
-                    } else {
-                        // Thickness is different, sort purely by Thickness
-                        valA = tA;
-                        valB = tB;
-                    }
+                    if (tA !== tB) return (tA - tB) * dir;
+
+                    return 0; // Complete tie
                 } else if (key === 'weight_cost' && arrayName === 'parts') {
                     // 🪄 DYNAMIC PARTS COLUMN SORTING
                     const metricMode = (appState.settings && appState.settings.partsMetricMode) ? appState.settings.partsMetricMode : 'weight';

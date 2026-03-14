@@ -2,12 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const { minify } = require('html-minifier-terser');
 
+// Point the script to your new Source and Distribution folders
+const srcDir = path.join(__dirname, 'src'); 
 const distDir = path.join(__dirname, 'dist');
 
-// The folders we want to scan (matching your screenshot)
-const foldersToScan = ['Backend', 'Frontend'];
-
-// Options to aggressively shrink your code
 const minifyOptions = {
     collapseWhitespace: true,
     removeComments: true,
@@ -15,13 +13,13 @@ const minifyOptions = {
     minifyCSS: true  
 };
 
-// 1. Create a fresh 'dist' folder (delete old one if it exists)
+// 1. Refresh the dist folder
 if (fs.existsSync(distDir)) {
     fs.rmSync(distDir, { recursive: true, force: true });
 }
 fs.mkdirSync(distDir);
 
-// 2. Recursive function to find all files in nested folders
+// 2. Scan every file inside the 'src' folder
 function getAllFiles(dirPath, arrayOfFiles = []) {
     const files = fs.readdirSync(dirPath);
     files.forEach(file => {
@@ -35,22 +33,16 @@ function getAllFiles(dirPath, arrayOfFiles = []) {
     return arrayOfFiles;
 }
 
-// 3. Process the files
+// 3. Process and copy everything to 'dist'
 async function build() {
-    let allFiles = [];
-    foldersToScan.forEach(folder => {
-        const fullFolderPath = path.join(__dirname, folder);
-        if (fs.existsSync(fullFolderPath)) {
-            allFiles = allFiles.concat(getAllFiles(fullFolderPath));
-        }
-    });
+    const allFiles = getAllFiles(srcDir);
 
     for (const srcPath of allFiles) {
-        // 🪄 FIX: Calculate the relative path so we can perfectly mirror it in dist
-        const relativePath = path.relative(__dirname, srcPath);
+        // Calculate exact relative paths to flawlessly maintain your folder structure
+        const relativePath = path.relative(srcDir, srcPath);
         const destPath = path.join(distDir, relativePath);
 
-        // 🪄 FIX: Create the nested subdirectories inside dist/ if they don't exist yet
+        // Build nested subfolders on the fly if they don't exist yet
         const destFolder = path.dirname(destPath);
         if (!fs.existsSync(destFolder)) {
             fs.mkdirSync(destFolder, { recursive: true });
@@ -58,31 +50,20 @@ async function build() {
 
         const fileName = path.basename(srcPath);
 
+        // If HTML, Minify! Else (js, gs, json), just copy it over natively!
         if (fileName.endsWith('.html')) {
             const rawHtml = fs.readFileSync(srcPath, 'utf8');
             try {
                 const minifiedHtml = await minify(rawHtml, minifyOptions);
                 fs.writeFileSync(destPath, minifiedHtml);
-                console.log(`✅ Minified: ${relativePath}`); // Now prints the full path so you can see it working
+                console.log(`✅ Minified: ${relativePath}`);
             } catch (err) {
                 console.error(`❌ Error minifying ${relativePath}:`, err);
             }
-        } else if (fileName.endsWith('.gs') || fileName.endsWith('.js') || fileName.endsWith('.json')) {
-            // Just copy Backend scripts as-is
+        } else {
             fs.copyFileSync(srcPath, destPath);
             console.log(`📄 Copied: ${relativePath}`);
         }
-    }
-
-    // Explicitly grab the appsscript.json manifest from the root folder
-    const manifestSrc = path.join(__dirname, 'appsscript.json');
-    const manifestDest = path.join(distDir, 'appsscript.json');
-    
-    if (fs.existsSync(manifestSrc)) {
-        fs.copyFileSync(manifestSrc, manifestDest);
-        console.log(`📄 Copied: appsscript.json`);
-    } else {
-        console.warn(`⚠️ WARNING: appsscript.json was not found in the root directory!`);
     }
 
     console.log('🚀 Build complete! Check the "dist" folder.');

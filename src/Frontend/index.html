@@ -42,18 +42,26 @@
 
     <!-- Top Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 sticky-top">
-        <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">🪵 SolidCutlist</span>
-            <div class="d-flex gap-2 nav-buttons-container flex-wrap">
-                <div id="sync-indicator" class="d-flex align-items-center ms-3 text-white small pe-2" style="opacity: 0.6;">
-                    <span id="sync-icon">✔</span> <span id="sync-text" class="ms-1" data-i18n="txt_sync_idle">Saved</span>
-                </div>
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            
+            <div class="d-flex justify-content-start flex-grow-1" style="flex-basis: 0;">
+                <span class="navbar-brand mb-0 h1">🪵 SolidCutlist</span>
+            </div>
+
+            <div class="d-flex justify-content-center gap-2 nav-buttons-container flex-wrap">
                 <button id="nav-btn-resume-import" class="btn btn-warning btn-sm d-none shadow-sm" onclick="navigateTo('view-import')" data-i18n="btn_resume_import">📥 Import</button>
                 <button id="nav-btn-view-dictionaries" class="btn btn-outline-light btn-sm" onclick="navigateTo('view-dictionaries')" data-i18n="nav_setup">Setup</button>
                 <button id="nav-btn-view-parts" class="btn btn-outline-light fw-bold btn-sm active" onclick="navigateTo('view-parts')" data-i18n="nav_partlist">Projects</button>
                 <button id="nav-btn-view-cutlist" class="btn btn-outline-light btn-sm" onclick="navigateTo('view-cutlist')" data-i18n="nav_cutlist">Cutlist</button>
+            </div>
+
+            <div class="d-flex justify-content-end align-items-center gap-2 flex-grow-1" style="flex-basis: 0;">
+                <div id="sync-indicator" class="d-flex align-items-center text-white small pe-2" style="opacity: 0.6;">
+                    <span id="sync-icon">✔</span> <span id="sync-text" class="ms-1" data-i18n="txt_sync_idle">Saved</span>
+                </div>
                 <button class="btn btn-outline-light btn-sm border-0 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#settingsModal" title="Settings" data-i18n-title="tab_settings">⚙️</button>
             </div>
+            
         </div>
     </nav>
 
@@ -61,12 +69,12 @@
     <main id="app-container" class="container-fluid px-4 px-md-5">
        
         <!-- View: Dictionaries (Hidden by default) -->
-        <div id="view-dictionaries" class="app-view container mt-2 d-none" style="max-width: 1400px;">
+        <div id="view-dictionaries" class="app-view d-none">
             <?!= include('Frontend/Views/view_dictionaries'); ?>
         </div>
 
         <!-- View: Import (Hidden by default) -->
-        <div id="view-import" class="app-view container mt-2 d-none" style="max-width: 1400px;">
+        <div id="view-import" class="app-view d-none">
             <?!= include('Frontend/Views/view_import'); ?>
         </div>
 

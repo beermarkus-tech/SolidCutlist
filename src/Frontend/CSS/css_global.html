@@ -209,13 +209,15 @@
     /* Elegant File Cabinet Tabs */
     #dictionaryTabs,
     #configTabs, 
-    #resultsTabs {
+    #resultsTabs,
+    #importTabs {
         gap: 4px; /* Small breathing room between folders */
     }
     
     #dictionaryTabs .nav-link, 
     #configTabs .nav-link,
-    #resultsTabs .nav-link {
+    #resultsTabs .nav-link,
+    #importTabs .nav-link {
         color: rgba(255, 255, 255, 0.7) !important; 
         background-color: rgba(255, 255, 255, 0.06); 
         border: none;
@@ -228,17 +230,29 @@
     
     #dictionaryTabs .nav-link:hover:not(.active),
     #configTabs .nav-link:hover:not(.active), 
-    #resultsTabs .nav-link:hover:not(.active) {
+    #resultsTabs .nav-link:hover:not(.active),
+    #importTabs .nav-link:hover:not(.active) {
         color: #ffffff !important;
         background-color: rgba(255, 255, 255, 0.15); /* Brighten on hover */
     }
     
     #dictionaryTabs .nav-link.active, 
     #configTabs .nav-link.active, 
-    #resultsTabs .nav-link.active {
+    #resultsTabs .nav-link.active,
+    #importTabs .nav-link.active {
         color: var(--bs-primary) !important; /* Brand blue text for the active tab */
         background-color: var(--bs-card-bg); /* Perfectly matches the pane below */
         box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15); /* Elegant upward drop-shadow */
         z-index: 2; /* Ensures the shadow renders over the blue header */
+    }
+
+    /* 🪄 Dimmer styling for disabled/locked tabs */
+    #dictionaryTabs .nav-link.disabled, 
+    #configTabs .nav-link.disabled, 
+    #resultsTabs .nav-link.disabled,
+    #importTabs .nav-link.disabled {
+        color: rgba(255, 255, 255, 0.25) !important; /* Dims the text significantly */
+        background-color: rgba(255, 255, 255, 0.02) !important; /* Barely visible folder background */
+        cursor: not-allowed !important; /* Shows the 'locked' mouse cursor */
     }
 </style>

@@ -20,14 +20,16 @@
         populateImportProjectDropdown();
         
         if (isImportActive) {
-            // 🪄 TRAP 4 FIX: Re-render the table to pull in new Setup data
+            // 🪄 NEW: Instantly re-verify units every time they open this tab!
+            checkUnitMismatch();
+
+            // TRAP 4 FIX: Re-render the table to pull in new Setup data
             if (currentImportStep === 3) {
                 renderStagingTable(); 
             }
         } else {
-            // Fresh start
             resetImport();
-            toggleResumeButton(true); // 🪄 Turn the yellow button ON immediately!
+            toggleResumeButton(true); 
         }
     }
     function populateImportProjectDropdown() {
@@ -53,36 +55,77 @@
             else btn.classList.add('d-none');
         }
     }
+    function checkUnitMismatch() {
+        const warningBanner = document.getElementById('import-unit-warning');
+        
+        if (!rawCsvRows || rawCsvRows.length === 0) {
+            warningBanner.classList.add('d-none');
+            return;
+        }
+
+        const sampleText = rawCsvRows.slice(0, 10).join(' ').toLowerCase();
+        const metricScore = (sampleText.match(/[0-9]+(?:\.[0-9]+)?\s*(mm|cm|m\b)/g) || []).length;
+        const imperialScore = (sampleText.match(/[0-9]+(?:\.[0-9]+)?\s*("|in|'|ft)/g) || []).length;
+        
+        let detectedCsvUnit = 'unknown';
+        if (metricScore > imperialScore && metricScore > 0) detectedCsvUnit = 'mm';
+        else if (imperialScore > metricScore && imperialScore > 0) detectedCsvUnit = 'in';
+
+        const safeSettings = appState.settings || {};
+        const shopUnit = safeSettings.displayUnit || 'unknown_shop_setting'; 
+        const isShopMetric = (shopUnit === 'mm');
+        const isCsvMetric = (detectedCsvUnit === 'mm');
+
+        if (detectedCsvUnit !== 'unknown' && isShopMetric !== isCsvMetric) {
+            document.getElementById('csv-unit-label').innerText = isCsvMetric ? 'Metric' : 'Imperial';
+            document.getElementById('shop-unit-label').innerText = isShopMetric ? 'Metric' : 'Imperial';
+            warningBanner.classList.remove('d-none');
+        } else {
+            warningBanner.classList.add('d-none');
+        }
+    }
 
     // 🪄 THE VISUAL STEPPER ENGINE
     function goToImportStep(step) {
         currentImportStep = step;
         
-        // Hide all
-        document.getElementById('import-step-1').classList.add('d-none');
-        document.getElementById('import-step-2').classList.add('d-none');
-        document.getElementById('import-step-3').classList.add('d-none');
-        
-        // Show target
-        document.getElementById(`import-step-${step}`).classList.remove('d-none');
-        
-        // Paint the Progress Bar
-        for (let i = 1; i <= 3; i++) {
-            const indicator = document.getElementById(`step-indicator-${i}`);
-            const text = indicator.querySelector('span');
-            
-            if (i === step) {
-                indicator.className = 'col-4 border-bottom border-3 border-primary pb-2 transition-all';
-                text.className = 'fw-bold text-primary';
-            } else if (i < step) {
-                indicator.className = 'col-4 border-bottom border-3 border-success pb-2 transition-all';
-                text.className = 'fw-bold text-success';
-            } else {
-                indicator.className = 'col-4 border-bottom border-3 border-secondary pb-2 opacity-50 transition-all';
-                text.className = 'fw-bold text-secondary';
-            }
+        const tab2 = document.getElementById('tab-step-2');
+        const tab3 = document.getElementById('tab-step-3');
+
+        // Dynamically unlock the tab if they achieved the milestone
+        if (step >= 2 && tab2) tab2.classList.remove('disabled');
+        if (step >= 3 && tab3) tab3.classList.remove('disabled');
+
+        // Command Bootstrap to jump to the correct pane
+        const targetTab = document.getElementById(`tab-step-${step}`);
+        if (targetTab) {
+            const tabInstance = bootstrap.Tab.getOrCreateInstance(targetTab);
+            tabInstance.show();
         }
     }
+
+    // 🪄 THE UI LISTENER: Conditionally swaps the control buttons when Bootstrap changes a tab
+    document.addEventListener('DOMContentLoaded', () => {
+        const importTabs = document.getElementById('importTabs');
+        if (importTabs) {
+            importTabs.addEventListener('shown.bs.tab', function (event) {
+                let step = 1;
+                if (event.target.id === 'tab-step-2') step = 2;
+                if (event.target.id === 'tab-step-3') step = 3;
+                
+                currentImportStep = step;
+
+                // 1. Hide all control button blocks
+                document.getElementById('import-controls-1').classList.add('d-none');
+                document.getElementById('import-controls-2').classList.add('d-none');
+                document.getElementById('import-controls-3').classList.add('d-none');
+                
+                // 2. Reveal only the controls for the active tab
+                const activeControls = document.getElementById(`import-controls-${step}`);
+                if (activeControls) activeControls.classList.remove('d-none');
+            });
+        }
+    });
     // Completely annihilates the cache and hides the resume button
     function resetImport() {
         rawCsvHeaders = [];
@@ -94,13 +137,18 @@
         
         document.getElementById('import-project-select').value = '';
         
-        // 🪄 NEW: Clear the new project input field
         const newProjInput = document.getElementById('import-new-project-name');
         if (newProjInput) newProjInput.value = '';
         
         clearCachedFile();
-        
         toggleResumeButton(false);
+        
+        // 🪄 Re-Lock the Tabs
+        const tab2 = document.getElementById('tab-step-2');
+        const tab3 = document.getElementById('tab-step-3');
+        if (tab2) tab2.classList.add('disabled');
+        if (tab3) tab3.classList.add('disabled');
+
         goToImportStep(1);
     }
     function cancelImportProcess() {
@@ -118,108 +166,99 @@
     function handleCsvUpload() {
         const projSelect = document.getElementById('import-project-select');
         const newProjInput = document.getElementById('import-new-project-name');
-        const fileInput = document.getElementById('import-file-input');
 
         let finalProjectId = projSelect.value;
         const newProjName = newProjInput ? newProjInput.value.trim() : '';
 
-        // 🪄 1. PROJECT CREATION ENGINE: Prioritize the input field!
+        // 1. PROJECT CREATION ENGINE
         if (newProjName !== '') {
             finalProjectId = 'PROJ-' + Date.now();
             
             if (!appState.projects) appState.projects = [];
+            appState.projects.unshift({ id: finalProjectId, name: newProjName, status: 'Design' });
+            saveState(); 
             
-            // Mint the new project in the global database
-            appState.projects.unshift({
-                id: finalProjectId,
-                name: newProjName,
-                status: 'Design'
-            });
-            
-            saveState(); // Commit to memory instantly
-            
-            // Update dropdowns so it shows up natively
             populateImportProjectDropdown();
             projSelect.value = finalProjectId;
-            
-            // Clear the input box so going back and forth doesn't clone it repeatedly
             newProjInput.value = '';
             
             if (typeof showToast === 'function') showToast(`Project '${newProjName}' created!`, "success");
             
         } else if (!finalProjectId) {
-            // Neither dropdown nor input field was filled
             if (typeof showToast === 'function') showToast("Please select or create a Target Project.", true);
             return;
         }
 
         targetProjectId = finalProjectId;
 
-        // 🪄 2. TRAP 1 FIX (Upgraded): If file is already cached, bypass the upload entirely
-        if (rawCsvRows.length > 0) {
-            // Because the user may have changed the target project, we MUST retroactively 
-            // update all staging parts that were previously mapped!
-            if (appState.stagingParts && appState.stagingParts.length > 0) {
-                 appState.stagingParts.forEach(p => p.projectId = targetProjectId);
-            }
-            toggleResumeButton(true);
-            goToImportStep(2);
-            return;
-        }
-
-        // 3. PROCEED TO STANDARD FILE UPLOAD
-        if (!fileInput.files.length) {
+        // 2. CHECK IF FILE IS LOADED
+        if (rawCsvRows.length === 0) {
             if (typeof showToast === 'function') showToast("Please select a CSV file.", true);
             return;
         }
 
-        const file = fileInput.files[0];
-        cachedFileName = file.name;
-        const reader = new FileReader();
+        // 3. TRANSITION TO STEP 2
+        if (appState.stagingParts && appState.stagingParts.length > 0) {
+             appState.stagingParts.forEach(p => p.projectId = targetProjectId);
+        }
 
-        reader.onload = function(e) {
-            const text = e.target.result;
-            const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-            
-            if (lines.length < 2) {
-                if (typeof showToast === 'function') showToast("The CSV file is empty or invalid.", true);
-                return;
-            }
-
-            window.csvDelimiter = lines[0].includes(';') ? ';' : ',';
-            rawCsvHeaders = lines[0].split(window.csvDelimiter).map(h => h.replace(/^"|"$/g, '').trim());
-            rawCsvRows = lines.slice(1); 
-
-            // Switch UI to "Loaded" state
-            document.getElementById('import-upload-ui').classList.add('d-none');
-            document.getElementById('import-loaded-ui').classList.remove('d-none');
-            document.getElementById('import-loaded-ui').classList.add('d-flex');
-            document.getElementById('cached-file-name').innerText = cachedFileName;
-
-            isMappingDirty = true; 
-            toggleResumeButton(true);
-            renderMappingUI();
-            goToImportStep(2);
-        };
-
-        reader.readAsText(file);
+        isMappingDirty = true; 
+        toggleResumeButton(true);
+        renderMappingUI();
+        goToImportStep(2);
     }
     function clearCachedFile() {
         rawCsvRows = [];
         rawCsvHeaders = [];
         cachedFileName = '';
-        document.getElementById('import-file-input').value = '';
-        document.getElementById('file-name-display').value = '';
         
-        document.getElementById('import-upload-ui').classList.remove('d-none');
-        document.getElementById('import-loaded-ui').classList.add('d-none');
-        document.getElementById('import-loaded-ui').classList.remove('d-flex');
+        document.getElementById('import-file-input').value = '';
+        
+        const display = document.getElementById('file-name-display');
+        display.value = '';
+        display.classList.remove('text-success', 'fw-bold');
+        
+        // 🪄 Hide the warning banner if they clear the file
+        document.getElementById('import-unit-warning').classList.add('d-none');
+        
         isMappingDirty = true;
     }
     function updateFileNameDisplay() {
         const fileInput = document.getElementById('import-file-input');
         const display = document.getElementById('file-name-display');
-        display.value = fileInput.files.length > 0 ? fileInput.files[0].name : t('msg_no_file_selected');
+        
+        if (fileInput.files.length > 0) {
+            cachedFileName = fileInput.files[0].name;
+            display.value = '✅ ' + cachedFileName;
+            display.classList.add('text-success', 'fw-bold');
+
+            // 🪄 NEW: Instantly read the file into memory to check for unit mismatches
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                
+                if (lines.length < 2) {
+                    if (typeof showToast === 'function') showToast("The CSV file is empty or invalid.", true);
+                    return;
+                }
+
+                window.csvDelimiter = lines[0].includes(';') ? ';' : ',';
+                rawCsvHeaders = lines[0].split(window.csvDelimiter).map(h => h.replace(/^"|"$/g, '').trim());
+                rawCsvRows = lines.slice(1); 
+
+                // 🪄 Trigger the standalone checker!
+                checkUnitMismatch();
+            };
+            reader.readAsText(file);
+
+        } else {
+            display.value = typeof t === 'function' ? t('msg_no_file_selected') : 'No file selected';
+            display.classList.remove('text-success', 'fw-bold');
+            document.getElementById('import-unit-warning').classList.add('d-none');
+        }
     }
     // --- STEP 2: BUILD THE MAPPING UI ---
     function renderMappingUI() {
@@ -244,18 +283,21 @@
             });
 
             const colDiv = document.createElement('div');
-            colDiv.className = 'col-md-4 col-sm-6 mb-3';
+            // 🪄 FIX 1: Let the Bootstrap row manage the dimensions natively
+            colDiv.className = 'col-md-4 col-sm-6';
             
-            // 🪄 ADDED: The Preview Box and the onchange trigger
+            // 🪄 FIX 2: THE ABSOLUTE SCROLL TRAP!
+            // By making the preview list 'position-absolute', it physically cannot stretch the flexbox anymore!
             colDiv.innerHTML = `
-                <div class="p-2 border rounded shadow-sm h-100 d-flex flex-column">
+                <div class="p-3 rounded-3 h-100 d-flex flex-column" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
                     <label class="form-label form-label-sm fw-bold text-secondary mb-1">${field.label}</label>
-                    <select class="form-select form-select-sm border-warning mb-2" id="${field.id}" onchange="isMappingDirty = true; updateColumnPreview('${field.id}')" required>
+                    <select class="form-select form-select-sm mb-2" id="${field.id}" onchange="isMappingDirty = true; updateColumnPreview('${field.id}')" required>
                         ${optionsHtml}
                     </select>
-                    <div class="flex-grow-1 border rounded p-2" style="min-height: 150px; max-height: 150px; overflow-y: auto;">
-                        <ul class="list-unstyled mb-0 small text-muted" id="preview-${field.id}">
-                            </ul>
+                    
+                    <div class="flex-grow-1 bg-body rounded position-relative" style="border: 1px solid var(--bs-border-color-translucent); min-height: 80px;">
+                        <ul class="list-unstyled mb-0 small text-muted position-absolute w-100 h-100 top-0 start-0 p-2 m-0" id="preview-${field.id}" style="overflow-y: auto;">
+                        </ul>
                     </div>
                 </div>
             `;
@@ -354,7 +396,6 @@
         }
 
         appState.stagingParts = [];
-        let detectedCsvUnit = 'unknown';
 
         // 🪄 THE REAL AUTO-MERGE ENGINE
         const mergeMap = {};
@@ -374,15 +415,6 @@
             
             // Slice the group down to just the parent
             let topLevelGroup = rawPath.split('>')[0].trim();
-
-            if (detectedCsvUnit === 'unknown' && cols[colMap.length]) {
-                const rawL = String(cols[colMap.length]).toLowerCase();
-                if (rawL.indexOf('mm') > -1 || rawL.indexOf('cm') > -1 || rawL.indexOf(' m') > -1) {
-                    detectedCsvUnit = 'mm';
-                } else if (rawL.indexOf('"') > -1 || rawL.indexOf('in') > -1 || rawL.indexOf("'") > -1) {
-                    detectedCsvUnit = 'in';
-                }
-            }
 
             const cleanDim = (str) => {
                 if (!str) return 0;
@@ -446,20 +478,6 @@
 
         // Output the cleanly merged staging table
         appState.stagingParts = Object.values(mergeMap);
-
-        const warningBanner = document.getElementById('import-unit-warning');
-        const safeSettings = appState.settings || {};
-        const shopUnit = safeSettings.displayUnit || 'unknown_shop_setting'; 
-        const isShopMetric = (shopUnit === 'mm');
-        const isCsvMetric = (detectedCsvUnit === 'mm');
-
-        if (detectedCsvUnit !== 'unknown' && isShopMetric !== isCsvMetric) {
-            document.getElementById('csv-unit-label').innerText = isCsvMetric ? 'Metric' : 'Imperial';
-            document.getElementById('shop-unit-label').innerText = isShopMetric ? 'Metric' : 'Imperial';
-            warningBanner.classList.remove('d-none');
-        } else {
-            warningBanner.classList.add('d-none');
-        }
 
         isMappingDirty = false; 
         goToImportStep(3);

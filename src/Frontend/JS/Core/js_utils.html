@@ -99,7 +99,7 @@
         return val.toString();
     }
     /** Converts UI density input into Base kg/m³ for storage. */
-     function parseDensityToBase(input) {
+    function parseDensityToBase(input) {
         let val = parseFloat(input) || 0;
         if (appState.settings.displayUnit === 'mm') return val; // Already kg/m³
         return val / 0.06242796; // Convert lb/ft³ back to kg/m³
