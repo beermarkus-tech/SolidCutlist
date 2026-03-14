@@ -1,6 +1,7 @@
 {
   "scriptId": "1JqaNkcXPPnAWSzrGty_cAMBC06HR_c3kxRdAzq2AArIIzUAfBBIJpWHF",
   "rootDir": "",
+  "__note__": "==> set rootDir to ./dist for to clasp push the minify directory",
   "scriptExtensions": [
     ".js",
     ".gs"
