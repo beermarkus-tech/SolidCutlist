@@ -1,5 +1,365 @@
 <script>
+    // ==========================================
+    // PHASE 1: THE ROUTER & TOGGLE
+    // ==========================================
+    function toggleStockView() {
+        if (!appState.settings) appState.settings = {};
+        appState.settings.compactStockView = !appState.settings.compactStockView;
+        saveState();
+        renderStockTable();
+    }
+
+    // 🪄 The Traffic Cop: Decides which table to draw based on settings
     function renderStockTable() {
+        const isCompact = appState.settings?.compactStockView;
+        
+        // Update the Toggle Button UI
+        const btnText = document.getElementById('stock-view-text');
+        const btnIcon = document.getElementById('stock-view-icon');
+        if (btnText && btnIcon) {
+            btnText.innerText = isCompact ? 'Flat Table' : 'Compact Table';
+            btnIcon.innerText = isCompact ? '📄' : '🗜️';
+        }
+
+        if (isCompact) {
+            renderCompressedStockTable();
+        } else {
+            renderFlatStockTable();
+        }
+    }
+
+    // ==========================================
+    // PHASE 2: THE COMPRESSED ENGINE
+    // ==========================================
+    function getCompressedStockData() {
+        if (!appState.stock) return [];
+        const map = {};
+
+        appState.stock.forEach(item => {
+            // Fingerprint strictly groups by Cat + Prof + Mat
+            const fingerprint = `${item.categoryId}_${item.profileId}_${item.materialId}`;
+
+            if (!map[fingerprint]) {
+                map[fingerprint] = {
+                    fingerprint: fingerprint,
+                    categoryId: item.categoryId,
+                    profileId: item.profileId,
+                    materialId: item.materialId,
+                    totalQty: 0,
+                    totalLength_mm: 0,
+                    totalArea_mm2: 0,
+                    grains: new Set(),
+                    types: new Set(),
+                    pieces: []
+                };
+            }
+
+            const group = map[fingerprint];
+            const q = item.qty || 1;
+            const l = item.length || 0;
+            const w = item.categoryId === 'sheet' ? (item.width || 0) : 0;
+
+            group.totalQty += q;
+            group.pieces.push({ id: item.id, length: l, width: w, qty: q, grain: item.grain, isCutoff: item.isCutoff });
+            
+            // Collect unique grains and types
+            group.grains.add(item.grain || 'none');
+            group.types.add(item.isCutoff ? 'scrap' : 'new');
+
+            // Accumulate math
+            if (item.categoryId === 'sheet') {
+                group.totalArea_mm2 += (l * w * q);
+            } else {
+                group.totalLength_mm += (l * q);
+            }
+        });
+
+        return Object.values(map);
+    }
+    function renderCompressedStockTable() {
+        const tbody = document.getElementById('table-stock-body');
+        if (!tbody) return;
+        tbody.innerHTML = ''; 
+
+        const groups = getCompressedStockData();
+        const isMetric = appState.settings.displayUnit === 'mm';
+
+        groups.forEach(group => {
+            // MOCK ITEM for global filters
+            const mockItem = {
+                categoryId: group.categoryId,
+                profileId: group.profileId,
+                materialId: group.materialId,
+                grain: group.grains.size > 1 ? 'multiple' : Array.from(group.grains)[0],
+                isCutoff: group.types.size > 1 ? 'multiple' : (Array.from(group.types)[0] === 'scrap')
+            };
+            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(mockItem, 'stock')) return;
+
+            const tr = document.createElement('tr');
+            const badgeClass = getCategoryBadgeClass(group.categoryId);
+
+            // Safe Profile/Material lookups
+            const profile = appState.profiles.find(p => p.id === group.profileId);
+            const profName = profile ? profile.name : `⚠️ Missing`;
+            const material = appState.materials.find(m => m.id === group.materialId);
+            const matName = material ? material.name : `⚠️ Missing`;
+
+            if (!profile || !material) tr.classList.add('table-warning');
+
+            // 🪄 MIN/MAX & TOTAL MATH
+            let sizeHtml = '-';
+            if (group.pieces.length > 0) {
+                if (group.categoryId === 'sheet') {
+                    // Sort by Area
+                    group.pieces.sort((a, b) => (b.length * b.width) - (a.length * a.width));
+                    const maxP = group.pieces[0];
+                    const minP = group.pieces[group.pieces.length - 1];
+                    const minStr = `${formatForDisplay(minP.width)}x${formatForDisplay(minP.length)}`;
+                    const maxStr = `${formatForDisplay(maxP.width)}x${formatForDisplay(maxP.length)}`;
+                    
+                    const totalArea = isMetric ? (group.totalArea_mm2 / 1000000).toFixed(2) + ' m²' : (group.totalArea_mm2 / 92903.04).toFixed(2) + ' sqft';
+                    
+                    sizeHtml = minStr === maxStr 
+                        ? `<span class="fw-bold">${maxStr}</span> <span class="text-muted small">(= ${totalArea})</span>`
+                        : `<span class="fw-bold">${minStr} <span class="text-muted fw-normal mx-1">...</span> ${maxStr}</span> <span class="text-muted small">(= ${totalArea})</span>`;
+                } else {
+                    // Sort by Length
+                    group.pieces.sort((a, b) => b.length - a.length);
+                    const maxP = group.pieces[0];
+                    const minP = group.pieces[group.pieces.length - 1];
+                    const minStr = formatForDisplay(minP.length);
+                    const maxStr = formatForDisplay(maxP.length);
+
+                    const totalLen = isMetric ? (group.totalLength_mm / 1000).toFixed(2) + ' m' : (group.totalLength_mm / 304.8).toFixed(2) + ' ft';
+
+                    sizeHtml = minStr === maxStr 
+                        ? `<span class="fw-bold">${maxStr}</span> <span class="text-muted small">(= ${totalLen})</span>`
+                        : `<span class="fw-bold">${minStr} <span class="text-muted fw-normal mx-1">...</span> ${maxStr}</span> <span class="text-muted small">(= ${totalLen})</span>`;
+                }
+            }
+
+            // 🪄 GRAIN & TYPE LOGIC
+            let grainHtml = '-';
+            if (group.categoryId === 'sheet') {
+                if (group.grains.size > 1) grainHtml = `<span class="fst-italic text-muted">Multiple</span>`;
+                else grainHtml = Array.from(group.grains)[0] === 'none' ? '-' : t('opt_' + Array.from(group.grains)[0]);
+            }
+
+            let typeHtml = '';
+            if (group.types.size > 1) {
+                typeHtml = `<span class="badge bg-secondary w-100">Multiple</span>`;
+            } else {
+                const tVal = Array.from(group.types)[0];
+                typeHtml = tVal === 'scrap' 
+                    ? `<span class="badge bg-warning text-dark w-100">${t('opt_scrap')}</span>` 
+                    : `<span class="badge bg-success w-100">${t('opt_new')}</span>`;
+            }
+
+            // Paint Row
+            tr.innerHTML = `
+                <td>
+                    <div class="d-flex justify-content-center px-1">
+                        <span class="badge ${badgeClass} w-100 py-1" style="font-size: 0.75rem; text-transform: uppercase;">${t('opt_' + group.categoryId)}</span>
+                    </div>
+                </td>
+                <td class="text-center align-middle fw-bold fs-6 text-primary px-1">${group.totalQty}</td>
+                <td class="px-1 py-0 align-middle text-center fw-bold text-dark">${safeHTML(profName)}</td>
+                <td class="px-1 py-0 align-middle text-center text-nowrap">${sizeHtml}</td>
+                <td class="px-1 py-0 align-middle text-center text-dark">${safeHTML(matName)}</td>
+                <td class="text-center text-capitalize px-1 py-0 align-middle text-muted">${grainHtml}</td>
+                <td class="text-center px-1 py-0 align-middle">${typeHtml}</td>
+                <td class="text-end align-middle pe-2">
+                    <button class="btn btn-outline-primary btn-sm py-0 px-2 fw-bold shadow-sm" onclick="openStockModal('${group.fingerprint}')">
+                        📝 Details
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        if (typeof updateFilterUI === 'function') {
+            updateFilterUI('stock', ['categoryId', 'profileId', 'materialId', 'grain', 'isCutoff']);
+        }
+        updateUnitLabels();
+    }
+
+    // ==========================================
+    // PHASE 3 & 4: COMPACT MODAL & STAGING BUFFER
+    // ==========================================
+    let stockDetailsModalInstance = null;
+    let modalStagingBuffer = []; // 🪄 The Safe Clone
+    function openStockModal(fingerprint) {
+        const modalEl = document.getElementById('modal-stock-details');
+        if (!stockDetailsModalInstance) {
+            stockDetailsModalInstance = new bootstrap.Modal(modalEl);
+            
+            // 🪄 KEYBOARD UX: Listen for Enter/Tab traversing inside the modal
+            const tbody = document.getElementById('table-modal-stock-details-body');
+            tbody.addEventListener('keydown', handleModalKeyboardNav);
+        }
+
+        // 1. Set Header & Fingerprint
+        document.getElementById('modal-stock-details-fingerprint').value = fingerprint;
+        const parts = fingerprint.split('_');
+        const profile = appState.profiles?.find(p => p.id === parts[1]);
+        const material = appState.materials?.find(m => m.id === parts[2]);
+        document.getElementById('modal-stock-details-title').innerHTML = `📦 Manage: <span class="text-primary">${profile?.name || ''} — ${material?.name || ''}</span>`;
+
+        // 2. Load data into Staging Buffer (CLONE IT!)
+        const matchingStock = appState.stock.filter(item => {
+            return `${item.categoryId}_${item.profileId}_${item.materialId}` === fingerprint;
+        });
+        
+        // Deep clone so changes don't accidentally leak into appState if Cancel is pressed
+        modalStagingBuffer = JSON.parse(JSON.stringify(matchingStock));
+        
+        // Sort longest to shortest for the UI
+        modalStagingBuffer.sort((a, b) => (b.length || 0) - (a.length || 0));
+
+        // 3. Paint the Modal
+        renderStockModalTable();
+        stockDetailsModalInstance.show();
+    }
+    function renderStockModalTable() {
+        const tbody = document.getElementById('table-modal-stock-details-body');
+        tbody.innerHTML = '';
+        
+        const fingerprint = document.getElementById('modal-stock-details-fingerprint').value;
+        const catId = fingerprint.split('_')[0];
+
+        modalStagingBuffer.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            
+            // 🪄 1. SIZE INPUTS
+            let sizeHtml = '';
+            const displayL = formatForDisplay(item.length);
+            if (catId === 'sheet') {
+                const displayW = formatForDisplay(item.width);
+                sizeHtml = `
+                    <div class="d-flex align-items-center justify-content-center gap-1 mx-auto" style="width: 140px;">
+                        <input type="text" class="form-control form-control-sm text-end px-1 border-secondary shadow-sm modal-nav-input" style="width: 60px;" 
+                               value="${displayW}" onchange="updateStagingBuffer('${item.id}', 'width', this.value)">
+                        <span class="text-muted small">x</span>
+                        <input type="text" class="form-control form-control-sm text-start px-1 border-secondary shadow-sm modal-nav-input" style="width: 60px;" 
+                               value="${displayL}" onchange="updateStagingBuffer('${item.id}', 'length', this.value)">
+                    </div>`;
+            } else {
+                sizeHtml = `
+                    <input type="text" class="form-control form-control-sm text-center px-1 border-secondary shadow-sm mx-auto modal-nav-input" style="width: 80px;" 
+                           value="${displayL}" onchange="updateStagingBuffer('${item.id}', 'length', this.value)">`;
+            }
+
+            // 🪄 2. GRAIN DROPDOWN
+            let grainHtml = '<span class="text-muted">-</span>';
+            if (catId === 'sheet') {
+                grainHtml = `
+                    <select class="form-select form-select-sm border-secondary shadow-sm mx-auto text-center modal-nav-input" style="width: 90px;" onchange="updateStagingBuffer('${item.id}', 'grain', this.value)">
+                        <option value="none" ${item.grain === 'none' ? 'selected' : ''}>-</option>
+                        <option value="length" ${item.grain === 'length' ? 'selected' : ''}>${t('opt_length')}</option>
+                        <option value="width" ${item.grain === 'width' ? 'selected' : ''}>${t('opt_width')}</option>
+                    </select>
+                `;
+            }
+
+            // 🪄 3. TYPE DROPDOWN
+            let typeHtml = `
+                <select class="form-select form-select-sm border-secondary shadow-sm mx-auto text-center modal-nav-input ${item.isCutoff ? 'text-warning fw-bold' : 'text-success fw-bold'}" style="width: 90px;" onchange="updateStagingBuffer('${item.id}', 'isCutoff', this.value === 'true')">
+                    <option value="false" ${!item.isCutoff ? 'selected' : ''} class="text-success">${t('opt_new')}</option>
+                    <option value="true" ${item.isCutoff ? 'selected' : ''} class="text-warning">${t('opt_scrap')}</option>
+                </select>
+            `;
+
+            tr.innerHTML = `
+                <td class="align-middle py-2 ps-3">${sizeHtml}</td>
+                <td class="align-middle text-center py-2">
+                    <input type="number" class="form-control form-control-sm text-center mx-auto border-secondary shadow-sm modal-nav-input" style="width: 65px;" 
+                           value="${item.qty}" onchange="updateStagingBuffer('${item.id}', 'qty', this.value)">
+                </td>
+                <td class="align-middle text-center py-2">${grainHtml}</td>
+                <td class="align-middle text-center py-2">${typeHtml}</td>
+                <td class="align-middle text-end py-2 pe-3">
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2 shadow-sm" onclick="deleteStagingBufferItem('${item.id}')" tabindex="-1">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    function updateStagingBuffer(id, field, newValue) {
+        const item = modalStagingBuffer.find(s => s.id === id);
+        if (item) {
+            if (field === 'qty') item[field] = parseInt(newValue, 10) || 1;
+            else if (field === 'length' || field === 'width') item[field] = parseToBaseUnit(newValue) || 0;
+            else item[field] = newValue;
+        }
+    }
+    function deleteStagingBufferItem(id) {
+        // Universial Confirmation Shield!
+        requestConfirm(t('confirm_delete_stock') || "Delete this size?", () => {
+            modalStagingBuffer = modalStagingBuffer.filter(s => s.id !== id);
+            renderStockModalTable(); 
+        });
+    }
+    function addNewStagingRow() {
+        const fingerprint = document.getElementById('modal-stock-details-fingerprint').value;
+        const parts = fingerprint.split('_');
+        
+        modalStagingBuffer.unshift({
+            id: 'STK-' + Date.now() + Math.floor(Math.random() * 1000),
+            categoryId: parts[0],
+            profileId: parts[1],
+            materialId: parts[2],
+            grain: 'none',
+            isCutoff: false,
+            qty: 1,
+            length: 0,
+            width: 0
+        });
+        
+        renderStockModalTable();
+        
+        // Focus the first input of the new row instantly
+        setTimeout(() => {
+            const firstInput = document.querySelector('#table-modal-stock-details-body .modal-nav-input');
+            if (firstInput) firstInput.focus();
+        }, 50);
+    }
+    function saveStockDetails() {
+        const fingerprint = document.getElementById('modal-stock-details-fingerprint').value;
+        
+        // 1. Erase all original items matching this fingerprint from the main database
+        appState.stock = appState.stock.filter(item => {
+            return `${item.categoryId}_${item.profileId}_${item.materialId}` !== fingerprint;
+        });
+
+        // 2. Inject the modified Staging Buffer back into the database
+        appState.stock = [...appState.stock, ...modalStagingBuffer];
+
+        // 3. Save, Render, and Close
+        saveState();
+        renderStockTable(); 
+        stockDetailsModalInstance.hide();
+        showToast("Stock details updated successfully!");
+    }
+    function handleModalKeyboardNav(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Stop default form submission
+            const inputs = Array.from(document.querySelectorAll('#table-modal-stock-details-body .modal-nav-input'));
+            const currentIndex = inputs.indexOf(e.target);
+            
+            if (currentIndex > -1) {
+                // If there's a next input, jump to it
+                if (currentIndex < inputs.length - 1) {
+                    inputs[currentIndex + 1].focus();
+                } else {
+                    // If it's the very last input in the table, spawn a new row!
+                    e.target.blur(); // Force change event to save current value
+                    addNewStagingRow();
+                }
+            }
+        }
+    }
+
+    function renderFlatStockTable() {
         const tbody = document.getElementById('table-stock-body');
         if (!tbody) return;
         tbody.innerHTML = ''; 
