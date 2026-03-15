@@ -184,39 +184,46 @@
     }
 
     // ==========================================
-    // PHASE 3 & 4: COMPACT MODAL & STAGING BUFFER
+    // STOCK MODAL: DIRECT APPSTATE ENGINE
     // ==========================================
+    let modalSortStates = { stock: { key: '', dir: 1 }, catalog: { key: '', dir: 1 } };
     let stockDetailsModalInstance = null;
-    let modalStagingBuffer = []; // 🪄 The Safe Clone
+    let currentStockModalFingerprint = '';
+    function handleModalSort(type, key) {
+        let state = modalSortStates[type];
+        
+        // Toggle direction if clicking the same column
+        if (state.key === key) {
+            state.dir *= -1;
+        } else {
+            state.key = key;
+            state.dir = 1;
+        }
+
+        // Redraw the specific modal (which handles the actual sorting on-the-fly now)
+        if (type === 'stock') renderStockModalTable();
+        else renderCatalogModalTable();
+    }
     function openStockModal(fingerprint) {
         const modalEl = document.getElementById('modal-stock-details');
         if (!stockDetailsModalInstance) {
             stockDetailsModalInstance = new bootstrap.Modal(modalEl);
-            
-            // 🪄 KEYBOARD UX: Listen for Enter/Tab traversing inside the modal
-            const tbody = document.getElementById('table-modal-stock-details-body');
-            tbody.addEventListener('keydown', handleModalKeyboardNav);
+            // 🪄 Background Sync: Redraw main table when modal closes
+            modalEl.addEventListener('hidden.bs.modal', renderStockTable);
         }
 
-        // 1. Set Header & Fingerprint
+        currentStockModalFingerprint = fingerprint;
         document.getElementById('modal-stock-details-fingerprint').value = fingerprint;
+        
         const parts = fingerprint.split('_');
         const profile = appState.profiles?.find(p => p.id === parts[1]);
         const material = appState.materials?.find(m => m.id === parts[2]);
         document.getElementById('modal-stock-details-title').innerHTML = `📦 Manage: <span class="text-primary">${profile?.name || ''} — ${material?.name || ''}</span>`;
 
-        // 2. Load data into Staging Buffer (CLONE IT!)
-        const matchingStock = appState.stock.filter(item => {
-            return `${item.categoryId}_${item.profileId}_${item.materialId}` === fingerprint;
-        });
-        
-        // Deep clone so changes don't accidentally leak into appState if Cancel is pressed
-        modalStagingBuffer = JSON.parse(JSON.stringify(matchingStock));
-        
-        // Sort longest to shortest for the UI
-        modalStagingBuffer.sort((a, b) => (b.length || 0) - (a.length || 0));
+        // UI Setup
+        document.getElementById('modal-stock-col-width').classList.toggle('d-none', parts[0] !== 'sheet');
+        document.getElementById('modal-stock-col-grain').classList.toggle('d-none', parts[0] !== 'sheet');
 
-        // 3. Paint the Modal
         renderStockModalTable();
         stockDetailsModalInstance.show();
     }
@@ -224,10 +231,36 @@
         const tbody = document.getElementById('table-modal-stock-details-body');
         tbody.innerHTML = '';
         
-        const fingerprint = document.getElementById('modal-stock-details-fingerprint').value;
+        const fingerprint = currentStockModalFingerprint;
         const catId = fingerprint.split('_')[0];
 
-        modalStagingBuffer.forEach((item, index) => {
+        // Filter DIRECTLY from appState
+        let modalData = appState.stock.filter(item => `${item.categoryId}_${item.profileId}_${item.materialId}` === fingerprint);
+        
+        // Apply local sorting
+        const sortState = modalSortStates.stock;
+        if (sortState.key) {
+            modalData.sort((a, b) => {
+                let valA, valB;
+                if (sortState.key === 'dimensions') {
+                    let lenA = a.length || 0; let lenB = b.length || 0;
+                    if (lenA !== lenB) return (lenA - lenB) * sortState.dir;
+                    let wA = a.width || 0; let wB = b.width || 0;
+                    return (wA - wB) * sortState.dir;
+                } else if (sortState.key === 'isCutoff') {
+                    valA = a.isCutoff ? 1 : 0; valB = b.isCutoff ? 1 : 0;
+                } else {
+                    valA = a[sortState.key]; valB = b[sortState.key];
+                }
+                if (typeof valA === 'string' && typeof valB === 'string') return valA.localeCompare(valB) * sortState.dir;
+                return ((valA || 0) - (valB || 0)) * sortState.dir;
+            });
+        } else {
+            // Default sort: Longest to shortest
+            modalData.sort((a, b) => (b.length || 0) - (a.length || 0));
+        }
+
+        modalData.forEach(item => {
             const tr = document.createElement('tr');
             
             // 🪄 1. SIZE INPUTS
@@ -236,129 +269,101 @@
             if (catId === 'sheet') {
                 const displayW = formatForDisplay(item.width);
                 sizeHtml = `
-                    <div class="d-flex align-items-center justify-content-center gap-1 mx-auto" style="width: 140px;">
-                        <input type="text" class="form-control form-control-sm text-end px-1 border-secondary shadow-sm modal-nav-input" style="width: 60px;" 
-                               value="${displayW}" onchange="updateStagingBuffer('${item.id}', 'width', this.value)">
+                    <div class="d-flex align-items-center justify-content-center gap-1 mx-auto">
+                        <input type="text" class="form-control form-control-sm text-end px-0 border-0 bg-transparent" style="width: 50px;" 
+                               value="${displayW}" onchange="updateDirectModalStock('${item.id}', 'width', this.value)">
                         <span class="text-muted small">x</span>
-                        <input type="text" class="form-control form-control-sm text-start px-1 border-secondary shadow-sm modal-nav-input" style="width: 60px;" 
-                               value="${displayL}" onchange="updateStagingBuffer('${item.id}', 'length', this.value)">
+                        <input type="text" class="form-control form-control-sm text-start px-0 border-0 bg-transparent" style="width: 50px;" 
+                               value="${displayL}" onchange="updateDirectModalStock('${item.id}', 'length', this.value)">
                     </div>`;
             } else {
                 sizeHtml = `
-                    <input type="text" class="form-control form-control-sm text-center px-1 border-secondary shadow-sm mx-auto modal-nav-input" style="width: 80px;" 
-                           value="${displayL}" onchange="updateStagingBuffer('${item.id}', 'length', this.value)">`;
+                    <input type="text" class="form-control form-control-sm text-center px-0 border-0 bg-transparent mx-auto" style="width: 60px;" 
+                           value="${displayL}" onchange="updateDirectModalStock('${item.id}', 'length', this.value)">`;
             }
 
             // 🪄 2. GRAIN DROPDOWN
             let grainHtml = '<span class="text-muted">-</span>';
             if (catId === 'sheet') {
                 grainHtml = `
-                    <select class="form-select form-select-sm border-secondary shadow-sm mx-auto text-center modal-nav-input" style="width: 90px;" onchange="updateStagingBuffer('${item.id}', 'grain', this.value)">
+                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;" onchange="updateDirectModalStock('${item.id}', 'grain', this.value)">
                         <option value="none" ${item.grain === 'none' ? 'selected' : ''}>-</option>
                         <option value="length" ${item.grain === 'length' ? 'selected' : ''}>${t('opt_length')}</option>
                         <option value="width" ${item.grain === 'width' ? 'selected' : ''}>${t('opt_width')}</option>
-                    </select>
-                `;
+                    </select>`;
             }
 
             // 🪄 3. TYPE DROPDOWN
             let typeHtml = `
-                <select class="form-select form-select-sm border-secondary shadow-sm mx-auto text-center modal-nav-input ${item.isCutoff ? 'text-warning fw-bold' : 'text-success fw-bold'}" style="width: 90px;" onchange="updateStagingBuffer('${item.id}', 'isCutoff', this.value === 'true')">
+                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center ${item.isCutoff ? 'text-warning fw-bold' : 'text-success fw-bold'}" style="width: 75px;" onchange="updateDirectModalStock('${item.id}', 'isCutoff', this.value === 'true')">
                     <option value="false" ${!item.isCutoff ? 'selected' : ''} class="text-success">${t('opt_new')}</option>
                     <option value="true" ${item.isCutoff ? 'selected' : ''} class="text-warning">${t('opt_scrap')}</option>
-                </select>
-            `;
+                </select>`;
 
             tr.innerHTML = `
-                <td class="align-middle py-2 ps-3">${sizeHtml}</td>
-                <td class="align-middle text-center py-2">
-                    <input type="number" class="form-control form-control-sm text-center mx-auto border-secondary shadow-sm modal-nav-input" style="width: 65px;" 
-                           value="${item.qty}" onchange="updateStagingBuffer('${item.id}', 'qty', this.value)">
+                <td class="align-middle py-0 ps-3">${sizeHtml}</td>
+                <td class="align-middle text-center py-0">
+                    <input type="number" class="form-control form-control-sm text-center px-0 border-0 bg-transparent mx-auto" style="width: 50px;" 
+                           value="${item.qty}" onchange="updateDirectModalStock('${item.id}', 'qty', this.value)">
                 </td>
-                <td class="align-middle text-center py-2">${grainHtml}</td>
-                <td class="align-middle text-center py-2">${typeHtml}</td>
-                <td class="align-middle text-end py-2 pe-3">
-                    <button class="btn btn-sm btn-outline-danger py-0 px-2 shadow-sm" onclick="deleteStagingBufferItem('${item.id}')" tabindex="-1">🗑️</button>
+                <td class="align-middle text-center py-0 text-capitalize">${grainHtml}</td>
+                <td class="align-middle text-center py-0">${typeHtml}</td>
+                <td class="align-middle text-end py-1 pe-3">
+                    <button class="btn btn-sm py-0 px-2" onclick="deleteDirectModalStock('${item.id}')" tabindex="-1">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
     }
-    function updateStagingBuffer(id, field, newValue) {
-        const item = modalStagingBuffer.find(s => s.id === id);
+    function updateDirectModalStock(id, field, newValue) {
+        const item = appState.stock.find(s => s.id === id);
         if (item) {
             if (field === 'qty') item[field] = parseInt(newValue, 10) || 1;
             else if (field === 'length' || field === 'width') item[field] = parseToBaseUnit(newValue) || 0;
             else item[field] = newValue;
+            
+            saveState(); // Saved instantly!
         }
     }
-    function deleteStagingBufferItem(id) {
-        // Universial Confirmation Shield!
+    function deleteDirectModalStock(id) {
         requestConfirm(t('confirm_delete_stock') || "Delete this size?", () => {
-            modalStagingBuffer = modalStagingBuffer.filter(s => s.id !== id);
+            appState.stock = appState.stock.filter(s => s.id !== id);
+            saveState();
             renderStockModalTable(); 
         });
     }
-    function addNewStagingRow() {
-        const fingerprint = document.getElementById('modal-stock-details-fingerprint').value;
-        const parts = fingerprint.split('_');
+    function handleAddModalStock(event) {
+        event.preventDefault();
+        const parts = currentStockModalFingerprint.split('_');
         
-        modalStagingBuffer.unshift({
-            id: 'STK-' + Date.now() + Math.floor(Math.random() * 1000),
+        appState.stock.unshift({
+            id: 'STK-' + Date.now(),
             categoryId: parts[0],
             profileId: parts[1],
             materialId: parts[2],
-            grain: 'none',
-            isCutoff: false,
-            qty: 1,
-            length: 0,
-            width: 0
+            grain: parts[0] === 'sheet' ? document.getElementById('modal-stock-input-grain').value : 'none',
+            isCutoff: document.getElementById('modal-stock-input-type').value === 'true',
+            qty: parseInt(document.getElementById('modal-stock-input-qty').value, 10) || 1,
+            length: parseToBaseUnit(document.getElementById('modal-stock-input-length').value) || 0,
+            width: parts[0] === 'sheet' ? (parseToBaseUnit(document.getElementById('modal-stock-input-width').value) || 0) : 0
         });
         
+        saveState();
         renderStockModalTable();
         
-        // Focus the first input of the new row instantly
-        setTimeout(() => {
-            const firstInput = document.querySelector('#table-modal-stock-details-body .modal-nav-input');
-            if (firstInput) firstInput.focus();
-        }, 50);
-    }
-    function saveStockDetails() {
-        const fingerprint = document.getElementById('modal-stock-details-fingerprint').value;
-        
-        // 1. Erase all original items matching this fingerprint from the main database
-        appState.stock = appState.stock.filter(item => {
-            return `${item.categoryId}_${item.profileId}_${item.materialId}` !== fingerprint;
-        });
-
-        // 2. Inject the modified Staging Buffer back into the database
-        appState.stock = [...appState.stock, ...modalStagingBuffer];
-
-        // 3. Save, Render, and Close
-        saveState();
-        renderStockTable(); 
-        stockDetailsModalInstance.hide();
-        showToast("Stock details updated successfully!");
-    }
-    function handleModalKeyboardNav(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault(); // Stop default form submission
-            const inputs = Array.from(document.querySelectorAll('#table-modal-stock-details-body .modal-nav-input'));
-            const currentIndex = inputs.indexOf(e.target);
-            
-            if (currentIndex > -1) {
-                // If there's a next input, jump to it
-                if (currentIndex < inputs.length - 1) {
-                    inputs[currentIndex + 1].focus();
-                } else {
-                    // If it's the very last input in the table, spawn a new row!
-                    e.target.blur(); // Force change event to save current value
-                    addNewStagingRow();
-                }
-            }
+        document.getElementById('modal-stock-input-length').value = '';
+        if (parts[0] === 'sheet') {
+            document.getElementById('modal-stock-input-width').value = '';
+            document.getElementById('modal-stock-input-width').focus();
+        } else {
+            document.getElementById('modal-stock-input-length').focus();
         }
+        document.getElementById('modal-stock-input-qty').value = '1';
     }
 
+    // ==========================================
+    // FLAT STOCK TABLE
+    // ==========================================
     function renderFlatStockTable() {
         const tbody = document.getElementById('table-stock-body');
         if (!tbody) return;
@@ -776,21 +781,21 @@
     }
 
     // ==========================================
-    // PHASE 3 & 4: CATALOG MODAL & STAGING BUFFER
+    // CATALOG MODAL: DIRECT APPSTATE ENGINE
     // ==========================================
     let catalogDetailsModalInstance = null;
-    let modalCatalogStagingBuffer = [];
+    let currentCatalogModalFingerprint = '';
     function openCatalogModal(fingerprint) {
         const modalEl = document.getElementById('modal-catalog-details');
         if (!catalogDetailsModalInstance) {
             catalogDetailsModalInstance = new bootstrap.Modal(modalEl);
-            
-            const tbody = document.getElementById('table-modal-catalog-details-body');
-            tbody.addEventListener('keydown', handleCatalogModalKeyboardNav);
+            // 🪄 Background Sync
+            modalEl.addEventListener('hidden.bs.modal', renderCatalogTable);
         }
 
-        // 1. Set Header & Fingerprint
+        currentCatalogModalFingerprint = fingerprint;
         document.getElementById('modal-catalog-details-fingerprint').value = fingerprint;
+        
         const parts = fingerprint.split('_');
         const profile = appState.profiles?.find(p => p.id === parts[1]);
         const material = appState.materials?.find(m => m.id === parts[2]);
@@ -798,27 +803,19 @@
         
         document.getElementById('modal-catalog-details-title').innerHTML = `🏷️ Manage Prices: <span class="text-primary">${profile?.name || ''} — ${material?.name || ''}</span> @ <span class="text-dark">${store?.name || ''}</span>`;
 
-        // 2. Populate the Unit Dropdown based on Global Settings
         const isMetric = appState.settings.displayUnit === 'mm';
-        const unitSelect = document.getElementById('modal-catalog-view-unit');
-        unitSelect.innerHTML = `
+        document.getElementById('modal-catalog-col-width').classList.toggle('d-none', parts[0] !== 'sheet');
+        document.getElementById('modal-catalog-col-grain').classList.toggle('d-none', parts[0] !== 'sheet');
+        
+        const unitHtml = `
             <option value="piece">/${t('opt_pc')}</option>
             <option value="linear">/${isMetric ? 'm' : 'ft'}</option>
-            <option value="area" selected>/${isMetric ? 'm²' : 'sqft'}</option>
+            <option value="area">/${isMetric ? 'm²' : 'sqft'}</option>
             <option value="volume">/${isMetric ? 'm³' : 'BF'}</option>
         `;
+        document.getElementById('modal-catalog-input-unit').innerHTML = unitHtml;
+        document.getElementById('modal-catalog-view-unit').innerHTML = unitHtml; // Sync the header dropdown
 
-        // 3. Load data into Staging Buffer (CLONE IT)
-        const matchingCatalog = appState.catalog.filter(item => {
-            return `${item.categoryId}_${item.profileId}_${item.materialId}_${item.storeId}` === fingerprint;
-        });
-        
-        modalCatalogStagingBuffer = JSON.parse(JSON.stringify(matchingCatalog));
-        
-        // Sort longest to shortest
-        modalCatalogStagingBuffer.sort((a, b) => (b.length || 0) - (a.length || 0));
-
-        // 4. Paint
         renderCatalogModalTable();
         catalogDetailsModalInstance.show();
     }
@@ -826,58 +823,76 @@
         const tbody = document.getElementById('table-modal-catalog-details-body');
         tbody.innerHTML = '';
         
-        const fingerprint = document.getElementById('modal-catalog-details-fingerprint').value;
+        const fingerprint = currentCatalogModalFingerprint;
         const catId = fingerprint.split('_')[0];
         const viewUnit = document.getElementById('modal-catalog-view-unit').value;
         const currency = appState.settings.currency || '$';
         const isMetric = appState.settings.displayUnit === 'mm';
 
-        modalCatalogStagingBuffer.forEach((item, index) => {
+        // Filter DIRECTLY from appState
+        let modalData = appState.catalog.filter(item => `${item.categoryId}_${item.profileId}_${item.materialId}_${item.storeId}` === fingerprint);
+
+        // Apply local sorting
+        const sortState = modalSortStates.catalog;
+        if (sortState.key) {
+            modalData.sort((a, b) => {
+                let valA, valB;
+                if (sortState.key === 'dimensions') {
+                    let lenA = a.length || 0; let lenB = b.length || 0;
+                    if (lenA !== lenB) return (lenA - lenB) * sortState.dir;
+                    let wA = a.width || 0; let wB = b.width || 0;
+                    return (wA - wB) * sortState.dir;
+                } else if (sortState.key === 'priceUnit') {
+                    valA = String(a.priceUnit || ''); valB = String(b.priceUnit || '');
+                } else {
+                    valA = a[sortState.key]; valB = b[sortState.key];
+                }
+                if (typeof valA === 'string' && typeof valB === 'string') return valA.localeCompare(valB) * sortState.dir;
+                return ((valA || 0) - (valB || 0)) * sortState.dir;
+            });
+        } else {
+            modalData.sort((a, b) => (b.length || 0) - (a.length || 0));
+        }
+
+        modalData.forEach(item => {
             const tr = document.createElement('tr');
-            
-            // 🪄 1. SIZE INPUTS
-            let sizeHtml = '';
             const displayL = formatForDisplay(item.length);
+            
+            let sizeHtml = '';
             if (catId === 'sheet') {
                 const displayW = formatForDisplay(item.width);
                 sizeHtml = `
-                    <div class="d-flex align-items-center justify-content-center gap-1 mx-auto" style="width: 140px;">
-                        <input type="text" class="form-control form-control-sm text-end px-1 border-secondary shadow-sm catalog-nav-input" style="width: 60px;" 
-                               value="${displayW}" onchange="updateCatalogStagingBuffer('${item.id}', 'width', this.value)">
+                    <div class="d-flex align-items-center justify-content-center gap-1 mx-auto">
+                        <input type="text" class="form-control form-control-sm text-end px-0 border-0 bg-transparent" style="width: 50px;" 
+                               value="${displayW}" onchange="updateDirectModalCatalog('${item.id}', 'width', this.value)">
                         <span class="text-muted small">x</span>
-                        <input type="text" class="form-control form-control-sm text-start px-1 border-secondary shadow-sm catalog-nav-input" style="width: 60px;" 
-                               value="${displayL}" onchange="updateCatalogStagingBuffer('${item.id}', 'length', this.value)">
+                        <input type="text" class="form-control form-control-sm text-start px-0 border-0 bg-transparent" style="width: 50px;" 
+                               value="${displayL}" onchange="updateDirectModalCatalog('${item.id}', 'length', this.value)">
                     </div>`;
             } else {
                 sizeHtml = `
-                    <input type="text" class="form-control form-control-sm text-center px-1 border-secondary shadow-sm mx-auto catalog-nav-input" style="width: 80px;" 
-                           value="${displayL}" onchange="updateCatalogStagingBuffer('${item.id}', 'length', this.value)">`;
+                    <input type="text" class="form-control form-control-sm text-center px-0 border-0 bg-transparent mx-auto" style="width: 60px;" 
+                           value="${displayL}" onchange="updateDirectModalCatalog('${item.id}', 'length', this.value)">`;
             }
 
-            // 🪄 2. GRAIN DROPDOWN
             let grainHtml = '<span class="text-muted">-</span>';
             if (catId === 'sheet') {
                 grainHtml = `
-                    <select class="form-select form-select-sm border-secondary shadow-sm mx-auto text-center catalog-nav-input" style="width: 90px;" onchange="updateCatalogStagingBuffer('${item.id}', 'grain', this.value)">
+                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;" onchange="updateDirectModalCatalog('${item.id}', 'grain', this.value)">
                         <option value="none" ${item.grain === 'none' ? 'selected' : ''}>-</option>
                         <option value="length" ${item.grain === 'length' ? 'selected' : ''}>${t('opt_length')}</option>
                         <option value="width" ${item.grain === 'width' ? 'selected' : ''}>${t('opt_width')}</option>
-                    </select>
-                `;
+                    </select>`;
             }
 
-            // 🪄 3. RAW PRICE & UNIT
-            const uLin = isMetric ? 'm' : 'ft';
-            const uArea = isMetric ? 'm²' : 'sqft';
-            const uVol = isMetric ? 'm³' : 'BF';
-
+            const uLin = isMetric ? 'm' : 'ft'; const uArea = isMetric ? 'm²' : 'sqft'; const uVol = isMetric ? 'm³' : 'BF';
             let priceHtml = `
-                <div class="d-flex align-items-center justify-content-center text-nowrap mx-auto" style="width: 140px;">
+                <div class="d-flex align-items-center justify-content-center text-nowrap mx-auto">
                     <span class="text-muted pe-1">${currency}</span>
-                    <input type="number" step="0.01" class="form-control form-control-sm text-end px-1 border-secondary shadow-sm catalog-nav-input" style="width: 65px;" 
-                           value="${parseFloat(item.price || 0).toFixed(2)}" onchange="updateCatalogStagingBuffer('${item.id}', 'price', this.value)">
+                    <input type="number" step="0.01" class="form-control form-control-sm text-end px-0 border-0 bg-transparent" style="width: 60px;" 
+                           value="${parseFloat(item.price || 0).toFixed(2)}" onchange="updateDirectModalCatalog('${item.id}', 'price', this.value)">
                     <span class="text-muted px-1">/</span>
-                    <select class="form-select form-select-sm border-secondary shadow-sm px-1 py-0 catalog-nav-input" style="width: 60px;" onchange="updateCatalogStagingBuffer('${item.id}', 'priceUnit', this.value)">
+                    <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" style="width: auto; cursor: pointer;" onchange="updateDirectModalCatalog('${item.id}', 'priceUnit', this.value)">
                         <option value="piece" ${item.priceUnit === 'piece' ? 'selected' : ''}>${t('opt_pc')}</option>
                         <option value="linear" ${item.priceUnit === 'linear' ? 'selected' : ''}>${uLin}</option>
                         <option value="area" ${item.priceUnit === 'area' ? 'selected' : ''}>${uArea}</option>
@@ -885,130 +900,97 @@
                     </select>
                 </div>`;
 
-            // 🪄 4. LIVE UNIT COST (Targeted for live updates)
             const displayPrice = getNormalizedPriceDisplay(item, viewUnit);
-            let costHtml = `<span id="staging-cost-${item.id}" class="fw-bold text-success">${currency}${displayPrice}</span>`;
+            let costHtml = `<span id="direct-cost-${item.id}" class="fw-bold text-success">${currency}${displayPrice}</span>`;
 
-            // 🪄 5. INLINE LINK & DELETE
             let linkBtnClass = item.link ? 'btn-primary' : 'btn-outline-secondary';
             let actionHtml = `
                 <div class="d-flex justify-content-end gap-2">
-                    <button class="btn btn-sm ${linkBtnClass} py-0 px-2 shadow-sm" onclick="promptCatalogLink('${item.id}')" tabindex="-1" title="Attach Web Link">🔗</button>
-                    <button class="btn btn-sm btn-outline-danger py-0 px-2 shadow-sm" onclick="deleteCatalogStagingBufferItem('${item.id}')" tabindex="-1">🗑️</button>
-                </div>
-            `;
+                    <button class="btn btn-sm ${linkBtnClass} py-0 px-1 shadow-none" onclick="promptDirectCatalogLink('${item.id}')" tabindex="-1" title="Attach Web Link">🔗</button>
+                    <button class="btn btn-sm py-0 px-2" onclick="deleteDirectModalCatalog('${item.id}')" tabindex="-1">🗑️</button>
+                </div>`;
 
             tr.innerHTML = `
-                <td class="align-middle py-2 ps-3">${sizeHtml}</td>
-                <td class="align-middle text-center py-2">${grainHtml}</td>
-                <td class="align-middle text-center py-2">${priceHtml}</td>
-                <td class="align-middle text-center py-2">${costHtml}</td>
-                <td class="align-middle py-2 pe-3">${actionHtml}</td>
+                <td class="align-middle py-0 ps-3">${sizeHtml}</td>
+                <td class="align-middle text-center py-0 text-capitalize">${grainHtml}</td>
+                <td class="align-middle text-center py-0">${priceHtml}</td>
+                <td class="align-middle text-center py-0">${costHtml}</td>
+                <td class="align-middle py-1 pe-3">${actionHtml}</td>
             `;
             tbody.appendChild(tr);
         });
     }
-    function updateCatalogStagingBuffer(id, field, newValue) {
-        const item = modalCatalogStagingBuffer.find(c => c.id === id);
+    function updateDirectModalCatalog(id, field, newValue) {
+        const item = appState.catalog.find(c => c.id === id);
         if (item) {
-            if (field === 'length' || field === 'width') {
-                item[field] = parseToBaseUnit(newValue) || 0;
-            } else if (field === 'price') {
-                item[field] = parseFloat(newValue) || 0;
-            } else {
-                item[field] = newValue;
-            }
+            if (field === 'length' || field === 'width') item[field] = parseToBaseUnit(newValue) || 0;
+            else if (field === 'price') item[field] = parseFloat(newValue) || 0;
+            else item[field] = newValue;
             
-            // Instantly flag as freshly verified
             item.lastVerified = Date.now();
+            saveState(); // Saved instantly!
 
-            // 🪄 LIVE MATH UPDATE: Update the Unit Cost text without losing input focus!
+            // Update live math
             const viewUnit = document.getElementById('modal-catalog-view-unit').value;
-            const costSpan = document.getElementById(`staging-cost-${id}`);
+            const costSpan = document.getElementById(`direct-cost-${id}`);
             const currency = appState.settings.currency || '$';
-            if (costSpan) {
-                costSpan.innerText = `${currency}${getNormalizedPriceDisplay(item, viewUnit)}`;
-            }
+            if (costSpan) costSpan.innerText = `${currency}${getNormalizedPriceDisplay(item, viewUnit)}`;
         }
     }
-    function promptCatalogLink(id) {
-        const item = modalCatalogStagingBuffer.find(c => c.id === id);
+    function promptDirectCatalogLink(id) {
+        const item = appState.catalog.find(c => c.id === id);
         if (item) {
             let newLink = prompt(t('title_edit_link') || "Enter URL for this material size:", item.link || "");
-            if (newLink !== null) { // If they didn't hit cancel
+            if (newLink !== null) {
                 if (newLink && !/^https?:\/\//i.test(newLink)) newLink = 'https://' + newLink;
                 item.link = newLink;
-                renderCatalogModalTable(); // Redraw just to update the link icon color
+                saveState();
+                renderCatalogModalTable();
             }
         }
     }
-    function deleteCatalogStagingBufferItem(id) {
+    function deleteDirectModalCatalog(id) {
         requestConfirm(t('confirm_delete_catalog_item') || "Delete this price?", () => {
-            modalCatalogStagingBuffer = modalCatalogStagingBuffer.filter(c => c.id !== id);
+            appState.catalog = appState.catalog.filter(c => c.id !== id);
+            saveState();
             renderCatalogModalTable(); 
         });
     }
-    function addNewCatalogStagingRow() {
-        const fingerprint = document.getElementById('modal-catalog-details-fingerprint').value;
-        const parts = fingerprint.split('_');
+    function handleAddModalCatalog(event) {
+        event.preventDefault();
+        const parts = currentCatalogModalFingerprint.split('_');
         
-        modalCatalogStagingBuffer.unshift({
-            id: 'CAT-' + Date.now() + Math.floor(Math.random() * 1000),
+        appState.catalog.unshift({
+            id: 'CAT-' + Date.now(),
             categoryId: parts[0],
             profileId: parts[1],
             materialId: parts[2],
             storeId: parts[3],
-            grain: 'none',
-            price: 0,
-            priceUnit: 'piece',
-            length: 0,
-            width: 0,
+            grain: parts[0] === 'sheet' ? document.getElementById('modal-catalog-input-grain').value : 'none',
+            price: parseFloat(document.getElementById('modal-catalog-input-price').value) || 0,
+            priceUnit: document.getElementById('modal-catalog-input-unit').value,
+            length: parseToBaseUnit(document.getElementById('modal-catalog-input-length').value) || 0,
+            width: parts[0] === 'sheet' ? (parseToBaseUnit(document.getElementById('modal-catalog-input-width').value) || 0) : 0,
             link: '',
             lastVerified: Date.now()
         });
         
+        saveState();
         renderCatalogModalTable();
         
-        // Focus the first input of the new row instantly
-        setTimeout(() => {
-            const firstInput = document.querySelector('#table-modal-catalog-details-body .catalog-nav-input');
-            if (firstInput) firstInput.focus();
-        }, 50);
-    }
-    function saveCatalogDetails() {
-        const fingerprint = document.getElementById('modal-catalog-details-fingerprint').value;
-        
-        // 1. Erase all original items matching this fingerprint
-        appState.catalog = appState.catalog.filter(item => {
-            return `${item.categoryId}_${item.profileId}_${item.materialId}_${item.storeId}` !== fingerprint;
-        });
-
-        // 2. Inject the modified Staging Buffer back into the database
-        appState.catalog = [...appState.catalog, ...modalCatalogStagingBuffer];
-
-        // 3. Save, Render, and Close
-        saveState();
-        renderCatalogTable(); 
-        catalogDetailsModalInstance.hide();
-        showToast("Price details updated successfully!");
-    }
-    function handleCatalogModalKeyboardNav(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault(); 
-            const inputs = Array.from(document.querySelectorAll('#table-modal-catalog-details-body .catalog-nav-input'));
-            const currentIndex = inputs.indexOf(e.target);
-            
-            if (currentIndex > -1) {
-                if (currentIndex < inputs.length - 1) {
-                    inputs[currentIndex + 1].focus();
-                } else {
-                    e.target.blur(); // Force change event to save current value
-                    addNewCatalogStagingRow();
-                }
-            }
+        document.getElementById('modal-catalog-input-length').value = '';
+        if (parts[0] === 'sheet') {
+            document.getElementById('modal-catalog-input-width').value = '';
+            document.getElementById('modal-catalog-input-width').focus();
+        } else {
+            document.getElementById('modal-catalog-input-length').focus();
         }
+        document.getElementById('modal-catalog-input-price').value = '0.00';
     }
     
+    // ==========================================
+    // FLAT CATALOG MODAL
+    // ==========================================
     function renderFlatCatalogTable() {
         const tbody = document.getElementById('table-catalog-body');
         if (!tbody) return;
