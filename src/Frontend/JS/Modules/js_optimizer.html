@@ -1100,12 +1100,10 @@
                 // 🪄 THE UNIFORM CATEGORY BADGE
                 const categoryBadgeHtml = `
                     <div class="d-flex justify-content-center px-1">
-                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
-                            <option value="lumber" class="bg-light text-dark" ${off.category === 'lumber' ? 'selected' : ''}>Lumber</option>
-                            <option value="sheet" class="bg-light text-dark" ${off.category === 'sheet' ? 'selected' : ''}>Sheet</option>
-                            <option value="fastener" class="bg-light text-dark" ${off.category === 'fastener' ? 'selected' : ''}>Fastener</option>
-                        </select>
+                        <span class="badge ${badgeClass} py-1 d-inline-block" 
+                              style="width: 85px; text-align: center; font-size: 0.75rem; text-transform: uppercase;">
+                              ${t('opt_' + off.category)}
+                        </span>
                     </div>
                 `;
 
@@ -1154,16 +1152,14 @@
 
             html += `
                 <tr class="${rowClass}">
-                    <td class="align-middle">
-                        <div class="d-flex justify-content-center px-1">
-                            <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                    style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
-                                <option value="lumber" class="bg-light text-dark" ${off.category === 'lumber' ? 'selected' : ''}>Lumber</option>
-                                <option value="sheet" class="bg-light text-dark" ${off.category === 'sheet' ? 'selected' : ''}>Sheet</option>
-                                <option value="fastener" class="bg-light text-dark" ${off.category === 'fastener' ? 'selected' : ''}>Fastener</option>
-                            </select>
-                        </div>
-                    </td>
+                    <td>
+                    <div class="d-flex justify-content-center px-1">
+                        <span class="badge ${badgeClass} py-1 d-inline-block" 
+                              style="width: 85px; text-align: center; font-size: 0.75rem; text-transform: uppercase;">
+                              ${t('opt_' + off.category)}
+                        </span>
+                    </div>
+                </td>
                     <td class="text-center align-middle">${safeHTML(off.profName)}</td>
                     <td class="text-center align-middle">${safeHTML(off.matName)}</td>
                     <td class="text-center align-middle fw-bold text-primary">${sizeStr} <span class="display-unit-label"></span></td>
@@ -1240,7 +1236,7 @@
         setTimeout(() => {
             // 1. Switch the main app view
             if (typeof navigateTo === 'function') {
-                navigateTo('view-dictionaries');
+                navigateTo('view-setup');
             }
             
             // 2. Programmatically click the "My Stock" tab to activate it

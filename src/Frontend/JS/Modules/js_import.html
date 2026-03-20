@@ -153,7 +153,7 @@
     }
     function cancelImportProcess() {
         resetImport();
-        navigateTo('view-parts');
+        navigateTo('view-projects');
         showToast(t('msg_import_cancelled'), true);
     }
     // --- STEP 1: READ FILE & EXTRACT HEADERS ---
@@ -604,15 +604,12 @@
                     </select>
                 </td>
                 <td>
-                    <div class="d-flex justify-content-center">
-                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 80px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" 
-                                onchange="updateStagingCategory('${part.id}', this.value)" title="${t('title_tap_to_change_category')}">
-                            ${!part.category ? `<option value="" disabled selected>⚠️ ${t('opt_select')}</option>` : ''}
-                            <option value="lumber" class="bg-light text-dark" ${part.category === 'lumber' ? 'selected' : ''}>${t('opt_lumber')}</option>
-                            <option value="sheet" class="bg-light text-dark" ${part.category === 'sheet' ? 'selected' : ''}>${t('opt_sheet')}</option>
-                            <option value="fastener" class="bg-light text-dark" ${part.category === 'fastener' ? 'selected' : ''}>${t('opt_fastener')}</option>
-                        </select>
+                    <div class="d-flex justify-content-center px-1">
+                        <span class="badge ${badgeClass} py-1 d-inline-block text-truncate" 
+                              style="width: 85px; text-align: center; font-size: 0.75rem; text-transform: uppercase;"
+                              title="${part.category ? '' : t('title_tap_to_change_category')}">
+                              ${part.category ? t('opt_' + part.category) : `⚠️ ${t('opt_select')}`}
+                        </span>
                     </div>
                 </td>
                 <td class="text-center"><small>${part.qty}</small></td>
@@ -751,7 +748,7 @@
             }
         }
 
-        navigateTo('view-parts');
+        navigateTo('view-projects');
         
         const partsTabBtn = document.getElementById('tab-parts');
         if (partsTabBtn) {

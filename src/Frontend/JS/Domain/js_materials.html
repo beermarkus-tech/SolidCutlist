@@ -16,13 +16,11 @@
 
             tr.innerHTML = `
                 <td>
-                    <div class="d-flex justify-content-center">
-                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
-                            <option value="lumber" class="bg-light text-dark" ${currentCat === 'lumber' ? 'selected' : ''}>${t('opt_lumber')}</option>
-                            <option value="sheet" class="bg-light text-dark" ${currentCat === 'sheet' ? 'selected' : ''}>${t('opt_sheet')}</option>
-                            <option value="fastener" class="bg-light text-dark" ${currentCat === 'fastener' ? 'selected' : ''}>${t('opt_fastener')}</option>
-                        </select>
+                    <div class="d-flex justify-content-center px-1">
+                        <span class="badge ${badgeClass} py-1 d-inline-block" 
+                              style="width: 85px; text-align: center; font-size: 0.75rem; text-transform: uppercase;">
+                              ${t('opt_' + currentCat)}
+                        </span>
                     </div>
                 </td>
                 <td class="px-1 py-0">
@@ -178,13 +176,11 @@
 
             tr.innerHTML = `
                 <td>
-                    <div class="d-flex justify-content-center">
-                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
-                            <option value="lumber" class="bg-light text-dark" ${prof.type === 'lumber' ? 'selected' : ''}>${t('opt_lumber')}</option>
-                            <option value="sheet" class="bg-light text-dark" ${prof.type === 'sheet' ? 'selected' : ''}>${t('opt_sheet')}</option>
-                            <option value="fastener" class="bg-light text-dark" ${prof.type === 'fastener' ? 'selected' : ''}>${t('opt_fastener')}</option>
-                        </select>
+                    <div class="d-flex justify-content-center px-1">
+                        <span class="badge ${badgeClass} py-1 d-inline-block" 
+                              style="width: 85px; text-align: center; font-size: 0.75rem; text-transform: uppercase;">
+                              ${t('opt_' + prof.type)}
+                        </span>
                     </div>
                 </td>
                 <td class="px-1 py-0">

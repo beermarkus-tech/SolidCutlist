@@ -1,601 +1,5 @@
 <script>
-    // ==========================================
-    // PHASE 1: THE ROUTER & TOGGLE
-    // ==========================================
-    function toggleStockView() {
-        if (!appState.settings) appState.settings = {};
-        appState.settings.compactStockView = !appState.settings.compactStockView;
-        saveState();
-        renderStockTable();
-    }
-
-    // 🪄 The Traffic Cop: Decides which table to draw based on settings
-    function renderStockTable() {
-        const isCompact = appState.settings?.compactStockView;
-        
-        // Update the Toggle Button UI
-        const btnText = document.getElementById('stock-view-text');
-        const btnIcon = document.getElementById('stock-view-icon');
-        if (btnText && btnIcon) {
-            btnText.innerText = isCompact ? 'Flat Table' : 'Compact Table';
-            btnIcon.innerText = isCompact ? '📄' : '🗜️';
-        }
-
-        if (isCompact) {
-            renderCompressedStockTable();
-        } else {
-            renderFlatStockTable();
-        }
-    }
-
-    // ==========================================
-    // PHASE 2: THE COMPRESSED ENGINE
-    // ==========================================
-    function getCompressedStockData() {
-        if (!appState.stock) return [];
-        const map = {};
-
-        appState.stock.forEach(item => {
-            // Fingerprint strictly groups by Cat + Prof + Mat
-            const fingerprint = `${item.categoryId}_${item.profileId}_${item.materialId}`;
-
-            if (!map[fingerprint]) {
-                map[fingerprint] = {
-                    fingerprint: fingerprint,
-                    categoryId: item.categoryId,
-                    profileId: item.profileId,
-                    materialId: item.materialId,
-                    totalQty: 0,
-                    totalLength_mm: 0,
-                    totalArea_mm2: 0,
-                    grains: new Set(),
-                    types: new Set(),
-                    pieces: []
-                };
-            }
-
-            const group = map[fingerprint];
-            const q = item.qty || 1;
-            const l = item.length || 0;
-            const w = item.categoryId === 'sheet' ? (item.width || 0) : 0;
-
-            group.totalQty += q;
-            group.pieces.push({ id: item.id, length: l, width: w, qty: q, grain: item.grain, isCutoff: item.isCutoff });
-            
-            // Collect unique grains and types
-            group.grains.add(item.grain || 'none');
-            group.types.add(item.isCutoff ? 'scrap' : 'new');
-
-            // Accumulate math
-            if (item.categoryId === 'sheet') {
-                group.totalArea_mm2 += (l * w * q);
-            } else {
-                group.totalLength_mm += (l * q);
-            }
-        });
-
-        return Object.values(map);
-    }
-    function renderCompressedStockTable() {
-        const tbody = document.getElementById('table-stock-body');
-        if (!tbody) return;
-        tbody.innerHTML = ''; 
-
-        const groups = getCompressedStockData();
-        const isMetric = appState.settings.displayUnit === 'mm';
-
-        groups.forEach(group => {
-            // MOCK ITEM for global filters
-            const mockItem = {
-                categoryId: group.categoryId,
-                profileId: group.profileId,
-                materialId: group.materialId,
-                grain: group.grains.size > 1 ? 'multiple' : Array.from(group.grains)[0],
-                isCutoff: group.types.size > 1 ? 'multiple' : (Array.from(group.types)[0] === 'scrap')
-            };
-            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(mockItem, 'stock')) return;
-
-            const tr = document.createElement('tr');
-            const badgeClass = getCategoryBadgeClass(group.categoryId);
-
-            // Safe Profile/Material lookups
-            const profile = appState.profiles.find(p => p.id === group.profileId);
-            const profName = profile ? profile.name : `⚠️ Missing`;
-            const material = appState.materials.find(m => m.id === group.materialId);
-            const matName = material ? material.name : `⚠️ Missing`;
-
-            if (!profile || !material) tr.classList.add('table-warning');
-
-            // 🪄 MIN/MAX & TOTAL MATH
-            let sizeHtml = '-';
-            if (group.pieces.length > 0) {
-                if (group.categoryId === 'sheet') {
-                    // Sort by Area
-                    group.pieces.sort((a, b) => (b.length * b.width) - (a.length * a.width));
-                    const maxP = group.pieces[0];
-                    const minP = group.pieces[group.pieces.length - 1];
-                    const minStr = `${formatForDisplay(minP.width)}x${formatForDisplay(minP.length)}`;
-                    const maxStr = `${formatForDisplay(maxP.width)}x${formatForDisplay(maxP.length)}`;
-                    
-                    const totalArea = isMetric ? (group.totalArea_mm2 / 1000000).toFixed(2) + ' m²' : (group.totalArea_mm2 / 92903.04).toFixed(2) + ' sqft';
-                    
-                    sizeHtml = minStr === maxStr 
-                        ? `<span class="fw-bold">${maxStr}</span> <span class="text-muted small">(= ${totalArea})</span>`
-                        : `<span class="fw-bold">${minStr} <span class="text-muted fw-normal mx-1">...</span> ${maxStr}</span> <span class="text-muted small">(= ${totalArea})</span>`;
-                } else {
-                    // Sort by Length
-                    group.pieces.sort((a, b) => b.length - a.length);
-                    const maxP = group.pieces[0];
-                    const minP = group.pieces[group.pieces.length - 1];
-                    const minStr = formatForDisplay(minP.length);
-                    const maxStr = formatForDisplay(maxP.length);
-
-                    const totalLen = isMetric ? (group.totalLength_mm / 1000).toFixed(2) + ' m' : (group.totalLength_mm / 304.8).toFixed(2) + ' ft';
-
-                    sizeHtml = minStr === maxStr 
-                        ? `<span class="fw-bold">${maxStr}</span> <span class="text-muted small">(= ${totalLen})</span>`
-                        : `<span class="fw-bold">${minStr} <span class="text-muted fw-normal mx-1">...</span> ${maxStr}</span> <span class="text-muted small">(= ${totalLen})</span>`;
-                }
-            }
-
-            // 🪄 GRAIN & TYPE LOGIC
-            let grainHtml = '-';
-            if (group.categoryId === 'sheet') {
-                if (group.grains.size > 1) grainHtml = `<span class="fst-italic text-muted">Multiple</span>`;
-                else grainHtml = Array.from(group.grains)[0] === 'none' ? '-' : t('opt_' + Array.from(group.grains)[0]);
-            }
-
-            let typeHtml = '';
-            if (group.types.size > 1) {
-                typeHtml = `<span class="badge bg-secondary w-100">Multiple</span>`;
-            } else {
-                const tVal = Array.from(group.types)[0];
-                typeHtml = tVal === 'scrap' 
-                    ? `<span class="badge bg-warning text-dark w-100">${t('opt_scrap')}</span>` 
-                    : `<span class="badge bg-success w-100">${t('opt_new')}</span>`;
-            }
-
-            // Paint Row
-            tr.innerHTML = `
-                <td>
-                    <div class="d-flex justify-content-center px-1">
-                        <span class="badge ${badgeClass} w-100 py-1" style="font-size: 0.75rem; text-transform: uppercase;">${t('opt_' + group.categoryId)}</span>
-                    </div>
-                </td>
-                <td class="text-center align-middle fw-bold fs-6 text-primary px-1">${group.totalQty}</td>
-                <td class="px-1 py-0 align-middle text-center fw-bold text-dark">${safeHTML(profName)}</td>
-                <td class="px-1 py-0 align-middle text-center text-nowrap">${sizeHtml}</td>
-                <td class="px-1 py-0 align-middle text-center text-dark">${safeHTML(matName)}</td>
-                <td class="text-center text-capitalize px-1 py-0 align-middle text-muted">${grainHtml}</td>
-                <td class="text-center px-1 py-0 align-middle">${typeHtml}</td>
-                <td class="text-end align-middle pe-2">
-                    <button class="btn btn-outline-primary btn-sm py-0 px-2 fw-bold shadow-sm" onclick="openStockModal('${group.fingerprint}')">
-                        📝 Details
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-
-        if (typeof updateFilterUI === 'function') {
-            updateFilterUI('stock', ['categoryId', 'profileId', 'materialId', 'grain', 'isCutoff']);
-        }
-        updateUnitLabels();
-    }
-
-    // ==========================================
-    // STOCK MODAL: DIRECT APPSTATE ENGINE
-    // ==========================================
-    let modalSortStates = { stock: { key: '', dir: 1 }, catalog: { key: '', dir: 1 } };
-    let stockDetailsModalInstance = null;
-    let currentStockModalFingerprint = '';
-    function handleModalSort(type, key) {
-        let state = modalSortStates[type];
-        
-        // Toggle direction if clicking the same column
-        if (state.key === key) {
-            state.dir *= -1;
-        } else {
-            state.key = key;
-            state.dir = 1;
-        }
-
-        // Redraw the specific modal (which handles the actual sorting on-the-fly now)
-        if (type === 'stock') renderStockModalTable();
-        else renderCatalogModalTable();
-    }
-    function openStockModal(fingerprint) {
-        const modalEl = document.getElementById('modal-stock-details');
-        if (!stockDetailsModalInstance) {
-            stockDetailsModalInstance = new bootstrap.Modal(modalEl);
-            // 🪄 Background Sync: Redraw main table when modal closes
-            modalEl.addEventListener('hidden.bs.modal', renderStockTable);
-        }
-
-        currentStockModalFingerprint = fingerprint;
-        document.getElementById('modal-stock-details-fingerprint').value = fingerprint;
-        
-        const parts = fingerprint.split('_');
-        const profile = appState.profiles?.find(p => p.id === parts[1]);
-        const material = appState.materials?.find(m => m.id === parts[2]);
-        document.getElementById('modal-stock-details-title').innerHTML = `📦 Manage: <span class="text-primary">${profile?.name || ''} — ${material?.name || ''}</span>`;
-
-        // UI Setup
-        document.getElementById('modal-stock-col-width').classList.toggle('d-none', parts[0] !== 'sheet');
-        document.getElementById('modal-stock-col-grain').classList.toggle('d-none', parts[0] !== 'sheet');
-
-        renderStockModalTable();
-        stockDetailsModalInstance.show();
-    }
-    function renderStockModalTable() {
-        const tbody = document.getElementById('table-modal-stock-details-body');
-        tbody.innerHTML = '';
-        
-        const fingerprint = currentStockModalFingerprint;
-        const catId = fingerprint.split('_')[0];
-
-        // Filter DIRECTLY from appState
-        let modalData = appState.stock.filter(item => `${item.categoryId}_${item.profileId}_${item.materialId}` === fingerprint);
-        
-        // Apply local sorting
-        const sortState = modalSortStates.stock;
-        if (sortState.key) {
-            modalData.sort((a, b) => {
-                let valA, valB;
-                if (sortState.key === 'dimensions') {
-                    let lenA = a.length || 0; let lenB = b.length || 0;
-                    if (lenA !== lenB) return (lenA - lenB) * sortState.dir;
-                    let wA = a.width || 0; let wB = b.width || 0;
-                    return (wA - wB) * sortState.dir;
-                } else if (sortState.key === 'isCutoff') {
-                    valA = a.isCutoff ? 1 : 0; valB = b.isCutoff ? 1 : 0;
-                } else {
-                    valA = a[sortState.key]; valB = b[sortState.key];
-                }
-                if (typeof valA === 'string' && typeof valB === 'string') return valA.localeCompare(valB) * sortState.dir;
-                return ((valA || 0) - (valB || 0)) * sortState.dir;
-            });
-        } else {
-            // Default sort: Longest to shortest
-            modalData.sort((a, b) => (b.length || 0) - (a.length || 0));
-        }
-
-        modalData.forEach(item => {
-            const tr = document.createElement('tr');
-            
-            // 🪄 1. SIZE INPUTS
-            let sizeHtml = '';
-            const displayL = formatForDisplay(item.length);
-            if (catId === 'sheet') {
-                const displayW = formatForDisplay(item.width);
-                sizeHtml = `
-                    <div class="d-flex align-items-center justify-content-center gap-1 mx-auto">
-                        <input type="text" class="form-control form-control-sm text-end px-0 border-0 bg-transparent" style="width: 50px;" 
-                               value="${displayW}" onchange="updateDirectModalStock('${item.id}', 'width', this.value)">
-                        <span class="text-muted small">x</span>
-                        <input type="text" class="form-control form-control-sm text-start px-0 border-0 bg-transparent" style="width: 50px;" 
-                               value="${displayL}" onchange="updateDirectModalStock('${item.id}', 'length', this.value)">
-                    </div>`;
-            } else {
-                sizeHtml = `
-                    <input type="text" class="form-control form-control-sm text-center px-0 border-0 bg-transparent mx-auto" style="width: 60px;" 
-                           value="${displayL}" onchange="updateDirectModalStock('${item.id}', 'length', this.value)">`;
-            }
-
-            // 🪄 2. GRAIN DROPDOWN
-            let grainHtml = '<span class="text-muted">-</span>';
-            if (catId === 'sheet') {
-                grainHtml = `
-                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;" onchange="updateDirectModalStock('${item.id}', 'grain', this.value)">
-                        <option value="none" ${item.grain === 'none' ? 'selected' : ''}>-</option>
-                        <option value="length" ${item.grain === 'length' ? 'selected' : ''}>${t('opt_length')}</option>
-                        <option value="width" ${item.grain === 'width' ? 'selected' : ''}>${t('opt_width')}</option>
-                    </select>`;
-            }
-
-            // 🪄 3. TYPE DROPDOWN
-            let typeHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center ${item.isCutoff ? 'text-warning fw-bold' : 'text-success fw-bold'}" style="width: 75px;" onchange="updateDirectModalStock('${item.id}', 'isCutoff', this.value === 'true')">
-                    <option value="false" ${!item.isCutoff ? 'selected' : ''} class="text-success">${t('opt_new')}</option>
-                    <option value="true" ${item.isCutoff ? 'selected' : ''} class="text-warning">${t('opt_scrap')}</option>
-                </select>`;
-
-            tr.innerHTML = `
-                <td class="align-middle py-0 ps-3">${sizeHtml}</td>
-                <td class="align-middle text-center py-0">
-                    <input type="number" class="form-control form-control-sm text-center px-0 border-0 bg-transparent mx-auto" style="width: 50px;" 
-                           value="${item.qty}" onchange="updateDirectModalStock('${item.id}', 'qty', this.value)">
-                </td>
-                <td class="align-middle text-center py-0 text-capitalize">${grainHtml}</td>
-                <td class="align-middle text-center py-0">${typeHtml}</td>
-                <td class="align-middle text-end py-1 pe-3">
-                    <button class="btn btn-sm py-0 px-2" onclick="deleteDirectModalStock('${item.id}')" tabindex="-1">🗑️</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-    function updateDirectModalStock(id, field, newValue) {
-        const item = appState.stock.find(s => s.id === id);
-        if (item) {
-            if (field === 'qty') item[field] = parseInt(newValue, 10) || 1;
-            else if (field === 'length' || field === 'width') item[field] = parseToBaseUnit(newValue) || 0;
-            else item[field] = newValue;
-            
-            saveState(); // Saved instantly!
-        }
-    }
-    function deleteDirectModalStock(id) {
-        requestConfirm(t('confirm_delete_stock') || "Delete this size?", () => {
-            appState.stock = appState.stock.filter(s => s.id !== id);
-            saveState();
-            renderStockModalTable(); 
-        });
-    }
-    function handleAddModalStock(event) {
-        event.preventDefault();
-        const parts = currentStockModalFingerprint.split('_');
-        
-        appState.stock.unshift({
-            id: 'STK-' + Date.now(),
-            categoryId: parts[0],
-            profileId: parts[1],
-            materialId: parts[2],
-            grain: parts[0] === 'sheet' ? document.getElementById('modal-stock-input-grain').value : 'none',
-            isCutoff: document.getElementById('modal-stock-input-type').value === 'true',
-            qty: parseInt(document.getElementById('modal-stock-input-qty').value, 10) || 1,
-            length: parseToBaseUnit(document.getElementById('modal-stock-input-length').value) || 0,
-            width: parts[0] === 'sheet' ? (parseToBaseUnit(document.getElementById('modal-stock-input-width').value) || 0) : 0
-        });
-        
-        saveState();
-        renderStockModalTable();
-        
-        document.getElementById('modal-stock-input-length').value = '';
-        if (parts[0] === 'sheet') {
-            document.getElementById('modal-stock-input-width').value = '';
-            document.getElementById('modal-stock-input-width').focus();
-        } else {
-            document.getElementById('modal-stock-input-length').focus();
-        }
-        document.getElementById('modal-stock-input-qty').value = '1';
-    }
-
-    // ==========================================
-    // FLAT STOCK TABLE
-    // ==========================================
-    function renderFlatStockTable() {
-        const tbody = document.getElementById('table-stock-body');
-        if (!tbody) return;
-        tbody.innerHTML = ''; 
-        
-        if (!appState.stock) appState.stock = [];
-
-        appState.stock.forEach(item => {
-
-            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(item, 'stock')) return;
-
-            const tr = document.createElement('tr');
-            const badgeClass = getCategoryBadgeClass(item.categoryId);
-            
-            // 🪄 0. VALIDATE REALITY & DYNAMIC DROPDOWNS FOR PROFILE/MATERIAL
-            const filteredProfiles = appState.profiles.filter(p => p.type === item.categoryId).sort((a, b) => a.name.localeCompare(b.name));
-            const isProfValid = filteredProfiles.some(p => p.id === item.profileId);
-            
-            let profOptions = !isProfValid ? `<option value="" disabled selected>⚠️ ${t('opt_select_profile')}</option>` : '';
-            filteredProfiles.forEach(p => {
-                profOptions += `<option value="${p.id}" ${p.id === item.profileId ? 'selected' : ''}>${safeHTML(p.name)}</option>`;
-            });
-            let profHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 align-middle text-center" margin: 0 auto;" onchange="updateStock('${item.id}', 'profileId', this.value)" title="${t('title_tap_to_change_profile')}">
-                    ${profOptions}
-                </select>`;
-
-            const filteredMaterials = appState.materials.filter(m => m.category === item.categoryId).sort((a, b) => a.name.localeCompare(b.name));
-            const isMatValid = filteredMaterials.some(m => m.id === item.materialId);
-
-            let matOptions = !isMatValid ? `<option value="" disabled selected>⚠️ ${t('opt_select_material')}</option>` : '';
-            filteredMaterials.forEach(m => {
-                matOptions += `<option value="${m.id}" ${m.id === item.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
-            });
-            let matHtml = `
-                <select class="text-center form-select form-select-sm border-0 bg-transparent px-0 py-0" margin: 0 auto;" onchange="updateStock('${item.id}', 'materialId', this.value)" title="${t('title_tap_to_change_material')}">
-                    ${matOptions}
-                </select>`;
-
-            // 🪄 0.5 APPLY ROW HIGHLIGHT IF INVALID
-            if (!isProfValid || !isMatValid) {
-                tr.classList.add('table-warning');
-            }
-
-            // 🪄 1. DYNAMIC SIZE INPUTS
-            let dimHtml = '';
-            const displayL = formatForDisplay(item.length);
-            if (item.categoryId === 'sheet') {
-                const displayW = formatForDisplay(item.width);
-                dimHtml = `
-                    <div class="d-flex align-items-center justify-content-center gap-1">
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0" style="width: 50px;" 
-                               value="${displayW}" onchange="updateStock('${item.id}', 'width', this.value)" title="${t('title_tap_to_edit_width')}">
-                        <span class="text-muted text-sm">x</span>
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-start px-0" style="width: 50px;" 
-                               value="${displayL}" onchange="updateStock('${item.id}', 'length', this.value)" title="${t('title_tap_to_edit_length')}">
-                    </div>`;
-            } else {
-                dimHtml = `
-                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width: 60px;" 
-                           value="${displayL}" onchange="updateStock('${item.id}', 'length', this.value)" title="${t('title_tap_to_edit_length')}">`;
-            }
-
-            // 🪄 2. INLINE GRAIN DROPDOWN
-            let grainHtml = '<span class="text-muted">-</span>';
-            if (item.categoryId === 'sheet') {
-                grainHtml = `
-                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;" onchange="updateStock('${item.id}', 'grain', this.value)" title="${t('title_change_grain')}">
-                        <option value="none" ${item.grain === 'none' ? 'selected' : ''}>-</option>
-                        <option value="length" ${item.grain === 'length' ? 'selected' : ''}>${t('opt_length')}</option>
-                        <option value="width" ${item.grain === 'width' ? 'selected' : ''}>${t('opt_width')}</option>
-                    </select>
-                `;
-            }
-
-            // 🪄 3. INLINE TYPE DROPDOWN
-            let typeHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center ${item.isCutoff ? 'text-warning fw-bold' : 'text-success fw-bold'}" style="width: 75px;" onchange="updateStock('${item.id}', 'isCutoff', this.value === 'true')" title="${t('title_change_type')}">
-                    <option value="false" ${!item.isCutoff ? 'selected' : ''} class="text-success">${t('opt_new')}</option>
-                    <option value="true" ${item.isCutoff ? 'selected' : ''} class="text-warning">${t('opt_scrap')}</option>
-                </select>
-            `;
-
-            tr.innerHTML = `
-                <td>
-                    <div class="d-flex justify-content-center px-1">
-                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
-                            <option value="lumber" class="bg-light text-dark" ${item.categoryId === 'lumber' ? 'selected' : ''}>${t('opt_lumber')}</option>
-                            <option value="sheet" class="bg-light text-dark" ${item.categoryId === 'sheet' ? 'selected' : ''}>${t('opt_sheet')}</option>
-                            <option value="fastener" class="bg-light text-dark" ${item.categoryId === 'fastener' ? 'selected' : ''}>${t('opt_fastener')}</option>
-                        </select>
-                    </div>
-                </td>
-                <td class="text-center px-1 py-0 align-middle"><small>
-                    <input type="number" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width: 50px;"
-                           value="${item.qty}" onchange="updateStock('${item.id}', 'qty', this.value)" title="${t('title_tap_to_edit_qty')}">
-                </small></td>
-                <td class="px-1 py-0 align-middle text-center">${profHtml}</td>
-                <td class="text-center text-nowrap px-1 py-0 align-middle">${dimHtml}</td>
-                <td class="px-1 py-0 align-middle text-center">${matHtml}</td>
-                <td class="text-center text-capitalize px-1 py-0 align-middle">${grainHtml}</td>
-                <td class="text-center px-1 py-0 align-middle">${typeHtml}</td>
-                <td class="text-end">
-                    <button class="btn btn-sm py-0 px-0" onclick="duplicateRow('stock', '${item.id}')" title="${t('title_duplicate_row')}">➕</button>
-                    <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteStock('${item.id}')">🗑️</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-        
-        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
-        if (typeof updateFilterUI === 'function') {
-            updateFilterUI('stock', ['categoryId', 'length', 'profileId', 'materialId', 'grain', 'isCutoff']);
-        }
-
-        updateUnitLabels();
-    }
-    function handleAddStock(event) {
-        event.preventDefault();
-        
-        const category = document.getElementById('stock-category').value;
-        const lengthInput = parseToBaseUnit(document.getElementById('stock-length').value);
-        const widthInput = category === 'sheet' ? parseToBaseUnit(document.getElementById('stock-width').value) : 0;
-        
-        if (!appState.stock) appState.stock = [];
-
-        appState.stock.unshift({
-            id: 'STK-' + Date.now(),
-            categoryId: category,
-            profileId: document.getElementById('stock-profile').value,
-            materialId: document.getElementById('stock-material').value,
-            qty: parseInt(document.getElementById('stock-qty').value, 10),
-            length: lengthInput,
-            width: widthInput,
-            grain: document.getElementById('stock-grain').value,
-            isCutoff: document.getElementById('stock-is-cutoff').checked
-        });
-        
-        saveState();
-        renderStockTable();
-        showToast(t('msg_item_added_stock'));
-        
-        // Reset form but keep category to allow rapid entry
-        document.getElementById('stock-length').value = '';
-        document.getElementById('stock-width').value = '';
-        document.getElementById('stock-qty').value = '1';
-    }
-    function updateStock(id, field, newValue) {
-        const item = appState.stock.find(s => s.id === id);
-        if (item) {
-            if (field === 'qty') {
-                item[field] = parseInt(newValue, 10) || 1;
-            } else if (field === 'length' || field === 'width') {
-                item[field] = parseToBaseUnit(newValue) || 0;
-            } else {
-                item[field] = newValue; // Handles grain strings and boolean drop-downs
-            }
-            saveState();
-            renderStockTable();
-            showToast(t('msg_stock_updated'));
-        }
-    }
-    function deleteStock(id, isConfirmed = false) {
-        if (!isConfirmed) {
-            requestConfirm(t('confirm_delete_stock'), () => deleteStock(id, true));
-            return; 
-        }
-
-        appState.stock = appState.stock.filter(s => s.id !== id);
-        saveState();
-        renderStockTable();
-        showToast(t('msg_item_removed_stock'));
-    }
-    function handleStockCategoryChange() {
-        const cat = document.getElementById('stock-category').value;
-        const profSelect = document.getElementById('stock-profile');
-        const matSelect = document.getElementById('stock-material');
-        const lengthInput = document.getElementById('stock-length');
-        const widthInput = document.getElementById('stock-width');
-        const grainSelect = document.getElementById('stock-grain');
-        
-        // Reset and enable
-        profSelect.innerHTML = `<option value="" disabled selected>${t('opt_select')}</option>`;
-        matSelect.innerHTML = `<option value="" disabled selected>${t('opt_select')}</option>`;
-        profSelect.disabled = false;
-        matSelect.disabled = false;
-        lengthInput.disabled = false;
-        
-        /// Filter and Populate Profile Dropdown
-        if (appState.profiles) {
-            appState.profiles.filter(p => p.type === cat).sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.id;
-                opt.innerText = p.name;
-                profSelect.appendChild(opt);
-            });
-        }
-        
-        // Filter and Populate Material Dropdown
-        if (appState.materials) {
-            appState.materials.filter(m => m.category === cat).sort((a, b) => a.name.localeCompare(b.name)).forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m.id;
-                opt.innerText = m.name;
-                matSelect.appendChild(opt);
-            });
-        }
-
-        // Toggle Width and Grain based on category physics
-        if (cat === 'sheet') {
-            widthInput.disabled = false;
-            widthInput.required = true;
-            grainSelect.disabled = false;
-        } else {
-            widthInput.disabled = true;
-            widthInput.required = false;
-            widthInput.value = '';
-            grainSelect.disabled = true;
-            grainSelect.value = 'none';
-        }
-    }
-    function populateStockDropdowns() {
-        // Only refresh if a category is already selected
-        if (document.getElementById('stock-category').value) {
-            handleStockCategoryChange();
-        }
-    }
-
-    // ==========================================
-    // PHASE 1: CATALOG ROUTER & TOGGLE
-    // ==========================================
+    // Main UI & Router
     function toggleCatalogView() {
         if (!appState.settings) appState.settings = {};
         appState.settings.compactCatalogView = !appState.settings.compactCatalogView;
@@ -604,13 +8,16 @@
     }
     function renderCatalogTable() {
         const isCompact = appState.settings?.compactCatalogView;
-        
+        const tableEl = document.getElementById('table-catalog');
+
+        if (tableEl) {
+            tableEl.classList.toggle('is-compressed', isCompact);
+        }
+
         // Update Button UI
-        const btnText = document.getElementById('catalog-view-text');
         const btnIcon = document.getElementById('catalog-view-icon');
-        if (btnText && btnIcon) {
-            btnText.innerText = isCompact ? 'Flat Table' : 'Compact Table';
-            btnIcon.innerText = isCompact ? '📄' : '🗜️';
+        if (btnIcon) {
+            btnIcon.innerText = isCompact ? '☰' : '🗜️';
         }
 
         // 🪄 Hide the Raw Price and Links columns in Compact Mode!
@@ -626,9 +33,7 @@
         }
     }
 
-    // ==========================================
-    // PHASE 2: CATALOG COMPRESSED ENGINE
-    // ==========================================
+    // Compact View Engine (Modal)
     function getCompressedCatalogData() {
         if (!appState.catalog) return [];
         const map = {};
@@ -704,16 +109,20 @@
                     group.pieces.sort((a, b) => (b.length * b.width) - (a.length * a.width));
                     const maxP = group.pieces[0];
                     const minP = group.pieces[group.pieces.length - 1];
-                    const minStr = `${formatForDisplay(minP.width)}x${formatForDisplay(minP.length)}`;
-                    const maxStr = `${formatForDisplay(maxP.width)}x${formatForDisplay(maxP.length)}`;
-                    sizeHtml = minStr === maxStr ? `<span class="fw-bold">${maxStr}</span>` : `<span class="fw-bold">${minStr} <span class="text-muted fw-normal mx-1">...</span> ${maxStr}</span>`;
+                    const minStr = `${formatForDisplay(minP.width)} x ${formatForDisplay(minP.length)}`;
+                    const maxStr = `${formatForDisplay(maxP.width)} x ${formatForDisplay(maxP.length)}`;
+                    sizeHtml = minStr === maxStr
+                        ? `<small><span>${maxStr}</span></small>`
+                        : `<small><span>${minStr} <span class="text-muted fw-normal mx-1">...</span> ${maxStr}</span></small>`;
                 } else {
                     group.pieces.sort((a, b) => b.length - a.length);
                     const maxP = group.pieces[0];
                     const minP = group.pieces[group.pieces.length - 1];
                     const minStr = formatForDisplay(minP.length);
                     const maxStr = formatForDisplay(maxP.length);
-                    sizeHtml = minStr === maxStr ? `<span class="fw-bold">${maxStr}</span>` : `<span class="fw-bold">${minStr} <span class="text-muted fw-normal mx-1">...</span> ${maxStr}</span>`;
+                    sizeHtml = minStr === maxStr
+                        ? `<small><span>${maxStr}</span></small>`
+                        : `<small><span>${minStr} <span class="text-muted fw-normal mx-1">...</span> ${maxStr}</span></small>`;
                 }
             }
 
@@ -726,15 +135,15 @@
                 const maxPrice = Math.max(...prices).toFixed(2);
 
                 priceHtml = minPrice === maxPrice 
-                    ? `${currency}${maxPrice}`
-                    : `${currency}${minPrice} <span class="text-muted fw-normal mx-1">...</span> ${currency}${maxPrice}`;
+                    ? `<small>${currency}${maxPrice}</small>`
+                    : `<small>${currency}${minPrice} <span class="text-muted fw-normal mx-1">...</span> ${currency}${maxPrice}</small>`;
             }
 
             // 🪄 3. GRAIN
             let grainHtml = '-';
             if (group.categoryId === 'sheet') {
-                if (group.grains.size > 1) grainHtml = `<span class="fst-italic text-muted">Multiple</span>`;
-                else grainHtml = Array.from(group.grains)[0] === 'none' ? '-' : t('opt_' + Array.from(group.grains)[0]);
+                if (group.grains.size > 1) grainHtml = `<span class="fst-italic text-muted"><small>Multiple</small></span>`;
+                else grainHtml = `<small>${Array.from(group.grains)[0] === 'none' ? '-' : t('opt_' + Array.from(group.grains)[0])}</small>`;
             }
 
             // 🪄 4. FRESHNESS BADGE (Based on the oldest verification in the group)
@@ -748,28 +157,30 @@
             const dd = String(dateObj.getDate()).padStart(2, '0');
             const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
             let freshnessHtml = `
-                <span class="badge shadow-sm" style="background-color: ${badgeBg}; color: ${badgeColor}; width: 6ch; display: inline-flex; justify-content: center;">
+                <span class="badge shadow-sm"
+                    style="background-color: ${badgeBg}; color: ${badgeColor}; display: inline-flex; justify-content: center;">
                     ${dd}/${mm}
                 </span>`;
 
             // Paint Row (Raw Price and Links columns are completely omitted!)
             tr.innerHTML = `
                 <td>
-                    <div class="d-flex justify-content-center">
-                        <span class="badge ${badgeClass} w-100 py-1" style="font-size: 0.75rem; text-transform: uppercase;">${t('opt_' + group.categoryId)}</span>
+                    <div class="d-flex justify-content-center px-1">
+                        <span class="badge ${badgeClass} py-1 d-inline-block" 
+                              style="width: 85px; text-align: center; font-size: 0.75rem; text-transform: uppercase;">
+                              ${t('opt_' + group.categoryId)}
+                        </span>
                     </div>
                 </td>
-                <td class="px-1 py-0 align-middle text-center fw-bold text-dark">${safeHTML(profName)}</td>
+                <td class="px-1 py-0 align-middle text-center"><small>${safeHTML(profName)}</small></td>
                 <td class="px-1 py-0 align-middle text-center text-nowrap">${sizeHtml}</td>
-                <td class="px-1 py-0 align-middle text-center text-dark">${safeHTML(matName)}</td>
-                <td class="text-center text-capitalize px-1 py-0 align-middle text-muted">${grainHtml}</td>
-                <td class="px-1 py-0 align-middle text-center text-dark fw-bold">${safeHTML(storeName)}</td>
+                <td class="px-1 py-0 align-middle text-center"><small>${safeHTML(matName)}</small></td>
+                <td class="text-center text-capitalize px-1 py-0 align-middle">${grainHtml}</td>
+                <td class="px-1 py-0 align-middle text-center"><small>${safeHTML(storeName)}</small></td>
                 <td class="text-center fw-bold text-success align-middle text-nowrap">${priceHtml}</td>
                 <td class="text-center align-middle">${freshnessHtml}</td>
                 <td class="text-end align-middle pe-2">
-                    <button class="btn btn-outline-primary btn-sm py-0 px-2 fw-bold shadow-sm" onclick="openCatalogModal('${group.fingerprint}')">
-                        📝 Details
-                    </button>
+                    <button class="btn btn-sm btn-light border shadow-sm py-0 px-2 me-2" onclick="openCatalogModal('${group.fingerprint}')">🔍</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -779,10 +190,6 @@
             updateFilterUI('catalog', ['categoryId', 'profileId', 'materialId', 'grain', 'storeId']);
         }
     }
-
-    // ==========================================
-    // CATALOG MODAL: DIRECT APPSTATE ENGINE
-    // ==========================================
     let catalogDetailsModalInstance = null;
     let currentCatalogModalFingerprint = '';
     function openCatalogModal(fingerprint) {
@@ -988,9 +395,7 @@
         document.getElementById('modal-catalog-input-price').value = '0.00';
     }
     
-    // ==========================================
-    // FLAT CATALOG MODAL
-    // ==========================================
+    // Flat View Engine
     function renderFlatCatalogTable() {
         const tbody = document.getElementById('table-catalog-body');
         if (!tbody) return;
@@ -1137,7 +542,7 @@
             // fixed width: 6ch guarantees it won't warp the table columns
             let freshnessHtml = `
                 <span class="badge shadow-sm" 
-                      style="background-color: ${badgeBg}; color: ${badgeColor}; cursor: pointer; width: 6ch; display: inline-flex; text-align: center; justify-content: center; align-items: center; user-select: none;" 
+                      style="background-color: ${badgeBg}; color: ${badgeColor}; cursor: pointer; display: inline-flex; text-align: center; justify-content: center; align-items: center; user-select: none;" 
                       onclick="verifyPrice('${item.id}')" 
                       title="${t('title_click_to_verify')}">
                     ${dd}/${mm}
@@ -1150,13 +555,11 @@
 
                 tr.innerHTML = `
                 <td>
-                    <div class="d-flex justify-content-center">
-                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
-                            <option value="lumber" class="bg-light text-dark" ${item.categoryId === 'lumber' ? 'selected' : ''}>${t('opt_lumber')}</option>
-                            <option value="sheet" class="bg-light text-dark" ${item.categoryId === 'sheet' ? 'selected' : ''}>${t('opt_sheet')}</option>
-                            <option value="fastener" class="bg-light text-dark" ${item.categoryId === 'fastener' ? 'selected' : ''}>${t('opt_fastener')}</option>
-                        </select>
+                    <div class="d-flex justify-content-center px-1">
+                        <span class="badge ${badgeClass} py-1 d-inline-block" 
+                              style="width: 85px; text-align: center; font-size: 0.75rem; text-transform: uppercase;">
+                              ${t('opt_' + item.categoryId)}
+                        </span>
                     </div>
                 </td>
                 <td class="px-1 py-0 align-middle text-center">${profHtml}</td>
@@ -1165,7 +568,7 @@
                 <td class="text-center px-1 py-0 align-middle">${grainHtml}</td>
                 <td class="px-1 py-0 align-middle">${storeHtml}</td>
                 <td class="text-center px-1 py-0 align-middle">${priceHtml}</td>
-                <td class="text-center fw-bold text-success align-middle">${currency}${displayPrice}</td>
+                <td class="text-center fw-bold text-success align-middle"><small>${currency}${displayPrice}</small></td>
                 <td class="text-center align-middle">${freshnessHtml}</td>
                 <td class="text-nowrap align-middle">
                     <div class="d-flex justify-content-end align-items-center">
@@ -1256,6 +659,102 @@
         renderCatalogTable();
         showToast(t('msg_item_removed'));
     }
+
+    // Store Manager
+    let storeModalInstance = null;
+    function openStoreModal() {
+        const modalEl = document.getElementById('modal-store-manager');
+        
+        // Failsafe: Check if the HTML actually exists!
+        if (!modalEl) {
+            alert(t('err_store_modal_html_missing'));
+            console.error("Could not find element with ID 'modal-store-manager'.");
+            return;
+        }
+
+        if (!storeModalInstance) {
+            storeModalInstance = new bootstrap.Modal(modalEl);
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                if (typeof populateCatalogDropdowns === 'function') populateCatalogDropdowns();
+            });
+        }
+        
+        renderStoreModalTable();
+        storeModalInstance.show();
+        setTimeout(() => document.getElementById('modal-new-store-name').focus(), 400);
+    }
+    function renderStoreModalTable() {
+        const tbody = document.getElementById('table-modal-stores-body');
+        tbody.innerHTML = '';
+        if (!appState.stores) appState.stores = [];
+
+        if (appState.stores.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="2" class="text-center text-muted py-3">${t('msg_no_stores_defined')}</td></tr>`;
+            return;
+        }
+
+        [...appState.stores].sort((a, b) => a.name.localeCompare(b.name)).forEach(store => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" 
+                           value="${safeHTML(store.name)}" 
+                           onchange="updateStoreName('${store.id}', this.value)" title="${t('title_tap_to_edit')}">
+                </td>
+                <td class="text-end">
+                    <button class="btn btn-sm py-0 px-2" onclick="deleteStore('${store.id}')">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    function handleAddStore(event) {
+        event.preventDefault();
+        const nameInput = document.getElementById('modal-new-store-name');
+        if (!appState.stores) appState.stores = [];
+        appState.stores.unshift({ id: 'STR-' + Date.now(), name: nameInput.value });
+        saveState();
+        renderStoreModalTable();
+        nameInput.value = ''; 
+
+        renderCatalogTable();
+        if (typeof populateCatalogDropdowns === 'function') populateCatalogDropdowns();
+        
+        nameInput.value = '';
+    }
+    function updateStoreName(id, newName) {
+        const store = appState.stores.find(s => s.id === id);
+        if (store) {
+            store.name = newName;
+            saveState();
+            renderCatalogTable(); // Refresh catalog UI to show new name
+            showToast(t('msg_store_renamed'));
+        }
+    }
+    function deleteStore(id, isConfirmed = false) {
+        // 🪄 The Safety Shield (Custom Modal)
+        if (!isConfirmed) {
+            requestConfirm(t('confirm_delete_store'), () => deleteStore(id, true));
+            return;
+        }
+
+        let affected = 0;
+        if (appState.catalog) {
+            appState.catalog.forEach(item => {
+                if (item.storeId === id) {
+                    item.storeId = '';
+                    affected++;
+                }
+            });
+        }
+        appState.stores = appState.stores.filter(s => s.id !== id);
+        saveState();
+        renderStoreModalTable();
+        renderCatalogTable();
+        showToast(t('msg_store_deleted_items', { count: affected }), true);
+    }
+
+    // Helper Functions
     function verifyPrice(id) {
         const item = appState.catalog.find(c => c.id === id);
         if (item) {
@@ -1402,6 +901,7 @@
         return (costPerPiece / factor).toFixed(2);
     }
 
+    // Hyperlink Modal
     let linkModalInstance = null;
     function openLinkModal(itemId, currentLink) {
         if (!linkModalInstance) linkModalInstance = new bootstrap.Modal(document.getElementById('modal-link-editor'));
@@ -1441,96 +941,4 @@
         linkModalInstance.hide();
     }  
 
-    let storeModalInstance = null;
-    function openStoreModal() {
-        const modalEl = document.getElementById('modal-store-manager');
-        
-        // Failsafe: Check if the HTML actually exists!
-        if (!modalEl) {
-            alert(t('err_store_modal_html_missing'));
-            console.error("Could not find element with ID 'modal-store-manager'.");
-            return;
-        }
-
-        if (!storeModalInstance) {
-            storeModalInstance = new bootstrap.Modal(modalEl);
-            modalEl.addEventListener('hidden.bs.modal', function () {
-                if (typeof populateCatalogDropdowns === 'function') populateCatalogDropdowns();
-            });
-        }
-        
-        renderStoreModalTable();
-        storeModalInstance.show();
-        setTimeout(() => document.getElementById('modal-new-store-name').focus(), 400);
-    }
-    function renderStoreModalTable() {
-        const tbody = document.getElementById('table-modal-stores-body');
-        tbody.innerHTML = '';
-        if (!appState.stores) appState.stores = [];
-
-        if (appState.stores.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="2" class="text-center text-muted py-3">${t('msg_no_stores_defined')}</td></tr>`;
-            return;
-        }
-
-        [...appState.stores].sort((a, b) => a.name.localeCompare(b.name)).forEach(store => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>
-                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" 
-                           value="${safeHTML(store.name)}" 
-                           onchange="updateStoreName('${store.id}', this.value)" title="${t('title_tap_to_edit')}">
-                </td>
-                <td class="text-end">
-                    <button class="btn btn-sm py-0 px-2" onclick="deleteStore('${store.id}')">🗑️</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-    function handleAddStore(event) {
-        event.preventDefault();
-        const nameInput = document.getElementById('modal-new-store-name');
-        if (!appState.stores) appState.stores = [];
-        appState.stores.unshift({ id: 'STR-' + Date.now(), name: nameInput.value });
-        saveState();
-        renderStoreModalTable();
-        nameInput.value = ''; 
-
-        renderCatalogTable();
-        if (typeof populateCatalogDropdowns === 'function') populateCatalogDropdowns();
-        
-        nameInput.value = '';
-    }
-    function updateStoreName(id, newName) {
-        const store = appState.stores.find(s => s.id === id);
-        if (store) {
-            store.name = newName;
-            saveState();
-            renderCatalogTable(); // Refresh catalog UI to show new name
-            showToast(t('msg_store_renamed'));
-        }
-    }
-    function deleteStore(id, isConfirmed = false) {
-        // 🪄 The Safety Shield (Custom Modal)
-        if (!isConfirmed) {
-            requestConfirm(t('confirm_delete_store'), () => deleteStore(id, true));
-            return;
-        }
-
-        let affected = 0;
-        if (appState.catalog) {
-            appState.catalog.forEach(item => {
-                if (item.storeId === id) {
-                    item.storeId = '';
-                    affected++;
-                }
-            });
-        }
-        appState.stores = appState.stores.filter(s => s.id !== id);
-        saveState();
-        renderStoreModalTable();
-        renderCatalogTable();
-        showToast(t('msg_store_deleted_items', { count: affected }), true);
-    }
 </script>

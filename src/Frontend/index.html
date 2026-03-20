@@ -50,8 +50,8 @@
 
             <div class="d-flex justify-content-center gap-2 nav-buttons-container flex-wrap">
                 <button id="nav-btn-resume-import" class="btn btn-warning btn-sm d-none shadow-sm" onclick="navigateTo('view-import')" data-i18n="btn_resume_import">📥 Import</button>
-                <button id="nav-btn-view-dictionaries" class="btn btn-outline-light btn-sm" onclick="navigateTo('view-dictionaries')" data-i18n="nav_setup">Setup</button>
-                <button id="nav-btn-view-parts" class="btn btn-outline-light fw-bold btn-sm active" onclick="navigateTo('view-parts')" data-i18n="nav_partlist">Projects</button>
+                <button id="nav-btn-view-setup" class="btn btn-outline-light btn-sm" onclick="navigateTo('view-setup')" data-i18n="nav_setup">Setup</button>
+                <button id="nav-btn-view-projects" class="btn btn-outline-light fw-bold btn-sm active" onclick="navigateTo('view-projects')" data-i18n="nav_partlist">Projects</button>
                 <button id="nav-btn-view-cutlist" class="btn btn-outline-light btn-sm" onclick="navigateTo('view-cutlist')" data-i18n="nav_cutlist">Cutlist</button>
             </div>
 
@@ -68,9 +68,9 @@
     <!-- Main Content Area -->
     <main id="app-container" class="container-fluid px-4 px-md-5">
        
-        <!-- View: Dictionaries (Hidden by default) -->
-        <div id="view-dictionaries" class="app-view d-none">
-            <?!= include('Frontend/Views/view_dictionaries'); ?>
+        <!-- View: Setup (Hidden by default) -->
+        <div id="view-setup" class="app-view d-none">
+            <?!= include('Frontend/Views/view_setup'); ?>
         </div>
 
         <!-- View: Import (Hidden by default) -->
@@ -78,9 +78,9 @@
             <?!= include('Frontend/Views/view_import'); ?>
         </div>
 
-        <!-- View: Parts (Shown by default) -->
-        <div id="view-parts" class="app-view">
-            <?!= include('Frontend/Views/view_parts'); ?>
+        <!-- View: Projects (Shown by default) -->
+        <div id="view-projects" class="app-view">
+            <?!= include('Frontend/Views/view_projects'); ?>
         </div>
 
         <!-- View: Cutlist (Hidden by default) -->
@@ -529,7 +529,8 @@
     <?!= include('Frontend/JS/Domain/js_parts'); ?>
     <?!= include('Frontend/JS/Domain/js_projects'); ?>
     <?!= include('Frontend/JS/Domain/js_settings'); ?>
-    <?!= include('Frontend/JS/Domain/js_sourcing'); ?>
+    <?!= include('Frontend/JS/Domain/js_prices'); ?>
+    <?!= include('Frontend/JS/Domain/js_stock'); ?>
     
     <?!= include('Frontend/JS/Modules/js_canvas'); ?>
     <?!= include('Frontend/JS/Modules/js_import'); ?>

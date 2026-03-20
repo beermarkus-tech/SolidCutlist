@@ -65,6 +65,7 @@
     .col-density    { width: 1%; min-width: 100px; } 
     .col-type       { width: 1%; min-width: 100px; }
     .col-actions    { width: 1%; min-width: 60px; }
+    .col-freshness  { width: 1%; min-width: 70px; }
 
 
     /* ==========================================
@@ -255,4 +256,99 @@
         background-color: rgba(255, 255, 255, 0.02) !important; /* Barely visible folder background */
         cursor: not-allowed !important; /* Shows the 'locked' mouse cursor */
     }
+
+    /* 🪄 Locks the btn-light color in place with ZERO visual reaction on hover or click */
+    .btn-outline-light.header-btn-small,
+    .btn-outline-light.header-btn-small:hover,
+    .btn-outline-light.header-btn-small:focus,
+    .btn-outline-light.header-btn-small:active {
+        background-color: transparent !important; /* 🪄 This stops the Bootstrap fill effect */
+        border-color: #bbbbbb !important;
+        color: #bbbbbb !important;
+        opacity: 1 !important; /* Absolutely no fade */
+        outline: none !important;
+        box-shadow: none !important; /* Kills the focus ring */
+        transform: none !important; /* Kills any native pressing movement */
+    }
+
+    .btn-light.header-btn-small,
+    .btn-light.header-btn-small:hover,
+    .btn-light.header-btn-small:focus,
+    .btn-light.header-btn-small:active {
+        background-color: #bbbbbb !important; /* Forces the clean white/light-grey */
+        border-color: #bbbbbb !important;
+        color: #000 !important;
+        opacity: 1 !important; /* Absolutely no fade */
+        outline: none !important;
+        box-shadow: none !important; /* Kills the focus ring */
+        transform: none !important; /* Kills any native pressing movement */
+    }
+
+    .btn-light.header-btn,
+    .btn-light.header-btn:hover,
+    .btn-light.header-btn:focus,
+    .btn-light.header-btn:active {
+        background-color: #f8f9fa !important; /* Forces the clean white/light-grey */
+        border-color: #f8f9fa !important;
+        color: #000 !important;
+        opacity: 1 !important; /* Absolutely no fade */
+        outline: none !important;
+        box-shadow: none !important; /* Kills the focus ring */
+        transform: none !important; /* Kills any native pressing movement */
+    }
+
+    /* 🪄 Locks the btn-warning color in place with ZERO visual reaction on hover or click */
+    .btn-warning.header-btn,
+    .btn-warning.header-btn:hover,
+    .btn-warning.header-btn:focus,
+    .btn-warning.header-btn:active {
+        background-color: #d35400 !important; /* Forces the clean white/light-grey */
+        border-color: #d35400 !important;
+        color: #ffffff !important;
+        opacity: 1 !important; /* Absolutely no fade */
+        outline: none !important;
+        box-shadow: none !important; /* Kills the focus ring */
+        transform: none !important; /* Kills any native pressing movement */
+    }
+
+    /* 🪄 EXPLICIT OVERRIDE: Force white text on yellow warning rows ONLY in Dark Mode */
+        /* 🪄 FIXED: Added :not(.badge) so the Category column keeps its custom colors */
+        [data-bs-theme="dark"] .table-warning td,
+        [data-bs-theme="dark"] .table-warning select.form-select:not(.badge),
+        [data-bs-theme="dark"] .table-warning small {
+            color: #ffffff !important;
+        }
+
+        /* 🪄 Keep the standard dropdown lists readable when opened */
+        [data-bs-theme="dark"] .table-warning select.form-select:not(.badge) option {
+            color: var(--bs-body-color) !important;
+            background-color: var(--bs-body-bg) !important;
+        }
+
+        .table-grouped-column {
+            background-color: rgba(0, 0, 0, 0.02) !important; /* Extremely subtle tint */
+            border-right: 1px solid rgba(0, 0, 0, 0.05); /* Optional: tiny divider */
+        }
+
+        /* Group Icons: Hidden in Flat View */
+        .group-icon {
+            display: none;
+            font-size: 1rem;
+            margin-right: 4px;
+            opacity: 1;
+        }
+
+        /* 🪄 Show only when the table is in compressed mode */
+        .is-compressed .group-icon {
+            display: inline-block;
+        }
+
+        /* 🪄 Color only the "Grouped" headers in Compressed View */
+        .is-compressed .col-size,
+        .is-compressed .col-grain,
+        .is-compressed .col-type,
+        .is-compressed .col-freshness,
+        .is-compressed .col-costweight {
+            color: var(--bs-primary) !important; /* Slate Navy for high contrast */
+        }
 </style>

@@ -399,4 +399,23 @@
         // Return this boolean just in case the local table needs to know if a filter is active!
         return hasAnyFilter; 
     }
+
+    // Stock and Prices Modal Sorting
+    let modalSortStates = { stock: { key: '', dir: 1 }, catalog: { key: '', dir: 1 } };
+    function handleModalSort(type, key) {
+        let state = modalSortStates[type];
+        
+        // Toggle direction if clicking the same column
+        if (state.key === key) {
+            state.dir *= -1;
+        } else {
+            state.key = key;
+            state.dir = 1;
+        }
+
+        // Redraw the specific modal (which handles the actual sorting on-the-fly now)
+        if (type === 'stock') renderStockModalTable();
+        else renderCatalogModalTable();
+    }
+    
 </script>

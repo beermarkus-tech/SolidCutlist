@@ -365,12 +365,10 @@
                 </td>
                 <td>
                     <div class="d-flex justify-content-center px-1">
-                        <select class="form-select form-select-sm border-0 badge ${badgeClass}" 
-                                style="width: 85px; appearance: none; background-image: none; text-align: center; cursor: pointer; font-size: 0.75rem; text-transform: uppercase;" disabled>
-                            <option value="lumber" class="bg-light text-dark" ${part.category === 'lumber' ? 'selected' : ''}>${t('opt_lumber')}</option>
-                            <option value="sheet" class="bg-light text-dark" ${part.category === 'sheet' ? 'selected' : ''}>${t('opt_sheet')}</option>
-                            <option value="fastener" class="bg-light text-dark" ${part.category === 'fastener' ? 'selected' : ''}>${t('opt_fastener')}</option>
-                        </select>
+                        <span class="badge ${badgeClass} py-1 d-inline-block" 
+                              style="width: 85px; text-align: center; font-size: 0.75rem; text-transform: uppercase;">
+                              ${t('opt_' + part.category)}
+                        </span>
                     </div>
                 </td>
                 <td class="p-0 px-1">
