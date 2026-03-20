@@ -211,9 +211,16 @@
         document.getElementById('modal-catalog-details-title').innerHTML = `🏷️ Manage Prices: <span class="text-primary">${profile?.name || ''} — ${material?.name || ''}</span> @ <span class="text-dark">${store?.name || ''}</span>`;
 
         const isMetric = appState.settings.displayUnit === 'mm';
-        document.getElementById('modal-catalog-col-width').classList.toggle('d-none', parts[0] !== 'sheet');
-        document.getElementById('modal-catalog-col-grain').classList.toggle('d-none', parts[0] !== 'sheet');
+        const isSheet = parts[0] === 'sheet';
         
+        document.getElementById('modal-catalog-col-width').classList.toggle('d-none', !isSheet);
+        document.getElementById('modal-catalog-col-grain').classList.toggle('d-none', !isSheet);
+        document.getElementById('modal-catalog-input-width').required = isSheet;
+        
+        const thGrain = document.getElementById('modal-catalog-th-grain');
+        if (thGrain) thGrain.classList.toggle('d-none', !isSheet);
+
+        // 🪄 We only overwrite the input dropdown now! The header keeps its "Cost / X" text.
         const unitHtml = `
             <option value="piece">/${t('opt_pc')}</option>
             <option value="linear">/${isMetric ? 'm' : 'ft'}</option>
@@ -221,7 +228,12 @@
             <option value="volume">/${isMetric ? 'm³' : 'BF'}</option>
         `;
         document.getElementById('modal-catalog-input-unit').innerHTML = unitHtml;
-        document.getElementById('modal-catalog-view-unit').innerHTML = unitHtml; // Sync the header dropdown
+        
+        // Sync the modal header dropdown value to match the base table's state
+        const mainTableView = document.getElementById('table-price-view');
+        if (mainTableView) {
+            document.getElementById('modal-catalog-view-unit').value = mainTableView.value;
+        }
 
         renderCatalogModalTable();
         catalogDetailsModalInstance.show();
@@ -238,7 +250,7 @@
 
         // Filter DIRECTLY from appState
         let modalData = appState.catalog.filter(item => `${item.categoryId}_${item.profileId}_${item.materialId}_${item.storeId}` === fingerprint);
-
+        
         // Apply local sorting
         const sortState = modalSortStates.catalog;
         if (sortState.key) {
@@ -257,8 +269,6 @@
                 if (typeof valA === 'string' && typeof valB === 'string') return valA.localeCompare(valB) * sortState.dir;
                 return ((valA || 0) - (valB || 0)) * sortState.dir;
             });
-        } else {
-            modalData.sort((a, b) => (b.length || 0) - (a.length || 0));
         }
 
         modalData.forEach(item => {
@@ -278,51 +288,85 @@
                     </div>`;
             } else {
                 sizeHtml = `
-                    <input type="text" class="form-control form-control-sm text-center px-0 border-0 bg-transparent mx-auto" style="width: 60px;" 
+                    <input type="text" class="form-control form-control-sm text-center px-0 border-0 bg-transparent mx-auto" style="width: 60px;"
                            value="${displayL}" onchange="updateDirectModalCatalog('${item.id}', 'length', this.value)">`;
             }
 
             let grainHtml = '<span class="text-muted">-</span>';
             if (catId === 'sheet') {
                 grainHtml = `
-                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;" onchange="updateDirectModalCatalog('${item.id}', 'grain', this.value)">
+                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;"
+                            onchange="updateDirectModalCatalog('${item.id}', 'grain', this.value)">
                         <option value="none" ${item.grain === 'none' ? 'selected' : ''}>-</option>
                         <option value="length" ${item.grain === 'length' ? 'selected' : ''}>${t('opt_length')}</option>
                         <option value="width" ${item.grain === 'width' ? 'selected' : ''}>${t('opt_width')}</option>
                     </select>`;
             }
 
-            const uLin = isMetric ? 'm' : 'ft'; const uArea = isMetric ? 'm²' : 'sqft'; const uVol = isMetric ? 'm³' : 'BF';
+            const uLin = isMetric ? 'm' : 'ft';
+            const uArea = isMetric ? 'm²' : 'sqft'; const uVol = isMetric ? 'm³' : 'BF';
+            
             let priceHtml = `
                 <div class="d-flex align-items-center justify-content-center text-nowrap mx-auto">
-                    <span class="text-muted pe-1">${currency}</span>
-                    <input type="number" step="0.01" class="form-control form-control-sm text-end px-0 border-0 bg-transparent" style="width: 60px;" 
+                    <input type="number" step="0.01" class="form-control form-control-sm text-end px-0 border-0 bg-transparent" style="width: 60px;"
                            value="${parseFloat(item.price || 0).toFixed(2)}" onchange="updateDirectModalCatalog('${item.id}', 'price', this.value)">
                     <span class="text-muted px-1">/</span>
-                    <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" style="width: auto; cursor: pointer;" onchange="updateDirectModalCatalog('${item.id}', 'priceUnit', this.value)">
+                    <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" style="width: auto; cursor: pointer;"
+                            onchange="updateDirectModalCatalog('${item.id}', 'priceUnit', this.value)">
                         <option value="piece" ${item.priceUnit === 'piece' ? 'selected' : ''}>${t('opt_pc')}</option>
                         <option value="linear" ${item.priceUnit === 'linear' ? 'selected' : ''}>${uLin}</option>
                         <option value="area" ${item.priceUnit === 'area' ? 'selected' : ''}>${uArea}</option>
                         <option value="volume" ${item.priceUnit === 'volume' ? 'selected' : ''}>${uVol}</option>
                     </select>
                 </div>`;
-
+                
             const displayPrice = getNormalizedPriceDisplay(item, viewUnit);
             let costHtml = `<span id="direct-cost-${item.id}" class="fw-bold text-success">${currency}${displayPrice}</span>`;
 
-            let linkBtnClass = item.link ? 'btn-primary' : 'btn-outline-secondary';
+            // 🪄 FRESHNESS BADGE ENGINE (Matches Flat View)
+            const verifiedTime = item.lastVerified || Date.now();
+            const daysOld = (Date.now() - verifiedTime) / (1000 * 60 * 60 * 24);
+            let badgeBg = '#198754';
+            let badgeColor = '#ffffff';
+            if (daysOld >= 28) {
+                badgeBg = '#dc3545';
+            } else if (daysOld >= 14) {
+                badgeBg = '#ffc107';
+                badgeColor = '#000000';
+            }
+            const dateObj = new Date(verifiedTime);
+            const dd = String(dateObj.getDate()).padStart(2, '0');
+            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+            let freshnessHtml = `
+                <span class="badge shadow-sm" 
+                      style="background-color: ${badgeBg}; color: ${badgeColor}; cursor: pointer; display: inline-flex; text-align: center; justify-content: center; align-items: center; user-select: none;"
+                      onclick="verifyPrice('${item.id}')" 
+                      title="${t('title_click_to_verify') || 'Click to verify price is still accurate'}">
+                    ${dd}/${mm}
+                </span>
+            `;
+
+            let linkHtml = item.link 
+                ? `<a href="${safeHTML(item.link)}" target="_blank" class="text-decoration-none" title="${t('title_open_link')}">🔗</a>` 
+                : `<span class="text-muted" style="opacity: 0.3;">🔗</span>`;
+                
             let actionHtml = `
-                <div class="d-flex justify-content-end gap-2">
-                    <button class="btn btn-sm ${linkBtnClass} py-0 px-1 shadow-none" onclick="promptDirectCatalogLink('${item.id}')" tabindex="-1" title="Attach Web Link">🔗</button>
-                    <button class="btn btn-sm py-0 px-2" onclick="deleteDirectModalCatalog('${item.id}')" tabindex="-1">🗑️</button>
-                </div>`;
+                <button class="btn btn-sm py-0 px-2" onclick="deleteDirectModalCatalog('${item.id}')" tabindex="-1">🗑️</button>
+            `;
 
             tr.innerHTML = `
                 <td class="align-middle py-0 ps-3">${sizeHtml}</td>
-                <td class="align-middle text-center py-0 text-capitalize">${grainHtml}</td>
+                <td class="align-middle text-center py-0 text-capitalize ${catId !== 'sheet' ? 'd-none' : ''}">${grainHtml}</td>
                 <td class="align-middle text-center py-0">${priceHtml}</td>
                 <td class="align-middle text-center py-0">${costHtml}</td>
-                <td class="align-middle py-1 pe-3">${actionHtml}</td>
+                <td class="align-middle text-center py-0">${freshnessHtml}</td>
+                <td class="text-nowrap align-middle">
+                    <div class="d-flex justify-content-center align-items-center">
+                        ${linkHtml}
+                        <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${item.id}', '${safeHTML(item.link || '')}')" title="${t('title_edit_link')}" tabindex="-1">✏️</button>
+                    </div>
+                </td>
+                <td class="align-middle py-1 pe-3 text-end">${actionHtml}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -383,6 +427,10 @@
         });
         
         saveState();
+        
+        // 🪄 Clear active sorting so the new price lands exactly at the top!
+        modalSortStates.catalog.key = '';
+        
         renderCatalogModalTable();
         
         document.getElementById('modal-catalog-input-length').value = '';
@@ -761,7 +809,14 @@
             item.lastVerified = Date.now();
             saveState();
             renderCatalogTable();
-            showToast(t('msg_price_verified'));
+            
+            // 🪄 THE FIX: If the modal is open, redraw it instantly so the freshness badge updates!
+            const catalogModalEl = document.getElementById('modal-catalog-details');
+            if (catalogModalEl && catalogModalEl.classList.contains('show')) {
+                renderCatalogModalTable();
+            }
+            
+            showToast(t('msg_price_verified') || "Price verified!");
         }
     }
     function handleCatalogCategoryChange() {
@@ -922,11 +977,17 @@
             if (item) {
                 item.link = newLink;
                 saveState();
-                renderCatalogTable(); // Redraw Catalog
+                renderCatalogTable(); // Redraw Main Catalog
+                
+                // 🪄 THE FIX: Check if the Catalog Modal is currently open, and redraw it instantly!
+                const catalogModalEl = document.getElementById('modal-catalog-details');
+                if (catalogModalEl && catalogModalEl.classList.contains('show')) {
+                    renderCatalogModalTable();
+                }
             }
         }
         
         linkModalInstance.hide();
-    }  
+    }
 
 </script>

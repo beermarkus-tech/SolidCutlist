@@ -61,28 +61,38 @@
         const linearText = isMetric ? 'm' : 'ft';
         const areaText = isMetric ? 'm²' : 'sqft';
         const volText = isMetric ? 'm³' : 'BF';
-        
+
         // Update basic global labels
         document.querySelectorAll('.display-unit-label').forEach(label => label.innerText = unitText);
         document.querySelectorAll('.density-unit-label').forEach(label => label.innerText = densityText);
         document.querySelectorAll('.density-weight-label').forEach(label => label.innerText = weightText);
         document.querySelectorAll('.currency-label').forEach(label => label.innerText = currencyText);
 
-        // ✨ NEW: Update the Unit Dropdown in the Input Section
+        // Update the Unit Dropdown in the Input Section
         const catPriceUnit = document.getElementById('cat-price-unit');
         if (catPriceUnit && catPriceUnit.options.length >= 4) {
-            // Option 0 is usually "piece/pc" - stays the same
-            catPriceUnit.options[1].text = `/ ${linearText}`; // linear
-            catPriceUnit.options[2].text = `/ ${areaText}`;   // area
-            catPriceUnit.options[3].text = `/ ${volText}`;    // volume
+            catPriceUnit.options[1].text = `/ ${linearText}`;
+            catPriceUnit.options[2].text = `/ ${areaText}`;   
+            catPriceUnit.options[3].text = `/ ${volText}`;    
         }
         
-        // Update the header drop-down in the Catalog table (safely checks if it exists first)
+        // 🪄 Dynamically fetch the translated word for "Cost"
+        const costLabel = typeof t === 'function' ? (t('opt_cost') || 'Cost') : 'Cost';
+
+        // Update the Base Table Header
         const tableViewSelect = document.getElementById('table-price-view');
         if (tableViewSelect && tableViewSelect.options && tableViewSelect.options.length > 3) {
-            tableViewSelect.options[1].text = `${t('opt_cost')} / ${linearText}`;
-            tableViewSelect.options[2].text = `${t('opt_cost')} / ${areaText}`;
-            tableViewSelect.options[3].text = `${t('opt_cost')} / ${volText}`;
+            tableViewSelect.options[1].text = `${costLabel}/${linearText}`;
+            tableViewSelect.options[2].text = `${costLabel}/${areaText}`;
+            tableViewSelect.options[3].text = `${costLabel}/${volText}`;
+        }
+
+        // Update the Modal Table Header
+        const modalViewSelect = document.getElementById('modal-catalog-view-unit');
+        if (modalViewSelect && modalViewSelect.options && modalViewSelect.options.length > 3) {
+            modalViewSelect.options[1].text = `${costLabel}/${linearText}`;
+            modalViewSelect.options[2].text = `${costLabel}/${areaText}`;
+            modalViewSelect.options[3].text = `${costLabel}/${volText}`;
         }
 
         if (typeof checkUnitMismatch === 'function') checkUnitMismatch();

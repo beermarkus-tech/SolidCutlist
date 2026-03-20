@@ -204,9 +204,9 @@
                                                 id="cat-price-unit" 
                                                 style="flex: none; width: 95px;">
                                             <option value="piece" data-i18n="lbl_unit_pc">/ pc</option>
-                                            <option value="linear" data-i18n="lbl_unit_lin">/ m</option>
-                                            <option value="area" data-i18n="lbl_unit_m2">/ m²</option>
-                                            <option value="volume" data-i18n="lbl_unit_m3">/ m³</option>
+                                            <option value="linear">/ m</option>
+                                            <option value="area">/ m²</option>
+                                            <option value="volume">/ m³</option>
                                         </select>
                                     </div>
                                 </div>
@@ -271,9 +271,9 @@
                                     <div class="d-flex align-items-center justify-content-center gap-1">
                                         <span class="group-icon">🗜️</span> <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center" id="table-price-view" onchange="renderCatalogTable()" style="width: auto; cursor: pointer; font-size: inherit;">
                                             <option value="piece" data-i18n="opt_cost_piece">Cost/Piece</option>
-                                            <option value="linear" data-i18n="opt_cost_length">Cost/Length</option>
-                                            <option value="area" data-i18n="opt_cost_area">Cost/Area</option>
-                                            <option value="volume" data-i18n="opt_cost_volume">Cost/Volume</option>
+                                            <option value="linear">Cost/Length</option>
+                                            <option value="area">Cost/Area</option>
+                                            <option value="volume">Cost/Volume</option>
                                         </select>
                                         <span onclick="handleSort('catalog', 'calculatedPrice', 'number')" style="cursor: pointer; user-select: none;" title="Sort by Calculated Price">⇅</span>
                                     </div>
@@ -536,34 +536,37 @@
                     <!-- Input Section -->
                     <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
                         <input type="hidden" id="modal-catalog-details-fingerprint">
-                        <div class="row g-2 align-items-end" id="modal-catalog-input-row">
-                            <div id="modal-catalog-col-width" class="col-sm d-none">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
-                                <input type="text" class="form-control form-control-sm" id="modal-catalog-input-width" required>
-                            </div>
-                            <div class="col-sm">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
-                                <input type="text" class="form-control form-control-sm" id="modal-catalog-input-length" required>
-                            </div>
-                            <div id="modal-catalog-col-grain" class="col-sm d-none">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Grain</label>
-                                <select class="form-select form-select-sm" id="modal-catalog-input-grain">
-                                    <option value="none">-</option>
-                                    <option value="length">Length</option>
-                                    <option value="width">Width</option>
-                                </select>
-                            </div>
-                            <div class="col-sm-3">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Price</label>
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text currency-label">$</span> <input type="number" step="0.01" class="form-control form-control-sm" id="modal-catalog-input-price" required>
-                                    <select class="form-select form-select-sm input-group-text" style="flex: none; width: 95px;" id="modal-catalog-input-unit"></select>                                        
+                        <form id="form-modal-catalog" onsubmit="handleAddModalCatalog(event); return false;">
+                            <div class="row g-2 align-items-end" id="modal-catalog-input-row">
+                                <div id="modal-catalog-col-width" class="col-sm d-none">
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                                    <input type="text" class="form-control form-control-sm" id="modal-catalog-input-width" required>
+                                </div>
+                                <div class="col-sm">
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
+                                    <input type="text" class="form-control form-control-sm" id="modal-catalog-input-length" required>
+                                </div>
+                                <div id="modal-catalog-col-grain" class="col-sm d-none">
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Grain</label>
+                                    <select class="form-select form-select-sm" id="modal-catalog-input-grain">
+                                        <option value="none">-</option>
+                                        <option value="length">Length</option>
+                                        <option value="width">Width</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-3">
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Price</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text currency-label">$</span> 
+                                        <input type="number" step="0.01" class="form-control form-control-sm" id="modal-catalog-input-price" required>
+                                        <select class="form-select form-select-sm input-group-text" style="flex: none; width: 95px;" id="modal-catalog-input-unit"></select>                                        
+                                    </div>
+                                </div>
+                                <div class="col-sm ms-auto">
+                                    <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
                                 </div>
                             </div>
-                            <div class="col-sm ms-auto">
-                                <button class="btn btn-primary btn-sm w-100" onclick="handleAddModalCatalog(event)">Add</button>
-                            </div>
-                        </div>
+                        </form>
                     </div>
                     <!-- Table -->
                     <div class="table-responsive" style="max-height: 55vh; overflow-y: auto;">
@@ -571,24 +574,25 @@
                             <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                 <tr>
                                     <th class="text-center" style="cursor: pointer;" onclick="handleModalSort('catalog', 'dimensions')">Size ⇅</th>
-                                    <th class="text-center" style="cursor: pointer;" onclick="handleModalSort('catalog', 'grain')">Grain ⇅</th>
+                                    <th id="modal-catalog-th-grain" class="text-center" style="cursor: pointer;" onclick="handleModalSort('catalog', 'grain')">Grain ⇅</th>
                                     <th class="text-center" style="cursor: pointer;" onclick="handleModalSort('catalog', 'price')">Shelf Price ⇅</th>
                                     <th class="text-center">
                                         <div class="d-flex align-items-center justify-content-center gap-1">
                                             <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center" id="modal-catalog-view-unit" onchange="renderCatalogModalTable()" style="width: auto; cursor: pointer; font-size: inherit;">
                                                 <option value="piece" data-i18n="opt_cost_piece">Cost/Piece</option>
-                                                <option value="linear" data-i18n="opt_cost_length">Cost/Length</option>
-                                                <option value="area" data-i18n="opt_cost_area">Cost/Area</option>
-                                                <option value="volume" data-i18n="opt_cost_volume">Cost/Volume</option>
+                                                <option value="linear">Cost/Length</option>
+                                                <option value="area">Cost/Area</option>
+                                                <option value="volume">Cost/Volume</option>
                                             </select>
-                                            <span onclick="" style="cursor: pointer; user-select: none;" title="Sort by Calculated Price">⇅</span>
                                         </div>
                                     </th>
+                                    <th class="text-center">Freshness</th>
+                                    <th class="text-center" data-i18n="col_links">Links</th>
                                     <th class="text-end"></th>
                                 </tr>
                             </thead>
                             <tbody id="table-modal-catalog-details-body">
-                                </tbody>
+                            </tbody>
                         </table>
                     </div>
                 </div>

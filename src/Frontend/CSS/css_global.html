@@ -357,4 +357,12 @@
         .is-compressed .col-costweight .form-select {
             filter: brightness(0) saturate(100%) invert(31%) sepia(93%) saturate(1423%) hue-rotate(201deg) brightness(96%) contrast(106%);
         }
+        /* 🪄 Hide filter icons in grouped columns during Compressed View */
+        .is-compressed .col-size span[id^="flt-icon-"],
+        .is-compressed .col-grain span[id^="flt-icon-"],
+        .is-compressed .col-type span[id^="flt-icon-"],
+        .is-compressed .col-costweight span[id^="flt-icon-"],
+        .is-compressed .col-freshness span[id^="flt-icon-"] {
+            display: none !important;
+        }
 </style>
