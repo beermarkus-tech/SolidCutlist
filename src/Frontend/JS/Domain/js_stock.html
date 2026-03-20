@@ -204,9 +204,18 @@
         const material = appState.materials?.find(m => m.id === parts[2]);
         document.getElementById('modal-stock-details-title').innerHTML = `📦 Manage: <span class="text-primary">${profile?.name || ''} — ${material?.name || ''}</span>`;
 
-        // UI Setup
-        document.getElementById('modal-stock-col-width').classList.toggle('d-none', parts[0] !== 'sheet');
-        document.getElementById('modal-stock-col-grain').classList.toggle('d-none', parts[0] !== 'sheet');
+        // UI Setup - Dynamically hide Width and Grain columns for lumber
+        const isSheet = parts[0] === 'sheet';
+        document.getElementById('modal-stock-col-width').classList.toggle('d-none', !isSheet);
+        document.getElementById('modal-stock-col-grain').classList.toggle('d-none', !isSheet);
+        
+        // 🪄 The Fix: We must toggle the 'required' flag if the field is hidden, 
+        // otherwise HTML5 silently blocks the form submission!
+        document.getElementById('modal-stock-input-width').required = isSheet;
+        
+        // Hide the table header for Grain if it's not a sheet
+        const thGrain = document.getElementById('modal-stock-th-grain');
+        if(thGrain) thGrain.classList.toggle('d-none', !isSheet);
 
         renderStockModalTable();
         stockDetailsModalInstance.show();
@@ -221,6 +230,7 @@
         // Filter DIRECTLY from appState
         let modalData = appState.stock.filter(item => `${item.categoryId}_${item.profileId}_${item.materialId}` === fingerprint);
         
+        // Apply local sorting
         // Apply local sorting
         const sortState = modalSortStates.stock;
         if (sortState.key) {
@@ -239,9 +249,6 @@
                 if (typeof valA === 'string' && typeof valB === 'string') return valA.localeCompare(valB) * sortState.dir;
                 return ((valA || 0) - (valB || 0)) * sortState.dir;
             });
-        } else {
-            // Default sort: Longest to shortest
-            modalData.sort((a, b) => (b.length || 0) - (a.length || 0));
         }
 
         modalData.forEach(item => {
@@ -290,7 +297,7 @@
                     <input type="number" class="form-control form-control-sm text-center px-0 border-0 bg-transparent mx-auto" style="width: 50px;" 
                            value="${item.qty}" onchange="updateDirectModalStock('${item.id}', 'qty', this.value)">
                 </td>
-                <td class="align-middle text-center py-0 text-capitalize">${grainHtml}</td>
+                <td class="align-middle text-center py-0 text-capitalize ${catId !== 'sheet' ? 'd-none' : ''}">${grainHtml}</td>
                 <td class="align-middle text-center py-0">${typeHtml}</td>
                 <td class="align-middle text-end py-1 pe-3">
                     <button class="btn btn-sm py-0 px-2" onclick="deleteDirectModalStock('${item.id}')" tabindex="-1">🗑️</button>
@@ -307,6 +314,7 @@
             else item[field] = newValue;
             
             saveState(); // Saved instantly!
+            renderStockModalTable(); // 🪄 Fix: Force the table to redraw so colors update!
         }
     }
     function deleteDirectModalStock(id) {
@@ -326,13 +334,14 @@
             profileId: parts[1],
             materialId: parts[2],
             grain: parts[0] === 'sheet' ? document.getElementById('modal-stock-input-grain').value : 'none',
-            isCutoff: document.getElementById('modal-stock-input-type').value === 'true',
+            isCutoff: document.getElementById('modal-stock-input-type').checked,
             qty: parseInt(document.getElementById('modal-stock-input-qty').value, 10) || 1,
             length: parseToBaseUnit(document.getElementById('modal-stock-input-length').value) || 0,
             width: parts[0] === 'sheet' ? (parseToBaseUnit(document.getElementById('modal-stock-input-width').value) || 0) : 0
         });
         
         saveState();
+        modalSortStates.stock.key = '';
         renderStockModalTable();
         
         document.getElementById('modal-stock-input-length').value = '';
@@ -343,6 +352,7 @@
             document.getElementById('modal-stock-input-length').focus();
         }
         document.getElementById('modal-stock-input-qty').value = '1';
+        document.getElementById('modal-stock-input-type').checked = false;
     }
     function handleStockCategoryChange() {
         const cat = document.getElementById('stock-category').value;
@@ -539,6 +549,7 @@
         document.getElementById('stock-length').value = '';
         document.getElementById('stock-width').value = '';
         document.getElementById('stock-qty').value = '1';
+        document.getElementById('stock-is-cutoff').checked = false;
     }
     function updateStock(id, field, newValue) {
         const item = appState.stock.find(s => s.id === id);

@@ -32,6 +32,7 @@
         <!-- Stock -->
         <div class="tab-pane show active" id="pane-stock" role="tabpanel" tabindex="0">
             <div class="card-body py-3">
+                <!-- Input Section -->
                 <div id="input-section-stock">
                     <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
                         <form id="form-add-stock" onsubmit="handleAddStock(event)">
@@ -86,7 +87,7 @@
                         </form>
                     </div>
                 </div>
-
+                <!-- Table -->
                 <div id="table-wrapper-stock" class="table-responsive" style="max-height: calc(100vh - 282px); height: calc(100vh - 282px); overflow-y: auto;">
                     <table id="table-stock" class="table table-sm table-hover align-middle table-striped mb-0">
                         <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
@@ -146,6 +147,7 @@
         <!-- Prices -->
         <div class="tab-pane" id="pane-catalog" role="tabpanel" tabindex="0">
             <div class="card-body py-3">
+                <!-- Input Section -->
                 <div id="input-section-prices">
                     <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
                         <form id="form-add-catalog" onsubmit="handleAddCatalogItem(event)">
@@ -196,9 +198,16 @@
                                 <div class="col-sm">
                                     <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_price">Price</label>
                                     <div class="input-group input-group-sm">
-                                        <span class="input-group-text currency-label">$</span> <input type="number" step="0.01" class="form-control form-control-sm" id="cat-price" required>
-                                        <input type="hidden" id="cat-price-unit" value="piece">
-                                        <button type="button" class="btn btn-outline-secondary px-1" id="btn-cycle-unit" onclick="cyclePriceUnit()" title="Change unit" data-i18n-title="tip_change_unit" data-i18n="lbl_unit_pc">/ pc</button>
+                                        <span class="input-group-text currency-label">$</span>
+                                        <input type="number" step="0.01" class="form-control form-control-sm" id="cat-price" required>
+                                        <select class="form-select form-select-sm input-group-text" 
+                                                id="cat-price-unit" 
+                                                style="flex: none; width: 95px;">
+                                            <option value="piece" data-i18n="lbl_unit_pc">/ pc</option>
+                                            <option value="linear" data-i18n="lbl_unit_lin">/ m</option>
+                                            <option value="area" data-i18n="lbl_unit_m2">/ m²</option>
+                                            <option value="volume" data-i18n="lbl_unit_m3">/ m³</option>
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="col-sm-1">
@@ -212,6 +221,7 @@
                         </form>
                     </div>
                 </div>
+                <!-- Table -->
                 <div id="table-wrapper-prices" class="table-responsive" style="max-height: calc(100vh - 340px); height: calc(100vh - 340px); overflow-y: auto;">
                     <table id="table-catalog" class="table table-sm table-hover align-middle table-striped">
                         <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
@@ -270,7 +280,7 @@
                                 </th>
                                 <th class="col-freshness text-center">
                                     <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'lastVerified', 'number')" style="cursor: pointer;">
-                                        d/m ⇅
+                                        Freshness ⇅
                                     </span>
                                 </th>
                                 <th class="col-actions text-center" id="th-catalog-links" data-i18n="col_links">Links</th>
@@ -292,6 +302,7 @@
                 <!-- Profiles -->
                 <div class="col-lg-6">
                     <div class="card-body py-3">
+                        <!-- Input Section -->
                         <div id="input-section-profiles">
                             <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
                                 <form id="form-add-profile" onsubmit="handleAddProfile(event)">
@@ -329,6 +340,7 @@
                                 </form>
                             </div>
                         </div>
+                        <!-- Table -->
                         <div id="table-wrapper-profiles" class="table-responsive" style="max-height: calc(100vh - 340px); height: calc(100vh - 340px); overflow-y: auto;">
                             <table class="table table-sm table-hover align-middle table-striped">
                                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
@@ -364,6 +376,8 @@
                 <!-- Materials -->
                 <div class="col-lg-6">
                     <div class="card-body py-3">
+
+                        <!-- Input Section -->
                         <div id="input-section-materials">
                             <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
                                 <form id="form-add-material" onsubmit="handleAddMaterial(event)">
@@ -394,6 +408,8 @@
                                 </form>
                             </div>
                         </div>
+
+                        <!-- Table -->
                         <div id="table-wrapper-materials" class="table-responsive" style="max-height: calc(100vh - 340px); height: calc(100vh - 340px); overflow-y: auto;">
                             <table class="table table-sm table-hover align-middle table-striped">
                                 <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
@@ -423,9 +439,10 @@
                                 <tbody id="table-materials-body"></tbody>
                             </table>
                         </div>
+
                     </div>
                 </div>
-                
+
             </div>
         </div>
 
@@ -433,121 +450,141 @@
 
     <!-- Edit Stock Sizes Modal -->
     <div class="modal fade" id="modal-stock-details" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content shadow border-secondary">
                 
+                <!-- Modal Header -->
                 <div class="modal-header bg-light border-bottom">
                     <h6 class="modal-title fw-bold text-dark mb-0" id="modal-stock-details-title">📦 Manage Stock Details</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 
+                <!-- Modal Body -->
                 <div class="modal-body py-4 bg-white">
-                    <input type="hidden" id="modal-stock-details-fingerprint">
-                    <div class="d-flex align-items-end gap-2 mb-3 pb-3 border-bottom px-3" id="modal-stock-input-row">
-                        <div id="modal-stock-col-width" class="d-none">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
-                            <input type="text" class="form-control form-control-sm shadow-sm" id="modal-stock-input-width" style="width: 70px;">
-                        </div>
-                        <div>
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
-                            <input type="text" class="form-control form-control-sm shadow-sm" id="modal-stock-input-length" style="width: 70px;">
-                        </div>
-                        <div>
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Qty</label>
-                            <input type="number" class="form-control form-control-sm shadow-sm" id="modal-stock-input-qty" value="1" min="1" style="width: 60px;">
-                        </div>
-                        <div id="modal-stock-col-grain" class="d-none">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Grain</label>
-                            <select class="form-select form-select-sm shadow-sm" id="modal-stock-input-grain" style="width: 80px;">
-                                <option value="none">-</option>
-                                <option value="length">Length</option>
-                                <option value="width">Width</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Type</label>
-                            <select class="form-select form-select-sm shadow-sm fw-bold" id="modal-stock-input-type" style="width: 90px;">
-                                <option value="false" class="text-success">New</option>
-                                <option value="true" class="text-warning">Scrap</option>
-                            </select>
-                        </div>
-                        <div class="ms-auto">
-                            <button class="btn btn-sm btn-success fw-bold shadow-sm px-3" onclick="handleAddModalStock(event)">➕ Add</button>
-                        </div>
-                    </div>
+                    <!-- Input Section -->
+                    <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
+                        <input type="hidden" id="modal-stock-details-fingerprint">
+                        <form id="form-modal-stock" onsubmit="handleAddModalStock(event); return false;">
+                            <div class="row g-2 align-items-end" id="modal-stock-input-row">
+                                <div id="modal-stock-col-width" class="col-sm d-none">
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                                    <input type="text" class="form-control form-control-sm" id="modal-stock-input-width" required>
+                                </div>
+                                <div class="col-sm">
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
+                                    <input type="text" class="form-control form-control-sm" id="modal-stock-input-length" required>
+                                </div>
+                                <div class="col-sm">
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Qty</label>
+                                    <input type="number" class="form-control form-control-sm" id="modal-stock-input-qty" value="1" min="1" required>
+                                </div>
+                                <div id="modal-stock-col-grain" class="col-sm d-none">
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Grain</label>
+                                    <select class="form-select form-select-sm" id="modal-stock-input-grain">
+                                        <option value="none">-</option>
+                                        <option value="length">Length</option>
+                                        <option value="width">Width</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm text-center">
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Scrap?</label>
+                                    <div class="form-check d-flex justify-content-center">
+                                        <input class="form-check-input" type="checkbox" id="modal-stock-input-type">
+                                    </div>
+                                </div>
+                                <div class="col-sm ms-auto">
+                                    <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div> 
+                    <!-- Table -->
                     <div class="table-responsive" style="max-height: 55vh; overflow-y: auto;">
-                        <table class="table table-sm table-hover align-middle mb-0">
-                            <thead class="table-light sticky-top shadow-sm" style="font-size: 0.75rem; text-transform: uppercase;">
+                        <table class="table table-sm table-hover align-middle table-striped">
+                            <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                 <tr>
-                                    <th class="ps-3 text-center" style="width: 25%; cursor: pointer;" onclick="handleModalSort('stock', 'dimensions')">Size ⇅</th>
-                                    <th class="text-center" style="width: 15%; cursor: pointer;" onclick="handleModalSort('stock', 'qty')">Qty ⇅</th>
-                                    <th class="text-center" style="width: 20%; cursor: pointer;" onclick="handleModalSort('stock', 'grain')">Grain ⇅</th>
-                                    <th class="text-center" style="width: 20%; cursor: pointer;" onclick="handleModalSort('stock', 'isCutoff')">Type ⇅</th>
-                                    <th class="text-end pe-3" style="width: 20%;">Action</th>
+                                    <th class="text-center" style="cursor: pointer;" onclick="handleModalSort('stock', 'dimensions')">Size ⇅</th>
+                                    <th class="text-center" style="cursor: pointer;" onclick="handleModalSort('stock', 'qty')">Qty ⇅</th>
+                                    <th id="modal-stock-th-grain" class="text-center" style="cursor: pointer;" onclick="handleModalSort('stock', 'grain')">Grain ⇅</th>
+                                    <th class="text-center" style="cursor: pointer;" onclick="handleModalSort('stock', 'isCutoff')">Type ⇅</th>
+                                    <th class="text-end"></th>
                                 </tr>
                             </thead>
                             <tbody id="table-modal-stock-details-body">
-                                </tbody>
+                            </tbody>
                         </table>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
 
     <!-- Edit Store Prices Modal -->
     <div class="modal fade" id="modal-catalog-details" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content shadow border-secondary">
                 
+                <!-- Modal Header -->
                 <div class="modal-header bg-light border-bottom">
                     <h6 class="modal-title fw-bold text-dark mb-0" id="modal-catalog-details-title">🏷️ Manage Prices</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                
+
+                <!-- Modal Body -->
                 <div class="modal-body py-4 bg-white">
-                    <input type="hidden" id="modal-catalog-details-fingerprint">
-                    <div class="d-flex align-items-end gap-2 mb-3 pb-3 border-bottom px-3" id="modal-catalog-input-row">
-                        <div id="modal-catalog-col-width" class="d-none">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
-                            <input type="text" class="form-control form-control-sm shadow-sm" id="modal-catalog-input-width" style="width: 70px;">
-                        </div>
-                        <div>
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
-                            <input type="text" class="form-control form-control-sm shadow-sm" id="modal-catalog-input-length" style="width: 70px;">
-                        </div>
-                        <div id="modal-catalog-col-grain" class="d-none">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Grain</label>
-                            <select class="form-select form-select-sm shadow-sm" id="modal-catalog-input-grain" style="width: 80px;">
-                                <option value="none">-</option>
-                                <option value="length">Length</option>
-                                <option value="width">Width</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Price</label>
-                            <input type="number" step="0.01" class="form-control form-control-sm shadow-sm text-end" id="modal-catalog-input-price" style="width: 80px;" value="0.00">
-                        </div>
-                        <div>
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Unit</label>
-                            <select class="form-select form-select-sm shadow-sm" id="modal-catalog-input-unit" style="width: 90px;"></select>
-                        </div>
-                        <div class="ms-auto">
-                            <button class="btn btn-sm btn-success fw-bold shadow-sm px-3" onclick="handleAddModalCatalog(event)">➕ Add</button>
+                    <!-- Input Section -->
+                    <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
+                        <input type="hidden" id="modal-catalog-details-fingerprint">
+                        <div class="row g-2 align-items-end" id="modal-catalog-input-row">
+                            <div id="modal-catalog-col-width" class="col-sm d-none">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                                <input type="text" class="form-control form-control-sm" id="modal-catalog-input-width" required>
+                            </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
+                                <input type="text" class="form-control form-control-sm" id="modal-catalog-input-length" required>
+                            </div>
+                            <div id="modal-catalog-col-grain" class="col-sm d-none">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Grain</label>
+                                <select class="form-select form-select-sm" id="modal-catalog-input-grain">
+                                    <option value="none">-</option>
+                                    <option value="length">Length</option>
+                                    <option value="width">Width</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-3">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Price</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text currency-label">$</span> <input type="number" step="0.01" class="form-control form-control-sm" id="modal-catalog-input-price" required>
+                                    <select class="form-select form-select-sm input-group-text" style="flex: none; width: 95px;" id="modal-catalog-input-unit"></select>                                        
+                                </div>
+                            </div>
+                            <div class="col-sm ms-auto">
+                                <button class="btn btn-primary btn-sm w-100" onclick="handleAddModalCatalog(event)">Add</button>
+                            </div>
                         </div>
                     </div>
+                    <!-- Table -->
                     <div class="table-responsive" style="max-height: 55vh; overflow-y: auto;">
-                        <table class="table table-sm table-hover align-middle mb-0">
-                            <thead class="table-light sticky-top shadow-sm" style="font-size: 0.75rem; text-transform: uppercase;">
+                        <table class="table table-sm table-hover align-middle table-striped">
+                            <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                 <tr>
-                                    <th class="ps-3 text-center" style="width: 25%; cursor: pointer;" onclick="handleModalSort('catalog', 'dimensions')">Size ⇅</th>
-                                    <th class="text-center" style="width: 15%; cursor: pointer;" onclick="handleModalSort('catalog', 'grain')">Grain ⇅</th>
-                                    <th class="text-center" style="width: 25%; cursor: pointer;" onclick="handleModalSort('catalog', 'price')">Price & Unit ⇅</th>
-                                    <th class="text-center" style="width: 20%;">
-                                        Unit Cost 
-                                        <select id="modal-catalog-view-unit" class="form-select form-select-sm d-inline-block w-auto py-0 ms-1 fw-bold text-success" style="font-size: 0.75rem;" onchange="renderCatalogModalTable()"></select>
+                                    <th class="text-center" style="cursor: pointer;" onclick="handleModalSort('catalog', 'dimensions')">Size ⇅</th>
+                                    <th class="text-center" style="cursor: pointer;" onclick="handleModalSort('catalog', 'grain')">Grain ⇅</th>
+                                    <th class="text-center" style="cursor: pointer;" onclick="handleModalSort('catalog', 'price')">Shelf Price ⇅</th>
+                                    <th class="text-center">
+                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                            <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center" id="modal-catalog-view-unit" onchange="renderCatalogModalTable()" style="width: auto; cursor: pointer; font-size: inherit;">
+                                                <option value="piece" data-i18n="opt_cost_piece">Cost/Piece</option>
+                                                <option value="linear" data-i18n="opt_cost_length">Cost/Length</option>
+                                                <option value="area" data-i18n="opt_cost_area">Cost/Area</option>
+                                                <option value="volume" data-i18n="opt_cost_volume">Cost/Volume</option>
+                                            </select>
+                                            <span onclick="" style="cursor: pointer; user-select: none;" title="Sort by Calculated Price">⇅</span>
+                                        </div>
                                     </th>
-                                    <th class="text-end pe-3" style="width: 15%;">Action</th>
+                                    <th class="text-end"></th>
                                 </tr>
                             </thead>
                             <tbody id="table-modal-catalog-details-body">
@@ -555,6 +592,7 @@
                         </table>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>

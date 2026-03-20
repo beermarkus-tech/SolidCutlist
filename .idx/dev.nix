@@ -1,10 +1,11 @@
 # To learn more about how to use Nix to configure your environment
 # see: https://developers.google.com/idx/guides/customize-idx-env
-{ ... }: {
+{ pkgs, ... }: {
   # Which nixpkgs channel to use.
   channel = "stable-24.05"; # or "unstable"
   # Use https://search.nixos.org/packages to find packages
   packages = [
+    pkgs.python311
     # pkgs.go
     # pkgs.python311
     # pkgs.python311Packages.pip
@@ -22,33 +23,26 @@
     ];
     # Enable previews
     previews = {
-      enable = true;
+      enable = false;
       previews = {
-        # web = {
-        #   # Example: run "npm run dev" with PORT set to IDX's defined port for previews,
-        #   # and show it in IDX's web preview panel
-        #   command = ["npm" "run" "dev"];
-        #   manager = "web";
-        #   env = {
-        #     # Environment variables to set for your server
-        #     PORT = "$PORT";
-        #   };
-        # };
+        web = {
+          # Use sh -c to ensure the PORT variable is evaluated by the shell
+          command = [ "sh" "-c" "python3 -m http.server $PORT --bind 0.0.0.0" ];
+          manager = "web";
+          env = { PORT = "$PORT"; };
+        };
       };
     };
     # Workspace lifecycle hooks
     workspace = {
-      # Runs when a workspace is first created
+      # This opens the file in your editor immediately on creation
       onCreate = {
-        # Example: install JS dependencies from NPM
-        # npm-install = "npm install";
-        # Open editors for the following files by default, if they exist:
-        default.openFiles = [ ".idx/dev.nix" "README.md" ];
+        default.openFiles = [ "view_setup.html" "css_global.html" ];
       };
-      # Runs when the workspace is (re)started
+      # This runs every time the workspace starts
       onStart = {
-        # Example: start a background task to watch and re-build backend code
-        # watch-backend = "npm run watch-backend";
+        # Optional: You can add a command here to log that the server is starting
+        server-ready = "echo 'Server starting on port $PORT...'";
       };
     };
   };

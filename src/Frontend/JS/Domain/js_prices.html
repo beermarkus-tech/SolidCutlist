@@ -764,18 +764,6 @@
             showToast(t('msg_price_verified'));
         }
     }
-    function cyclePriceUnit() {
-        const units = ['piece', 'linear', 'area', 'volume'];
-        const hiddenUnit = document.getElementById('cat-price-unit');
-        
-        // Find where we are in the array and grab the next one
-        let currentIndex = units.indexOf(hiddenUnit.value);
-        let nextIndex = (currentIndex + 1) % units.length;
-        hiddenUnit.value = units[nextIndex];
-        
-        // Let the global translation engine instantly format the button text
-        updateUnitLabels(); 
-    }
     function handleCatalogCategoryChange() {
         const cat = document.getElementById('cat-category').value;
         const profSelect = document.getElementById('cat-profile');
