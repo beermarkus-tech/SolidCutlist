@@ -1,9 +1,77 @@
 <script>
     // ==========================================
-    // PROJECTS
+    // PROJECT VIEW STATE
+    // ==========================================
+    window.isProjectCardView = false;
+    window.projectCardSearchQuery = '';
+    window.projectCardStatusFilter = 'All';
+    function handleProjectCardSearch(query) {
+        window.projectCardSearchQuery = query.toLowerCase().trim();
+        // This will trigger the card engine once we build it in Phase 3
+        if (typeof renderProjectsTable === 'function') renderProjectsTable();
+    }
+    function handleProjectCardFilter(status) {
+        window.projectCardStatusFilter = status;
+        
+        // Visually toggle the active chip colors
+        const chips = document.querySelectorAll('#project-card-chips button');
+        chips.forEach(chip => {
+            if (chip.innerText === status) {
+                chip.classList.remove('btn-outline-secondary');
+                chip.classList.add('btn-dark');
+            } else {
+                chip.classList.remove('btn-dark');
+                chip.classList.add('btn-outline-secondary');
+            }
+        });
+
+        if (typeof renderProjectsTable === 'function') renderProjectsTable();
+    }
+    function handleProjectCardSort(selectEl) {
+        // Explode the value (e.g., "totalCost|number") into the key and data type
+        const [key, dataType] = selectEl.value.split('|');
+        
+        // Hijack our existing global sorting engine! Zero new math required.
+        if (typeof handleSort === 'function') {
+            handleSort('projects', key, dataType);
+        }
+    }
+    function toggleProjectViewMode() {
+        window.isProjectCardView = !window.isProjectCardView;
+        
+        const tableMode = document.getElementById('view-mode-table');
+        const cardMode = document.getElementById('view-mode-cards');
+        const toggleBtn = document.getElementById('btn-toggle-project-view');
+        
+        if (window.isProjectCardView) {
+            // Switch to Cards
+            if (tableMode) tableMode.classList.add('d-none');
+            if (cardMode) cardMode.classList.remove('d-none');
+            if (toggleBtn) toggleBtn.innerHTML = '<b>☰</b>'; // Hamburger icon means "Click to return to table"
+        } else {
+            // Switch to Table
+            if (tableMode) tableMode.classList.remove('d-none');
+            if (cardMode) cardMode.classList.add('d-none');
+            if (toggleBtn) toggleBtn.innerHTML = '<b>🗂️</b>'; // Card icon means "Click to go to cards"
+        }
+        
+        // Ensure data is fresh in whichever view is now active
+        if (typeof renderProjectsTable === 'function') renderProjectsTable();
+    }
+
+    // ==========================================
+    // PROJECTS (Master Router)
     // ==========================================
     function renderProjectsTable() {
+        // 🪄 PHASE 4: THE INTERCEPTOR
+        // If the user is in Card View, hijack this rendering loop!
+        if (window.isProjectCardView) {
+            renderProjectCards();
+            return; // Exit out, don't draw the table!
+        }
+
         const tbody = document.getElementById('table-projects-body');
+        if (!tbody) return;
         tbody.innerHTML = ''; 
         
         if (!appState.projects) appState.projects = [];
@@ -557,5 +625,158 @@
             // Fallback (just in case)
             if (typeof renderPartsTable === 'function') renderPartsTable();
         }
+    }
+    
+    // ==========================================
+    // CARD RENDERING ENGINE (PHASE 3)
+    // ==========================================
+    function renderProjectCards() {
+        const grid = document.getElementById('project-card-grid');
+        if (!grid) return;
+        grid.innerHTML = ''; 
+
+        if (!appState.projects || appState.projects.length === 0) {
+            grid.innerHTML = `<div class="col-12 text-center text-muted mt-5"><h1>📭</h1><p>No projects yet.</p></div>`;
+            return;
+        }
+
+        const currency = appState.settings.currency || '$';
+        let visibleCount = 0;
+
+        appState.projects.forEach(proj => {
+            // 1. Respect Table Filters (if any are active)
+            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(proj, 'projects')) return;
+
+            // 2. Apply Card Search Filter
+            if (window.projectCardSearchQuery) {
+                const searchStr = `${proj.name || ''} ${proj.comment || ''}`.toLowerCase();
+                if (!searchStr.includes(window.projectCardSearchQuery)) return;
+            }
+
+            // 3. Apply Card Status Chip Filter
+            const currentStatus = proj.status || 'Design';
+            if (window.projectCardStatusFilter && window.projectCardStatusFilter !== 'All') {
+                if (currentStatus !== window.projectCardStatusFilter) return;
+            }
+
+            visibleCount++;
+
+            const partCount = proj.totalParts || 0;
+            const displayCost = (proj.totalCost || 0).toFixed(2);
+            const icon = proj.icon || '🗂️'; // Default icon until Phase 5
+
+            // Status Styling
+            let statusColor = '#ffc107'; let textColor = '#000000'; 
+            if (currentStatus === 'Quoting') { statusColor = '#6f42c1'; textColor = '#ffffff'; }
+            else if (currentStatus === 'Ready') { statusColor = '#0d6efd'; textColor = '#ffffff'; }
+            else if (currentStatus === 'In Progress') { statusColor = '#fd7e14'; textColor = '#ffffff'; }
+            else if (currentStatus === 'Completed') { statusColor = '#198754'; textColor = '#ffffff'; }
+
+            // 🪄 The Kebab Menu (⋮)
+            const kebabHtml = `
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-link text-dark text-decoration-none px-2 py-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <b style="font-size: 1.2rem;">⋮</b>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                        <li><a class="dropdown-item" href="#" onclick="editProjectLink('${proj.id}'); return false;">✏️ Edit Link</a></li>
+                        ${proj.link ? `<li><a class="dropdown-item" href="${safeHTML(proj.link)}" target="_blank">🔗 Open Link</a></li>` : ''}
+                        <li><a class="dropdown-item" href="#" onclick="duplicateProjectWarning('${proj.id}'); return false;">➕ Clone Project</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="changeProjectStatus('${proj.id}', 'Archive'); return false;">🗄️ Archive Project</a></li>
+                        <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="deleteProject('${proj.id}'); return false;">🗑️ Delete</a></li>
+                    </ul>
+                </div>
+            `;
+
+            // 🪄 Status Dropdown
+            const statusHtml = `
+                <div class="dropdown flex-grow-1">
+                    <button class="btn btn-sm w-100 dropdown-toggle shadow-sm text-truncate border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="background-color: ${statusColor}; color: ${textColor}; font-weight: 500;">
+                        ${safeHTML(currentStatus)}
+                    </button>
+                    <ul class="dropdown-menu shadow-sm">
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Design')">🟡 Design</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Quoting')">🟣 Quoting</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Ready')">🔵 Ready</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'In Progress')">🟠 In Progress</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Completed')">🟢 Completed</a></li>
+                    </ul>
+                </div>
+            `;
+
+            // 🪄 Build the Physical Card
+            const col = document.createElement('div');
+            col.className = 'col-12 col-md-6 col-lg-4 col-xl-3';
+            col.innerHTML = `
+                <div class="card h-100 shadow-sm border-0" style="background-color: var(--bs-body-bg);">
+                    <div class="card-body p-3 d-flex flex-column">
+                        
+                        <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
+                            <div class="d-flex align-items-center gap-2 overflow-hidden flex-grow-1">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 40px; height: 40px; background-color: rgba(128,128,128,0.1); cursor: pointer;" onclick="openIconPicker('${proj.id}')" title="Change Icon">
+                                    <span style="font-size: 1.2rem;">${icon}</span>
+                                </div>
+                                <h6 class="card-title mb-0 fw-bold text-truncate" style="cursor: pointer;" onclick="jumpToProjectParts('${proj.id}')" title="${safeHTML(proj.name)}">${safeHTML(proj.name)}</h6>
+                            </div>
+                            ${kebabHtml}
+                        </div>
+                        
+                        <div class="flex-grow-1 mb-3">
+                            <p class="card-text text-muted small" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal;" title="${safeHTML(proj.comment || '')}">
+                                ${safeHTML(proj.comment || '<i>No notes</i>')}
+                            </p>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="badge bg-light text-dark border shadow-sm" style="cursor: pointer;" onclick="jumpToProjectParts('${proj.id}')" title="View Parts">🧩 ${partCount} Parts</span>
+                            <span class="badge bg-light text-success border shadow-sm fw-bold">${currency}${displayCost}</span>
+                        </div>
+                        
+                        <div class="d-flex gap-2 mt-auto">
+                            ${statusHtml}
+                            <button class="btn btn-sm btn-light border shadow-sm px-3 flex-shrink-0" onclick="openGroupModal('${proj.id}')" title="Manage Groups">⚙️</button>
+                        </div>
+
+                    </div>
+                </div>
+            `;
+            grid.appendChild(col);
+        });
+
+        // Search Fallback UI
+        if (visibleCount === 0) {
+            grid.innerHTML = `<div class="col-12 text-center text-muted mt-5"><h5>No projects match your filters.</h5></div>`;
+        }
+    }
+
+    // ==========================================
+    // ICON PICKER ENGINE (PHASE 5)
+    // ==========================================
+    let iconModalInstance = null;
+    function openIconPicker(projectId) {
+        if (!iconModalInstance) {
+            iconModalInstance = new bootstrap.Modal(document.getElementById('modal-project-icon'));
+        }
+        
+        // Stash the project ID in the hidden input so the save function knows who to update
+        document.getElementById('modal-icon-project-id').value = projectId;
+        iconModalInstance.show();
+    }
+    function saveProjectIcon(iconString) {
+        const projectId = document.getElementById('modal-icon-project-id').value;
+        if (!projectId) return;
+
+        const proj = appState.projects.find(p => p.id === projectId);
+        if (proj) {
+            proj.icon = iconString; // Inject the new Unicode character
+            saveState();            // Trigger the background sync to Google Sheets
+            
+            // Redraw the view. Our Master Router from Phase 4 will ensure 
+            // the cards are instantly updated without touching the table!
+            if (typeof renderProjectsTable === 'function') renderProjectsTable(); 
+        }
+        
+        if (iconModalInstance) iconModalInstance.hide();
     }
 </script>

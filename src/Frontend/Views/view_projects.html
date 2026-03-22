@@ -14,6 +14,7 @@
             <div>
                 <button class="header-btn btn btn-light btn-sm py-0 me-1" onclick="printPartsTable()" title="Print Visible Parts" data-i18n-title="tip_print_visible_parts"><b data-i18n="btn_print">🖨️ Print</b></button>
                 <button id="btn-inline-import" class="header-btn btn btn-light btn-sm py-0 me-1" onclick="navigateTo('view-import')"><b data-i18n="btn_import_parts">📥 Import Parts</b></button>
+                <button id="btn-toggle-project-view" class="header-btn-small btn btn-outline-light btn-sm py-0 fw-bold" onclick="toggleProjectViewMode()" title="Toggle Card View"><b>🗂️</b></button>
                 <button class="header-btn-small btn btn-outline-light btn-sm py-0 fw-bold global-toggle-btn" onclick="toggleAllInputSections()" title="Toggle Input Sections" data-i18n-title="tip_toggle_input_section"><b>▽</b></button>
             </div>
         </div>
@@ -41,8 +42,9 @@
                         </form>
                     </div>
                 </div>
-                <div id="table-wrapper-projects" class="table-responsive" style="max-height: calc(100vh - 340px); height: calc(100vh - 340px); overflow-y: auto;">
-                    <table class="table table-sm table-hover align-middle table-striped">
+                <div id="view-mode-table">
+                    <div id="table-wrapper-projects" class="table-responsive" style="max-height: calc(100vh - 340px); height: calc(100vh - 340px); overflow-y: auto;">
+                        <table class="table table-sm table-hover align-middle table-striped">
                         <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <tr>
                                 <th class="text-nowrap" style="width: 25%;">
@@ -77,7 +79,42 @@
                         </thead>
                         <tbody id="table-projects-body"></tbody>
                     </table>
+                    </div>
                 </div>
+
+                <div id="view-mode-cards" class="d-none d-flex flex-column" style="max-height: calc(100vh - 340px); height: calc(100vh - 340px);">
+                    
+                    <div id="project-card-toolbar" class="mb-3 d-flex flex-column gap-2 pe-1">
+                        <div class="d-flex gap-2 w-100">
+                            <div class="input-group input-group-sm flex-grow-1 shadow-sm">
+                                <span class="input-group-text bg-white border-end-0 text-muted">🔍</span>
+                                <input type="text" class="form-control border-start-0 ps-0" placeholder="Search projects or notes..." onkeyup="handleProjectCardSearch(this.value)">
+                            </div>
+                            <select class="form-select form-select-sm shadow-sm fw-bold text-secondary" style="width: auto; cursor: pointer;" onchange="handleProjectCardSort(this)">
+                                <option value="name|string">Sort by: Name</option>
+                                <option value="totalParts|number">Sort by: Parts</option>
+                                <option value="totalCost|number">Sort by: Cost</option>
+                                <option value="status|string">Sort by: Status</option>
+                            </select>
+                        </div>
+                        <div class="d-flex gap-1 overflow-auto pb-1" id="project-card-chips" style="scrollbar-width: none;">
+                            <button class="btn btn-sm btn-dark rounded-pill px-3 py-0 shadow-sm text-nowrap" onclick="handleProjectCardFilter('All')">All</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 shadow-sm text-nowrap" onclick="handleProjectCardFilter('Design')">Design</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 shadow-sm text-nowrap" onclick="handleProjectCardFilter('Quoting')">Quoting</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 shadow-sm text-nowrap" onclick="handleProjectCardFilter('Ready')">Ready</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 shadow-sm text-nowrap" onclick="handleProjectCardFilter('In Progress')">In Progress</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 shadow-sm text-nowrap" onclick="handleProjectCardFilter('Completed')">Completed</button>
+                        </div>
+                    </div>
+                    
+                    <div id="project-card-grid" class="row g-3 overflow-auto flex-grow-1 align-content-start pb-3">
+                        <div class="col-12 text-center text-muted mt-5">
+                            <h1>🗂️</h1>
+                            <p>Card View Construction Zone 🚧</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -242,6 +279,37 @@
             </div>
         </div>
 
+    </div>
+
+    <div class="modal fade" id="modal-project-icon" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content shadow">
+                <div class="modal-header bg-light py-2">
+                    <h6 class="modal-title fw-bold text-secondary">Choose Project Icon</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center p-4">
+                    <input type="hidden" id="modal-icon-project-id">
+                    
+                    <div class="d-grid gap-2" style="grid-template-columns: repeat(4, 1fr);">
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🪑')">🪑</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🛏️')">🛏️</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🚪')">🚪</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🪜')">🪜</button>
+                        
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('📦')">📦</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🛖')">🛖</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🎸')">🎸</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🪵')">🪵</button>
+                        
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🛠️')">🛠️</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🗄️')">🗄️</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🗂️')">🗂️</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🔨')">🔨</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
 </div>
