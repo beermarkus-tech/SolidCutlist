@@ -266,6 +266,30 @@
         });
     }
 
+    // 🪄 The new Smart Toggle Engine
+    function toggleDiagramsExpandCollapse() {
+        const firstDetails = document.querySelector('details.sku-group');
+        let isCurrentlyExpanded = true; // Default assumption
+        
+        // Read the actual DOM to see if the first diagram is currently open
+        if (firstDetails) {
+            isCurrentlyExpanded = firstDetails.hasAttribute('open');
+        }
+        
+        // Flip the state
+        const newState = !isCurrentlyExpanded;
+        
+        // Execute the visual change
+        toggleAllSKUs(newState);
+        
+        // Update the button icon to match the NEXT action
+        const iconSpan = document.getElementById('diagram-toggle-icon');
+        if (iconSpan) {
+            // 🗜️ means "Click to Clamp/Collapse", ☰ means "Click to Stack/Expand"
+            iconSpan.innerText = newState ? '🗜️' : '☰'; 
+        }
+    }
+
     // ==========================================
     // 2D SHEET RENDERING ENGINE
     // ==========================================

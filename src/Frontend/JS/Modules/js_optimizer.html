@@ -198,7 +198,12 @@
                 if (bestOption) {
                     finalCutlist.push({ sku: batch, success: true, purchase: bestOption });
                 } else {
-                    finalCutlist.push({ sku: batch, error: `Remaining ${currentParts.length} parts are too large for any store boards.` });
+                    // 🪄 Attach the vendorOptions so the UI can draw the input fields even if it fails!
+                    finalCutlist.push({ 
+                        sku: batch, 
+                        error: `Remaining ${currentParts.length} parts are too large for any store boards.`,
+                        failedCatalogItems: vendorOptions 
+                    });
                 }
             }
         });
@@ -757,7 +762,35 @@
         const storeBuckets = {};
         
         results.forEach(res => {
-            if (res.error) return; 
+            if (res.error) {
+                // 🪄 If we are in a saved job, keep the broken rows alive in the UI so the user can fix them!
+                if (window.activeJobId && res.failedCatalogItems && res.failedCatalogItems.length > 0) {
+                    res.failedCatalogItems.forEach(opt => {
+                        const storeId = opt.storeId;
+                        const storeName = (storeId === 'shop_stock') ? '🏪 My Shop Stock' : (appState.stores.find(s => s.id === storeId)?.name || 'Unknown Store');
+                        if (!storeBuckets[storeName]) storeBuckets[storeName] = [];
+                        
+                        const prof = appState.profiles.find(p => p.id === res.sku.profileId);
+                        const mat = appState.materials.find(m => m.id === res.sku.materialId);
+
+                        storeBuckets[storeName].push({
+                            catalogId: opt.id, 
+                            category: res.sku.category, 
+                            length: opt.length, 
+                            width: opt.width, 
+                            qty: '⚠️', // Symbolize error instead of a number
+                            profName: prof?.name || 'Unknown',
+                            matName: mat?.name || 'Unknown',
+                            cost: 0,
+                            weight: 0,
+                            url: opt.url || opt.link || '',
+                            isError: true, // 🪄 FLAG IT FOR RED HIGHLIGHT
+                            errorMessage: res.error
+                        });
+                    });
+                }
+                return; // Continue to next result, but we've successfully injected the ghosts!
+            }
             
             const purchase = res.purchase;
             const storeId = purchase.catalogItem.storeId;
@@ -861,17 +894,26 @@
                         : formatForDisplay(item.length);
                 }
 
+                // 🪄 DYNAMIC ERROR STYLING
+                const rowClass = item.isError ? 'list-group-item-danger border-danger' : '';
+                const badgeClass = item.isError ? 'bg-danger' : 'bg-primary';
+                const costDisplay = item.isError ? '<span class="text-danger fw-bold">ERROR</span>' : `${currency}${item.cost.toFixed(2)}`;
+                const weightDisplay = item.isError ? '' : `<small class="text-muted">⚖️ ${wDisplay.toFixed(2)} ${weightUnit}</small>`;
+                const errorText = item.isError ? `<div class="text-danger fw-bold ms-5 mt-1" style="font-size: 0.8rem;">⚠️ ${item.errorMessage}</div>` : '';
+
                 html += `
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <li class="list-group-item d-flex justify-content-between align-items-center ${rowClass}">
                         <div>
-                            <span class="badge bg-primary rounded-pill me-2 fs-6">${item.qty} x</span>
-                            <span class="fw-bold">${safeHTML(item.profName)}</span>
+                            <span class="badge ${badgeClass} rounded-pill me-2 fs-6">${item.qty} ${item.isError ? '' : 'x'}</span>
+                            <span class="fw-bold ${item.isError ? 'text-danger' : ''}">${safeHTML(item.profName)}</span>
                             <span class="text-muted"> - ${safeHTML(item.matName)}</span>
-                            ${linkIcon} <br><small class="text-muted ms-5 d-flex align-items-center mt-1">Size: ${lengthDisplayHTML} <span class="display-unit-label ms-1"></span></small>
+                            ${linkIcon} <br>
+                            <small class="text-muted ms-5 d-flex align-items-center mt-1">Size: ${lengthDisplayHTML} <span class="display-unit-label ms-1"></span></small>
+                            ${errorText}
                         </div>
                         <div class="text-end">
-                            <div class="fw-bold text-success">${currency}${item.cost.toFixed(2)}</div>
-                            <small class="text-muted">⚖️ ${wDisplay.toFixed(2)} ${weightUnit}</small>
+                            <div class="fw-bold text-success">${costDisplay}</div>
+                            ${weightDisplay}
                         </div>
                     </li>
                 `;
