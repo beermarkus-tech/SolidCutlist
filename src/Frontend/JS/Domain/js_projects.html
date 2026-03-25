@@ -34,6 +34,8 @@
     // 🪄 Wait 2 seconds for the master data to finish loading before asking for images.
     // This prevents the Google Apps Script concurrent request collision.
     document.addEventListener('DOMContentLoaded', () => {
+        const dateInput = document.getElementById('proj-date');
+        if (dateInput) dateInput.value = new Date().toISOString().split('T')[0]; // Set input to YYYY-MM-DD
         setTimeout(fetchProjectThumbnails, 2000); 
     });
 
@@ -106,6 +108,18 @@
     function renderProjectsTable() {
         if (!appState.settings) appState.settings = {};
         const isCardView = appState.settings.isProjectCardView === true;
+
+        if (!appState.projects) appState.projects = [];
+
+        // 🪄 THE FIX: Scrub all dirty dates in RAM so the 'string' sort engine works flawlessly
+        appState.projects.forEach(proj => {
+            if (proj.date) {
+                const cleanDate = formatDateForInput(proj.date);
+                if (proj.date !== cleanDate) {
+                    proj.date = cleanDate; // Silently fixes the underlying database
+                }
+            }
+        });
         
         // 🪄 Synchronize the physical containers and buttons first
         const tableMode = document.getElementById('view-mode-table');
@@ -205,13 +219,22 @@
                               onchange="updateProject('${proj.id}', 'comment', this.value)" 
                               placeholder="${t('ph_add_notes')}">${safeHTML(proj.comment || '')}</textarea>
                 </td>
+                <td class="px-1 py-0 align-middle text-center" style="position: relative;">
+                    <span style="cursor: pointer; font-size: 0.875rem;" title="Edit Date">
+                        ${formatDateForInput(proj.date)}
+                    </span>
+                    <input type="date" 
+                           style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                           value="${formatDateForInput(proj.date)}" 
+                           onchange="updateProject('${proj.id}', 'date', this.value)">
+                </td>
                 <td class="text-center px-1 py-0 align-middle">
                     <span class="badge bg-primary shadow-sm" style="cursor: pointer;" onclick="jumpToProjectParts('${proj.id}')" title="View Parts for this Project" data-i18n-title="tip_view_project_parts">${partCount}</span>
                 </td>
                 <td class="text-center px-1 py-0 align-middle fw-bold text-success"><small>${currency}${displayCost}</small></td>
                 <td class="text-center align-middle">${statusHtml}</td>
                 <td class="text-center px-1 py-0 align-middle" style="width: 40px;">
-                    <button class="btn btn-sm btn-light border shadow-sm py-0 px-2" onclick="openGroupModal('${proj.id}')" title="${t('tip_manage_groups')}">⚙️</button>
+                    <button class="btn btn-sm border shadow-sm py-0 px-2" onclick="openGroupModal('${proj.id}')" title="${t('tip_manage_groups')}">⚙️</button>
                 </td>
                 <td class="text-nowrap align-middle">
                     <div class="d-flex justify-content-center align-items-center">
@@ -235,11 +258,13 @@
         event.preventDefault();
         
         const nameInput = document.getElementById('proj-name');
+        const dateInput = document.getElementById('proj-date');
         const newId = 'PROJ-' + Date.now(); // Generates unique ID
         
         const newProject = {
             id: newId,
             name: nameInput.value,
+            date: dateInput ? dateInput.value : new Date().toISOString().split('T')[0],
             status: 'Design'
         };
         
@@ -249,6 +274,7 @@
         showToast(t('msg_project_created'));
         
         nameInput.value = ''; // Clear the form
+        if (dateInput) dateInput.value = new Date().toISOString().split('T')[0]; // Reset date to today for the next entry
     }
     function updateProject(id, field, newValue) {
         const project = appState.projects.find(p => p.id === id);
@@ -758,7 +784,7 @@
                 <div class="d-flex align-items-center flex-shrink-0">
                     ${proj.link ? `<a href="${safeHTML(proj.link)}" target="_blank" class="text-decoration-none me-1 fs-6" title="Open Link">🔗</a>` : `<span class="text-muted me-1 fs-6" style="opacity: 0.3;" title="No Link">🔗</span>`}
                     <div class="dropdown">
-                        <button class="btn btn-sm btn-link text-dark text-decoration-none px-2 py-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <button class="btn btn-sm btn-link text-decoration-none px-2 py-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <b style="font-size: 1.2rem;">⋮</b>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm">
@@ -800,7 +826,7 @@
             } else {
                 // Display upscaled Icon. Clicking opens the master manager.
                 heroImageHtml = `
-                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center rounded-0 text-muted" style="aspect-ratio: 3/2; width: 100%; cursor: pointer; border-bottom: 1px solid var(--bs-border-color-translucent); font-size: 7rem; user-select: none; transition: opacity 0.2s;" onclick="openIconPicker('${proj.id}')" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" title="Manage Photo/Icon">
+                    <div class="card-img-top d-flex align-items-center justify-content-center rounded-0 text-muted" style="aspect-ratio: 3/2; width: 100%; cursor: pointer; border-bottom: 1px solid var(--bs-border-color-translucent); font-size: 7rem; user-select: none; transition: opacity 0.2s;" onclick="openIconPicker('${proj.id}')" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" title="Manage Photo/Icon">
                         ${icon}
                     </div>
                 `;
@@ -810,14 +836,25 @@
             const col = document.createElement('div');
             col.className = 'col'; 
             col.innerHTML = `
-                <div class="card h-100 shadow border overflow-hidden bg-white">
+                <div class="card h-100 shadow border overflow-hidden">
                     
-                    <div class="card-header bg-white border-bottom-0 pt-3 pb-2 px-3 d-flex justify-content-between align-items-start gap-2">
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold p-0 shadow-none text-truncate" 
-                               style="font-size: 1rem;"
-                               value="${safeHTML(proj.name)}" 
-                               onchange="updateProject('${proj.id}', 'name', this.value)"
-                               title="${t('title_tap_to_edit')}">
+                    <div class="card-header border-bottom-0 pt-3 pb-2 px-3 d-flex justify-content-between align-items-start gap-2">
+                        <div class="d-flex flex-column flex-grow-1 overflow-hidden">
+                            <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold p-0 shadow-none text-truncate w-100" 
+                                   style="font-size: 1rem; cursor: text; line-height: 1.1;"
+                                   value="${safeHTML(proj.name)}" 
+                                   onchange="updateProject('${proj.id}', 'name', this.value)"
+                                   title="${t('title_tap_to_edit')}">
+                            <div style="position: relative; width: fit-content; margin-top: -8px;">
+                                <span class="text-muted" style="display: inline-block; min-width: 75px; font-size: 0.8rem; cursor: pointer; line-height: 1;" title="Edit Date">
+                                    ${formatDateForInput(proj.date) || '&nbsp;'}
+                                </span>
+                                <input type="date" 
+                                       style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                                       value="${formatDateForInput(proj.date)}" 
+                                       onchange="updateProject('${proj.id}', 'date', this.value)">
+                            </div>
+                        </div>
                         ${topControlsHtml}
                     </div>
 
@@ -834,13 +871,13 @@
                         </div>
                         
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="badge bg-light text-dark border shadow-sm" style="cursor: pointer;" onclick="jumpToProjectParts('${proj.id}')" title="View Parts">🧩 ${partCount} Parts</span>
-                            <span class="badge bg-light text-success border shadow-sm fw-bold">${currency}${displayCost}</span>
+                            <span class="badge text-dark border shadow-sm" style="cursor: pointer;" onclick="jumpToProjectParts('${proj.id}')" title="View Parts">🧩 ${partCount} Parts</span>
+                            <span class="badge text-success border shadow-sm fw-bold">${currency}${displayCost}</span>
                         </div>
                         
                         <div class="d-flex gap-2 mt-auto">
                             ${statusHtml}
-                            <button class="btn btn-sm btn-light border shadow-sm px-3 flex-shrink-0" onclick="openGroupModal('${proj.id}')" title="Manage Groups">⚙️</button>
+                            <button class="btn btn-sm border shadow-sm px-3 flex-shrink-0" onclick="openGroupModal('${proj.id}')" title="Manage Groups">⚙️</button>
                         </div>
                     </div>
                 </div>
@@ -887,12 +924,12 @@
             // Visual Highlight Logic
             if (btnIcon === currentIcon && !hasPhoto) {
                 // Active Selected Icon
-                btn.classList.add('border-primary', 'border-2', 'bg-light');
-                btn.classList.remove('border', 'btn-light');
+                btn.classList.add('border-primary', 'border-2');
+                btn.classList.remove('border');
             } else {
                 // Inactive Icons
-                btn.classList.remove('border-primary', 'border-2', 'bg-light');
-                btn.classList.add('border', 'btn-light');
+                btn.classList.remove('border-primary', 'border-2');
+                btn.classList.add('border');
             }
 
             // Disabled/Grey-out Logic
@@ -1022,5 +1059,24 @@
             img.src = e.target.result;
         };
         reader.readAsDataURL(file);
+    }
+
+    /** 🪄 Ensures the date string is exactly YYYY-MM-DD for HTML inputs */
+    function formatDateForInput(dateVal) {
+        if (!dateVal) return '';
+        
+        // If it's already a clean YYYY-MM-DD (10 chars), return it
+        if (typeof dateVal === 'string' && dateVal.length === 10 && dateVal.includes('-')) {
+            return dateVal;
+        }
+
+        // Otherwise, try to force it into the correct format
+        try {
+            const d = new Date(dateVal);
+            if (isNaN(d.getTime())) return ''; // Invalid date
+            return d.toISOString().split('T')[0];
+        } catch (e) {
+            return '';
+        }
     }
 </script>

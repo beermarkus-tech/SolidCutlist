@@ -197,6 +197,16 @@ function readArrayFromSheet(sheet) {
           continue;
       }
 
+      if (key === 'date') {
+        if (val instanceof Date) {
+            // Convert Google Date Object to "YYYY-MM-DD"
+            obj[key] = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+        } else {
+            obj[key] = String(val);
+        }
+        continue;
+      }
+
       if (val === 'TRUE' || val === true) {
         obj[key] = true;
       } else if (val === 'FALSE' || val === false) {
