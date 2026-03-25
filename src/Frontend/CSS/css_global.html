@@ -365,4 +365,36 @@
         .is-compressed .col-freshness span[id^="flt-icon-"] {
             display: none !important;
         }
+
+        /* 🪄 Phase 6: Card View Inline Editing Styles */
+        .card-comment-box {
+            transition: box-shadow 0.2s, background-color 0.2s;
+        }
+        .card-comment-box:focus {
+            display: block !important; /* Kills the webkit clamp */
+            position: absolute;
+            z-index: 10;
+            background-color: var(--bs-body-bg) !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+            padding: 0.5rem !important;
+            border-radius: 0.375rem;
+            width: calc(100% + 1rem) !important;
+            left: -0.5rem;
+            top: -0.5rem;
+            min-height: 7.5em;  /* 🪄 2 lines larger than standard */
+            max-height: 10.5em; /* 🪄 Caps the growth */
+            overflow-y: auto !important; /* 🪄 THE FIX: Forces the scrollbar to override the inline 'hidden' */
+            border: 1px solid var(--bs-border-color) !important;
+        }
+        .card-comment-box:empty:before {
+            content: attr(data-placeholder);
+            color: #6c757d;
+            opacity: 0.6;
+        }
+
+        /* 🪄 Kills the cross-fade animation and tap-highlight on the project card filter pills */
+        #project-card-chips .btn {
+            transition: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+        }
 </style>

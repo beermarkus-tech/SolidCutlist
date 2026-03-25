@@ -1,19 +1,49 @@
 <script>
     // ==========================================
-    // PROJECT VIEW STATE
+    // PROJECT VIEW STATE & IMAGE MEMORY
     // ==========================================
-    window.isProjectCardView = false;
     window.projectCardSearchQuery = '';
     window.projectCardStatusFilter = 'All';
+    window.projectImages = {}; // Isolated RAM for images
+
+    // 🪄 Background loader for images (Does not block main app boot)
+    function fetchProjectThumbnails() {
+        google.script.run
+            .withSuccessHandler((responseStr) => {
+                try {
+                    const response = JSON.parse(responseStr);
+                    if (response.status === 'success') {
+                        window.projectImages = response.data || {};
+                        // If user prefers cards, redraw now that images arrived
+                        if (appState.settings && appState.settings.isProjectCardView && typeof renderProjectsTable === 'function') {
+                            renderProjectsTable();
+                        }
+                    } else {
+                        console.warn("Thumbnail fetch failed:", response.message);
+                    }
+                } catch(e) {
+                    console.error("Failed to parse thumbnails:", e);
+                }
+            })
+            .withFailureHandler((err) => {
+                console.error("Server error fetching thumbnails:", err);
+            })
+            .getThumbnails();
+    }
+
+    // 🪄 Wait 2 seconds for the master data to finish loading before asking for images.
+    // This prevents the Google Apps Script concurrent request collision.
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(fetchProjectThumbnails, 2000); 
+    });
+
     function handleProjectCardSearch(query) {
         window.projectCardSearchQuery = query.toLowerCase().trim();
-        // This will trigger the card engine once we build it in Phase 3
         if (typeof renderProjectsTable === 'function') renderProjectsTable();
     }
+
     function handleProjectCardFilter(status) {
         window.projectCardStatusFilter = status;
-        
-        // Visually toggle the active chip colors
         const chips = document.querySelectorAll('#project-card-chips button');
         chips.forEach(chip => {
             if (chip.innerText === status) {
@@ -24,50 +54,76 @@
                 chip.classList.add('btn-outline-secondary');
             }
         });
+        if (typeof renderProjectsTable === 'function') renderProjectsTable();
+    }
 
-        if (typeof renderProjectsTable === 'function') renderProjectsTable();
-    }
     function handleProjectCardSort(selectEl) {
-        // Explode the value (e.g., "totalCost|number") into the key and data type
         const [key, dataType] = selectEl.value.split('|');
-        
-        // Hijack our existing global sorting engine! Zero new math required.
-        if (typeof handleSort === 'function') {
-            handleSort('projects', key, dataType);
+        if (typeof handleSort === 'function') handleSort('projects', key, dataType);
+    }
+
+    function toggleProjectCardSortDir() {
+        const selectEl = document.getElementById('project-card-sort-select');
+        if (selectEl) {
+            const [key, dataType] = selectEl.value.split('|');
+            // 🪄 Master router trick: Calling handleSort with the exact same key automatically flips the direction!
+            if (typeof handleSort === 'function') handleSort('projects', key, dataType);
         }
     }
+
     function toggleProjectViewMode() {
-        window.isProjectCardView = !window.isProjectCardView;
+        if (!appState.settings) appState.settings = {};
         
-        const tableMode = document.getElementById('view-mode-table');
-        const cardMode = document.getElementById('view-mode-cards');
-        const toggleBtn = document.getElementById('btn-toggle-project-view');
+        // 🪄 1. Toggle the setting and SAVE IT to the cloud
+        appState.settings.isProjectCardView = !appState.settings.isProjectCardView;
+        saveState(); 
         
-        if (window.isProjectCardView) {
-            // Switch to Cards
-            if (tableMode) tableMode.classList.add('d-none');
-            if (cardMode) cardMode.classList.remove('d-none');
-            if (toggleBtn) toggleBtn.innerHTML = '<b>☰</b>'; // Hamburger icon means "Click to return to table"
-        } else {
-            // Switch to Table
-            if (tableMode) tableMode.classList.remove('d-none');
-            if (cardMode) cardMode.classList.add('d-none');
-            if (toggleBtn) toggleBtn.innerHTML = '<b>🗂️</b>'; // Card icon means "Click to go to cards"
+        // 🪄 2. Trigger the router to update the UI
+        renderProjectsTable(); 
+    }
+
+    function syncProjectHeaderButtons(activeTab) {
+        const btnPrint = document.getElementById('btn-print-parts');
+        const btnImport = document.getElementById('btn-inline-import');
+        const btnToggleView = document.getElementById('btn-toggle-project-view');
+
+        if (activeTab === 'projects') {
+            // In Projects Tab: Hide Parts buttons, Show Card Toggle
+            if (btnPrint) btnPrint.classList.add('d-none');
+            if (btnImport) btnImport.classList.add('d-none');
+            if (btnToggleView) btnToggleView.classList.remove('d-none');
+        } else if (activeTab === 'parts') {
+            // In Parts Tab: Show Parts buttons, Hide Card Toggle
+            if (btnPrint) btnPrint.classList.remove('d-none');
+            if (btnImport) btnImport.classList.remove('d-none');
+            if (btnToggleView) btnToggleView.classList.add('d-none');
         }
-        
-        // Ensure data is fresh in whichever view is now active
-        if (typeof renderProjectsTable === 'function') renderProjectsTable();
     }
 
     // ==========================================
     // PROJECTS (Master Router)
     // ==========================================
     function renderProjectsTable() {
-        // 🪄 PHASE 4: THE INTERCEPTOR
-        // If the user is in Card View, hijack this rendering loop!
-        if (window.isProjectCardView) {
+        if (!appState.settings) appState.settings = {};
+        const isCardView = appState.settings.isProjectCardView === true;
+        
+        // 🪄 Synchronize the physical containers and buttons first
+        const tableMode = document.getElementById('view-mode-table');
+        const cardMode = document.getElementById('view-mode-cards');
+        const toggleBtn = document.getElementById('btn-toggle-project-view');
+        
+        if (isCardView) {
+            if (tableMode) tableMode.classList.add('d-none');
+            if (cardMode) cardMode.classList.remove('d-none');
+            if (toggleBtn) toggleBtn.innerHTML = '<b>☰</b>'; // Hamburger
+            
+            // Hijack the data loop to draw cards!
             renderProjectCards();
-            return; // Exit out, don't draw the table!
+            return; 
+        } else {
+            if (tableMode) tableMode.classList.remove('d-none');
+            if (cardMode) cardMode.classList.add('d-none');
+            if (toggleBtn) toggleBtn.innerHTML = '<b>🗂️</b>'; // Card Icon
         }
 
         const tbody = document.getElementById('table-projects-body');
@@ -86,6 +142,19 @@
             const partCount = proj.totalParts || 0;
             const displayCost = (proj.totalCost || 0).toFixed(2);
             
+            // 🪄 VISUAL ASSETS (The Evolving Avatar)
+            const imageData = (typeof window.projectImages !== 'undefined') ? window.projectImages[proj.id] : null;
+            let avatarHtml = '';
+
+            if (imageData) {
+                // Show photo. Clicking it opens the central Manager.
+                avatarHtml = `<img src="${imageData}" class="shadow-sm border d-block mx-auto" style="width: 28px; height: 28px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openIconPicker('${proj.id}')" title="Manage Photo/Icon">`;
+            } else {
+                // Show Icon. Clicking it opens the central Manager.
+                const icon = proj.icon || '🗂️';
+                avatarHtml = `<div class="d-flex align-items-center justify-content-center mx-auto" style="width: 28px; height: 28px; cursor: pointer; font-size: 1.2rem; user-select: none;" onclick="openIconPicker('${proj.id}')" title="Manage Photo/Icon">${icon}</div>`;
+            }
+
             // 🪄 PROJECT LINK ENGINE
             let linkHtml = proj.link 
                 ? `<a href="${safeHTML(proj.link)}" target="_blank" class="text-decoration-none" title="Open Link">🔗</a>` 
@@ -121,6 +190,9 @@
             `;
             
             tr.innerHTML = `
+                <td class="text-center px-1 py-0 align-middle">
+                    ${avatarHtml}
+                </td>
                 <td class="px-1 py-0">
                     <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold" 
                            value="${safeHTML(proj.name)}" 
@@ -128,7 +200,7 @@
                            title="${t('title_tap_to_edit')}">
                 </td>
                 <td class="px-1 py-0 align-middle">
-                    <textarea class="form-control form-control-sm border-0 bg-transparent project-comment-box" 
+                    <textarea class="form-control form-control-sm border-0 bg-transparent project-comment-box"
                               rows="1" title="${safeHTML(proj.comment || '')}" 
                               onchange="updateProject('${proj.id}', 'comment', this.value)" 
                               placeholder="${t('ph_add_notes')}">${safeHTML(proj.comment || '')}</textarea>
@@ -136,13 +208,13 @@
                 <td class="text-center px-1 py-0 align-middle">
                     <span class="badge bg-primary shadow-sm" style="cursor: pointer;" onclick="jumpToProjectParts('${proj.id}')" title="View Parts for this Project" data-i18n-title="tip_view_project_parts">${partCount}</span>
                 </td>
-                <td class="text-center px-1 py-0 align-middle fw-bold text-success">${currency}${displayCost}</td>
+                <td class="text-center px-1 py-0 align-middle fw-bold text-success"><small>${currency}${displayCost}</small></td>
                 <td class="text-center align-middle">${statusHtml}</td>
                 <td class="text-center px-1 py-0 align-middle" style="width: 40px;">
                     <button class="btn btn-sm btn-light border shadow-sm py-0 px-2" onclick="openGroupModal('${proj.id}')" title="${t('tip_manage_groups')}">⚙️</button>
                 </td>
                 <td class="text-nowrap align-middle">
-                    <div class="d-flex justify-content-end align-items-center">
+                    <div class="d-flex justify-content-center align-items-center">
                         ${linkHtml}
                         <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${proj.id}', '${safeHTML(proj.link || '')}')" title="Edit Link">✏️</button>
                     </div>
@@ -205,6 +277,11 @@
 
         // 3. The Execution (Purge the Project)
         appState.projects = appState.projects.filter(p => p.id !== id);
+        
+        // 🪄 Image Garbage Collection
+        delete window.projectImages[id];
+        google.script.run.deleteThumbnail(id);
+        
         saveState();
         renderDictionaries();
 
@@ -502,7 +579,11 @@
                     if (appState.groups) appState.groups = appState.groups.filter(g => g.projectId !== projectId);
                     if (appState.parts) appState.parts = appState.parts.filter(p => p.projectId !== projectId);
                     
-                    saveState(); 
+                    // 🪄 Image Garbage Collection
+                    delete window.projectImages[projectId];
+                    google.script.run.deleteThumbnail(projectId);
+                    
+                    saveState();
                     renderProjectsTable();
                     showToast('Project archived safely.');
                     
@@ -672,20 +753,23 @@
             else if (currentStatus === 'In Progress') { statusColor = '#fd7e14'; textColor = '#ffffff'; }
             else if (currentStatus === 'Completed') { statusColor = '#198754'; textColor = '#ffffff'; }
 
-            // 🪄 The Kebab Menu (⋮)
-            const kebabHtml = `
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-link text-dark text-decoration-none px-2 py-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <b style="font-size: 1.2rem;">⋮</b>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                        <li><a class="dropdown-item" href="#" onclick="editProjectLink('${proj.id}'); return false;">✏️ Edit Link</a></li>
-                        ${proj.link ? `<li><a class="dropdown-item" href="${safeHTML(proj.link)}" target="_blank">🔗 Open Link</a></li>` : ''}
-                        <li><a class="dropdown-item" href="#" onclick="duplicateProjectWarning('${proj.id}'); return false;">➕ Clone Project</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="changeProjectStatus('${proj.id}', 'Archive'); return false;">🗄️ Archive Project</a></li>
-                        <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="deleteProject('${proj.id}'); return false;">🗑️ Delete</a></li>
-                    </ul>
+            // 🪄 Top Right Controls (Link + Kebab Menu)
+            const topControlsHtml = `
+                <div class="d-flex align-items-center flex-shrink-0">
+                    ${proj.link ? `<a href="${safeHTML(proj.link)}" target="_blank" class="text-decoration-none me-1 fs-6" title="Open Link">🔗</a>` : `<span class="text-muted me-1 fs-6" style="opacity: 0.3;" title="No Link">🔗</span>`}
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-link text-dark text-decoration-none px-2 py-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <b style="font-size: 1.2rem;">⋮</b>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li><a class="dropdown-item" href="#" onclick="openLinkModal('${proj.id}', '${safeHTML(proj.link || '')}'); return false;">✏️ Edit Link</a></li>
+                            ${proj.link ? `<li><a class="dropdown-item" href="${safeHTML(proj.link)}" target="_blank">🔗 Open Link</a></li>` : ''}
+                            <li><a class="dropdown-item" href="#" onclick="duplicateProjectWarning('${proj.id}'); return false;">➕ Clone Project</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="changeProjectStatus('${proj.id}', 'Archive'); return false;">🗄️ Archive Project</a></li>
+                            <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="deleteProject('${proj.id}'); return false;">🗑️ Delete</a></li>
+                        </ul>
+                    </div>
                 </div>
             `;
 
@@ -705,27 +789,48 @@
                 </div>
             `;
 
+            // 🪄 Check RAM for a saved thumbnail
+            const imageData = window.projectImages[proj.id];
+            
+            // 🪄 Generate Hero Image Area (The Evolving Avatar)
+            let heroImageHtml = '';
+            if (imageData) {
+                // Display Photo. Clicking opens the master manager.
+                heroImageHtml = `<img src="${imageData}" class="card-img-top rounded-0" style="aspect-ratio: 3/2; width: 100%; object-fit: cover; cursor: pointer; border-bottom: 1px solid var(--bs-border-color-translucent);" onclick="openIconPicker('${proj.id}')" title="Manage Photo/Icon">`;
+            } else {
+                // Display upscaled Icon. Clicking opens the master manager.
+                heroImageHtml = `
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center rounded-0 text-muted" style="aspect-ratio: 3/2; width: 100%; cursor: pointer; border-bottom: 1px solid var(--bs-border-color-translucent); font-size: 7rem; user-select: none; transition: opacity 0.2s;" onclick="openIconPicker('${proj.id}')" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" title="Manage Photo/Icon">
+                        ${icon}
+                    </div>
+                `;
+            }
+
             // 🪄 Build the Physical Card
             const col = document.createElement('div');
-            col.className = 'col-12 col-md-6 col-lg-4 col-xl-3';
+            col.className = 'col'; 
             col.innerHTML = `
-                <div class="card h-100 shadow-sm border-0" style="background-color: var(--bs-body-bg);">
+                <div class="card h-100 shadow border overflow-hidden bg-white">
+                    
+                    <div class="card-header bg-white border-bottom-0 pt-3 pb-2 px-3 d-flex justify-content-between align-items-start gap-2">
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold p-0 shadow-none text-truncate" 
+                               style="font-size: 1rem;"
+                               value="${safeHTML(proj.name)}" 
+                               onchange="updateProject('${proj.id}', 'name', this.value)"
+                               title="${t('title_tap_to_edit')}">
+                        ${topControlsHtml}
+                    </div>
+
+                    ${heroImageHtml}
+                    
                     <div class="card-body p-3 d-flex flex-column">
-                        
-                        <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
-                            <div class="d-flex align-items-center gap-2 overflow-hidden flex-grow-1">
-                                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 40px; height: 40px; background-color: rgba(128,128,128,0.1); cursor: pointer;" onclick="openIconPicker('${proj.id}')" title="Change Icon">
-                                    <span style="font-size: 1.2rem;">${icon}</span>
-                                </div>
-                                <h6 class="card-title mb-0 fw-bold text-truncate" style="cursor: pointer;" onclick="jumpToProjectParts('${proj.id}')" title="${safeHTML(proj.name)}">${safeHTML(proj.name)}</h6>
-                            </div>
-                            ${kebabHtml}
-                        </div>
-                        
-                        <div class="flex-grow-1 mb-3">
-                            <p class="card-text text-muted small" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal;" title="${safeHTML(proj.comment || '')}">
-                                ${safeHTML(proj.comment || '<i>No notes</i>')}
-                            </p>
+                        <div class="flex-grow-1 mb-3 position-relative" style="min-height: 3em;">
+                            <div contenteditable="true" 
+                                 class="form-control form-control-sm border-0 bg-transparent text-muted small p-0 w-100 card-comment-box"
+                                 style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; outline: none; line-height: 1.5; cursor: text; word-break: break-word;"
+                                 onblur="updateProject('${proj.id}', 'comment', this.innerText)"
+                                 title="Tap to edit notes"
+                                 data-placeholder="Add notes...">${safeHTML(proj.comment || '')}</div>
                         </div>
                         
                         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -737,7 +842,6 @@
                             ${statusHtml}
                             <button class="btn btn-sm btn-light border shadow-sm px-3 flex-shrink-0" onclick="openGroupModal('${proj.id}')" title="Manage Groups">⚙️</button>
                         </div>
-
                     </div>
                 </div>
             `;
@@ -758,10 +862,74 @@
         if (!iconModalInstance) {
             iconModalInstance = new bootstrap.Modal(document.getElementById('modal-project-icon'));
         }
-        
-        // Stash the project ID in the hidden input so the save function knows who to update
         document.getElementById('modal-icon-project-id').value = projectId;
+        
+        // 🪄 Get current project state
+        const proj = appState.projects.find(p => p.id === projectId);
+        const currentIcon = (proj && proj.icon) ? proj.icon : '🗂️';
+        const hasPhoto = window.projectImages && window.projectImages[projectId];
+        
+        // 1. Show/Hide the "Remove Photo" button
+        const removeBtn = document.getElementById('btn-remove-photo');
+        if (removeBtn) {
+            if (hasPhoto) {
+                removeBtn.classList.remove('d-none');
+            } else {
+                removeBtn.classList.add('d-none');
+            }
+        }
+
+        // 2. Format the Emoji Grid (Disable if photo exists, Highlight if selected)
+        const emojiButtons = document.querySelectorAll('#modal-project-icon .d-grid button');
+        emojiButtons.forEach(btn => {
+            const btnIcon = btn.innerText.trim();
+            
+            // Visual Highlight Logic
+            if (btnIcon === currentIcon && !hasPhoto) {
+                // Active Selected Icon
+                btn.classList.add('border-primary', 'border-2', 'bg-light');
+                btn.classList.remove('border', 'btn-light');
+            } else {
+                // Inactive Icons
+                btn.classList.remove('border-primary', 'border-2', 'bg-light');
+                btn.classList.add('border', 'btn-light');
+            }
+
+            // Disabled/Grey-out Logic
+            if (hasPhoto) {
+                btn.disabled = true;
+                btn.classList.add('opacity-25');
+                btn.classList.remove('shadow-sm');
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('opacity-25');
+                btn.classList.add('shadow-sm');
+            }
+        });
+        
         iconModalInstance.show();
+    }
+
+    function triggerImageUploadFromModal() {
+        const projectId = document.getElementById('modal-icon-project-id').value;
+        if (iconModalInstance) iconModalInstance.hide();
+        triggerImageUpload(projectId);
+    }
+
+    function removeProjectPhoto() {
+        const projectId = document.getElementById('modal-icon-project-id').value;
+        if (!projectId) return;
+        
+        // 🪄 Garbage Collection
+        delete window.projectImages[projectId];
+        google.script.run.deleteThumbnail(projectId);
+        
+        // Redraw background UI instantly
+        if (typeof renderProjectsTable === 'function') renderProjectsTable();
+        showToast("Photo removed.");
+
+        // 🪄 Re-run the modal logic to wake up the emojis and highlight the current icon!
+        openIconPicker(projectId);
     }
     function saveProjectIcon(iconString) {
         const projectId = document.getElementById('modal-icon-project-id').value;
@@ -778,5 +946,81 @@
         }
         
         if (iconModalInstance) iconModalInstance.hide();
+    }
+
+    // ==========================================
+    // IMAGE COMPRESSOR ENGINE (PHASE 4)
+    // ==========================================
+    let currentUploadProjectId = null;
+    function triggerImageUpload(projectId) {
+        currentUploadProjectId = projectId;
+        document.getElementById('hidden-image-upload').click();
+    }
+    function processImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file || !currentUploadProjectId) return;
+
+        // Reset the input value so the user can upload the exact same file again if they want
+        event.target.value = '';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                // 🪄 1. The Math: Calculate new dimensions (Max 600px width/height)
+                const MAX_DIMENSION = 600;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height && width > MAX_DIMENSION) {
+                    height *= MAX_DIMENSION / width;
+                    width = MAX_DIMENSION;
+                } else if (height > width && height > MAX_DIMENSION) {
+                    width *= MAX_DIMENSION / height;
+                    height = MAX_DIMENSION;
+                }
+
+                // 🪄 2. The Canvas Crunch: Draw and export as low-quality JPEG
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Compress to 60% quality JPEG (Yields a tiny Base64 string!)
+                const base64String = canvas.toDataURL('image/jpeg', 0.6); 
+
+                // 🪄 3. RAM Storage & Instant Redraw
+                window.projectImages[currentUploadProjectId] = base64String;
+                
+                // Unconditionally fire the master router so it updates BOTH Table and Card views instantly!
+                if (typeof renderProjectsTable === 'function') renderProjectsTable();
+
+                // 🪄 4. Background Cloud Sync (Silent)
+                const payload = {
+                    projectId: currentUploadProjectId,
+                    base64String: base64String
+                };
+
+                // Show a temporary saving toast
+                showToast("Uploading thumbnail...");
+
+                google.script.run
+                    .withSuccessHandler((resStr) => {
+                        const res = JSON.parse(resStr);
+                        if (res.status === 'success') {
+                            showToast("Thumbnail saved to cloud.");
+                        } else {
+                            showToast("Cloud save failed: " + res.message, true);
+                        }
+                    })
+                    .withFailureHandler((err) => {
+                        showToast("Server error saving thumbnail.", true);
+                    })
+                    .saveThumbnail(JSON.stringify(payload));
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
     }
 </script>

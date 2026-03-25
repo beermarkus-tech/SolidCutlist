@@ -4,16 +4,16 @@
     <div class="card-header bg-primary pt-2 pb-0 border-bottom-0 d-flex justify-content-between align-items-end" style="border-top-left-radius: inherit; border-top-right-radius: inherit;">
         <ul class="nav nav-tabs card-header-tabs border-bottom-0 m-0" id="dictionaryTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="tab-projects" data-bs-toggle="tab" data-bs-target="#pane-projects" type="button" role="tab" onclick="renderProjectsTable()" data-i18n="tab_projects">📁 Active Projects</button>
+                <button class="nav-link active" id="tab-projects" data-bs-toggle="tab" data-bs-target="#pane-projects" type="button" role="tab" onclick="renderProjectsTable(); syncProjectHeaderButtons('projects')" data-i18n="tab_projects">📁 Active Projects</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="tab-parts" data-bs-toggle="tab" data-bs-target="#pane-parts" type="button" role="tab" onclick="renderPartsView()" data-i18n="hdr_current_partlist">🧩 Current Partlist</button>
+                <button class="nav-link" id="tab-parts" data-bs-toggle="tab" data-bs-target="#pane-parts" type="button" role="tab" onclick="renderPartsView(); syncProjectHeaderButtons('parts')" data-i18n="hdr_current_partlist">🧩 Current Partlist</button>
             </li>
         </ul>
         <div class="align-self-center mb-2">
             <div>
-                <button class="header-btn btn btn-light btn-sm py-0 me-1" onclick="printPartsTable()" title="Print Visible Parts" data-i18n-title="tip_print_visible_parts"><b data-i18n="btn_print">🖨️ Print</b></button>
-                <button id="btn-inline-import" class="header-btn btn btn-light btn-sm py-0 me-1" onclick="navigateTo('view-import')"><b data-i18n="btn_import_parts">📥 Import Parts</b></button>
+                <button id="btn-print-parts" class="header-btn btn btn-light btn-sm py-0 me-1 d-none" onclick="printPartsTable()" title="Print Visible Parts" data-i18n-title="tip_print_visible_parts"><b data-i18n="btn_print">🖨️ Print</b></button>
+                <button id="btn-inline-import" class="header-btn btn btn-light btn-sm py-0 me-1 d-none" onclick="navigateTo('view-import')"><b data-i18n="btn_import_parts">📥 Import Parts</b></button>
                 <button id="btn-toggle-project-view" class="header-btn-small btn btn-outline-light btn-sm py-0 fw-bold" onclick="toggleProjectViewMode()" title="Toggle Card View"><b>🗂️</b></button>
                 <button class="header-btn-small btn btn-outline-light btn-sm py-0 fw-bold global-toggle-btn" onclick="toggleAllInputSections()" title="Toggle Input Sections" data-i18n-title="tip_toggle_input_section"><b>▽</b></button>
             </div>
@@ -26,6 +26,7 @@
         <!-- Projects -->
         <div class="tab-pane show active" id="pane-projects" role="tabpanel" tabindex="0">
             <div class="card-body py-3">
+                <!-- Input Section -->
                 <div id="input-section-projects">
                     <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
                         <form id="form-add-project" onsubmit="handleAddProject(event)">
@@ -42,26 +43,30 @@
                         </form>
                     </div>
                 </div>
+                <!-- Table View -->
                 <div id="view-mode-table">
-                    <div id="table-wrapper-projects" class="table-responsive" style="max-height: calc(100vh - 340px); height: calc(100vh - 340px); overflow-y: auto;">
+                    <div id="table-wrapper-projects" class="table-responsive" style="max-height: calc(100vh - 282px); height: calc(100vh - 282px); overflow-y: auto;">
                         <table class="table table-sm table-hover align-middle table-striped">
                         <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <tr>
+                                <th class="text-center" style="width: 1%;"></th>
+                                
                                 <th class="text-nowrap" style="width: 25%;">
                                     <span onclick="handleSort('projects', 'name', 'string')" style="cursor: pointer;">
                                         <span data-i18n="col_project_name">Project Name</span> ⇅
                                     </span>
                                     <span id="flt-icon-projects-name" onclick="openFilterModal(event, 'projects', 'name', 'Project Name')" class="ms-1 text-muted" style="cursor: pointer;" title="Filter">▼</span>
                                 </th>
+                                
                                 <th class="text-nowrap" style="width: 25%;">Notes</th>
                                 <th class="text-center text-nowrap" style="width: 10%;">
                                     <span onclick="handleSort('projects', 'totalParts', 'number')" style="cursor: pointer;">
-                                        <span data-i18n="col_parts">Parts</span> ⇅
+                                        <span>Parts</span> ⇅
                                     </span>
                                 </th>
                                 <th class="text-center text-nowrap" style="width: 10%;">
                                     <span onclick="handleSort('projects', 'totalParts', 'number')" style="cursor: pointer;">
-                                        <span data-i18n="col_parts">Parts</span> ⇅
+                                        <span>Est. Cost</span> ⇅
                                     </span>
                                 </th>
                                 <th class="text-center text-nowrap">
@@ -81,46 +86,53 @@
                     </table>
                     </div>
                 </div>
-
-                <div id="view-mode-cards" class="d-none d-flex flex-column" style="max-height: calc(100vh - 340px); height: calc(100vh - 340px);">
+                <!-- Cards View -->
+                <div id="view-mode-cards" class="d-none d-flex flex-column" style="max-height: calc(100vh - 282px); height: calc(100vh - 282px);">
                     
-                    <div id="project-card-toolbar" class="mb-3 d-flex flex-column gap-2 pe-1">
-                        <div class="d-flex gap-2 w-100">
-                            <div class="input-group input-group-sm flex-grow-1 shadow-sm">
-                                <span class="input-group-text bg-white border-end-0 text-muted">🔍</span>
-                                <input type="text" class="form-control border-start-0 ps-0" placeholder="Search projects or notes..." onkeyup="handleProjectCardSearch(this.value)">
-                            </div>
-                            <select class="form-select form-select-sm shadow-sm fw-bold text-secondary" style="width: auto; cursor: pointer;" onchange="handleProjectCardSort(this)">
-                                <option value="name|string">Sort by: Name</option>
-                                <option value="totalParts|number">Sort by: Parts</option>
-                                <option value="totalCost|number">Sort by: Cost</option>
-                                <option value="status|string">Sort by: Status</option>
+                    <div id="project-card-toolbar" class="mb-3 d-flex align-items-center gap-2 pe-1 w-100" style="min-width: 0;">
+                        
+                        <div class="d-flex gap-1 overflow-auto pb-1" id="project-card-chips" style="flex: 1 1 0%; min-width: 0; scrollbar-width: none;">
+                            <button class="btn btn-sm btn-dark rounded-pill px-3 py-0 text-nowrap" onclick="handleProjectCardFilter('All')">All</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" onclick="handleProjectCardFilter('Design')">Design</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" onclick="handleProjectCardFilter('Quoting')">Quoting</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" onclick="handleProjectCardFilter('Ready')">Ready</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" onclick="handleProjectCardFilter('In Progress')">In Progress</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" onclick="handleProjectCardFilter('Completed')">Completed</button>
+                        </div>
+                        
+                        <div class="input-group input-group-sm" style="flex: 1 1 120px; max-width: 250px; min-width: 80px;">
+                            <span class="input-group-text bg-white border-end-0 text-muted px-2">🔍</span>
+                            <input type="text" class="form-control border-start-0 ps-0" placeholder="Search..." onkeyup="handleProjectCardSearch(this.value)">
+                        </div>
+                        
+                        <div class="input-group input-group-sm flex-shrink-0" style="width: auto;">
+                            <select class="form-select fw-bold text-secondary" style="cursor: pointer;" id="project-card-sort-select" onchange="handleProjectCardSort(this)">
+                                <option value="name|string">Sort: Name</option>
+                                <option value="totalParts|number">Sort: Parts</option>
+                                <option value="totalCost|number">Sort: Cost</option>
+                                <option value="status|string">Sort: Status</option>
                             </select>
+                            <button class="btn btn-light border text-secondary fw-bold px-2" type="button" onclick="toggleProjectCardSortDir()" title="Reverse Sort Order">⇅</button>
                         </div>
-                        <div class="d-flex gap-1 overflow-auto pb-1" id="project-card-chips" style="scrollbar-width: none;">
-                            <button class="btn btn-sm btn-dark rounded-pill px-3 py-0 shadow-sm text-nowrap" onclick="handleProjectCardFilter('All')">All</button>
-                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 shadow-sm text-nowrap" onclick="handleProjectCardFilter('Design')">Design</button>
-                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 shadow-sm text-nowrap" onclick="handleProjectCardFilter('Quoting')">Quoting</button>
-                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 shadow-sm text-nowrap" onclick="handleProjectCardFilter('Ready')">Ready</button>
-                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 shadow-sm text-nowrap" onclick="handleProjectCardFilter('In Progress')">In Progress</button>
-                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 shadow-sm text-nowrap" onclick="handleProjectCardFilter('Completed')">Completed</button>
-                        </div>
+                        
                     </div>
                     
-                    <div id="project-card-grid" class="row g-3 overflow-auto flex-grow-1 align-content-start pb-3">
-                        <div class="col-12 text-center text-muted mt-5">
-                            <h1>🗂️</h1>
-                            <p>Card View Construction Zone 🚧</p>
+                    <div class="overflow-auto flex-grow-1 pb-4 px-2" style="scrollbar-width: thin;">
+                        <div id="project-card-grid" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 row-cols-xxl-5 g-4 align-content-start mx-0">
+                            <div class="col-12 text-center text-muted mt-5">
+                                <h1>🗂️</h1>
+                                <p>Card View Construction Zone 🚧</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
 
         <!-- Partlist -->
         <div class="tab-pane" id="pane-parts" role="tabpanel" tabindex="0">
             <div class="card-body py-3">
+                <!-- Input Section -->
                 <div id="input-section-parts">
                     <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
                         <form id="form-add-part" onsubmit="handleAddPart(event)">
@@ -192,6 +204,7 @@
                         </form>
                     </div>
                 </div>
+                <!-- Table -->
                 <div id="table-wrapper-parts" class="table-responsive" style="max-height: calc(100vh - 282px); height: calc(100vh - 282px); overflow-y: auto;">
                     <table class="table table-sm table-hover table-striped align-middle mb-0">
                         <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
@@ -281,8 +294,9 @@
 
     </div>
 
+    <!-- Image Selection Modal -->
     <div class="modal fade" id="modal-project-icon" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow">
                 <div class="modal-header bg-light py-2">
                     <h6 class="modal-title fw-bold text-secondary">Choose Project Icon</h6>
@@ -291,25 +305,47 @@
                 <div class="modal-body text-center p-4">
                     <input type="hidden" id="modal-icon-project-id">
                     
-                    <div class="d-grid gap-2" style="grid-template-columns: repeat(4, 1fr);">
+                    <div class="d-grid gap-2" style="grid-template-columns: repeat(6, 1fr);">
                         <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🪑')">🪑</button>
                         <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🛏️')">🛏️</button>
                         <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🚪')">🚪</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🗄️')">🗄️</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🛋️')">🛋️</button>
                         <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🪜')">🪜</button>
                         
                         <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('📦')">📦</button>
                         <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🛖')">🛖</button>
-                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🎸')">🎸</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🖼️')">🖼️</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🪟')">🪟</button>
                         <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🪵')">🪵</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🪴')">🪴</button>
                         
-                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🛠️')">🛠️</button>
-                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🗄️')">🗄️</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🎸')">🎸</button>
                         <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🗂️')">🗂️</button>
                         <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🔨')">🔨</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🪚')">🪚</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🪛')">🪛</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🗜️')">🗜️</button>
+                        
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🛠️')">🛠️</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('📏')">📏</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('📐')">📐</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🧰')">🧰</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('🎨')">🎨</button>
+                        <button class="btn btn-light border shadow-sm fs-3 p-1" onclick="saveProjectIcon('✏️')">✏️</button>
                     </div>
+                    
+                    <hr class="my-3 text-muted opacity-25">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary w-100 fw-bold" onclick="triggerImageUploadFromModal()">📷 Upload Photo</button>
+                        <button class="btn btn-sm btn-outline-danger w-100 fw-bold" id="btn-remove-photo" onclick="removeProjectPhoto()">🗑️ Remove Photo</button>
+                    </div>
+
                 </div>
             </div>
         </div>
     </div>
+
+    <input type="file" id="hidden-image-upload" accept="image/jpeg, image/png, image/webp" class="d-none" onchange="processImageUpload(event)">
 
 </div>

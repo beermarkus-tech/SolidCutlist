@@ -298,6 +298,19 @@
             });
         }
 
+        // 🪄 4. Image Cloning Engine (Isolated RAM & Cloud Sync)
+        if (typeof window.projectImages !== 'undefined' && window.projectImages[projectId]) {
+            // Copy the Base64 string to the new ID in RAM
+            window.projectImages[newProjId] = window.projectImages[projectId];
+            
+            // Silently backup the cloned image to the Thumbnails tab
+            const imagePayload = {
+                projectId: newProjId,
+                base64String: window.projectImages[newProjId]
+            };
+            google.script.run.saveThumbnail(JSON.stringify(imagePayload));
+        }
+
         saveState();
         if (typeof renderDictionaries === 'function') renderDictionaries();
         showToast(t('msg_project_duplicated'));

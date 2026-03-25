@@ -173,7 +173,7 @@ function getAppStateFromSheet() {
 }
 
 function readArrayFromSheet(sheet) {
-  const data = sheet.getDataRange().getValues();
+  const data = sheet.getDataRange().getValues(); // Reverted to getValues() so math stays intact [cite: 34]
   if (data.length < 2) return []; 
 
   const headers = data[0];
@@ -190,6 +190,12 @@ function readArrayFromSheet(sheet) {
       let val = rowData[j];
       
       if (!key) continue; 
+
+      // 🪄 THE FIX: Force critical text columns to ALWAYS be Strings before sending to the app
+      if (key === 'name' || key === 'id' || key === 'projectId' || key === 'groupId' || key === 'category') {
+          obj[key] = String(val);
+          continue;
+      }
 
       if (val === 'TRUE' || val === true) {
         obj[key] = true;
@@ -314,6 +320,106 @@ function deleteProjectFromArchive(projectId) {
       }
     }
     throw new Error('Project not found in archive.');
+  } catch(e) {
+    return JSON.stringify({ status: 'error', message: e.toString() });
+  }
+}
+
+/**
+ * ==========================================
+ * IMAGE ENGINE (THUMBNAILS)
+ * ==========================================
+ * These functions operate entirely outside the main AppState sync 
+ * to protect the 50k character cell limit and ensure fast performance.
+ */
+
+function getThumbnails() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('Thumbnails');
+    
+    // Auto-create the tab if this is the first time running
+    if (!sheet) {
+      sheet = ss.insertSheet('Thumbnails');
+      sheet.getRange('A1:B1').setValues([['Project ID', 'Base64 Image']]).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+      return JSON.stringify({ status: 'success', data: {} });
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const thumbnailDict = {};
+    
+    // Skip header row
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] && data[i][1]) {
+        thumbnailDict[data[i][0]] = data[i][1];
+      }
+    }
+    
+    return JSON.stringify({ status: 'success', data: thumbnailDict });
+  } catch(e) {
+    return JSON.stringify({ status: 'error', message: e.toString() });
+  }
+}
+
+function saveThumbnail(payloadString) {
+  try {
+    const payload = JSON.parse(payloadString);
+    const projectId = payload.projectId;
+    const base64String = payload.base64String;
+    
+    if (!projectId || !base64String) throw new Error('Missing ID or Image Data');
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('Thumbnails');
+    
+    if (!sheet) {
+      sheet = ss.insertSheet('Thumbnails');
+      sheet.getRange('A1:B1').setValues([['Project ID', 'Base64 Image']]).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+    }
+
+    const data = sheet.getDataRange().getValues();
+    let rowIndex = -1;
+
+    // Search for existing project image to overwrite
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === projectId) {
+        rowIndex = i + 1; // +1 because array is 0-indexed but sheets are 1-indexed
+        break;
+      }
+    }
+
+    if (rowIndex > -1) {
+      // Overwrite existing
+      sheet.getRange(rowIndex, 2).setValue(base64String);
+    } else {
+      // Append new
+      sheet.appendRow([projectId, base64String]);
+    }
+
+    return JSON.stringify({ status: 'success' });
+  } catch(e) {
+    return JSON.stringify({ status: 'error', message: e.toString() });
+  }
+}
+
+function deleteThumbnail(projectId) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('Thumbnails');
+    if (!sheet) return JSON.stringify({ status: 'success' }); // Nothing to delete
+
+    const data = sheet.getDataRange().getValues();
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === projectId) {
+        sheet.deleteRow(i + 1);
+        return JSON.stringify({ status: 'success' });
+      }
+    }
+    
+    return JSON.stringify({ status: 'success' }); // ID not found, safely ignore
   } catch(e) {
     return JSON.stringify({ status: 'error', message: e.toString() });
   }

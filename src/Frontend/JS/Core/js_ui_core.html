@@ -69,7 +69,7 @@
             button.innerHTML = globalInputsVisible ? '<b>▽</b>' : '<b>◁</b>';
         });
         
-        // Define all the IDs that need to be targeted across the tabs (including 'parts')
+        // Define all the IDs that need to be targeted across the tabs
         const sections = ['projects', 'stock', 'prices', 'profiles', 'materials', 'parts'];
         
         sections.forEach(id => {
@@ -87,6 +87,23 @@
                     inputEl.classList.add('d-none');
                     tableEl.style.maxHeight = 'calc(100vh - 173px)';
                     tableEl.style.height = 'calc(100vh - 173px)';
+                }
+            }
+
+            // 🪄 THE FIX: Isolate the Card View wrapper and assign its specific vertical math
+            if (id === 'projects') {
+                const cardViewEl = document.getElementById('view-mode-cards');
+                if (cardViewEl) {
+                    if (globalInputsVisible) {
+                        // Standard state (Input is visible)
+                        cardViewEl.style.maxHeight = 'calc(100vh - 282px)';
+                        cardViewEl.style.height = 'calc(100vh - 282px)';
+                    } else {
+                        // Expanded state (Input is hidden). 
+                        // Card view has an extra toolbar, so the "folded" bottom margin is slightly taller.
+                        cardViewEl.style.maxHeight = 'calc(100vh - 173px)'; 
+                        cardViewEl.style.height = 'calc(100vh - 173px)';
+                    }
                 }
             }
         });
