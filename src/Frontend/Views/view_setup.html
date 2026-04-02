@@ -88,9 +88,9 @@
                     </div>
                 </div>
                 <!-- Table -->
-                <div id="table-wrapper-stock" class="table-responsive" style="max-height: calc(100vh - 282px); height: calc(100vh - 282px); overflow-y: auto;">
+                <div id="table-wrapper-stock" class="table-responsive border rounded" style="max-height: calc(100vh - 282px); height: calc(100vh - 282px); overflow-y: auto;">
                     <table id="table-stock" class="table table-sm table-hover align-middle table-striped mb-0">
-                        <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <thead class="table-light" style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <tr>
                                 <th class="col-category text-center text-nowrap">
                                     <span onclick="handleSort('stock', 'categoryId', 'string')" style="cursor: pointer;">
@@ -222,9 +222,9 @@
                     </div>
                 </div>
                 <!-- Table -->
-                <div id="table-wrapper-prices" class="table-responsive" style="max-height: calc(100vh - 340px); height: calc(100vh - 340px); overflow-y: auto;">
+                <div id="table-wrapper-prices" class="table-responsive border rounded" style="max-height: calc(100vh - 282px); height: calc(100vh - 282px); overflow-y: auto;">
                     <table id="table-catalog" class="table table-sm table-hover align-middle table-striped">
-                        <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <thead class="table-light" style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <tr>
                                 <th class="col-category text-center text-nowrap">
                                     <span onclick="handleSort('catalog', 'categoryId', 'string')" style="cursor: pointer;">
@@ -280,7 +280,7 @@
                                 </th>
                                 <th class="col-freshness text-center">
                                     <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'lastVerified', 'number')" style="cursor: pointer;">
-                                        Freshness ⇅
+                                        Updated ⇅
                                     </span>
                                 </th>
                                 <th class="col-actions text-center" id="th-catalog-links" data-i18n="col_links">Links</th>
@@ -341,9 +341,9 @@
                             </div>
                         </div>
                         <!-- Table -->
-                        <div id="table-wrapper-profiles" class="table-responsive" style="max-height: calc(100vh - 340px); height: calc(100vh - 340px); overflow-y: auto;">
+                        <div id="table-wrapper-profiles" class="table-responsive border rounded" style="max-height: calc(100vh - 340px); height: calc(100vh - 340px); overflow-y: auto;">
                             <table class="table table-sm table-hover align-middle table-striped">
-                                <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                <thead class="table-light" style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                     <tr>
                                         <th class="col-category text-center text-nowrap">
                                             <span onclick="handleSort('profiles', 'type', 'string')" style="cursor: pointer;">
@@ -410,9 +410,9 @@
                         </div>
 
                         <!-- Table -->
-                        <div id="table-wrapper-materials" class="table-responsive" style="max-height: calc(100vh - 340px); height: calc(100vh - 340px); overflow-y: auto;">
+                        <div id="table-wrapper-materials" class="table-responsive border rounded" style="max-height: calc(100vh - 340px); height: calc(100vh - 340px); overflow-y: auto;">
                             <table class="table table-sm table-hover align-middle table-striped">
-                                <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                <thead class="table-light" style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                     <tr>
                                         <th class="col-category text-center text-nowrap">
                                             <span onclick="handleSort('materials', 'category', 'string')" style="cursor: pointer;">
@@ -586,7 +586,7 @@
                                             </select>
                                         </div>
                                     </th>
-                                    <th class="text-center">Freshness</th>
+                                    <th class="text-center">Updated</th>
                                     <th class="text-center" data-i18n="col_links">Links</th>
                                     <th class="text-end"></th>
                                 </tr>

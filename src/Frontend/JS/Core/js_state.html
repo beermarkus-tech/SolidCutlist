@@ -83,16 +83,45 @@
             google.script.run
                 .withSuccessHandler(function(responseStr) {
                     handleCloudDataResponse(responseStr, localData);
+                    triggerMobileRouter(); // 🪄 FIRE ROUTER ON SUCCESS
                 })
                 .withFailureHandler(function(error) {
                     console.error("Failed to fetch from cloud. Falling back to local.", error);
                     finalizeBoot(localData ? localData : initialAppState);
+                    triggerMobileRouter(); // 🪄 FIRE ROUTER ON FAILURE
                 })
                 .getAppStateFromSheet();
         } else {
             // Failsafe for Local Desktop Testing (outside of Google's environment)
             console.warn("Google Script context not found. Booting from local memory.");
             finalizeBoot(localData ? localData : initialAppState);
+            triggerMobileRouter(); // 🪄 FIRE ROUTER ON LOCAL BOOT
+        }
+    }
+
+    // 🪄 NEW: The Mobile Auto-Router Engine (Race-Condition Proof)
+    function triggerMobileRouter() {
+        console.log("Checking mobile router... Screen width: " + window.innerWidth);
+        
+        // If the screen is smaller than a tablet, jump to the Cutlist view
+        if (window.innerWidth < 768) {
+            console.log("📱 Mobile screen detected. Forcing Sandbox view...");
+            
+            // 🪄 THE FIX: A 100ms delay ensures this runs strictly AFTER finalizeBoot completes its default routing!
+            setTimeout(() => {
+                const cutlistTabBtn = document.getElementById('nav-cutlist-tab');
+                
+                if (typeof showView === 'function') {
+                    // Force the screen transition
+                    showView('cutlist', cutlistTabBtn);
+                    
+                    // Hide the boot loader just in case finalizeBoot missed it
+                    const loader = document.getElementById('boot-loader');
+                    if (loader) loader.classList.add('d-none');
+                } else {
+                    console.error("Router failed: showView function is missing.");
+                }
+            }, 100);
         }
     }
     /** The Handshake: Compares timestamps and resolves conflicts */
@@ -165,11 +194,20 @@
         // 4. Safely apply translations only after data is fully loaded
         if (typeof applyTranslations === 'function') applyTranslations(); 
 
-        // 5. Hide loader
+        // 🪄 5. PROGRAMMED MOBILE ROUTER
+        // Set the initial view based on device size strictly before the loader vanishes
+        const isMobile = window.innerWidth < 768;
+        const initialViewId = isMobile ? 'view-cutlist' : 'view-projects';
+        
+        if (typeof navigateTo === 'function') {
+            navigateTo(initialViewId);
+        }
+
+        // 6. Hide loader
         const loader = document.getElementById('boot-loader');
         if (loader) loader.classList.add('d-none');
         
-        console.log('🪵 SolidCutlist successfully booted.');
+        console.log(`🪵 SolidCutlist successfully booted into ${isMobile ? 'MOBILE' : 'DESKTOP'} mode.`);
         updateSyncUI('success');
     }
     function autoHealMissingIDs() {

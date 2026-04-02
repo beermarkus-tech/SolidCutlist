@@ -192,9 +192,10 @@
         appState.catalog = masterCatalog;
         appState.settings = masterSettings;
 
-        // 7. Track the active job globally (Crucial for Phase 5 Mobile Editing!)
+        // 7. Track the active job globally AND persistently (Crucial for Mobile!)
         window.activeJobId = job.id;
-        window.activeJobBackup = JSON.stringify(job);
+        localStorage.setItem('activeJobId', job.id);
+        localStorage.setItem('activeJobBackup', JSON.stringify(job));
 
         // 8. Render the UI exactly like a normal calculation
         document.getElementById('optimizer-empty-state').classList.add('d-none');
@@ -215,6 +216,7 @@
         if (typeof renderShoppingListTab === 'function') renderShoppingListTab(results);
         if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
         if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
+        if (typeof renderSandboxPartlistTab === 'function') renderSandboxPartlistTab(job.parts); // 🪄 Render 4th Tab
         
         if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('clean'); // 🪄 FORCE CLEAN STATE
     }
@@ -312,7 +314,8 @@
         if (modalInstance) modalInstance.hide();
         
         window.activeJobId = newJob.id; 
-        window.activeJobBackup = JSON.stringify(newJob); // 🪄 CREATE THE RAM BACKUP
+        localStorage.setItem('activeJobId', newJob.id);
+        localStorage.setItem('activeJobBackup', JSON.stringify(newJob)); // 🪄 CREATE THE PERSISTENT BACKUP
         
         if (typeof setCurrentJobLabel === 'function') setCurrentJobLabel(newJob.name);
         if (typeof toggleConfiguratorState === 'function') toggleConfiguratorState(true, true); 
@@ -379,16 +382,20 @@
         }
     }
     function executeUndoChanges() {
-        if (!window.activeJobId || !window.activeJobBackup) return;
+        // Pull from RAM or fallback to LocalStorage if the browser purged the RAM
+        const activeJobId = window.activeJobId || localStorage.getItem('activeJobId');
+        const activeJobBackup = localStorage.getItem('activeJobBackup');
         
-        const jobIndex = appState.jobs.findIndex(j => j.id === window.activeJobId);
+        if (!activeJobId || !activeJobBackup) return;
+        
+        const jobIndex = appState.jobs.findIndex(j => j.id === activeJobId);
         if (jobIndex === -1) return;
         
-        // 1. Overwrite the dirty RAM job with our pristine photograph
-        appState.jobs[jobIndex] = JSON.parse(window.activeJobBackup);
+        // 1. Overwrite the dirty RAM job with our pristine hard-drive photograph
+        appState.jobs[jobIndex] = JSON.parse(activeJobBackup);
         
         // 2. Run the load sequence to revert the math and redraw the UI
-        executeLoadJob(window.activeJobId);
+        executeLoadJob(activeJobId);
         
         if (typeof showToast === 'function') showToast("Changes undone. Original layout restored.", "info");
     }
@@ -443,19 +450,23 @@
         if (typeof renderShoppingListTab === 'function') renderShoppingListTab(results);
         if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
         if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
+        if (typeof renderSandboxPartlistTab === 'function') renderSandboxPartlistTab(job.parts); // 🪄 Render 4th Tab
 
         // Shift UI state to allow saving
         setUnsavedChangesState('dirty_recalculated');
     }
     function executeSaveChanges() {
-        if (!window.activeJobId) return;
+        const activeJobId = window.activeJobId || localStorage.getItem('activeJobId');
+        if (!activeJobId) return;
         
         // Push everything to persistent storage
         saveState(); 
         
-        // 🪄 Update our pristine RAM photograph so future Undos revert to THIS new save!
-        const job = appState.jobs.find(j => j.id === window.activeJobId);
-        if (job) window.activeJobBackup = JSON.stringify(job);
+        // 🪄 Update our pristine photograph so future Undos revert to THIS new save!
+        const job = appState.jobs.find(j => j.id === activeJobId);
+        if (job) {
+            localStorage.setItem('activeJobBackup', JSON.stringify(job));
+        }
         
         setUnsavedChangesState('clean');
         

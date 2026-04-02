@@ -11,35 +11,51 @@
         sortTracker[sortId] = !sortTracker[sortId]; 
         const dir = sortTracker[sortId] ? 1 : -1;
 
-        appState[arrayName].sort((a, b) => {
+        // 🪄 1. THE UNIVERSAL LIVE RAM INTERCEPTOR
+        let targetArray = appState[arrayName];
+        if (arrayName === 'sandbox_parts') {
+            targetArray = window.currentSandboxParts;
+            if (!targetArray) {
+                console.warn("Sort Failed: No sandbox parts found in memory.");
+                return;
+            }
+        }
+
+        if (!targetArray) return;
+
+        targetArray.sort((a, b) => {
             let valA = a[key];
             let valB = b[key];
 
+            // 🪄 2. THE VALIDATION BYPASS 
+            const isPartList = (arrayName === 'parts' || arrayName === 'sandbox_parts');
+
             // 🪄 Smart Lookups for Relational IDs and Dynamic Math
-            if (arrayName === 'parts' || arrayName === 'stock' || arrayName === 'catalog' || arrayName === 'profiles' || arrayName === 'stagingParts' || arrayName === 'commitStock') {
+            if (isPartList || arrayName === 'stock' || arrayName === 'catalog' || arrayName === 'profiles' || arrayName === 'stagingParts' || arrayName === 'commitStock') {
                 if (key === 'storeId') {
                     valA = appState.stores?.find(s => s.id === a.storeId)?.name || '';
                     valB = appState.stores?.find(s => s.id === b.storeId)?.name || '';
                 } else if (key === 'calculatedPrice' && arrayName === 'catalog') {
-                    // Calculate dynamic normalized price on the fly for accurate sorting
-                    const viewUnit = document.getElementById('table-price-view').value;
+                    const viewUnit = document.getElementById('table-price-view')?.value || 'weight';
                     valA = parseFloat(getNormalizedPriceDisplay(a, viewUnit)) || 0;
                     valB = parseFloat(getNormalizedPriceDisplay(b, viewUnit)) || 0;
-                } else if (key === 'projectId' && arrayName === 'parts') {
-                    valA = appState.projects.find(p => p.id === a.projectId)?.name || '';
-                    valB = appState.projects.find(p => p.id === b.projectId)?.name || '';
+                } else if (key === 'projectId' && isPartList) {         // 🪄 FIXED VALIDATION
+                    valA = appState.projects?.find(p => p.id === a.projectId)?.name || '';
+                    valB = appState.projects?.find(p => p.id === b.projectId)?.name || '';
+                } else if (key === 'groupId' && isPartList) {           // 🪄 ADDED GROUP VALIDATION
+                    valA = appState.groups?.find(g => g.id === a.groupId)?.name || '';
+                    valB = appState.groups?.find(g => g.id === b.groupId)?.name || '';
                 } else if (key === 'profileId') {
-                    valA = appState.profiles.find(p => p.id === a.profileId)?.name || '';
-                    valB = appState.profiles.find(p => p.id === b.profileId)?.name || '';
+                    valA = appState.profiles?.find(p => p.id === a.profileId)?.name || '';
+                    valB = appState.profiles?.find(p => p.id === b.profileId)?.name || '';
                 } else if (key === 'materialId') {
-                    valA = appState.materials.find(m => m.id === a.materialId)?.name || '';
-                    valB = appState.materials.find(m => m.id === b.materialId)?.name || '';
-                } else if (key === 'weight' && arrayName === 'parts') {
-                    // 🪄 Background Weight Calculation for Sorting
+                    valA = appState.materials?.find(m => m.id === a.materialId)?.name || '';
+                    valB = appState.materials?.find(m => m.id === b.materialId)?.name || '';
+                } else if (key === 'weight' && isPartList) {            // 🪄 FIXED VALIDATION
                     const getWeight = (p) => {
                         if (p.category === 'fastener') return 0;
-                        const prof = appState.profiles.find(pr => pr.id === p.profileId);
-                        const mat = appState.materials.find(m => m.id === p.materialId);
+                        const prof = appState.profiles?.find(pr => pr.id === p.profileId);
+                        const mat = appState.materials?.find(m => m.id === p.materialId);
                         if (!prof || !mat) return 0;
                         const safeThick = prof.thickness || 0;
                         const trueWidth = p.category === 'lumber' ? (prof.width || 0) : p.width;
@@ -49,21 +65,13 @@
                     valA = getWeight(a);
                     valB = getWeight(b);
                 } else if (key === 'name' && arrayName === 'profiles') {
-                    // 🪄 THE PROFILE NAME GROUPING ENGINE
-                    
-                    // 1. Group by Category FIRST (Safely falls back to checking width for Lumber vs Sheet)
                     let catA = String(a.category || a.categoryId || (a.width > 0 ? 'lumber' : 'sheet')).toLowerCase();
                     let catB = String(b.category || b.categoryId || (b.width > 0 ? 'lumber' : 'sheet')).toLowerCase();
-                    
                     if (catA !== catB) return catA.localeCompare(catB) * dir;
-
-                    // 2. Sort Alphabetically by Name inside the category group
                     let nameA = String(a.name || '').toLowerCase();
                     let nameB = String(b.name || '').toLowerCase();
-                    
                     return nameA.localeCompare(nameB) * dir;
                 } else if (key === 'dimensions') {
-                    // 🪄 UNIVERSAL DIMENSIONAL SORTING (For Parts, Stock, and Catalog)
                     if (arrayName === 'profiles') {
                         let widthA = a.width || 0;
                         let widthB = b.width || 0;
@@ -75,18 +83,14 @@
                             valB = widthB;
                         }
                     } else {
-                        // 1. Group by Category FIRST (Naturally separates Lumber vs Sheet)
-                        // 🪄 FIX: Safely check both `category` (Parts/Stock) and `categoryId` (Catalog)
                         let catA = String(a.category || a.categoryId || '').toLowerCase();
                         let catB = String(b.category || b.categoryId || '').toLowerCase();
                         if (catA !== catB) return catA.localeCompare(catB) * dir;
 
-                        // 2. Sort by Length inside the category group
                         let lenA = a.length || 0;
                         let lenB = b.length || 0;
                         if (lenA !== lenB) return (lenA - lenB) * dir;
                         
-                        // 3. Tie-break with Width (Pulling from profile if it is lumber)
                         let trueWidthA = a.width || 0;
                         let trueWidthB = b.width || 0;
                         if (catA === 'lumber' && appState.profiles) {
@@ -97,7 +101,6 @@
                         }
                         if (trueWidthA !== trueWidthB) return (trueWidthA - trueWidthB) * dir;
 
-                        // 4. Tie-break with Thickness (Pulling from profile)
                         let thickA = a.thickness || 0;
                         let thickB = b.thickness || 0;
                         if (appState.profiles) {
@@ -108,90 +111,35 @@
                         
                         return 0;
                     }
-                    
                 } else if (key === 'extracted_dimensions') {
-                    // 🪄 THE CATEGORY GROUPING ENGINE (For Imported Size)
-                    
-                    // 1. Group by Category FIRST (Naturally separates Lumber vs Sheet)
                     let catA = String(a.category || '').toLowerCase();
                     let catB = String(b.category || '').toLowerCase();
                     if (catA !== catB) return catA.localeCompare(catB) * dir;
-
-                    // 2. Sort the raw text natively inside the category group
                     let rawA = String(a.extracted_dimensions || '').toLowerCase().trim();
                     let rawB = String(b.extracted_dimensions || '').toLowerCase().trim();
-                    
-                    // 'numeric: true' ensures "1500" is sorted higher than "800"
                     return rawA.localeCompare(rawB, undefined, { numeric: true }) * dir;
-
-                } else if (key === 'weight_cost' && arrayName === 'parts') {
-                    // 🪄 3D Cascading Tie-Breaker (Grouping -> Length -> Width -> Thickness)
+                } else if (key === 'weight_cost' && isPartList) {       // 🪄 FIXED VALIDATION
                     let wA = a.width || 0;
                     let wB = b.width || 0;
 
                     let dimA = wA > 0 ? 2 : 1;
                     let dimB = wB > 0 ? 2 : 1;
-
-                    // 🪄 Group by Dimensionality first! (1D vs 2D)
                     if (dimA !== dimB) return (dimA - dimB) * dir;
 
-                    // Then sort by Length
                     let lenA = a.length || 0;
                     let lenB = b.length || 0;
                     if (lenA !== lenB) return (lenA - lenB) * dir;
 
-                    // Then Width
                     if (wA !== wB) return (wA - wB) * dir;
 
-                    // Finally Thickness
                     let tA = a.thickness || 0;
                     let tB = b.thickness || 0;
                     if (tA !== tB) return (tA - tB) * dir;
 
-                    return 0; // Complete tie
-                } else if (key === 'weight_cost' && arrayName === 'parts') {
-                    // 🪄 DYNAMIC PARTS COLUMN SORTING
-                    const metricMode = (appState.settings && appState.settings.partsMetricMode) ? appState.settings.partsMetricMode : 'weight';
-                    
-                    const getWeight = (p) => {
-                        if (p.category === 'fastener') return 0;
-                        const prof = appState.profiles.find(pr => pr.id === p.profileId);
-                        const mat = appState.materials.find(m => m.id === p.materialId);
-                        if (!prof || !mat) return 0;
-                        const trueWidth = p.category === 'lumber' ? (prof.width || 0) : p.width;
-                        const volumeM3 = (p.length * trueWidth * (prof.thickness || 0)) / 1000000000;
-                        return volumeM3 * (mat.density || 0) * p.qty;
-                    };
-
-                    const getEstimatedCost = (p) => {
-                        if (p.category === 'fastener' || !appState.catalog) return 0;
-                        const matchingItems = appState.catalog.filter(c => c.categoryId === p.category && c.profileId === p.profileId && c.materialId === p.materialId);
-                        if (matchingItems.length === 0) return 0;
-
-                        let totalNormPrice = 0;
-                        matchingItems.forEach(c => {
-                            const bCost = typeof calculateCostPerPiece === 'function' ? calculateCostPerPiece(c) : 0;
-                            if (p.category === 'sheet') {
-                                const cArea = c.length * c.width;
-                                if (cArea > 0) totalNormPrice += (bCost / cArea);
-                            } else {
-                                if (c.length > 0) totalNormPrice += (bCost / c.length);
-                            }
-                        });
-                        
-                        const avgUnitCost = totalNormPrice / matchingItems.length;
-                        const trueWidth = p.category === 'lumber' ? (appState.profiles.find(pr => pr.id === p.profileId)?.width || 0) : p.width;
-                        const unitSize = p.category === 'sheet' ? (p.length * trueWidth) : p.length;
-                        return avgUnitCost * unitSize * p.qty;
-                    };
-
-                    valA = metricMode === 'cost' ? getEstimatedCost(a) : getWeight(a);
-                    valB = metricMode === 'cost' ? getEstimatedCost(b) : getWeight(b);
+                    return 0; 
                 }
-                
             }
             
-            // Clean up values based on type
             if (type === 'number') {
                 valA = parseFloat(valA) || 0;
                 valB = parseFloat(valB) || 0;
@@ -200,105 +148,112 @@
                 valB = String(valB || '').toLowerCase();
             }
 
-            // Execute Sort
             if (valA < valB) return -1 * dir;
             if (valA > valB) return 1 * dir;
             return 0;
         });
 
-        saveState();
+        if (typeof saveState === 'function') saveState();
 
-        // Trigger the correct redraw
-        if (arrayName === 'projects') renderProjectsTable();
-        if (arrayName === 'materials') renderMaterialsTable();
-        if (arrayName === 'profiles') renderProfilesTable();
-        if (arrayName === 'parts') renderPartsTable();
+        if (arrayName === 'projects' && typeof renderProjectsTable === 'function') renderProjectsTable();
+        if (arrayName === 'materials' && typeof renderMaterialsTable === 'function') renderMaterialsTable();
+        if (arrayName === 'profiles' && typeof renderProfilesTable === 'function') renderProfilesTable();
+        if (arrayName === 'parts' && typeof renderPartsTable === 'function') renderPartsTable();
         if (arrayName === 'stock' && typeof renderStockTable === 'function') renderStockTable();
         if (arrayName === 'catalog' && typeof renderCatalogTable === 'function') renderCatalogTable();
-        if (arrayName === 'stagingParts') renderStagingTable();
+        if (arrayName === 'stagingParts' && typeof renderStagingTable === 'function') renderStagingTable();
         if (arrayName === 'groups' && typeof renderGroupModalTable === 'function') renderGroupModalTable();
         if (arrayName === 'stores' && typeof renderStoreModalTable === 'function') renderStoreModalTable();
+        
+        // 🪄 Universal Sandbox Redraw
+        if (arrayName === 'sandbox_parts' && typeof renderSandboxPartlistTab === 'function') {
+            renderSandboxPartlistTab(window.currentSandboxParts);
+        }
     }
 
     // ==========================================
     // FILTER ENGINE
     // ==========================================
 
-    // 1. The Global State Tracker, Remembers which checkboxes are ticked: e.g. { parts: { category: ['lumber'] } }
     let activeFilters = {};
-    // 2. Open the Modal & Populate Data
+
     function openFilterModal(event, arrayName, columnKey, displayTitle) {
-        // 🪄 CRITICAL: Stop the click from triggering a column sort!
         event.stopPropagation();
 
-        // Ensure the tracker exists for this table
         if (!activeFilters[arrayName]) activeFilters[arrayName] = {};
 
-        // Set hidden inputs and Title
         document.getElementById('filter-array-name').value = arrayName;
         document.getElementById('filter-column-key').value = columnKey;
-        document.getElementById('filterModalTitle').innerText = `${t('hdr_filter')}: ${displayTitle}`;
+        
+        const titleEl = document.getElementById('filterModalTitle');
+        if (titleEl && typeof t === 'function') titleEl.innerText = `${t('hdr_filter')}: ${displayTitle}`;
+        else if (titleEl) titleEl.innerText = `Filter: ${displayTitle}`;
 
-        // Extract unique values from the database
-        const uniqueValues = new Map(); // Use a Map to hold { rawValue: humanReadableText }
+        const uniqueValues = new Map(); 
 
-        appState[arrayName].forEach(row => {
+        // 🪄 THE UNIVERSAL LIVE RAM INTERCEPTOR
+        let targetArray = appState[arrayName];
+        if (arrayName === 'sandbox_parts') {
+            targetArray = window.currentSandboxParts;
+        }
+
+        if (!targetArray) return;
+
+        targetArray.forEach(row => {
             let rawValue = row[columnKey];
             let displayText = rawValue;
 
-            // Handle Empty/Null
             if (rawValue === '' || rawValue === null || rawValue === undefined) {
                 rawValue = '___EMPTY___';
-                displayText = t('lbl_blank');
+                displayText = typeof t === 'function' ? t('lbl_blank') : 'Blank';
             } else {
-                // 🪄 TRANSLATION DICTIONARY: Convert IDs to Human Readable Names
-                if (columnKey === 'projectId') displayText = appState.projects.find(p => p.id === rawValue)?.name || t('lbl_unknown_project');
-                else if (columnKey === 'groupId') displayText = appState.groups.find(g => g.id === rawValue)?.name || t('lbl_unknown_group');
-                else if (columnKey === 'profileId') displayText = appState.profiles.find(p => p.id === rawValue)?.name || t('lbl_unknown_profile');
-                else if (columnKey === 'materialId') displayText = appState.materials.find(m => m.id === rawValue)?.name || t('lbl_unknown_material');
-                else if (columnKey === 'storeId') displayText = appState.stores?.find(s => s.id === rawValue)?.name || t('lbl_unknown_store');
+                if (columnKey === 'projectId') displayText = appState.projects?.find(p => p.id === rawValue)?.name || 'Unknown Project';
+                else if (columnKey === 'groupId') displayText = appState.groups?.find(g => g.id === rawValue)?.name || 'Unknown Group';
+                else if (columnKey === 'profileId') displayText = appState.profiles?.find(p => p.id === rawValue)?.name || 'Unknown Profile';
+                else if (columnKey === 'materialId') displayText = appState.materials?.find(m => m.id === rawValue)?.name || 'Unknown Material';
+                else if (columnKey === 'storeId') displayText = appState.stores?.find(s => s.id === rawValue)?.name || 'Unknown Store';
             }
 
             uniqueValues.set(rawValue, displayText);
         });
 
-        // Sort alphabetically by the Human Readable text
         const sortedEntries = Array.from(uniqueValues.entries()).sort((a, b) => String(a[1]).localeCompare(String(b[1])));
 
-        // Build the HTML Checkboxes
         const listContainer = document.getElementById('filter-checkbox-list');
         listContainer.innerHTML = '';
 
         const currentActive = activeFilters[arrayName][columnKey] || [];
 
         sortedEntries.forEach(([rawVal, displayTxt]) => {
-            // If there's no active filter array, default to checking everything
             const isChecked = currentActive.length === 0 || currentActive.includes(rawVal);
             
             const div = document.createElement('div');
             div.className = 'form-check mb-1';
             div.innerHTML = `
-                <input class="form-check-input filter-option-cb" type="checkbox" value="${safeHTML(rawVal)}" id="flt-${safeHTML(rawVal)}" ${isChecked ? 'checked' : ''}>
-                <label class="form-check-label w-100" for="flt-${safeHTML(rawVal)}" style="cursor:pointer;">
-                    ${safeHTML(displayTxt)}
+                <input class="form-check-input filter-option-cb" type="checkbox" value="${typeof safeHTML === 'function' ? safeHTML(rawVal) : rawVal}" id="flt-${typeof safeHTML === 'function' ? safeHTML(rawVal) : rawVal}" ${isChecked ? 'checked' : ''}>
+                <label class="form-check-label w-100" for="flt-${typeof safeHTML === 'function' ? safeHTML(rawVal) : rawVal}" style="cursor:pointer;">
+                    ${typeof safeHTML === 'function' ? safeHTML(displayTxt) : displayTxt}
                 </label>
             `;
             listContainer.appendChild(div);
         });
 
-        // Show the Modal
-        const modal = new bootstrap.Modal(document.getElementById('universalFilterModal'));
-        modal.show();
+        const filterModal = document.getElementById('universalFilterModal');
+        if (filterModal && typeof bootstrap !== 'undefined') {
+            const modal = new bootstrap.Modal(filterModal);
+            modal.show();
+        }
     }
-    // 3. Modal Button Helpers
+
     function toggleAllFilters(checkThem) {
         document.querySelectorAll('.filter-option-cb').forEach(cb => cb.checked = checkThem);
     }
+    
     function clearCurrentFilter() {
-        toggleAllFilters(true); // Visually check all
-        applyFilter(); // Applying with everything checked is the same as clearing it
+        toggleAllFilters(true); 
+        applyFilter(); 
     }
-    // 4. Save the Filter & Redraw
+
     function applyFilter() {
         const arrayName = document.getElementById('filter-array-name').value;
         const columnKey = document.getElementById('filter-column-key').value;
@@ -314,17 +269,50 @@
 
         if (!activeFilters[arrayName]) activeFilters[arrayName] = {};
 
-        // If everything is checked, we don't need to filter at all. Remove it to save math.
         if (allChecked) {
             delete activeFilters[arrayName][columnKey];
         } else {
             activeFilters[arrayName][columnKey] = checkedValues;
         }
 
-        // Hide Modal
-        bootstrap.Modal.getInstance(document.getElementById('universalFilterModal')).hide();
+        const filterModal = document.getElementById('universalFilterModal');
+        if (filterModal && typeof bootstrap !== 'undefined') {
+            const modalInst = bootstrap.Modal.getInstance(filterModal);
+            if (modalInst) modalInst.hide();
+        }
 
-        // 🪄 Trigger the correct redraw function
+        if (arrayName === 'parts' && typeof renderPartsTable === 'function') renderPartsTable();
+        if (arrayName === 'materials' && typeof renderMaterialsTable === 'function') renderMaterialsTable();
+        if (arrayName === 'catalog' && typeof renderCatalogTable === 'function') renderCatalogTable();
+        if (arrayName === 'stock' && typeof renderStockTable === 'function') renderStockTable();
+        if (arrayName === 'projects' && typeof renderProjectsTable === 'function') renderProjectsTable();
+        if (arrayName === 'profiles' && typeof renderProfilesTable === 'function') renderProfilesTable();
+        
+        // 🪄 UNIVERSAL SANDBOX REDRAW
+        if (arrayName === 'sandbox_parts' && typeof renderSandboxPartlistTab === 'function') {
+            if (window.currentSandboxParts) renderSandboxPartlistTab(window.currentSandboxParts);
+        }
+    }
+
+    function rowPassesFilters(row, arrayName) {
+        if (!activeFilters[arrayName]) return true; 
+
+        for (const [columnKey, allowedValues] of Object.entries(activeFilters[arrayName])) {
+            let cellValue = row[columnKey];
+            if (cellValue === '' || cellValue === null || cellValue === undefined) cellValue = '___EMPTY___';
+            
+            if (!allowedValues.includes(String(cellValue))) {
+                return false; 
+            }
+        }
+        return true; 
+    }
+
+    function clearAllFiltersForTable(arrayName) {
+        if (activeFilters[arrayName]) {
+            activeFilters[arrayName] = {}; 
+        }
+        
         if (arrayName === 'parts' && typeof renderPartsTable === 'function') renderPartsTable();
         if (arrayName === 'materials' && typeof renderMaterialsTable === 'function') renderMaterialsTable();
         if (arrayName === 'catalog' && typeof renderCatalogTable === 'function') renderCatalogTable();
@@ -332,48 +320,24 @@
         if (arrayName === 'projects' && typeof renderProjectsTable === 'function') renderProjectsTable();
         if (arrayName === 'profiles' && typeof renderProfilesTable === 'function') renderProfilesTable();
         if (arrayName === 'stagingParts' && typeof renderStagingTable === 'function') renderStagingTable();
-    }
-    // 5. The Gatekeeper (Called inside your render loops)
-    function rowPassesFilters(row, arrayName) {
-        if (!activeFilters[arrayName]) return true; // No filters active for this table
 
-        for (const [columnKey, allowedValues] of Object.entries(activeFilters[arrayName])) {
-            let cellValue = row[columnKey];
-            if (cellValue === '' || cellValue === null || cellValue === undefined) cellValue = '___EMPTY___';
-            
-            // If the cell's value is NOT in the allowed list, kill the row immediately
-            if (!allowedValues.includes(String(cellValue))) {
-                return false; 
+        // 🪄 UNIVERSAL SANDBOX REDRAW: Forces the Sandbox table to repaint using the cached array
+        if (arrayName === 'sandbox_parts' && typeof renderSandboxPartlistTab === 'function') {
+            if (window.currentSandboxParts) {
+                renderSandboxPartlistTab(window.currentSandboxParts);
+            } else {
+                console.warn("Clear Filters Failed: No sandbox parts found in memory to redraw.");
             }
         }
-        return true; // Passed all active filters!
     }
-    // 6. Global Master Clear Switch
-    function clearAllFiltersForTable(arrayName) {
-        if (activeFilters[arrayName]) {
-            activeFilters[arrayName] = {}; // Wipe the filters clean for this table
-        }
-        
-        // Trigger the redraw to bring all rows back instantly
-        if (arrayName === 'parts' && typeof renderPartsTable === 'function') renderPartsTable();
-        if (arrayName === 'materials' && typeof renderMaterialsTable === 'function') renderMaterialsTable();
-        if (arrayName === 'catalog' && typeof renderCatalogTable === 'function') renderCatalogTable();
-        if (arrayName === 'stock' && typeof renderStockTable === 'function') renderStockTable();
-        if (arrayName === 'projects' && typeof renderProjectsTable === 'function') renderProjectsTable();
-        if (arrayName === 'profiles' && typeof renderMaterialsTable === 'function') renderProfilesTable();
-        if (arrayName === 'stagingParts' && typeof renderStagingTable === 'function') renderStagingTable();
-    }
-    // 7. Global UI Painter for Filters
-    // Call this at the end of any table's render loop to instantly update all icon colors
+
     function updateFilterUI(arrayName, filterableColumns) {
         const clearBtn = document.getElementById(`flt-clear-${arrayName}`);
         let hasAnyFilter = false;
 
-        // 1. Paint the Column Icons
         filterableColumns.forEach(col => {
             const icon = document.getElementById(`flt-icon-${arrayName}-${col}`);
             if (icon) {
-                // If this specific column has an active filter
                 if (activeFilters[arrayName] && activeFilters[arrayName][col] && activeFilters[arrayName][col].length > 0) {
                     icon.classList.remove('text-muted');
                     icon.classList.add('text-primary'); 
@@ -385,7 +349,6 @@
             }
         });
 
-        // 2. Paint the Master Clear Button
         if (clearBtn) {
             if (hasAnyFilter) {
                 clearBtn.classList.remove('text-secondary', 'opacity-25');
@@ -396,16 +359,13 @@
             }
         }
 
-        // Return this boolean just in case the local table needs to know if a filter is active!
         return hasAnyFilter; 
     }
 
-    // Stock and Prices Modal Sorting
     let modalSortStates = { stock: { key: '', dir: 1 }, catalog: { key: '', dir: 1 } };
     function handleModalSort(type, key) {
         let state = modalSortStates[type];
         
-        // Toggle direction if clicking the same column
         if (state.key === key) {
             state.dir *= -1;
         } else {
@@ -413,9 +373,10 @@
             state.dir = 1;
         }
 
-        // Redraw the specific modal (which handles the actual sorting on-the-fly now)
-        if (type === 'stock') renderStockModalTable();
-        else renderCatalogModalTable();
+        if (type === 'stock') {
+            if (typeof renderStockModalTable === 'function') renderStockModalTable();
+        } else {
+            if (typeof renderCatalogModalTable === 'function') renderCatalogModalTable();
+        }
     }
-    
 </script>

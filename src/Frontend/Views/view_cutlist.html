@@ -44,8 +44,8 @@
 <div class="row g-3">
 
     <!-- Configuration Area -->
-    <div class="col-lg-3 col-md-4 d-flex flex-column">
-        <div class="card shadow-sm border-primary" id="optimizer-config-form">
+    <div class="col-lg-3 col-md-4 d-none d-md-flex flex-column">
+        <div class="card shadow-sm border-primary" id="optimizer-config-form" style="height: calc(100vh - 100px);">
             
             <!-- Card Header -->
             <div class="card-header bg-primary pt-2 pb-0 border-bottom-0 d-flex justify-content-between align-items-end" style="border-top-left-radius: inherit; border-top-right-radius: inherit;">
@@ -178,22 +178,34 @@
 
     <!-- Results Area -->
     <div class="col-lg-9 col-md-8">
-        <div class="card shadow-sm border-primary h-100" id="optimizer-results-form">
+        <div class="card shadow-sm border-primary h-100" id="optimizer-results-form" style="height: calc(100vh - 100px);">
 
             <!-- Card Header -->
             <div class="card-header bg-primary pt-2 pb-0 border-bottom-0 d-flex justify-content-between align-items-end" style="border-top-left-radius: inherit; border-top-right-radius: inherit;">
                 <ul class="nav nav-tabs card-header-tabs border-bottom-0 m-0" id="resultsTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="tab-shopping" data-bs-toggle="tab" data-bs-target="#pane-shopping" type="button" role="tab" onclick="populateStockDropdowns()">🛒 Shopping List</button>
+                        <button class="nav-link active" id="tab-shopping" data-bs-toggle="tab" data-bs-target="#pane-shopping" type="button" role="tab" onclick="populateStockDropdowns()">
+                            <span class="tab-icon">🛒</span><span class="tab-text-desktop">Shopping List</span><span class="tab-text-mobile">Shopping</span>
+                        </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="tab-diagrams" data-bs-toggle="tab" data-bs-target="#pane-diagrams" type="button" role="tab" onclick="populateCatalogDropdowns()">🔪 Cut Diagrams</button>
+                        <button class="nav-link" id="tab-diagrams" data-bs-toggle="tab" data-bs-target="#pane-diagrams" type="button" role="tab" onclick="populateCatalogDropdowns()">
+                            <span class="tab-icon">🔪</span><span class="tab-text-desktop">Cut Diagrams</span><span class="tab-text-mobile">Diagrams</span>
+                        </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="tab-analytics" data-bs-toggle="tab" data-bs-target="#pane-analytics" type="button" role="tab" onclick="populateCatalogDropdowns()">♻️ Analytics & Offcuts</button>
+                        <button class="nav-link" id="tab-analytics" data-bs-toggle="tab" data-bs-target="#pane-analytics" type="button" role="tab" onclick="populateCatalogDropdowns()">
+                            <span class="tab-icon">♻️</span><span class="tab-text-desktop">Analytics & Offcuts</span><span class="tab-text-mobile">Analytics</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-sandbox-partlist" data-bs-toggle="tab" data-bs-target="#pane-sandbox-partlist" type="button" role="tab">
+                            <span class="tab-icon">🧩</span><span class="tab-text-desktop">Partlist</span><span class="tab-text-mobile">Parts</span>
+                        </button>
                     </li>
                 </ul>
-                <div class="align-self-center mb-2">
+                <div class="align-self-center mb-2 d-flex align-items-center">
+                    <button id="btn-global-exit-job" class="btn btn-sm btn-danger py-0 fw-bold me-2 d-none" onclick="resetConfigurator(); openLoadJobModal();" title="Exit Sandbox">🚪 Exit Job</button>
                     <div id="shopping-controls" class="d-none">                     
                         <button class="header-btn btn btn-sm btn-warning py-0 fw-bold" onclick="printOptimizer('shopping')" data-i18n="btn_print_shopping_list">🖨️ Shopping List</button>
                     </div>
@@ -207,10 +219,14 @@
                 </div>
             </div>
 
-            <!-- Card Empty State -->
             <div id="optimizer-empty-state" class="text-center text-muted mt-5">
                 <h1>🧮</h1>
-                <p class="mt-2" data-i18n="txt_optimizer_empty_state">Select your configuration on the left and click Calculate<br>to generate your optimized shopping list and cut diagrams.</p>
+                <p class="mt-2 d-none d-md-block" data-i18n="txt_optimizer_empty_state">Select your configuration on the left and click Calculate<br>to generate your optimized shopping list and cut diagrams.</p>
+                
+                <div class="d-md-none mt-4">
+                    <p class="mb-3 text-dark fw-bold">Mobile Sandbox Mode</p>
+                    <button class="btn btn-primary btn-lg rounded-pill shadow-sm fw-bold px-4" onclick="openLoadJobModal()">📂 Load Saved Job</button>
+                </div>
             </div>
 
             <!-- Tab Content -->
@@ -221,6 +237,8 @@
                 <div class="tab-pane p-3" id="pane-diagrams" role="tabpanel" tabindex="0"></div>
                 <!-- Analytics & Offcuts -->
                 <div class="tab-pane p-3" id="pane-analytics" role="tabpanel" tabindex="0"></div>
+                <!-- Partlist -->
+                <div class="tab-pane p-3" id="pane-sandbox-partlist" role="tabpanel" tabindex="0"></div>
             </div>
             
         </div>
