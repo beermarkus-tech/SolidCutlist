@@ -1,9 +1,15 @@
 <script>
     // PRINT PARTLIST
-    function printPartsTable() {
-        // Fallback to '$' / 'letter' if currency setting isn't explicitly set yet
+    // 🪄 Upgraded to use Uniform Category Badges and Global Styles
+    function printPartsTable(tableId = 'parts') {
         const currency = (appState.settings && appState.settings.currency) ? appState.settings.currency : '$';
         const pageSize = (currency === '$') ? 'letter' : 'A4';
+
+        // INTERCEPTOR: Decide which data source to use
+        let partsSource = appState.parts;
+        if (tableId === 'sandbox_parts') {
+            partsSource = window.currentSandboxParts || [];
+        }
 
         let printWindow = window.open('', '_blank');
         if (!printWindow) {
@@ -14,21 +20,19 @@
         // 1. Build the Static Table Rows
         let rowsHtml = '';
         
-        if (!appState.parts || appState.parts.length === 0) {
+        if (!partsSource || partsSource.length === 0) {
             rowsHtml = `<tr><td colspan="9" class="text-center py-4">${t('msg_no_parts_added')}</td></tr>`;
         } else {
-            appState.parts.forEach(part => {
-                // 🪄 CRITICAL: Only print rows that pass the current active filters!
-                if (typeof rowPassesFilters === 'function' && !rowPassesFilters(part, 'parts')) return;
+            partsSource.forEach(part => {
+                // CRITICAL: Only print rows that pass the current active filters
+                if (typeof rowPassesFilters === 'function' && !rowPassesFilters(part, tableId)) return;
 
-                // Relational lookups to get human-readable names
                 const projName = appState.projects.find(p => p.id === part.projectId)?.name || '-';
                 const groupName = appState.groups?.find(g => g.id === part.groupId)?.name || '-';
                 const prof = appState.profiles.find(p => p.id === part.profileId);
                 const matName = appState.materials.find(m => m.id === part.materialId)?.name || '-';
                 const profName = prof ? prof.name : '-';
                 
-                // Format Dimensions beautifully for paper
                 const displayW = part.category === 'lumber' ? formatForDisplay(prof ? prof.width : 0) : formatForDisplay(part.width);
                 const displayL = formatForDisplay(part.length);
                 let dimText = '-';
@@ -39,19 +43,27 @@
                     dimText = `${displayW} x ${displayL}`;
                 }
 
-                // Format Grain
                 let grainText = '-';
                 if (part.category === 'sheet' && part.grain && part.grain !== 'none') {
-                    // Capitalize the first letter (Length / Width)
                     grainText = t('opt_' + part.grain).charAt(0).toUpperCase() + t('opt_' + part.grain).slice(1);
                 }
 
+                // 🪄 DESIGN PRINCIPLE: Pull the same badge class used in the main UI
+                const badgeClass = typeof getCategoryBadgeClass === 'function' ? getCategoryBadgeClass(part.category) : 'bg-secondary';
+
                 rowsHtml += `
-                    <tr>
+                    <tr class="small">
                         <td>${projName}</td>
-                        <td><small class="text-muted">${groupName}</small></td>
-                        <td><strong>${part.name || '-'}</strong></td>
-                        <td>${t('cat_' + part.category).charAt(0).toUpperCase() + t('cat_' + part.category).slice(1)}</td>
+                        <td class="text-muted">${groupName}</td>
+                        <td class="fw-bold">${part.name || '-'}</td>
+                        <td>
+                            <div class="d-flex justify-content-center px-1">
+                                <span class="badge ${badgeClass} py-1 d-inline-block" 
+                                      style="width: 85px; text-align: center; font-size: 0.75rem; text-transform: uppercase;">
+                                      ${t('opt_' + part.category)}
+                                </span>
+                            </div>
+                        </td>
                         <td class="text-center"><strong>${part.qty}</strong></td>
                         <td class="text-center">${dimText}</td>
                         <td>${profName}</td>
@@ -62,30 +74,11 @@
             });
         }
 
-        // 2. Assemble the Table
-        let htmlContent = `
-            <h3 class="border-bottom border-2 border-dark pb-2 mb-4">🪵 ${t('title_master_partlist')}</h3>
-            <table class="table table-sm table-striped">
-                <thead>
-                    <tr>
-                        <th>${t('header_project')}</th>
-                        <th>${t('header_group')}</th>
-                        <th>${t('header_part_name')}</th>
-                        <th>${t('header_category')}</th>
-                        <th class="text-center">${t('header_qty')}</th>
-                        <th class="text-center">${t('header_dimensions')}</th>
-                        <th>${t('header_profile')}</th>
-                        <th>${t('header_material')}</th>
-                        <th class="text-center">${t('header_grain')}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rowsHtml}
-                </tbody>
-            </table>
-        `;
+        // 2. 🪄 STYLE SCRAPER: Grab all styles so custom colors transfer to the new window
+        const parentLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(l => l.outerHTML).join('\n');
+        const parentStyles = Array.from(document.querySelectorAll('style')).map(s => s.outerHTML).join('\n');
 
-        // 3. Wrap in the Ink-Saver Print Shell
+        // 3. Wrap in the shell
         let finalHtml = `
             <!DOCTYPE html>
             <html lang="en">
@@ -93,24 +86,52 @@
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>${t('title_parts_printout')}</title>
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                ${parentLinks}
+                ${parentStyles}
                 <style>
                     @page { size: ${pageSize} landscape; margin: 15mm; }
-                    
-                    /* Ink-Saver Overrides */
                     body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; font-size: 13px; }
-                    
                     .table { margin-bottom: 0 !important; width: 100%; border-collapse: collapse; }
-                    .table th { background-color: #f8f9fa !important; color: #000 !important; border-bottom: 2px solid #000 !important; font-size: 12px; text-transform: uppercase;}
+                    .table th { 
+                        background-color: #f8f9fa !important; 
+                        color: #000 !important; 
+                        border-bottom: 2px solid #000 !important; 
+                        font-size: 16px; 
+                        font-weight: bold; /* Ensures headers remain distinct without all-caps */
+                    }
                     .table td, .table th { border-color: #ccc !important; padding: 6px 8px; vertical-align: middle; }
-                    
-                    /* Force alternating stripe color in print mode */
                     .table-striped tbody tr:nth-of-type(odd) { background-color: #f4f4f4 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .small, small { font-size: 14px !important; }
+                    
+                    /* 🪄 Ensure badges keep their color on paper */
+                    .badge { 
+                        -webkit-print-color-adjust: exact !important; 
+                        print-color-adjust: exact !important; 
+                        border: 1px solid rgba(0,0,0,0.1); 
+                    }
                 </style>
             </head>
             <body>
                 <div class="container-fluid pt-2">
-                    ${htmlContent}
+                    <h3 class="border-bottom border-2 border-dark pb-2 mb-4">🪵 ${t('title_master_partlist')}</h3>
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>${t('header_project')}</th>
+                                <th>${t('header_group')}</th>
+                                <th>${t('header_part_name')}</th>
+                                <th class="text-center">${t('header_category')}</th>
+                                <th class="text-center">${t('header_qty')}</th>
+                                <th class="text-center">${t('header_dimensions')}</th>
+                                <th>${t('header_profile')}</th>
+                                <th>${t('header_material')}</th>
+                                <th class="text-center">${t('header_grain')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
                 </div>
             </body>
             </html>

@@ -67,9 +67,17 @@
                     <div class="card-body py-3">
                         <div id="job-config-settings">
                             <!-- Use Shop Stock -->
-                            <div class="form-check form-switch mb-4 pb-3 border-bottom">
+                            <div class="form-check form-switch mt-2 mp-2 pb-3">
                                 <input class="form-check-input" type="checkbox" id="opt-use-stock" onchange="toggleUseStock(this.checked)">
                                 <label class="form-check-label fw-bold" for="opt-use-stock" data-i18n="lbl_use_shop_stock">Use Shop Stock</label>
+                            </div>
+                            <div class="mb-4 pb-3 border-bottom">
+                                <select class="form-select form-select-sm" id="opt-sheet-cut" onchange="updateSheetCutPreference(this.value)">
+                                    <option value="auto">Auto (Best Yield)</option>
+                                    <option value="rip">Rip Cut First</option>
+                                    <option value="cross">Cross Cut First</option>
+                                </select>
+                                <div class="form-text mt-1" style="font-size: 0.65rem;" data-i18n="txt_sheet_cut_strategy">Determines the primary direction of the first cuts on sheet materials.</div>
                             </div>
                             <!-- Kerf Settings -->
                             <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
@@ -149,28 +157,30 @@
                         <div id="job-configurator-tree" class="flex-grow-1 px-3 pb-2" style="min-height: 150px;">
                             <div class="text-center text-muted small">Loading...</div>
                         </div>
-                        <div style="position: sticky; bottom: 0; background-color: var(--bs-card-bg, #fff); padding: 1rem; border-top: 1px solid var(--bs-border-color-translucent, #dee2e6); z-index: 10; width: 100%; margin-top: auto; border-bottom-left-radius: calc(var(--bs-card-border-radius, 0.375rem) - 1px); border-bottom-right-radius: calc(var(--bs-card-border-radius, 0.375rem) - 1px);">
-                            
-                            <div id="current-job-label-container" class="text-center mb-2 d-none">
-                                <small class="text-muted fw-bold">Current Job: </small>
-                                <small class="text-muted fw-bold" id="current-job-name-display"></small>
-                            </div>                         
-
-                            <div>
-                                <div id="job-config-actions-default" class="d-flex gap-2">
-                                    <button class="btn btn-primary flex-grow-1 shadow-sm" id="btn-calc-cutlist" onclick="runOptimization()">Calculate</button>
-                                    <button class="btn btn-outline-secondary flex-grow-1 shadow-sm" id="btn-load-job" onclick="openLoadJobModal()">Load Job</button>
-                                </div>
-                                <div id="job-config-actions-active" class="d-flex gap-2 d-none">
-                                    <button class="btn btn-primary flex-grow-1 shadow-sm" id="btn-active-action1" onclick="resetConfigurator()">↻ Restart</button>
-                                    <button class="btn btn-success flex-grow-1 shadow-sm" id="btn-active-save" onclick="openSaveJobModal()">Save Job</button>
-                                    <button class="btn btn-outline-secondary flex-grow-1 shadow-sm d-none" id="btn-active-load" onclick="openLoadJobModal()">Load Job</button>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="position: sticky; bottom: 0; background-color: var(--bs-card-bg, #fff); padding: 1rem; border-top: 1px solid var(--bs-border-color-translucent, #dee2e6); z-index: 10; width: 100%; margin-top: auto; border-bottom-left-radius: calc(var(--bs-card-border-radius, 0.375rem) - 1px); border-bottom-right-radius: calc(var(--bs-card-border-radius, 0.375rem) - 1px);">
+                            
+                <div id="current-job-label-container" class="text-center mb-2 d-none">
+                    <small class="text-muted fw-bold">Current Job: </small>
+                    <small class="text-muted fw-bold" id="current-job-name-display"></small>
+                </div>                         
+
+                <div>
+                    <div id="job-config-actions-default" class="d-flex gap-2">
+                        <button class="btn btn-primary flex-grow-1 shadow-sm" id="btn-calc-cutlist" onclick="runOptimization()">Calculate</button>
+                        <button class="btn btn-outline-secondary flex-grow-1 shadow-sm" id="btn-load-job" onclick="openLoadJobModal()">Load Job</button>
+                    </div>
+                    <div id="job-config-actions-active" class="d-flex gap-2 d-none">
+                        <button class="btn btn-primary flex-grow-1 shadow-sm" id="btn-active-action1" onclick="resetConfigurator()">↻ Restart</button>
+                        <button class="btn btn-success flex-grow-1 shadow-sm" id="btn-active-save" onclick="openSaveJobModal()">Save Job</button>
+                        <button class="btn btn-outline-secondary flex-grow-1 shadow-sm d-none" id="btn-active-load" onclick="openLoadJobModal()">Load Job</button>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -205,14 +215,20 @@
                     </li>
                 </ul>
                 <div class="align-self-center mb-2 d-flex align-items-center">
-                    <button id="btn-global-exit-job" class="btn btn-sm btn-danger py-0 fw-bold me-2 d-none" onclick="resetConfigurator(); openLoadJobModal();" title="Exit Sandbox">🚪 Exit Job</button>
+                    <button id="btn-global-exit-job" class="header-btn-small btn btn-sm btn-danger py-0 fw-bold d-none" onclick="resetConfigurator(); openLoadJobModal();" title="Exit Sandbox">🚪</button>
                     <div id="shopping-controls" class="d-none">                     
-                        <button class="header-btn btn btn-sm btn-warning py-0 fw-bold" onclick="printOptimizer('shopping')" data-i18n="btn_print_shopping_list">🖨️ Shopping List</button>
+                        <button class="header-btn-small btn btn-sm btn-light text-shadow-basic py-0 fw-bold" onclick="printOptimizer('shopping')" data-i18n="btn_print_shopping_list">🖨️</button>
+                    </div>
+                    <div id="analytics-controls" class="d-none">
+                        <button class="header-btn-small btn btn-sm btn-light text-shadow-basic py-0 fw-bold" onclick="openCommitModal()">📦</button>
+                    </div>
+                    <div id="sandbox-partlist-controls" class="d-none">
+                        <button class="header-btn-small btn btn-sm btn-light text-shadow-basic py-0 fw-bold" onclick="printPartsTable('sandbox_parts')">🖨️</button>
                     </div>
                     <div id="diagram-controls" class="d-none">
-                        <button class="header-btn btn btn-sm btn-warning py-0 fw-bold me-1" onclick="printOptimizer('diagrams')" data-i18n="btn_print_diagrams">🖨️ Diagrams</button>
-                        <button class="header-btn btn btn-sm btn-warning py-0 fw-bold me-2" onclick="openLabelModal()" data-i18n="btn_print_labels">🖨️ Part Labels</button>
-                        <button id="btn-toggle-diagrams-view" class="header-btn-small btn btn-outline-light btn-sm py-0 fw-bold" onclick="toggleDiagramsExpandCollapse()" title="Toggle Expand/Collapse">
+                        <button class="header-btn-small btn btn-sm btn-light text-shadow-basic py-0 fw-bold" onclick="printOptimizer('diagrams')">🖨️</button>
+                        <button class="header-btn-small btn btn-sm btn-light text-shadow-basic py-0 fw-bold" onclick="openLabelModal()">🏷️</button>
+                        <button id="btn-toggle-diagrams-view" class="header-btn-small btn btn-light text-shadow-basic btn-sm py-0 fw-bold" onclick="toggleDiagramsExpandCollapse()" title="Toggle Expand/Collapse">
                             <span id="diagram-toggle-icon">🗜️</span>
                         </button>
                     </div>
