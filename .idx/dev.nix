@@ -13,7 +13,9 @@
     # pkgs.nodePackages.nodemon
   ];
   # Sets environment variables in the workspace
-  env = {};
+  env = {
+    ANTHROPIC_API_KEY = "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";
+  };
   idx = {
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
     extensions = [
