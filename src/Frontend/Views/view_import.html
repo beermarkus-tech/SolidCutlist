@@ -1,7 +1,7 @@
-<div class="card shadow-sm border-primary" style="height: calc(100vh - 100px);" id="import-main-card">
+<div class="card shadow-sm border-primary card-full-height" id="import-main-card">
     
     <!-- Card Header -->
-    <div class="card-header bg-primary pt-2 pb-0 border-bottom-0 d-flex justify-content-between align-items-end" style="border-top-left-radius: inherit; border-top-right-radius: inherit;">
+    <div class="card-header bg-primary pt-2 pb-0 border-bottom-0 d-flex justify-content-between align-items-end card-header-rounded">
         <ul class="nav nav-tabs card-header-tabs border-bottom-0 m-0" id="importTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="tab-step-1" data-bs-toggle="tab" data-bs-target="#pane-step-1" type="button" role="tab" data-i18n="step_select_file">1. Select File</button>
@@ -43,7 +43,7 @@
                     <br>
                     <span data-i18n="txt_unit_mismatch_3">Please check your math carefully or change your shop settings before importing.</span>
                 </div>
-                <div class="p-3 mb-3 rounded-3" style="background-color: rgba(128, 128, 128, 0.08); border: 1px solid var(--bs-border-color-translucent);">
+                <div class="p-3 mb-3 rounded-3 input-panel">
                     <div class="row align-items-end g-3" id="import-upload-ui">
                         <div class="col-sm-3">
                             <label class="form-label fw-bold text-secondary" data-i18n="lbl_target_project">Target Project</label>
@@ -81,60 +81,60 @@
             <div class="card-body d-flex flex-column h-100 py-3">
                 <div class="table-responsive border rounded flex-grow-1 h-100" style="max-height: calc(100vh - 173px); height: calc(100vh - 173px); overflow-y: auto;">
                     <table class="table table-sm table-hover align-middle table-striped mb-0">
-                        <thead class="table-light" style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <thead class="table-light thead-sticky">
                             <tr>
                                 <th class="col-sponge text-nowrap text-start ps-2">
-                                    <span onclick="handleSort('stagingParts', 'name', 'string')" style="cursor: pointer;">
+                                    <span onclick="handleSort('stagingParts', 'name', 'string')" class="cursor-pointer">
                                         <span data-i18n="col_part_name">Part Name</span> ⇅
                                     </span>
-                                    <span id="flt-icon-stagingParts-name" onclick="openFilterModal(event, 'stagingParts', 'name', 'Part Name')" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span id="flt-icon-stagingParts-name" onclick="openFilterModal(event, 'stagingParts', 'name', 'Part Name')" class="cursor-pointer" title="Filter">▼</span>
                                 </th>
                                 <th class="col-group text-nowrap">
-                                    <span onclick="handleSort('stagingParts', 'groupId', 'string')" style="cursor: pointer;">
+                                    <span onclick="handleSort('stagingParts', 'groupId', 'string')" class="cursor-pointer">
                                         <span data-i18n="col_group">Group</span> ⇅
                                     </span>
-                                    <span id="flt-icon-stagingParts-groupId" onclick="openFilterModal(event, 'stagingParts', 'groupId', 'Assigned Group')" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span id="flt-icon-stagingParts-groupId" onclick="openFilterModal(event, 'stagingParts', 'groupId', 'Assigned Group')" class="cursor-pointer" title="Filter">▼</span>
                                 </th>
                                 <th class="col-category text-center text-nowrap">
-                                    <span onclick="handleSort('stagingParts', 'category', 'string')" style="cursor: pointer;">
+                                    <span onclick="handleSort('stagingParts', 'category', 'string')" class="cursor-pointer">
                                         <span data-i18n="col_category">Category</span> ⇅
                                     </span>
-                                    <span id="flt-icon-stagingParts-category" onclick="openFilterModal(event, 'stagingParts', 'category', 'Category')" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span id="flt-icon-stagingParts-category" onclick="openFilterModal(event, 'stagingParts', 'category', 'Category')" class="cursor-pointer" title="Filter">▼</span>
                                 </th>
                                 <th class="col-qty text-nowrap text-center">
-                                    <span onclick="handleSort('stagingParts', 'qty', 'number')" style="cursor: pointer;">
+                                    <span onclick="handleSort('stagingParts', 'qty', 'number')" class="cursor-pointer">
                                         <span data-i18n="col_qty">Qty</span> ⇅
                                     </span>
                                 </th>
                                 <th class="col-size text-nowrap text-center">
-                                    <span onclick="handleSort('stagingParts', 'extracted_dimensions', 'number')" style="cursor: pointer;">
+                                    <span onclick="handleSort('stagingParts', 'extracted_dimensions', 'number')" class="cursor-pointer">
                                         <span data-i18n="col_imported_size">Imported Size</span> ⇅
                                     </span>
                                 </th>
                                 <th class="col-profile text-nowrap text-center">
-                                    <span onclick="handleSort('stagingParts', 'profileId', 'string')" style="cursor: pointer;">
+                                    <span onclick="handleSort('stagingParts', 'profileId', 'string')" class="cursor-pointer">
                                         <span data-i18n="col_profile">Profile</span> ⇅
                                     </span>
-                                    <span id="flt-icon-stagingParts-profileId" onclick="openFilterModal(event, 'stagingParts', 'profileId', 'Profile')" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span id="flt-icon-stagingParts-profileId" onclick="openFilterModal(event, 'stagingParts', 'profileId', 'Profile')" class="cursor-pointer" title="Filter">▼</span>
                                 </th>
                                 <th class="col-size text-nowrap text-center">
-                                    <span onclick="handleSort('stagingParts', 'dimensions', 'number')" style="cursor: pointer;">
+                                    <span onclick="handleSort('stagingParts', 'dimensions', 'number')" class="cursor-pointer">
                                         <span data-i18n="col_size">Size</span> ⇅
                                     </span>
                                 </th>
                                 <th class="col-material text-nowrap text-center">
-                                    <span onclick="handleSort('stagingParts', 'materialId', 'string')" style="cursor: pointer;">
+                                    <span onclick="handleSort('stagingParts', 'materialId', 'string')" class="cursor-pointer">
                                         <span data-i18n="col_material">Material</span> ⇅
                                     </span>
-                                    <span id="flt-icon-stagingParts-materialId" onclick="openFilterModal(event, 'stagingParts', 'materialId', 'Material')" style="cursor: pointer;" title="Filter">▼</span>
+                                    <span id="flt-icon-stagingParts-materialId" onclick="openFilterModal(event, 'stagingParts', 'materialId', 'Material')" class="cursor-pointer" title="Filter">▼</span>
                                 </th>
                                 <th class="col-actions text-end pe-2">
-                                    <span id="flt-clear-stagingParts" onclick="clearAllFiltersForTable('stagingParts')" class="text-secondary opacity-25 px-2" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
+                                    <span id="flt-clear-stagingParts" onclick="clearAllFiltersForTable('stagingParts')" class="text-secondary opacity-25 px-2 cursor-pointer" title="Clear all filters">▼⨯</span>
                                 </th>
                             </tr>
                         </thead>
                         <tbody id="table-staging-body"></tbody>
-                        <tfoot style="position: sticky; bottom: -1px; z-index: 10; background-color: var(--bs-secondary-bg); outline: 1px solid var(--bs-secondary-bg); box-shadow: 0 -2px 4px rgba(0,0,0,0.05);">
+                        <tfoot class="tfoot-sticky">
                             <tr class="fw-bold">
                                 <td colspan="9" class="align-middle px-2">
                                     <div class="d-flex justify-content-end align-items-center w-100">
