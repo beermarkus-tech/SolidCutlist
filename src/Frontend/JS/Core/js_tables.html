@@ -199,7 +199,7 @@
 
         if (!targetArray) return;
 
-        targetArray.forEach(row => {
+        targetArray.filter(row => rowPassesFiltersExcept(row, arrayName, columnKey)).forEach(row => {
             let rawValue = row[columnKey];
             let displayText = rawValue;
 
@@ -292,6 +292,17 @@
         if (arrayName === 'sandbox_parts' && typeof renderSandboxPartlistTab === 'function') {
             if (window.currentSandboxParts) renderSandboxPartlistTab(window.currentSandboxParts);
         }
+    }
+
+    function rowPassesFiltersExcept(row, arrayName, excludeKey) {
+        if (!activeFilters[arrayName]) return true;
+        for (const [columnKey, allowedValues] of Object.entries(activeFilters[arrayName])) {
+            if (columnKey === excludeKey) continue;
+            let cellValue = row[columnKey];
+            if (cellValue === '' || cellValue === null || cellValue === undefined) cellValue = '___EMPTY___';
+            if (!allowedValues.includes(String(cellValue))) return false;
+        }
+        return true;
     }
 
     function rowPassesFilters(row, arrayName) {

@@ -3,8 +3,6 @@
     // 🪄 Upgraded to use Uniform Category Badges and Global Styles
     function printPartsTable(tableId = 'parts') {
         const currency = (appState.settings && appState.settings.currency) ? appState.settings.currency : '$';
-        const pageSize = (currency === '$') ? 'letter' : 'A4';
-
         // INTERCEPTOR: Decide which data source to use
         let partsSource = appState.parts;
         if (tableId === 'sandbox_parts') {
@@ -89,7 +87,7 @@
                 ${parentLinks}
                 ${parentStyles}
                 <style>
-                    @page { size: ${pageSize} landscape; margin: 15mm; }
+                    @page { margin: 15mm; }
                     body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; font-size: 13px; }
                     .table { margin-bottom: 0 !important; width: 100%; border-collapse: collapse; }
                     .table th { 
@@ -144,9 +142,6 @@
 
     // PRINT SHOPPING LIST & DIAGRAMS
     function printOptimizer(type) {
-        const currency = appState.settings.currency || '$';
-        const pageSize = (currency === '$') ? 'letter' : 'A4';
-
         let printWindow = window.open('', '_blank');
         if (!printWindow) {
             showToast(t('msg_allow_popups'), true);
@@ -199,7 +194,7 @@
                 ${parentStyles}
                 <style>
                     /* 🪄 A4 vs Letter heuristic */
-                    @page { size: ${pageSize} portrait; margin: 15mm; }
+                    @page { margin: 15mm; }
                     
                     /* Print-specific spacing */
                     body { padding: 20px; font-family: Arial, sans-serif; }
