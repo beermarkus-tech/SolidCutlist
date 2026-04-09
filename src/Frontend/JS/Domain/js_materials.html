@@ -67,6 +67,8 @@
         showToast(t('msg_material_added'));
         
         document.getElementById('form-add-material').reset();
+        document.getElementById('mat-category').value = category;
+        document.getElementById('mat-name').focus();
     }
     function updateMaterial(id, field, newValue) {
         const mat = appState.materials.find(m => m.id === id);
@@ -231,6 +233,8 @@
         showToast(t('msg_profile_added'));
         
         document.getElementById('form-add-profile').reset();
+        document.getElementById('prof-category').value = category;
+        document.getElementById('prof-name').focus();
     }
     function updateProfile(id, field, newValue) {
         const prof = appState.profiles.find(p => p.id === id);

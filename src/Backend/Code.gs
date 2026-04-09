@@ -245,8 +245,8 @@ function archiveProjectToSheet(payloadString) {
     
     if (!archiveSheet) {
       archiveSheet = ss.insertSheet('Archive');
-      archiveSheet.appendRow(['Project ID', 'Archive Date', 'Project JSON', 'Groups JSON', 'Parts JSON']);
-      archiveSheet.getRange('A1:E1').setFontWeight('bold').setBackground('#f8f9fa');
+      archiveSheet.appendRow(['Project ID', 'Archive Date', 'Project JSON', 'Groups JSON', 'Parts JSON', 'Image Base64']);
+      archiveSheet.getRange('A1:F1').setFontWeight('bold').setBackground('#f8f9fa');
       archiveSheet.setFrozenRows(1);
     }
 
@@ -256,7 +256,8 @@ function archiveProjectToSheet(payloadString) {
       timestamp,
       JSON.stringify(payload.project),
       JSON.stringify(payload.groups),
-      JSON.stringify(payload.parts)
+      JSON.stringify(payload.parts),
+      payload.image || ''
     ]);
 
     return { status: 'success' };
@@ -284,7 +285,9 @@ function getArchiveList() {
         id: row[0],
         date: row[1],
         name: projData.name || 'Unknown Project',
-        notes: projData.comment || ''
+        notes: projData.comment || '',
+        icon: projData.icon || null,
+        image: row[5] || null
       });
     }
     return JSON.stringify({ status: 'success', data: list });
@@ -306,7 +309,8 @@ function loadProjectFromArchive(projectId) {
           status: 'success',
           project: JSON.parse(data[i][2]),
           groups: JSON.parse(data[i][3]),
-          parts: JSON.parse(data[i][4])
+          parts: JSON.parse(data[i][4]),
+          image: data[i][5] || null
         });
       }
     }

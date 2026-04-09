@@ -21,7 +21,7 @@
 
         // 🪄 2. REBUILD Profile Dropdown
         profSelect.innerHTML = `<option value="" disabled selected>${t('opt_select')}</option>`;
-        const filteredProfiles = appState.profiles.filter(p => p.type === part.category).sort((a, b) => a.name.localeCompare(b.name));
+        const filteredProfiles = appState.profiles.filter(p => p.type === cat).sort((a, b) => a.name.localeCompare(b.name));
         filteredProfiles.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
@@ -31,7 +31,7 @@
 
         // 🪄 3. REBUILD Material Dropdown
         matSelect.innerHTML = `<option value="" disabled selected>${t('opt_select')}</option>`;
-        const filteredMaterials = appState.materials.filter(m => m.category === part.category).sort((a, b) => a.name.localeCompare(b.name));
+        const filteredMaterials = appState.materials.filter(m => m.category === cat).sort((a, b) => a.name.localeCompare(b.name));
         filteredMaterials.forEach(m => {
             const opt = document.createElement('option');
             opt.value = m.id;
@@ -77,9 +77,9 @@
         }
 
         // 3. Populate Profile Dropdown (Filtered by Category)
-        const filteredProfiles = appState.profiles.filter(p => p.type === part.category).sort((a, b) => a.name.localeCompare(b.name));
+        const filteredProfiles = appState.profiles.filter(p => p.type === cat).sort((a, b) => a.name.localeCompare(b.name));
         const unitText = appState.settings.displayUnit === 'mm' ? 'mm' : 'in'; // Get current global unit
-        
+
         filteredProfiles.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
@@ -89,7 +89,7 @@
         });
 
         // 4. Populate Material Dropdown (Filtered by Category)
-        const filteredMaterials = appState.materials.filter(m => m.category === part.category).sort((a, b) => a.name.localeCompare(b.name));
+        const filteredMaterials = appState.materials.filter(m => m.category === cat).sort((a, b) => a.name.localeCompare(b.name));
 
         filteredMaterials.forEach(m => {
             const opt = document.createElement('option');

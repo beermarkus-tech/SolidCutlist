@@ -537,6 +537,7 @@
         document.getElementById('stock-width').value = '';
         document.getElementById('stock-qty').value = '1';
         document.getElementById('stock-is-cutoff').checked = false;
+        document.getElementById('stock-qty').focus();
     }
     function updateStock(id, field, newValue) {
         const item = appState.stock.find(s => s.id === id);

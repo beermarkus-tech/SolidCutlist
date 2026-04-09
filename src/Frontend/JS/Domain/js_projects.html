@@ -533,7 +533,7 @@
     function renderArchiveTable() {
         const tbody = document.getElementById('archive-table-body');
         if (currentArchiveData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No archived projects found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No archived projects found.</td></tr>';
             return;
         }
 
@@ -550,11 +550,18 @@
             const d = new Date(proj.date);
             const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
+            const avatarHtml = proj.image
+                ? `<img src="${proj.image}" class="shadow-sm border d-block mx-auto" style="width: 28px; height: 28px; object-fit: cover; border-radius: 4px;">`
+                : `<div class="d-flex align-items-center justify-content-center mx-auto" style="width: 28px; height: 28px; font-size: 1.2rem;">${proj.icon || '🗂️'}</div>`;
+
             return `
             <tr>
                 <td class="ps-3">${dateStr}</td>
+                <td class="text-center px-1">${avatarHtml}</td>
                 <td class="fw-bold">${safeHTML(proj.name)}</td>
-                <td class="text-truncate text-muted" style="max-width: 150px;" title="${safeHTML(proj.notes)}">${safeHTML(proj.notes)}</td>
+                <td style="max-width: 180px;">
+                    <textarea class="archive-note-cell form-control form-control-sm border-0 bg-transparent text-muted w-100" rows="1" readonly title="Click to expand">${safeHTML(proj.notes)}</textarea>
+                </td>
                 <td class="text-end pe-3 text-nowrap">
                     <button class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="restoreArchivedProject('${proj.id}', this)" title="Restore to Workspace">Load</button>
                     <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteArchivedProjectUI('${proj.id}')" title="Permanently Delete">🗑️</button>
@@ -589,7 +596,8 @@
             id: projectId,
             project: appState.projects[projIndex],
             groups: (appState.groups || []).filter(g => g.projectId === projectId),
-            parts: (appState.parts || []).filter(p => p.projectId === projectId)
+            parts: (appState.parts || []).filter(p => p.projectId === projectId),
+            image: (window.projectImages && window.projectImages[projectId]) || null
         };
 
         google.script.run
@@ -639,9 +647,18 @@
 
                 const response = typeof responseStr === 'string' ? JSON.parse(responseStr) : responseStr;
                 if (response.status === 'success') {
-                    appState.projects.push(response.project);
+                    appState.projects.unshift(response.project);
                     if(response.groups) appState.groups.push(...response.groups);
                     if(response.parts) appState.parts.push(...response.parts);
+
+                    if (response.image) {
+                        if (!window.projectImages) window.projectImages = {};
+                        window.projectImages[response.project.id] = response.image;
+                        google.script.run.saveThumbnail(JSON.stringify({
+                            projectId: response.project.id,
+                            base64String: response.image
+                        }));
+                    }
 
                     saveState();
                     renderProjectsTable();
