@@ -60,6 +60,25 @@
             return b.length - a.length;
         });
 
+        // 🪄 Resolve active job parts for loaded-job fallback (mirrors label printing fix)
+        const activeJob = appState.jobs?.find(j => j.id === appState.ui?.activeJobId);
+        function resolvePartData(partId) {
+            return appState.parts.find(p => p.id === partId)
+                || activeJob?.parts?.find(p => p.id === partId)
+                || null;
+        }
+
+        // 🪄 Compute isMultiProject from actual cuts (works for both normal runs and loaded jobs)
+        const seenProjectIds = new Set();
+        results.forEach(res => {
+            const allBoards = [...(res.stock?.layout || []), ...(res.purchase?.layout || [])];
+            allBoards.forEach(board => board.cuts.forEach(cut => {
+                const pd = resolvePartData(cut.partId);
+                if (pd?.projectId) seenProjectIds.add(pd.projectId);
+            }));
+        });
+        const isMultiProject = seenProjectIds.size > 1;
+
         sortedGroups.forEach(group => {
             const isSheet = group.category === 'sheet';
             const prof = appState.profiles.find(p => p.id === group.profileId);
@@ -138,7 +157,7 @@
                 html += `
                 <div class="card shadow-sm mb-4 border-secondary" style="page-break-inside: avoid;">
                     <div class="card-header py-1 d-flex justify-content-between align-items-center">
-                        <small class="fw-bold text-muted">${t('lbl_board_num', { current: bIndex + 1, total: group.layouts.length })}</small>
+                        <small class="fw-bold text-muted">${t(isSheet ? 'lbl_sheet_num' : 'lbl_board_num', { current: bIndex + 1, total: group.layouts.length })}</small>
                         <small class="text-muted">${wasteLabel}: ${wasteDisplay} ${isSheet ? '' : '<span class="display-unit-label"></span>'}</small>
                     </div>
                     
@@ -147,13 +166,15 @@
                     </div>
                     
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0 border-top">
+                        <table class="table table-sm table-hover mb-0 border-top" style="table-layout: fixed; width: 100%;">
                             <thead>
                                 <tr>
-                                    <th class="ps-3" style="width: 50px;">${t('col_cut')}</th>
-                                    <th>${t('col_part_label')}</th>
-                                    <th class="text-center">${t('col_grain')}</th>
-                                    <th class="text-end pe-3">${t('col_cut_size')}</th>
+                                    <th class="ps-3 text-center" style="width: 5%;">${t('col_cut')}</th>
+                                    <th style="width: ${isSheet ? '28%' : '32%'};">${t('col_part_label')}</th>
+                                    <th style="width: ${isSheet ? '20%' : '23%'};">${t('header_project')}</th>
+                                    <th style="width: ${isSheet ? '20%' : '23%'};">${t('header_group')}</th>
+                                    ${isSheet ? `<th class="text-center" style="width: 10%;">${t('col_grain')}</th>` : ''}
+                                    <th class="text-end pe-3" style="width: 17%;">${t('col_cut_size')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -162,52 +183,46 @@
                 let showBoardGrainWarning = false;
 
                 board.cuts.forEach((cut, cIndex) => {
-                    const partData = appState.parts.find(p => p.id === cut.partId);
+                    const partData = resolvePartData(cut.partId);
                     const projName = appState.projects.find(p => p.id === partData?.projectId)?.name || t('lbl_unknown');
-                    
+
                     // 🪄 1. Extract the Group Name (if it exists)
                     let groupName = '';
-                    if (partData && partData.groupId && appState.groups) {
+                    if (partData?.groupId && appState.groups) {
                         groupName = appState.groups.find(g => g.id === partData.groupId)?.name || '';
                     }
 
-                    // 🪄 2. The Dynamic Label Engine
-                    const isMultiProject = appState.settings.optimizer.selectedProjects.length > 1;
-                    let label = safeHTML(cut.name);
+                    // 🪄 2. Label + separate Project / Group cells
+                    const label = safeHTML(cut.name);
+                    const projCell = isMultiProject ? safeHTML(projName) : '';
+                    const groupCell = (groupName && groupName !== '-') ? safeHTML(groupName) : '';
 
-                    if (isMultiProject) {
-                        // Scenario B: Multiple Projects
-                        if (groupName) {
-                            label = `[${safeHTML(projName)}: ${safeHTML(groupName)}] ${label}`;
-                        } else {
-                            label = `[${safeHTML(projName)}] ${label}`;
+                    let grainCell = '';
+                    if (isSheet) {
+                        const hasGrain = partData && partData.grain && partData.grain !== 'none';
+                        const grainStr = hasGrain ? t('opt_' + partData.grain) : '-';
+                        let grainWarningBadge = '';
+                        if (hasGrain && group.grain === 'none') {
+                            grainWarningBadge = ` <span title="${t('tip_grain_undefined')}">⚠️</span>`;
+                            showBoardGrainWarning = true;
                         }
-                    } else {
-                        // Scenario A: Single Project
-                        if (groupName) {
-                            label = `[${safeHTML(groupName)}] ${label}`;
-                        }
-                    }
-                    
-                    const grainStr = isSheet && partData && partData.grain !== 'none' ? t('opt_' + partData.grain) : '-';
-                    let grainWarningBadge = '';
-                    if (isSheet && partData && partData.grain !== 'none' && group.grain === 'none') {
-                        grainWarningBadge = ` <span title="${t('tip_grain_undefined')}">⚠️</span>`;
-                        showBoardGrainWarning = true; // Trip the wire!
+                        grainCell = `<td class="text-center text-capitalize text-muted">${grainStr}${grainWarningBadge}</td>`;
                     }
 
                     // 🪄 STRICT W x L FORMAT
-                    const cutSizeStr = isSheet 
-                        ? `${formatForDisplay(cut.w)} x ${formatForDisplay(cut.l)}` 
+                    const cutSizeStr = isSheet
+                        ? `${formatForDisplay(cut.w)} x ${formatForDisplay(cut.l)}`
                         : `${formatForDisplay(cut.length)}`;
 
                     const rotationWarning = (isSheet && cut.rotated) ? ` <span class="badge bg-warning text-dark ms-1">${t('lbl_rotated')}</span>` : '';
 
                     html += `
                                 <tr>
-                                    <td class="ps-3 fw-bold text-muted">${cIndex + 1}</td>
-                                    <td>${label}${rotationWarning}</td>
-                                    <td class="text-center text-capitalize text-muted">${grainStr}${grainWarningBadge}</td>
+                                    <td class="ps-3 fw-bold text-muted text-center">${cIndex + 1}</td>
+                                    <td class="fw-bold">${label}${rotationWarning}</td>
+                                    <td class="text-muted">${projCell}</td>
+                                    <td class="text-muted">${groupCell}</td>
+                                    ${grainCell}
                                     <td class="text-end pe-3 fw-bold">${cutSizeStr} <span class="display-unit-label"></span></td>
                                 </tr>
                     `;

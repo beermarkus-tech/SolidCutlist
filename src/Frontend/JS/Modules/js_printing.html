@@ -460,7 +460,7 @@
                         const project = appState.projects.find(p => p.id === part.projectId);
                         
                         // 🪄 FETCH THE ACTUAL GROUP NAME
-                        let groupName = t('lbl_no_group');
+                        let groupName = '';
                         if (part.groupId && appState.groups) {
                             const foundGroup = appState.groups.find(g => g.id === part.groupId);
                             if (foundGroup) groupName = foundGroup.name;
@@ -468,16 +468,20 @@
 
                         // 🪄 FIX: Route the dimension data based on 1D vs 2D structures
                         const isSheet = res.sku.category === 'sheet';
-                        const dimString = isSheet 
-                            ? `${cut.w} x ${cut.l}` 
+                        const dimString = isSheet
+                            ? `${cut.w} x ${cut.l}`
                             : `${cut.length}`;
+
+                        const projName = project ? project.name : t('lbl_unknown_project');
+                        const projectGroup = groupName ? `${projName} | ${groupName}` : projName;
+                        const boardRef = isSheet ? `Sheet #${bIndex + 1}` : `Board #${bIndex + 1}`;
 
                         labelsToPrint.push({
                             partName: part.name,
-                            projectGroup: `${project ? project.name : t('lbl_unknown_project')} / ${groupName}`,
-                            dimensions: `${dimString} mm`, // Can be swapped to a global unit variable if needed
+                            projectGroup: projectGroup,
+                            dimensions: `${dimString} mm`,
                             material: matString,
-                            boardRef: `${t('lbl_board')} #${bIndex + 1}`
+                            boardRef: boardRef
                         });
                     }
                 });
