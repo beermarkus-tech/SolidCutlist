@@ -33,19 +33,8 @@
         }
     }
     function populateImportProjectDropdown() {
-        const projSelect = document.getElementById('import-project-select');
-        const currentVal = projSelect.value || targetProjectId; // Remember selection
-        
-        projSelect.innerHTML = `<option value="" disabled selected>${t('opt_select_project')}</option>`;
-        if (appState.projects) {
-            [...appState.projects].sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.id;
-                opt.innerText = p.name;
-                projSelect.appendChild(opt);
-            });
-        }
-        if (currentVal) projSelect.value = currentVal;
+        const currentVal = (document.getElementById('import-project-select') || {}).value || targetProjectId;
+        populateProjectSelect('import-project-select', 'opt_select_project', currentVal);
     }
     function toggleResumeButton(show) {
         isImportActive = show;
@@ -553,7 +542,6 @@
                 allGreen = false;
             }
 
-            let badgeClass = part.category ? getCategoryBadgeClass(part.category) : 'bg-warning text-dark fw-bold border border-warning';
             const unitText = appState.settings.displayUnit === 'mm' ? 'mm' : 'in';
             const dimDisplay = `${formatForDisplay(part.thickness)} x ${formatForDisplay(part.width)} x ${formatForDisplay(part.length)}`;
             
@@ -605,11 +593,17 @@
                 </td>
                 <td>
                     <div class="d-flex justify-content-center px-1">
-                        <span class="badge ${badgeClass} py-1 d-inline-block text-truncate" 
-                              style="width: 85px; text-align: center; font-size: 0.75rem; text-transform: uppercase;"
-                              title="${part.category ? '' : t('title_tap_to_change_category')}">
-                              ${part.category ? t('opt_' + part.category) : `⚠️ ${t('opt_select')}`}
-                        </span>
+                        <select class="badge border-0 text-center text-uppercase rounded py-1"
+                                style="width: 85px; font-size: 0.75rem; line-height: 1; display: inline-block; appearance: none; -webkit-appearance: none; cursor: pointer;
+                                    background-color: ${part.category === 'lumber' ? '#8B4513' : part.category === 'sheet' ? '#DEB887' : part.category === 'fastener' ? '#4682B4' : '#ffc107'};
+                                    color: ${part.category === 'sheet' ? '#000' : (part.category ? '#fff' : '#000')};"
+                                onchange="updateStagingCategory('${part.id}', this.value)">
+                            
+                            ${!part.category ? `<option value="" disabled selected>⚠️ ${t('opt_select')}</option>` : ''}
+                            <option value="lumber" ${part.category === 'lumber' ? 'selected' : ''}>${t('opt_lumber')}</option>
+                            <option value="sheet"  ${part.category === 'sheet'  ? 'selected' : ''}>${t('opt_sheet')}</option>
+                            <option value="fastener" ${part.category === 'fastener' ? 'selected' : ''}>${t('opt_fastener')}</option>
+                        </select>
                     </div>
                 </td>
                 <td class="text-center"><small>${part.qty}</small></td>

@@ -201,11 +201,10 @@
         // 6. Save and Redraw
         saveState();
         if (arrayName === 'parts' && typeof renderPartsTable === 'function') renderPartsTable();
-        if (arrayName === 'materials' && typeof renderMaterialsTable === 'function') renderMaterialsTable();
+        if ((arrayName === 'materials' || arrayName === 'profiles') && typeof renderDictionaries === 'function') renderDictionaries();
         if (arrayName === 'catalog' && typeof renderCatalogTable === 'function') renderCatalogTable();
         if (arrayName === 'stock' && typeof renderStockTable === 'function') renderStockTable();
         if (arrayName === 'projects' && typeof renderProjectsTable === 'function') renderProjectsTable();
-        if (arrayName === 'profiles' && typeof renderProfilesTable === 'function') renderProfilesTable();
 
         showToast(t('msg_row_duplicated'));
 
@@ -312,7 +311,75 @@
         }
 
         saveState();
-        if (typeof renderDictionaries === 'function') renderDictionaries();
+        if (typeof renderProjectsTable === 'function') renderProjectsTable();
         showToast(t('msg_project_duplicated'));
+    }
+
+    // ==========================================
+    // PHASE 2 — SHARED UTILITY FUNCTIONS
+    // ==========================================
+
+    /**
+     * Groups an array into a fingerprint map.
+     * @param {Array} array - Source array to group
+     * @param {string[]} keyFields - Fields to compose the fingerprint key
+     * @param {function} initFn - (item, fingerprint) => groupObject  — called once per new group
+     * @param {function} accumulateFn - (group, item) => void  — called for every item
+     * @returns {Array} Array of group objects
+     */
+    function groupByFingerprint(array, keyFields, initFn, accumulateFn) {
+        if (!array) return [];
+        const map = {};
+        array.forEach(item => {
+            const fingerprint = keyFields.map(k => item[k] ?? '').join('_');
+            if (!map[fingerprint]) {
+                map[fingerprint] = initFn(item, fingerprint);
+            }
+            accumulateFn(map[fingerprint], item);
+        });
+        return Object.values(map);
+    }
+
+    /**
+     * Populates a <select> element with sorted project options.
+     * @param {string} selectId - DOM id of the <select> element
+     * @param {string} placeholderKey - i18n key for the disabled placeholder option
+     * @param {string} [currentVal] - Value to re-select after rebuild
+     */
+    function populateProjectSelect(selectId, placeholderKey, currentVal) {
+        const el = document.getElementById(selectId);
+        if (!el) return;
+        el.innerHTML = `<option value="" disabled selected>${t(placeholderKey)}</option>`;
+        if (appState.projects) {
+            [...appState.projects].sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.innerText = p.name;
+                el.appendChild(opt);
+            });
+        }
+        if (currentVal) el.value = currentVal;
+    }
+
+    /**
+     * Generic delete handler with confirmation, cascade, render, and toast.
+     * @param {string} arrayKey - Key in appState (e.g. 'materials')
+     * @param {string} id - ID of the item to delete
+     * @param {string} confirmMsgKey - i18n key for confirm dialog (falsy = skip confirm)
+     * @param {function|null} cascadeFn - Optional fn to run before deletion (receives id)
+     * @param {function} renderFn - Render function to call after deletion
+     * @param {string} toastKey - i18n key for the success toast
+     * @param {boolean} [isConfirmed=false] - Internal flag used for confirm recursion
+     */
+    function deleteItem(arrayKey, id, confirmMsgKey, cascadeFn, renderFn, toastKey, isConfirmed = false) {
+        if (confirmMsgKey && !isConfirmed) {
+            requestConfirm(t(confirmMsgKey), () => deleteItem(arrayKey, id, confirmMsgKey, cascadeFn, renderFn, toastKey, true));
+            return;
+        }
+        if (cascadeFn) cascadeFn(id);
+        appState[arrayKey] = appState[arrayKey].filter(item => item.id !== id);
+        saveState();
+        renderFn();
+        showToast(t(toastKey));
     }
 </script>

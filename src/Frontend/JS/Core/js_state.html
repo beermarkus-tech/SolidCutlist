@@ -166,6 +166,9 @@
             if (!appState[tab] || !Array.isArray(appState[tab])) appState[tab] = [];
         });
 
+        // 🪄 UI STATE SANITIZER: Ensure ephemeral UI state bucket exists
+        if (!appState.ui) appState.ui = {};
+
         // 🪄 TIER 2 SANITIZER: Deep JSON parsing & corruption repair
         if (!appState.settings) appState.settings = {};
         for (let key in appState.settings) {

@@ -192,9 +192,10 @@
         appState.catalog = masterCatalog;
         appState.settings = masterSettings;
 
-        // 7. Track the active job globally AND persistently (Crucial for Mobile!)
-        window.activeJobId = job.id;
-        localStorage.setItem('activeJobId', job.id);
+        // 7. Track the active job in AppState (Single Source of Truth) + RAM cache + Mobile backup
+        if (!appState.ui) appState.ui = {};
+        appState.ui.activeJobId = job.id;
+        window.activeJobId = job.id; // RAM cache for synchronous checks
         localStorage.setItem('activeJobBackup', JSON.stringify(job));
 
         // 8. Render the UI exactly like a normal calculation
@@ -313,8 +314,9 @@
         const modalInstance = bootstrap.Modal.getInstance(modalEl);
         if (modalInstance) modalInstance.hide();
         
-        window.activeJobId = newJob.id; 
-        localStorage.setItem('activeJobId', newJob.id);
+        if (!appState.ui) appState.ui = {};
+        appState.ui.activeJobId = newJob.id;
+        window.activeJobId = newJob.id; // RAM cache for synchronous checks
         localStorage.setItem('activeJobBackup', JSON.stringify(newJob)); // 🪄 CREATE THE PERSISTENT BACKUP
         
         if (typeof setCurrentJobLabel === 'function') setCurrentJobLabel(newJob.name);

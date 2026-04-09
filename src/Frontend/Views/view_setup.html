@@ -269,7 +269,7 @@
                                 </th> 
                                 <th class="col-costweight text-center">
                                     <div class="d-flex align-items-center justify-content-center gap-1">
-                                        <span class="group-icon">🗜️</span> <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center select-inline" id="table-price-view" onchange="renderCatalogTable()">
+                                        <span class="group-icon">🗜️</span> <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center select-inline" id="table-price-view" onchange="if(!appState.settings)appState.settings={};appState.settings.catalogViewUnit=this.value;saveState();renderCatalogTable()">
                                             <option value="piece" data-i18n="opt_cost_piece">Cost/Piece</option>
                                             <option value="linear">Cost/Length</option>
                                             <option value="area">Cost/Area</option>

@@ -456,7 +456,11 @@
             
             allBoards.forEach((board, bIndex) => {
                 board.cuts.forEach(cut => {
-                    const part = appState.parts.find(p => p.id === cut.partId);
+                    let part = appState.parts.find(p => p.id === cut.partId);
+                    if (!part && appState.ui?.activeJobId) {
+                        const activeJob = appState.jobs?.find(j => j.id === appState.ui.activeJobId);
+                        part = activeJob?.parts?.find(p => p.id === cut.partId);
+                    }
                     if (part) {
                         const project = appState.projects.find(p => p.id === part.projectId);
                         

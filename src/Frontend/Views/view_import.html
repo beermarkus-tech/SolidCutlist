@@ -32,7 +32,7 @@
     <!-- Tab Content -->
     <div class="tab-content flex-grow-1 d-flex flex-column" id="importTabsContent" style="overflow-y: auto;">
         
-        <!-- Step 1 -->
+        <!-- Step 1 File Selection -->
         <div class="tab-pane flex-grow-1 show active" id="pane-step-1" role="tabpanel" tabindex="0">
             <div class="card-body py-3">
                 <div id="import-unit-warning" class="alert alert-danger d-none m-2 py-2 px-3">
@@ -68,7 +68,7 @@
             </div>
         </div>
 
-        <!-- Step 2 -->
+        <!-- Step 2 Column Matching -->
         <div class="tab-pane flex-grow-1" id="pane-step-2" role="tabpanel" tabindex="0" style="min-height: 0;">
             <div class="card-body d-flex flex-column h-100" style="min-height: 0;">
                 <p class="text-muted small mb-2" data-i18n="txt_map_columns_instructions">We found the headers in your file. Please link them to SolidCutlist's data structure.</p>
@@ -76,14 +76,14 @@
             </div>
         </div>
 
-        <!-- Step 3 -->
+        <!-- Step 3 Staging Table -->
         <div class="tab-pane flex-grow-1" id="pane-step-3" role="tabpanel" tabindex="0">
             <div class="card-body d-flex flex-column h-100 py-3">
                 <div class="table-responsive border rounded flex-grow-1 h-100" style="max-height: calc(100vh - 173px); height: calc(100vh - 173px); overflow-y: auto;">
                     <table class="table table-sm table-hover align-middle table-striped mb-0">
                         <thead class="table-light thead-sticky">
                             <tr>
-                                <th class="col-sponge text-nowrap text-start ps-2">
+                                <th class="col-sponge text-nowrap text-start">
                                     <span onclick="handleSort('stagingParts', 'name', 'string')" class="cursor-pointer">
                                         <span data-i18n="col_part_name">Part Name</span> ⇅
                                     </span>

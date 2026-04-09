@@ -35,49 +35,36 @@
     let stockDetailsModalInstance = null;
     let currentStockModalFingerprint = '';
     function getCompressedStockData() {
-        if (!appState.stock) return [];
-        const map = {};
-
-        appState.stock.forEach(item => {
-            // Fingerprint strictly groups by Cat + Prof + Mat
-            const fingerprint = `${item.categoryId}_${item.profileId}_${item.materialId}`;
-
-            if (!map[fingerprint]) {
-                map[fingerprint] = {
-                    fingerprint: fingerprint,
-                    categoryId: item.categoryId,
-                    profileId: item.profileId,
-                    materialId: item.materialId,
-                    totalQty: 0,
-                    totalLength_mm: 0,
-                    totalArea_mm2: 0,
-                    grains: new Set(),
-                    types: new Set(),
-                    pieces: []
-                };
+        return groupByFingerprint(
+            appState.stock,
+            ['categoryId', 'profileId', 'materialId'],
+            (item, fingerprint) => ({
+                fingerprint,
+                categoryId: item.categoryId,
+                profileId: item.profileId,
+                materialId: item.materialId,
+                totalQty: 0,
+                totalLength_mm: 0,
+                totalArea_mm2: 0,
+                grains: new Set(),
+                types: new Set(),
+                pieces: []
+            }),
+            (group, item) => {
+                const q = item.qty || 1;
+                const l = item.length || 0;
+                const w = item.categoryId === 'sheet' ? (item.width || 0) : 0;
+                group.totalQty += q;
+                group.pieces.push({ id: item.id, length: l, width: w, qty: q, grain: item.grain, isCutoff: item.isCutoff });
+                group.grains.add(item.grain || 'none');
+                group.types.add(item.isCutoff ? 'scrap' : 'new');
+                if (item.categoryId === 'sheet') {
+                    group.totalArea_mm2 += (l * w * q);
+                } else {
+                    group.totalLength_mm += (l * q);
+                }
             }
-
-            const group = map[fingerprint];
-            const q = item.qty || 1;
-            const l = item.length || 0;
-            const w = item.categoryId === 'sheet' ? (item.width || 0) : 0;
-
-            group.totalQty += q;
-            group.pieces.push({ id: item.id, length: l, width: w, qty: q, grain: item.grain, isCutoff: item.isCutoff });
-            
-            // Collect unique grains and types
-            group.grains.add(item.grain || 'none');
-            group.types.add(item.isCutoff ? 'scrap' : 'new');
-
-            // Accumulate math
-            if (item.categoryId === 'sheet') {
-                group.totalArea_mm2 += (l * w * q);
-            } else {
-                group.totalLength_mm += (l * q);
-            }
-        });
-
-        return Object.values(map);
+        );
     }
     function renderCompressedStockTable() {
         const tbody = document.getElementById('table-stock-body');
@@ -567,15 +554,7 @@
         }
     }
     function deleteStock(id, isConfirmed = false) {
-        if (!isConfirmed) {
-            requestConfirm(t('confirm_delete_stock'), () => deleteStock(id, true));
-            return; 
-        }
-
-        appState.stock = appState.stock.filter(s => s.id !== id);
-        saveState();
-        renderStockTable();
-        showToast(t('msg_item_removed_stock'));
+        deleteItem('stock', id, 'confirm_delete_stock', null, renderStockTable, 'msg_item_removed_stock', isConfirmed);
     }
     
 </script>

@@ -2,8 +2,6 @@
     // ==========================================
     // PROJECT VIEW STATE & IMAGE MEMORY
     // ==========================================
-    window.projectCardSearchQuery = '';
-    window.projectCardStatusFilter = 'All';
     window.projectImages = {}; // Isolated RAM for images
 
     // 🪄 Background loader for images (Does not block main app boot)
@@ -40,12 +38,14 @@
     });
 
     function handleProjectCardSearch(query) {
-        window.projectCardSearchQuery = query.toLowerCase().trim();
+        if (!appState.ui) appState.ui = {};
+        appState.ui.projectCardSearchQuery = query.toLowerCase().trim();
         if (typeof renderProjectsTable === 'function') renderProjectsTable();
     }
 
     function handleProjectCardFilter(status) {
-        window.projectCardStatusFilter = status;
+        if (!appState.ui) appState.ui = {};
+        appState.ui.projectCardStatusFilter = status;
         const chips = document.querySelectorAll('#project-card-chips button');
         chips.forEach(chip => {
             if (chip.innerText === status) {
@@ -92,12 +92,10 @@
         if (activeTab === 'projects') {
             // In Projects Tab: Hide Parts buttons, Show Card Toggle
             if (btnPrint) btnPrint.classList.add('d-none');
-            if (btnImport) btnImport.classList.add('d-none');
             if (btnToggleView) btnToggleView.classList.remove('d-none');
         } else if (activeTab === 'parts') {
             // In Parts Tab: Show Parts buttons, Hide Card Toggle
             if (btnPrint) btnPrint.classList.remove('d-none');
-            if (btnImport) btnImport.classList.remove('d-none');
             if (btnToggleView) btnToggleView.classList.add('d-none');
         }
     }
@@ -270,7 +268,7 @@
         
         appState.projects.unshift(newProject);
         saveState();
-        renderDictionaries();
+        renderProjectsTable();
         showToast(t('msg_project_created'));
         
         nameInput.value = ''; // Clear the form
@@ -281,7 +279,7 @@
         if (project) {
             project[field] = newValue;
             saveState();
-            renderDictionaries();
+            renderProjectsTable();
             showToast(t('msg_project_updated'));
         }
     }
@@ -309,7 +307,7 @@
         google.script.run.deleteThumbnail(id);
         
         saveState();
-        renderDictionaries();
+        renderProjectsTable();
 
         // 5. The Alarm
         if (deletedPartsCount > 0) {
@@ -755,15 +753,17 @@
             if (typeof rowPassesFilters === 'function' && !rowPassesFilters(proj, 'projects')) return;
 
             // 2. Apply Card Search Filter
-            if (window.projectCardSearchQuery) {
+            const cardSearchQuery = appState.ui?.projectCardSearchQuery || '';
+            if (cardSearchQuery) {
                 const searchStr = `${proj.name || ''} ${proj.comment || ''}`.toLowerCase();
-                if (!searchStr.includes(window.projectCardSearchQuery)) return;
+                if (!searchStr.includes(cardSearchQuery)) return;
             }
 
             // 3. Apply Card Status Chip Filter
             const currentStatus = proj.status || 'Design';
-            if (window.projectCardStatusFilter && window.projectCardStatusFilter !== 'All') {
-                if (currentStatus !== window.projectCardStatusFilter) return;
+            const cardStatusFilter = appState.ui?.projectCardStatusFilter || 'All';
+            if (cardStatusFilter && cardStatusFilter !== 'All') {
+                if (currentStatus !== cardStatusFilter) return;
             }
 
             visibleCount++;

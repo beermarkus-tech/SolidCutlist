@@ -4,18 +4,7 @@
         renderPartsTable();
     }
     function populateProjectDropdown() {
-        const projSelect = document.getElementById('part-project');
-        projSelect.innerHTML = `<option value="" disabled selected>${t('opt_select_project')}</option>`;
-        
-        if (!appState.projects || appState.projects.length === 0) return;
-
-        // 🪄 FIX: Copy the array and sort it alphabetically before building the options
-        [...appState.projects].sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p.id;
-            opt.innerText = p.name;
-            projSelect.appendChild(opt);
-        });
+        populateProjectSelect('part-project', 'opt_select_project');
     }
     function refreshPartsDropdowns() {
         populateProjectDropdown();
