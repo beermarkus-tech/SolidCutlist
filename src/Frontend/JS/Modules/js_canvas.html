@@ -166,7 +166,7 @@
                     </div>
                     
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover table-striped mb-0 border-top" style="table-layout: fixed; width: 100%;">
+                        <table class="table table-sm table-hover table-striped align-middle mb-0 border-top" style="table-layout: fixed; width: 100%;">
                             <thead class="table-light">
                                 <tr>
                                     <th class="ps-3 text-center" style="width: 5%;">${t('col_cut')}</th>
@@ -217,7 +217,7 @@
                     const rotationWarning = (isSheet && cut.rotated) ? ` <span class="badge bg-warning text-dark ms-1">${t('lbl_rotated')}</span>` : '';
 
                     html += `
-                                <tr>
+                                <tr class="small align-middle">
                                     <td class="ps-3 fw-bold text-muted text-center">${cIndex + 1}</td>
                                     <td class="fw-bold">${label}${rotationWarning}</td>
                                     <td class="text-muted">${projCell}</td>
