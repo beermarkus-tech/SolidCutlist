@@ -790,59 +790,60 @@
         // 🪄 1. Build the advanced header using the baseline design
         let html = `
             <div id="table-wrapper-sandbox-parts" class="table-responsive border rounded" style="max-height: calc(100vh - 149px); height: calc(100vh - 149px); overflow-y: auto;">
-<table class="table table-sm table-hover table-striped align-middle mb-0 bg-white" style="table-layout: fixed; width: 100%;">
+<table class="table table-sm table-hover table-striped align-middle mb-0 bg-white">
                     <thead class="table-light" style="position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                         <tr>
-                            <th class="text-nowrap px-2" style="width: 10%;">
+                            <th class="col-project text-nowrap px-2">
                                 <span onclick="handleSort('sandbox_parts', 'projectId', 'string')" style="cursor: pointer;">
                                     <span data-i18n="col_project">Project</span> ⇅
                                 </span>
                                 <span id="flt-icon-sandbox_parts-projectId" onclick="openFilterModal(event, 'sandbox_parts', 'projectId', 'Project')" style="cursor: pointer;" title="Filter">▼</span>
                             </th>
-                            <th class="text-nowrap px-2" style="width: 10%;">
+                            <th class="col-group text-nowrap px-2">
                                 <span onclick="handleSort('sandbox_parts', 'groupId', 'string')" style="cursor: pointer;">
                                     <span data-i18n="col_group">Group</span> ⇅
                                 </span>
                                 <span id="flt-icon-sandbox_parts-groupId" onclick="openFilterModal(event, 'sandbox_parts', 'groupId', 'Group')" style="cursor: pointer;" title="Filter">▼</span>
                             </th>
-                            <th class="px-2" style="width: 18%;">
+                            <th class="col-partname px-2">
                                 <span onclick="handleSort('sandbox_parts', 'name', 'string')" style="cursor: pointer;">
                                     <span data-i18n="col_part_name">Part Name</span> ⇅
                                 </span>
                             </th>
-                            <th class="text-center text-nowrap px-1" style="width: 90px;">
+                            <th class="col-sponge"></th>
+                            <th class="col-category text-center text-nowrap px-1">
                                 <span onclick="handleSort('sandbox_parts', 'category', 'string')" style="cursor: pointer;">
                                     <span data-i18n="col_category">Category</span> ⇅
                                 </span>
                                 <span id="flt-icon-sandbox_parts-category" onclick="openFilterModal(event, 'sandbox_parts', 'category', 'Category')" style="cursor: pointer;" title="Filter">▼</span>
                             </th>
-                            <th class="text-center px-1" id="th-sandbox_parts-qty" style="width: 50px;">
+                            <th class="col-qty text-center px-1" id="th-sandbox_parts-qty">
                                 <span onclick="handleSort('sandbox_parts', 'qty', 'number')" style="cursor: pointer;" data-i18n="col_qty">Qty ⇅</span>
                             </th>
-                            <th class="text-center text-nowrap px-2" style="width: 14%;">
+                            <th class="col-profile text-center text-nowrap px-2">
                                 <span onclick="handleSort('sandbox_parts', 'profileId', 'string')" style="cursor: pointer;">
                                     <span data-i18n="col_profile">Profile</span> ⇅
                                 </span>
                                 <span id="flt-icon-sandbox_parts-profileId" onclick="openFilterModal(event, 'sandbox_parts', 'profileId', 'Profile')" style="cursor: pointer;" title="Filter">▼</span>
                             </th>
-                            <th class="text-center px-2" style="width: 90px;">
+                            <th class="col-size text-center px-2">
                                 <span onclick="handleSort('sandbox_parts', 'dimensions', 'number')" style="cursor: pointer;">
                                     <span data-i18n="col_size">Size (<span class="display-unit-label">mm</span>)</span> ⇅
                                 </span>
                             </th>
-                            <th class="text-center text-nowrap px-2" style="width: 14%;">
+                            <th class="col-material text-center text-nowrap px-2">
                                 <span onclick="handleSort('sandbox_parts', 'materialId', 'string')" style="cursor: pointer;">
                                     <span data-i18n="col_material">Material</span> ⇅
                                 </span>
                                 <span id="flt-icon-sandbox_parts-materialId" onclick="openFilterModal(event, 'sandbox_parts', 'materialId', 'Material')" style="cursor: pointer;" title="Filter">▼</span>
                             </th>
-                            <th class="text-center text-nowrap px-1" style="width: 65px;">
+                            <th class="col-grain text-center text-nowrap px-1">
                                 <span onclick="handleSort('sandbox_parts', 'grain', 'string')" style="cursor: pointer;">
                                     <span data-i18n="col_grain">Grain</span> ⇅
                                 </span>
                                 <span id="flt-icon-sandbox_parts-grain" onclick="openFilterModal(event, 'sandbox_parts', 'grain', 'Grain')" style="cursor: pointer;" title="Filter">▼</span>
                             </th>
-                            <th class="text-end px-1" style="width: 35px;">
+                            <th class="col-actions text-end px-1">
                                 <span id="flt-clear-sandbox_parts" onclick="clearAllFiltersForTable('sandbox_parts')" class="text-secondary opacity-25 px-1" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
                             </th>
                         </tr>
@@ -888,19 +889,19 @@
 
             const grainStr = p.grain && p.grain !== 'none' ? p.grain.charAt(0).toUpperCase() + p.grain.slice(1) : '-';
 
-            // 🪄 2. The Clean Row (Text truncates with ellipses to protect table width)
             html += `
                 <tr class="small align-middle">
-                    <td class="text-truncate px-2" title="${typeof safeHTML === 'function' ? safeHTML(projName) : projName}">${typeof safeHTML === 'function' ? safeHTML(projName) : projName}</td>
-                    <td class="text-truncate px-2" title="${typeof safeHTML === 'function' ? safeHTML(groupName) : groupName}">${typeof safeHTML === 'function' ? safeHTML(groupName) : groupName}</td>
-                    <td class="text-truncate fw-bold px-2" title="${typeof safeHTML === 'function' ? safeHTML(p.name) : p.name}">${typeof safeHTML === 'function' ? safeHTML(p.name) : p.name}</td>
+                    <td class="px-2">${typeof safeHTML === 'function' ? safeHTML(projName) : projName}</td>
+                    <td class="px-2">${typeof safeHTML === 'function' ? safeHTML(groupName) : groupName}</td>
+                    <td class="fw-bold px-2">${typeof safeHTML === 'function' ? safeHTML(p.name) : p.name}</td>
+                    <td></td>
                     <td class="text-center px-1">${catBadge}</td>
                     <td class="text-center fw-bold text-primary px-1">${p.qty}</td>
-                    <td class="text-truncate text-center px-2" title="${typeof safeHTML === 'function' ? safeHTML(profName) : profName}">${typeof safeHTML === 'function' ? safeHTML(profName) : profName}</td>
+                    <td class="text-center px-2">${typeof safeHTML === 'function' ? safeHTML(profName) : profName}</td>
                     <td class="text-center fw-bold px-2 text-nowrap">${sizeStr}</td>
-                    <td class="text-truncate text-center px-2" title="${typeof safeHTML === 'function' ? safeHTML(matName) : matName}">${typeof safeHTML === 'function' ? safeHTML(matName) : matName}</td>
+                    <td class="text-center px-2">${typeof safeHTML === 'function' ? safeHTML(matName) : matName}</td>
                     <td class="text-center text-nowrap px-1">${grainStr}</td>
-                    <td class="text-end px-1"></td>
+                    <td></td>
                 </tr>
             `;
         });
