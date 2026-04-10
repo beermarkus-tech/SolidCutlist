@@ -946,19 +946,23 @@
                         const mat = appState.materials.find(m => m.id === res.sku.materialId);
 
                         storeBuckets[storeName].push({
-                            catalogId: opt.id, 
-                            category: res.sku.category, 
-                            length: opt.length, 
-                            width: opt.width, 
-                            qty: '⚠️', // Symbolize error instead of a number
+                            catalogId: opt.id,
+                            category: res.sku.category,
+                            length: opt.length,
+                            width: opt.width,
+                            qty: '⚠️',
                             profName: prof?.name || 'Unknown',
                             matName: mat?.name || 'Unknown',
                             cost: 0,
                             weight: 0,
                             url: opt.url || opt.link || '',
-                            isError: true, // 🪄 FLAG IT FOR RED HIGHLIGHT
+                            price: opt.price || 0,
+                            priceUnit: opt.priceUnit || 'piece',
+                            profileThickness: prof?.thickness || 0,
+                            profileWidth: prof?.width || 0,
+                            isError: true,
                             errorMessage: res.error,
-                            unmappedParts: res.unmappedParts // 🪄 PASS THE FAILED PARTS TO THE UI
+                            unmappedParts: res.unmappedParts
                         });
                     });
                 }
@@ -991,22 +995,29 @@
             totalCost += purchase.totalCost;
             totalWeightKg += batchWeight;
 
-            // 🪄 Stores catalogId and raw dimensions for handleInlineEdit
             storeBuckets[storeName].push({
-                catalogId: purchase.catalogItem.id, 
-                category: res.sku.category, 
-                length: purchase.catalogItem.length, 
-                width: purchase.catalogItem.width, 
+                catalogId: purchase.catalogItem.id,
+                category: res.sku.category,
+                length: purchase.catalogItem.length,
+                width: purchase.catalogItem.width,
                 qty: purchase.boardsNeeded,
                 profName: prof?.name || 'Unknown',
                 matName: mat?.name || 'Unknown',
                 cost: purchase.totalCost,
                 weight: batchWeight,
-                url: purchase.catalogItem.url || purchase.catalogItem.link || ''
+                url: purchase.catalogItem.url || purchase.catalogItem.link || '',
+                price: purchase.catalogItem.price || 0,
+                priceUnit: purchase.catalogItem.priceUnit || 'piece',
+                profileThickness: prof?.thickness || 0,
+                profileWidth: prof?.width || 0,
             });
         });
 
         const totalWeightDisplay = isMetric ? totalWeightKg : (totalWeightKg * 2.20462);
+
+        // Populate the registry so the edit modal can look up items by catalogId
+        _shoppingItemRegistry.clear();
+        Object.values(storeBuckets).flat().forEach(item => _shoppingItemRegistry.set(item.catalogId, item));
 
         html += `
             <div class="alert alert-info d-flex justify-content-between align-items-center mb-4 shadow-sm border-info">
@@ -1045,27 +1056,13 @@
                 const linkIcon = (item.url && storeName !== '🏪 My Shop Stock') 
                     ? `<a href="${item.url}" target="_blank" class="text-decoration-none ms-2 fs-5" title="Open in Store">🔗</a>` : '';
 
-                // 🪄 INLINE EDITING: Uses oninput for instant state updates!
-                let lengthDisplayHTML = '';
                 const isEditable = window.activeJobId && storeName !== '🏪 My Shop Stock';
-                
-                if (isEditable) {
-                    if (item.category === 'sheet') {
-                        lengthDisplayHTML = `
-                            <input type="number" step="any" class="form-control form-control-sm d-inline-block text-center px-1 py-0 mx-1" style="width: 70px;" value="${item.length}" oninput="handleInlineEdit('${item.catalogId}', 'length', this.value)">
-                            x 
-                            <input type="number" step="any" class="form-control form-control-sm d-inline-block text-center px-1 py-0 mx-1" style="width: 70px;" value="${item.width}" oninput="handleInlineEdit('${item.catalogId}', 'width', this.value)">
-                        `;
-                    } else {
-                        lengthDisplayHTML = `
-                            <input type="number" step="any" class="form-control form-control-sm d-inline-block text-center px-1 py-0 mx-1" style="width: 80px;" value="${item.length}" oninput="handleInlineEdit('${item.catalogId}', 'length', this.value)">
-                        `;
-                    }
-                } else {
-                    lengthDisplayHTML = item.category === 'sheet' 
-                        ? `${formatForDisplay(item.length)} x ${formatForDisplay(item.width)}`
-                        : formatForDisplay(item.length);
-                }
+                const sizeDisplay = item.category === 'sheet'
+                    ? `${formatForDisplay(item.length)} x ${formatForDisplay(item.width)}`
+                    : formatForDisplay(item.length);
+                const pencilBtn = (isEditable && !item.isError)
+                    ? `<button class="btn btn-sm btn-link p-0 ms-2 text-muted" onclick="openEditMaterialModal('${item.catalogId}')" title="Edit raw material">✏️</button>`
+                    : '';
 
                 // 🪄 DYNAMIC ERROR STYLING
                 const rowClass = item.isError ? 'list-group-item-danger border-danger' : '';
@@ -1101,7 +1098,7 @@
                             <span class="fw-bold ${item.isError ? 'text-danger' : ''}">${safeHTML(item.profName)}</span>
                             <span class="text-muted"> - ${safeHTML(item.matName)}</span>
                             ${linkIcon} <br>
-                            <small class="text-muted ms-5 d-flex align-items-center mt-1">Size: ${lengthDisplayHTML} <span class="display-unit-label ms-1"></span></small>
+                            <small class="text-muted ms-5 d-flex align-items-center mt-1">Size: ${sizeDisplay} <span class="display-unit-label ms-1"></span>${pencilBtn}</small>
                             ${errorText}
                         </div>
                         <div class="text-end">
@@ -1479,6 +1476,143 @@
                 stockTab.click();
             }
         }, 300); // 300ms delay allows the Bootstrap modal to fade out smoothly before the screen jumps
+    }
+
+    // ==========================================
+    // EDIT RAW MATERIAL MODAL
+    // ==========================================
+    const _shoppingItemRegistry = new Map(); // catalogId → enriched bucket item
+    let editMaterialModalInstance = null;
+    let _editingCatalogId = null;
+
+    function calcNormalizedPrice(price, priceUnit, lengthMm, widthMm, thicknessMm, profileWidthMm, category, isMetric) {
+        if (!price || price <= 0 || !lengthMm || lengthMm <= 0) return null;
+        const w_mm = category === 'sheet' ? widthMm : profileWidthMm;
+        const t_mm = thicknessMm || 0;
+        let cpp;
+        if (priceUnit === 'piece') {
+            cpp = price;
+        } else if (priceUnit === 'linear') {
+            cpp = isMetric ? price * (lengthMm / 1000) : price * (lengthMm / 304.8);
+        } else if (priceUnit === 'area') {
+            cpp = isMetric
+                ? price * (lengthMm / 1000) * (w_mm / 1000)
+                : price * (lengthMm * w_mm / 92903.04);
+        } else if (priceUnit === 'volume') {
+            if (!t_mm) return null;
+            cpp = isMetric
+                ? price * (lengthMm / 1000) * (w_mm / 1000) * (t_mm / 1000)
+                : price * (lengthMm * w_mm * t_mm / 2359737.216);
+        } else {
+            return null;
+        }
+        if (category === 'sheet') {
+            const area = isMetric
+                ? (lengthMm / 1000) * (w_mm / 1000)
+                : (lengthMm * w_mm / 92903.04);
+            if (!area) return null;
+            return { value: cpp / area, unit: isMetric ? '/ m²' : '/ sqft' };
+        } else {
+            const len = isMetric ? (lengthMm / 1000) : (lengthMm / 304.8);
+            if (!len) return null;
+            return { value: cpp / len, unit: isMetric ? '/ m' : '/ ft' };
+        }
+    }
+
+    function openEditMaterialModal(catalogId) {
+        const item = _shoppingItemRegistry.get(catalogId);
+        if (!item) return;
+        _editingCatalogId = catalogId;
+
+        const job = appState.jobs.find(j => j.id === window.activeJobId);
+        if (!job) return;
+        const isMetric = (job.settings?.displayUnit || appState.settings.displayUnit) === 'mm';
+        const currency = job.settings?.currency || appState.settings.currency || '$';
+
+        // Subtitle
+        document.getElementById('edit-material-subtitle').textContent = `${item.profName} — ${item.matName}`;
+
+        // Dimensions — show/hide width group for sheets
+        document.getElementById('edit-mat-length').value = formatForDisplay(item.length);
+        const widthGroup = document.getElementById('edit-mat-width-group');
+        if (item.category === 'sheet') {
+            widthGroup.classList.remove('d-none');
+            document.getElementById('edit-mat-width').value = formatForDisplay(item.width);
+        } else {
+            widthGroup.classList.add('d-none');
+        }
+
+        // Price
+        document.getElementById('edit-mat-price').value = item.price || '';
+        document.getElementById('edit-mat-currency-label').textContent = currency;
+
+        // Price unit select — labels depend on display unit
+        const unitSelect = document.getElementById('edit-mat-price-unit');
+        unitSelect.innerHTML = `
+            <option value="piece">per piece</option>
+            <option value="linear">${isMetric ? 'per meter' : 'per linear ft'}</option>
+            <option value="area">${isMetric ? 'per m²' : 'per sqft'}</option>
+            <option value="volume">${isMetric ? 'per m³' : 'per board ft'}</option>
+        `;
+        unitSelect.value = item.priceUnit || 'piece';
+
+        // Normalized price preview (original)
+        const orig = calcNormalizedPrice(item.price, item.priceUnit, item.length, item.width, item.profileThickness, item.profileWidth, item.category, isMetric);
+        const origEl = document.getElementById('edit-mat-orig-price');
+        origEl.textContent = orig ? `${currency}${orig.value.toFixed(2)} ${orig.unit}` : '—';
+
+        updateEditMaterialPreview();
+
+        if (!editMaterialModalInstance) {
+            editMaterialModalInstance = new bootstrap.Modal(document.getElementById('modal-edit-material'), { keyboard: true });
+        }
+        editMaterialModalInstance.show();
+    }
+
+    function updateEditMaterialPreview() {
+        const item = _shoppingItemRegistry.get(_editingCatalogId);
+        if (!item) return;
+        const job = appState.jobs.find(j => j.id === window.activeJobId);
+        if (!job) return;
+        const isMetric = (job.settings?.displayUnit || appState.settings.displayUnit) === 'mm';
+        const currency = job.settings?.currency || appState.settings.currency || '$';
+
+        const lengthMm = parseToBaseUnit(document.getElementById('edit-mat-length').value);
+        const widthMm = item.category === 'sheet' ? parseToBaseUnit(document.getElementById('edit-mat-width').value) : item.width;
+        const price = parseFloat(document.getElementById('edit-mat-price').value) || 0;
+        const priceUnit = document.getElementById('edit-mat-price-unit').value;
+
+        const result = calcNormalizedPrice(price, priceUnit, lengthMm, widthMm, item.profileThickness, item.profileWidth, item.category, isMetric);
+        const el = document.getElementById('edit-mat-preview-price');
+        el.textContent = result ? `${currency}${result.value.toFixed(2)} ${result.unit}` : '—';
+    }
+
+    function saveAndRecalculateMaterial() {
+        const item = _shoppingItemRegistry.get(_editingCatalogId);
+        if (!item) return;
+        const job = appState.jobs.find(j => j.id === window.activeJobId);
+        if (!job || !job.catalog) return;
+
+        const lengthMm = parseToBaseUnit(document.getElementById('edit-mat-length').value);
+        const widthMm = item.category === 'sheet' ? parseToBaseUnit(document.getElementById('edit-mat-width').value) : item.width;
+        const price = parseFloat(document.getElementById('edit-mat-price').value);
+        const priceUnit = document.getElementById('edit-mat-price-unit').value;
+
+        if (!lengthMm || lengthMm <= 0) { showToast('Invalid length.', 'warning'); return; }
+        if (item.category === 'sheet' && (!widthMm || widthMm <= 0)) { showToast('Invalid width.', 'warning'); return; }
+        if (isNaN(price) || price < 0) { showToast('Invalid price.', 'warning'); return; }
+
+        const catalogItem = job.catalog.find(c => c.id === _editingCatalogId);
+        if (!catalogItem) { showToast('Catalog item not found in job.', 'warning'); return; }
+
+        catalogItem.length = lengthMm;
+        if (item.category === 'sheet') catalogItem.width = widthMm;
+        catalogItem.price = price;
+        catalogItem.priceUnit = priceUnit;
+
+        setUnsavedChangesState('dirty_input');
+        editMaterialModalInstance.hide();
+        executeRecalculate();
     }
 
     // ==========================================

@@ -401,30 +401,6 @@
         
         if (typeof showToast === 'function') showToast("Changes undone. Original layout restored.", "info");
     }
-    function handleInlineEdit(catalogId, field, value) {
-        if (!window.activeJobId) return;
-        
-        const job = appState.jobs.find(j => j.id === window.activeJobId);
-        if (!job || !job.catalog) return;
-        
-        const catalogItem = job.catalog.find(c => c.id === catalogId);
-        if (!catalogItem) {
-            console.error("Item not found in sandbox catalog:", catalogId);
-            return;
-        }
-        
-        let numVal = parseFloat(value);
-        if (isNaN(numVal) || numVal <= 0) {
-            if (typeof showToast === 'function') showToast("Invalid dimension entered.", "warning");
-            return;
-        }
-        
-        // Mutate the local sandbox catalog directly!
-        catalogItem[field] = numVal;
-        
-        // Shift UI state to require recalculation
-        setUnsavedChangesState('dirty_input');
-    }
     function executeRecalculate() {
         if (!window.activeJobId) return;
         const job = appState.jobs.find(j => j.id === window.activeJobId);
