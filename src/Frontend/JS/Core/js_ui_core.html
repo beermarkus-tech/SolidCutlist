@@ -79,14 +79,16 @@
             if (inputEl && tableEl) {
                 if (globalInputsVisible) {
                     // Show Input, Shrink Table
+                    // Phase 1: 258px = navbar ~56px + card-header ~52px + card-body-top ~16px + input-section ~134px
                     inputEl.classList.remove('d-none');
-                    tableEl.style.maxHeight = 'calc(100vh - 282px)';
-                    tableEl.style.height = 'calc(100vh - 282px)';
+                    tableEl.style.maxHeight = 'calc(100vh - 258px)';
+                    tableEl.style.height = 'calc(100vh - 258px)';
                 } else {
                     // Hide Input, Expand Table
+                    // Phase 1: 149px = navbar ~56px + card-header ~52px + card-body-top ~16px + bottom-pad ~25px
                     inputEl.classList.add('d-none');
-                    tableEl.style.maxHeight = 'calc(100vh - 173px)';
-                    tableEl.style.height = 'calc(100vh - 173px)';
+                    tableEl.style.maxHeight = 'calc(100vh - 149px)';
+                    tableEl.style.height = 'calc(100vh - 149px)';
                 }
             }
 
@@ -95,14 +97,12 @@
                 const cardViewEl = document.getElementById('view-mode-cards');
                 if (cardViewEl) {
                     if (globalInputsVisible) {
-                        // Standard state (Input is visible)
-                        cardViewEl.style.maxHeight = 'calc(100vh - 282px)';
-                        cardViewEl.style.height = 'calc(100vh - 282px)';
+                        cardViewEl.style.maxHeight = 'calc(100vh - 258px)';
+                        cardViewEl.style.height = 'calc(100vh - 258px)';
                     } else {
-                        // Expanded state (Input is hidden). 
-                        // Card view has an extra toolbar, so the "folded" bottom margin is slightly taller.
-                        cardViewEl.style.maxHeight = 'calc(100vh - 173px)'; 
-                        cardViewEl.style.height = 'calc(100vh - 173px)';
+                        // Card view has an extra toolbar row, so the collapsed offset is slightly larger
+                        cardViewEl.style.maxHeight = 'calc(100vh - 149px)';
+                        cardViewEl.style.height = 'calc(100vh - 149px)';
                     }
                 }
             }

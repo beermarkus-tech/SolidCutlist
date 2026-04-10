@@ -1,10 +1,13 @@
 <style>
-    /* 1. Left Card: Sticky Configuration Area */
+    /* 1. Left Card: Configuration Area
+       Phase 1: removed position:sticky (body overflow:hidden means no page scroll,
+       sticky would fall back to position:relative with a 74px downward offset — visual bug).
+       Height is now 100% via the flex chain from body → #app-container → .app-view.
+       The col-lg-3 / row chain doesn't yet propagate height; Phase 4 will fix that with
+       a proper CSS Grid sidebar. For now, explicit calc keeps it full-height. */
     #optimizer-config-form {
-        position: sticky;
-        top: 74px; /* Offset to clear your top navbar */
         z-index: 1000;
-        height: calc(100vh - 90px); /* Locks the card to the height of the screen */
+        height: calc(100vh - 60px); /* 60px = navbar height (no mb-4 gap after Phase 1) */
     }
 
     /* Allows the configuration tabs to scroll independently */
@@ -12,12 +15,10 @@
         overflow-y: auto;
     }
 
-    /* 2. Right Card: Sticky Results Header */
+    /* 2. Right Card: Results Header — no longer needs sticky offset since page doesn't scroll */
     #optimizer-results-form .card-header {
-        position: sticky;
-        top: 74px; 
         z-index: 1050;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); 
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
     }
 
     /* 🪄 FIX: Trap the hardware-accelerated canvases so they cannot punch through the Z-index */

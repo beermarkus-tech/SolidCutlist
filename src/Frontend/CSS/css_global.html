@@ -2,6 +2,23 @@
     body {
         /* Standardizing font to look a bit more polished */
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        /* Phase 1: App shell — body is the flex column host */
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* Phase 1: App-container fills all space below the navbar */
+    #app-container {
+        flex: 1 1 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* Phase 1: Active view fills the app-container exactly */
+    .app-view {
+        height: 100%;
     }
 
           /* ==========================================
@@ -520,8 +537,8 @@
            LAYOUT UTILITY CLASSES
            ========================================== */
 
-        /* Full-height view card (accounts for top navbar) */
-        .card-full-height { height: calc(100vh - 100px); }
+        /* Phase 1: Cards fill the view (view fills the container via flex chain) */
+        .card-full-height { height: 100%; }
 
         /* Preserves border-radius inheritance on card headers */
         .card-header-rounded {
@@ -536,10 +553,11 @@
         }
 
         /* Scrollable table container locked to viewport
-           (282px = navbar + card header + form input section) */
+           (258px = navbar ~56px + card header ~52px + card-body top-pad ~16px + input section ~134px)
+           Phase 2+ will replace this calc with a flex-grow layout */
         .table-viewport {
-            max-height: calc(100vh - 282px);
-            height: calc(100vh - 282px);
+            max-height: calc(100vh - 258px);
+            height: calc(100vh - 258px);
             overflow-y: auto;
         }
 
