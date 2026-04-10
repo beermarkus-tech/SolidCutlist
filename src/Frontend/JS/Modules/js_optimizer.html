@@ -1060,7 +1060,7 @@
                 const sizeDisplay = item.category === 'sheet'
                     ? `${formatForDisplay(item.length)} x ${formatForDisplay(item.width)}`
                     : formatForDisplay(item.length);
-                const pencilBtn = (isEditable && !item.isError)
+                const pencilBtn = isEditable
                     ? `<button class="btn btn-sm btn-link p-0 ms-2 text-muted" onclick="openEditMaterialModal('${item.catalogId}')" title="Edit raw material">✏️</button>`
                     : '';
 
