@@ -1143,27 +1143,6 @@
             html += `</ul></div>`;
         }
         
-        const errors = results.filter(r => r.error);
-        if (errors.length > 0) {
-            html += `<h6 class="text-danger fw-bold mt-4 border-bottom pb-1">⚠️ Sourcing Errors</h6><ul class="list-group">`;
-            errors.forEach(err => {
-                const pName = appState.profiles.find(p=>p.id === err.sku.profileId)?.name || '?';
-                const mName = appState.materials.find(m=>m.id === err.sku.materialId)?.name || '?';
-                html += `<li class="list-group-item list-group-item-danger"><small><strong>${pName} (${mName}):</strong> ${err.error}</small></li>`;
-            });
-            html += `</ul>`;
-        }
-
-        const partials = results.filter(r => !r.error && r.oversizedParts?.length > 0);
-        if (partials.length > 0) {
-            html += `<h6 class="text-danger fw-bold mt-4 border-bottom pb-1">⚠️ Parts Too Large</h6><ul class="list-group">`;
-            partials.forEach(res => {
-                const pName = appState.profiles.find(p => p.id === res.sku.profileId)?.name || '?';
-                const mName = appState.materials.find(m => m.id === res.sku.materialId)?.name || '?';
-                html += `<li class="list-group-item list-group-item-danger"><small><strong>${pName} (${mName}):</strong> ${res.oversizedParts.length} part(s) are too large for the selected board — increase board length to include them.</small></li>`;
-            });
-            html += `</ul>`;
-        }
         container.innerHTML = html;
         if (typeof updateUnitLabels === 'function') updateUnitLabels(); 
     }
