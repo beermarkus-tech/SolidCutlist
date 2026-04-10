@@ -166,8 +166,8 @@
                     </div>
                     
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0 border-top" style="table-layout: fixed; width: 100%;">
-                            <thead>
+                        <table class="table table-sm table-hover table-striped mb-0 border-top" style="table-layout: fixed; width: 100%;">
+                            <thead class="table-light">
                                 <tr>
                                     <th class="ps-3 text-center" style="width: 5%;">${t('col_cut')}</th>
                                     <th style="width: ${isSheet ? '28%' : '32%'};">${t('col_part_label')}</th>
@@ -194,7 +194,7 @@
 
                     // 🪄 2. Label + separate Project / Group cells
                     const label = safeHTML(cut.name);
-                    const projCell = isMultiProject ? safeHTML(projName) : '';
+                    const projCell = safeHTML(projName);
                     const groupCell = (groupName && groupName !== '-') ? safeHTML(groupName) : '';
 
                     let grainCell = '';
