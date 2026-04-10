@@ -156,6 +156,10 @@
 
                 let bestOption = null;
                 let lowestCost = Infinity;
+                let bestPartialOption = null;
+                let bestPartialUnmapped = [];
+                let fewestUnmapped = Infinity;
+                let bestPartialCost = Infinity;
 
                 vendorOptions.forEach(option => {
                     const boardCost = (typeof calculateCostPerPiece === 'function') ? calculateCostPerPiece(option) : option.price;
@@ -165,13 +169,11 @@
                         if (pref2D === 'auto') {
                             let resRip = pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, 'rip');
                             let resCross = pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, 'cross');
-                            if (resRip.unmapped.length > 0 && resCross.unmapped.length > 0) return; 
-                            if (resRip.unmapped.length > 0) packResult = resCross;
-                            else if (resCross.unmapped.length > 0) packResult = resRip;
-                            else {
-                                if (resRip.boards.length < resCross.boards.length) packResult = resRip;
-                                else if (resCross.boards.length < resRip.boards.length) packResult = resCross;
-                                else packResult = (resRip.totalWaste <= resCross.totalWaste) ? resRip : resCross;
+                            // Pick the orientation with fewer unmapped parts; tiebreak on waste
+                            if (resRip.unmapped.length <= resCross.unmapped.length) {
+                                packResult = (resRip.unmapped.length === resCross.unmapped.length && resCross.totalWaste < resRip.totalWaste) ? resCross : resRip;
+                            } else {
+                                packResult = resCross;
                             }
                         } else {
                             packResult = pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, pref2D);
@@ -179,28 +181,54 @@
                     } else {
                         packResult = pack1D(currentParts, option.length, k1D, t1D);
                     }
-                    
-                    if (packResult && packResult.unmapped.length === 0) {
-                        const totalCost = packResult.boards.length * boardCost;
+
+                    if (!packResult) return;
+                    const totalCost = packResult.boards.length * boardCost;
+
+                    if (packResult.unmapped.length === 0) {
+                        // Full fit
                         if (totalCost < lowestCost) {
                             lowestCost = totalCost;
                             bestOption = {
                                 catalogItem: option,
-                                totalCost: totalCost,
+                                totalCost,
                                 boardsNeeded: packResult.boards.length,
                                 layout: packResult.boards,
                                 waste: packResult.totalWaste
                             };
+                        }
+                    } else if (packResult.boards.length > 0) {
+                        // Partial fit — some parts placed, some oversized
+                        if (packResult.unmapped.length < fewestUnmapped ||
+                            (packResult.unmapped.length === fewestUnmapped && totalCost < bestPartialCost)) {
+                            fewestUnmapped = packResult.unmapped.length;
+                            bestPartialCost = totalCost;
+                            bestPartialOption = {
+                                catalogItem: option,
+                                totalCost,
+                                boardsNeeded: packResult.boards.length,
+                                layout: packResult.boards,
+                                waste: packResult.totalWaste
+                            };
+                            bestPartialUnmapped = packResult.unmapped;
                         }
                     }
                 });
 
                 if (bestOption) {
                     finalCutlist.push({ sku: batch, success: true, purchase: bestOption });
+                } else if (bestPartialOption) {
+                    // Some parts fit, some are oversized — show partial result with warning
+                    finalCutlist.push({
+                        sku: batch,
+                        purchase: bestPartialOption,
+                        oversizedParts: bestPartialUnmapped,
+                        failedCatalogItems: vendorOptions,
+                    });
                 } else {
-                    // 🪄 Attach the vendorOptions AND the failed parts so the UI can show exactly what broke
-                    finalCutlist.push({ 
-                        sku: batch, 
+                    // No parts fit on any board at all
+                    finalCutlist.push({
+                        sku: batch,
                         error: `Remaining ${currentParts.length} parts are too large for any store boards.`,
                         failedCatalogItems: vendorOptions,
                         unmappedParts: currentParts
@@ -1010,6 +1038,7 @@
                 priceUnit: purchase.catalogItem.priceUnit || 'piece',
                 profileThickness: prof?.thickness || 0,
                 profileWidth: prof?.width || 0,
+                oversizedParts: res.oversizedParts || [],
             });
         });
 
@@ -1064,31 +1093,34 @@
                     ? `<button class="btn btn-sm btn-link p-0 ms-2 text-muted" onclick="openEditMaterialModal('${item.catalogId}')" title="Edit raw material">✏️</button>`
                     : '';
 
-                // 🪄 DYNAMIC ERROR STYLING
-                const rowClass = item.isError ? 'list-group-item-danger border-danger' : '';
+                const isPartial = item.oversizedParts && item.oversizedParts.length > 0;
+                const rowClass = (item.isError || isPartial) ? 'list-group-item-danger border-danger' : '';
                 const badgeClass = item.isError ? 'bg-danger' : 'bg-primary';
                 const costDisplay = item.isError ? '<span class="text-danger fw-bold">ERROR</span>' : `${currency}${item.cost.toFixed(2)}`;
                 const weightDisplay = item.isError ? '' : `<small class="text-muted">⚖️ ${wDisplay.toFixed(2)} ${weightUnit}</small>`;
-                
+
+                // Helper to build a collapsed part list from an array of part objects
+                function buildPartList(parts) {
+                    const counts = {};
+                    parts.forEach(p => {
+                        const sizeStr = item.category === 'sheet'
+                            ? `${formatForDisplay(p.width)} x ${formatForDisplay(p.length)}`
+                            : formatForDisplay(p.length);
+                        const key = `${safeHTML(p.name)} (${sizeStr})`;
+                        counts[key] = (counts[key] || 0) + 1;
+                    });
+                    return Object.entries(counts).map(([key, count]) => `[${count}x] ${key}`).join(', ');
+                }
+
                 let errorText = '';
                 if (item.isError) {
                     errorText = `<div class="text-danger fw-bold ms-5 mt-1" style="font-size: 0.8rem;">⚠️ ${item.errorMessage}</div>`;
-                    
-                    // 🪄 Build the tiny read-only list of exactly what broke
                     if (item.unmappedParts && item.unmappedParts.length > 0) {
-                        const failedCounts = {};
-                        item.unmappedParts.forEach(p => {
-                            const sizeStr = item.category === 'sheet' 
-                                ? `${typeof formatForDisplay === 'function' ? formatForDisplay(p.width) : p.width} x ${typeof formatForDisplay === 'function' ? formatForDisplay(p.length) : p.length}` 
-                                : `${typeof formatForDisplay === 'function' ? formatForDisplay(p.length) : p.length}`;
-                            
-                            const key = `${safeHTML(p.name)} (${sizeStr})`;
-                            failedCounts[key] = (failedCounts[key] || 0) + 1;
-                        });
-                        
-                        const failedStrings = Object.entries(failedCounts).map(([key, count]) => `[${count}x] ${key}`);
-                        errorText += `<div class="text-danger ms-5 mt-1 mb-2" style="font-size: 0.75rem; opacity: 0.9;"><strong>Failed to fit:</strong> ${failedStrings.join(', ')}</div>`;
+                        errorText += `<div class="text-danger ms-5 mt-1 mb-2" style="font-size: 0.75rem; opacity: 0.9;"><strong>Failed to fit:</strong> ${buildPartList(item.unmappedParts)}</div>`;
                     }
+                } else if (isPartial) {
+                    errorText = `<div class="text-danger fw-bold ms-5 mt-1" style="font-size: 0.8rem;">⚠️ Parts too large for this board:</div>
+                                 <div class="text-danger ms-5 mt-1 mb-2" style="font-size: 0.75rem; opacity: 0.9;">${buildPartList(item.oversizedParts)}</div>`;
                 }
 
                 html += `
@@ -1118,6 +1150,17 @@
                 const pName = appState.profiles.find(p=>p.id === err.sku.profileId)?.name || '?';
                 const mName = appState.materials.find(m=>m.id === err.sku.materialId)?.name || '?';
                 html += `<li class="list-group-item list-group-item-danger"><small><strong>${pName} (${mName}):</strong> ${err.error}</small></li>`;
+            });
+            html += `</ul>`;
+        }
+
+        const partials = results.filter(r => !r.error && r.oversizedParts?.length > 0);
+        if (partials.length > 0) {
+            html += `<h6 class="text-danger fw-bold mt-4 border-bottom pb-1">⚠️ Parts Too Large</h6><ul class="list-group">`;
+            partials.forEach(res => {
+                const pName = appState.profiles.find(p => p.id === res.sku.profileId)?.name || '?';
+                const mName = appState.materials.find(m => m.id === res.sku.materialId)?.name || '?';
+                html += `<li class="list-group-item list-group-item-danger"><small><strong>${pName} (${mName}):</strong> ${res.oversizedParts.length} part(s) are too large for the selected board — increase board length to include them.</small></li>`;
             });
             html += `</ul>`;
         }
