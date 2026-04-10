@@ -1,33 +1,25 @@
-<div class="card shadow-sm border-success card-full-height">
-
-    <!-- Card Header -->
-    <div class="card-header bg-primary pt-2 pb-0 border-bottom-0 d-flex justify-content-between align-items-end card-header-rounded">
-        <ul class="nav nav-tabs card-header-tabs border-bottom-0 m-0" id="dictionaryTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="tab-projects" data-bs-toggle="tab" data-bs-target="#pane-projects" type="button" role="tab" onclick="renderProjectsTable(); syncProjectHeaderButtons('projects')" data-i18n="tab_projects">📁 Active Projects</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="tab-parts" data-bs-toggle="tab" data-bs-target="#pane-parts" type="button" role="tab" onclick="renderPartsView(); syncProjectHeaderButtons('parts')" data-i18n="hdr_current_partlist">🧩 Current Partlist</button>
-            </li>
-        </ul>
-        <div class="align-self-center mb-2">
-            <div>
-                <button id="btn-inline-import" class="header-btn-small btn btn-sm btn-light text-sm fw-bold text-shadow-basic py-0" onclick="navigateTo('view-import')">📥 Import</button>
-                <button id="btn-print-parts" class="header-btn-small btn btn-sm btn-light text-shadow-basic py-0 d-none" onclick="printPartsTable()" title="Print Visible Parts" data-i18n-title="tip_print_visible_parts">🖨️</button>
-                <button id="btn-toggle-project-view" class="header-btn-small btn btn-light text-shadow-basic btn-sm py-0 fw-bold" onclick="toggleProjectViewMode()" title="Toggle Card View"><b>🗂️</b></button>
-                <button class="header-btn-small btn btn-sm btn-light text-shadow-basic py-0 fw-bold global-toggle-btn" onclick="toggleAllInputSections()" title="Toggle Input Sections" data-i18n-title="tip_toggle_input_section"><b>▽</b></button>
-            </div>
-        </div>
+<!-- VIEW TOOLBAR -->
+<div class="view-toolbar">
+    <div class="view-toolbar-tabs" role="tablist">
+        <button class="vtab active" id="tab-projects" data-bs-toggle="tab" data-bs-target="#pane-projects" type="button" role="tab" aria-selected="true" onclick="renderProjectsTable(); syncProjectHeaderButtons('projects')" data-i18n="tab_projects">📁 Active Projects</button>
+        <button class="vtab" id="tab-parts" data-bs-toggle="tab" data-bs-target="#pane-parts" type="button" role="tab" aria-selected="false" onclick="renderPartsView(); syncProjectHeaderButtons('parts')" data-i18n="hdr_current_partlist">🧩 Current Partlist</button>
     </div>
+    <div class="view-toolbar-actions">
+        <button id="btn-inline-import" class="btn btn-sm toolbar-btn" onclick="navigateTo('view-import')">📥 Import</button>
+        <button id="btn-print-parts" class="btn btn-sm toolbar-btn d-none" onclick="printPartsTable()" title="Print Visible Parts" data-i18n-title="tip_print_visible_parts">🖨️</button>
+        <button id="btn-toggle-project-view" class="btn btn-sm toolbar-btn" onclick="toggleProjectViewMode()" title="Toggle Card View"><b>🗂️</b></button>
+        <button class="btn btn-sm toolbar-btn global-toggle-btn" onclick="toggleAllInputSections()" title="Toggle Input Form" data-i18n-title="tip_toggle_input_section"><b>▽</b></button>
+    </div>
+</div>
 
-    <!-- Tab Content -->
+<!-- VIEW CONTENT -->
+<div class="view-content">
     <div class="tab-content" id="partsTabsContent">
 
         <!-- Projects -->
         <div class="tab-pane show active" id="pane-projects" role="tabpanel" tabindex="0">
-            <div class="card-body py-3">
-                <!-- Input Section -->
-                <div id="input-section-projects">
+            <!-- Input Section -->
+            <div id="input-section-projects">
                     <div class="p-3 mb-3 rounded-3 input-panel">
                         <form id="form-add-project" onsubmit="handleAddProject(event)">
                             <div class="row g-2 align-items-end">
@@ -90,7 +82,7 @@
                     </div>
                 </div>
                 <!-- Cards View -->
-                <div id="view-mode-cards" class="d-none d-flex flex-column table-viewport">
+                <div id="view-mode-cards" class="d-none d-flex flex-column">
                     
                     <div id="project-card-toolbar" class="mb-3 d-flex align-items-center gap-2 pe-1 w-100" style="min-width: 0;">
                         
@@ -130,14 +122,12 @@
                         </div>
                     </div>
                 </div>
-            </div>
         </div>
 
         <!-- Partlist -->
         <div class="tab-pane" id="pane-parts" role="tabpanel" tabindex="0">
-            <div class="card-body py-3">
-                <!-- Input Section -->
-                <div id="input-section-parts">
+            <!-- Input Section -->
+            <div id="input-section-parts">
                     <div class="p-3 mb-3 rounded-3 input-panel">
                         <form id="form-add-part" onsubmit="handleAddPart(event)">
                             <div class="row g-2 align-items-end">
@@ -293,7 +283,6 @@
                         </tfoot>
                     </table>
                 </div>
-            </div>
         </div>
 
     </div>

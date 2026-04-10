@@ -21,6 +21,32 @@
             renderImportView(); // Fills the project dropdown and resets the UI
         } else if (viewId === 'view-cutlist') {
             if (typeof renderOptimizerConfig === 'function') renderOptimizerConfig();
+        } else if (viewId === 'view-projects') {
+            // Sync button visibility to whichever tab is currently active
+            const activeTab = document.querySelector('#view-projects .vtab.active');
+            if (activeTab && typeof syncProjectHeaderButtons === 'function') {
+                const tabTarget = activeTab.getAttribute('data-bs-target');
+                if (tabTarget === '#pane-parts') syncProjectHeaderButtons('parts');
+                else syncProjectHeaderButtons('projects');
+            }
+        } else if (viewId === 'view-setup') {
+            // Sync stock/catalog toggle button visibility to the active tab
+            const activeTab = document.querySelector('#view-setup .vtab.active');
+            const stockBtn = document.getElementById('btn-toggle-stock-view');
+            const catalogBtn = document.getElementById('btn-toggle-catalog-view');
+            if (activeTab && stockBtn && catalogBtn) {
+                const tabTarget = activeTab.getAttribute('data-bs-target');
+                if (tabTarget === '#pane-stock') {
+                    stockBtn.classList.remove('d-none');
+                    catalogBtn.classList.add('d-none');
+                } else if (tabTarget === '#pane-catalog') {
+                    catalogBtn.classList.remove('d-none');
+                    stockBtn.classList.add('d-none');
+                } else {
+                    stockBtn.classList.add('d-none');
+                    catalogBtn.classList.add('d-none');
+                }
+            }
         }
 
         // 🪄 5. DYNAMIC IMPORT BUTTON STYLING
@@ -62,48 +88,23 @@
     let globalInputsVisible = true;
     function toggleAllInputSections() {
         globalInputsVisible = !globalInputsVisible;
-        
-        // 🪄 FIX: Find EVERY button with the global class and update them all at once
+
+        // Update all toggle buttons in the toolbar
         const toggleButtons = document.querySelectorAll('.global-toggle-btn');
         toggleButtons.forEach(button => {
             button.innerHTML = globalInputsVisible ? '<b>▽</b>' : '<b>◁</b>';
         });
-        
-        // Define all the IDs that need to be targeted across the tabs
+
+        // Toggle input sections — flexbox handles height automatically
         const sections = ['projects', 'stock', 'prices', 'profiles', 'materials', 'parts'];
-        
+
         sections.forEach(id => {
             const inputEl = document.getElementById('input-section-' + id);
-            const tableEl = document.getElementById('table-wrapper-' + id);
-            
-            if (inputEl && tableEl) {
+            if (inputEl) {
                 if (globalInputsVisible) {
-                    // Show Input, Shrink Table
-                    // Phase 1: 258px = navbar ~56px + card-header ~52px + card-body-top ~16px + input-section ~134px
                     inputEl.classList.remove('d-none');
-                    tableEl.style.maxHeight = 'calc(100vh - 258px)';
-                    tableEl.style.height = 'calc(100vh - 258px)';
                 } else {
-                    // Hide Input, Expand Table
-                    // Phase 1: 149px = navbar ~56px + card-header ~52px + card-body-top ~16px + bottom-pad ~25px
                     inputEl.classList.add('d-none');
-                    tableEl.style.maxHeight = 'calc(100vh - 149px)';
-                    tableEl.style.height = 'calc(100vh - 149px)';
-                }
-            }
-
-            // 🪄 THE FIX: Isolate the Card View wrapper and assign its specific vertical math
-            if (id === 'projects') {
-                const cardViewEl = document.getElementById('view-mode-cards');
-                if (cardViewEl) {
-                    if (globalInputsVisible) {
-                        cardViewEl.style.maxHeight = 'calc(100vh - 258px)';
-                        cardViewEl.style.height = 'calc(100vh - 258px)';
-                    } else {
-                        // Card view has an extra toolbar row, so the collapsed offset is slightly larger
-                        cardViewEl.style.maxHeight = 'calc(100vh - 149px)';
-                        cardViewEl.style.height = 'calc(100vh - 149px)';
-                    }
                 }
             }
         });

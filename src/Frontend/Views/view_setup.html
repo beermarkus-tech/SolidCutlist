@@ -1,443 +1,429 @@
-<div class="card shadow-sm border-primary card-full-height">
-
-    <!-- Card Header -->
-    <div class="card-header bg-primary pt-2 pb-0 border-bottom-0 d-flex justify-content-between align-items-end card-header-rounded">
-        <ul class="nav nav-tabs card-header-tabs border-bottom-0 m-0" id="dictionaryTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="tab-stock" data-bs-toggle="tab" data-bs-target="#pane-stock" type="button" role="tab" onclick="populateStockDropdowns(); document.getElementById('btn-toggle-stock-view').classList.remove('d-none'); document.getElementById('btn-toggle-catalog-view').classList.add('d-none');" data-i18n="tab_stock">📦 My Stock</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="tab-catalog" data-bs-toggle="tab" data-bs-target="#pane-catalog" type="button" role="tab" onclick="populateCatalogDropdowns(); document.getElementById('btn-toggle-catalog-view').classList.remove('d-none'); document.getElementById('btn-toggle-stock-view').classList.add('d-none');" data-i18n="tab_store_prices">🏷️ Store Prices</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="tab-dictionaries" data-bs-toggle="tab" data-bs-target="#pane-dictionaries" type="button" role="tab" onclick="renderProfilesTable(); renderMaterialsTable(); document.getElementById('btn-toggle-stock-view').classList.add('d-none'); document.getElementById('btn-toggle-catalog-view').classList.add('d-none');" data-i18n="tab_profiles_and_materials">📏 Profiles & Materials</button>
-            </li>
-        </ul>
-        <div class="align-self-center mb-2">
-            <div>
-                <button id="btn-toggle-stock-view" class="header-btn-small btn btn-light btn-sm py-0 text-shadow-basic" onclick="toggleStockView()">
-                    <span id="stock-view-icon">🗜️</span>
-                </button>
-                <button id="btn-toggle-catalog-view" class="header-btn-small btn btn-light btn-sm py-0 text-shadow-basic d-none" onclick="toggleCatalogView()">
-                    <span id="catalog-view-icon">🗜️</span>
-                </button>
-                <button class="header-btn-small btn btn-light btn-sm py-0 text-shadow-basic global-toggle-btn" onclick="toggleAllInputSections()" title="Toggle Input Sections" data-i18n-title="tip_toggle_input_section"><b>▽</b></button>
-            </div>
-        </div>
+<!-- VIEW TOOLBAR -->
+<div class="view-toolbar">
+    <div class="view-toolbar-tabs" role="tablist">
+        <button class="vtab active" id="tab-stock" data-bs-toggle="tab" data-bs-target="#pane-stock" type="button" role="tab" aria-selected="true"
+            onclick="populateStockDropdowns(); document.getElementById('btn-toggle-stock-view').classList.remove('d-none'); document.getElementById('btn-toggle-catalog-view').classList.add('d-none');"
+            data-i18n="tab_stock">📦 My Stock</button>
+        <button class="vtab" id="tab-catalog" data-bs-toggle="tab" data-bs-target="#pane-catalog" type="button" role="tab" aria-selected="false"
+            onclick="populateCatalogDropdowns(); document.getElementById('btn-toggle-catalog-view').classList.remove('d-none'); document.getElementById('btn-toggle-stock-view').classList.add('d-none');"
+            data-i18n="tab_store_prices">🏷️ Store Prices</button>
+        <button class="vtab" id="tab-dictionaries" data-bs-toggle="tab" data-bs-target="#pane-dictionaries" type="button" role="tab" aria-selected="false"
+            onclick="renderProfilesTable(); renderMaterialsTable(); document.getElementById('btn-toggle-stock-view').classList.add('d-none'); document.getElementById('btn-toggle-catalog-view').classList.add('d-none');"
+            data-i18n="tab_profiles_and_materials">📏 Profiles & Materials</button>
     </div>
+    <div class="view-toolbar-actions">
+        <button id="btn-toggle-stock-view" class="btn btn-sm toolbar-btn" onclick="toggleStockView()">
+            <span id="stock-view-icon">🗜️</span>
+        </button>
+        <button id="btn-toggle-catalog-view" class="btn btn-sm toolbar-btn d-none" onclick="toggleCatalogView()">
+            <span id="catalog-view-icon">🗜️</span>
+        </button>
+        <button class="btn btn-sm toolbar-btn global-toggle-btn" onclick="toggleAllInputSections()" title="Toggle Input Form" data-i18n-title="tip_toggle_input_section"><b>▽</b></button>
+    </div>
+</div>
 
-    <!-- Tab Content -->
+<!-- VIEW CONTENT -->
+<div class="view-content">
     <div class="tab-content" id="dictionaryTabsContent">
 
         <!-- Stock -->
         <div class="tab-pane show active" id="pane-stock" role="tabpanel" tabindex="0">
-            <div class="card-body py-3">
-                <!-- Input Section -->
-                <div id="input-section-stock">
-                    <div class="p-3 mb-3 rounded-3 input-panel">
-                        <form id="form-add-stock" onsubmit="handleAddStock(event)">
-                            <div class="row g-2 align-items-end">
-                                <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_category">Category</label>
-                                    <select class="form-select form-select-sm" id="stock-category" onchange="handleStockCategoryChange()" required>
-                                        <option value="" disabled selected data-i18n="opt_select">Select...</option>
-                                        <option value="lumber" data-i18n="opt_lumber">Lumber</option>
-                                        <option value="sheet" data-i18n="opt_sheet">Sheet</option>
-                                        <option value="fastener" data-i18n="opt_fastener">Fastener</option>
-                                    </select>
-                                </div>
-                                <div class="col-sm-1">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_qty">Qty</label>
-                                    <input type="number" class="form-control form-control-sm text-center" id="stock-qty" value="1" min="1" required>
-                                </div>
-                                <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_profile">Profile</label>
-                                    <select class="form-select form-select-sm" id="stock-profile" required disabled></select>
-                                </div>
-                                <div class="col-sm-1">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_width">Width</label>
-                                    <input type="text" class="form-control form-control-sm" id="stock-width" disabled>
-                                </div>
-                                <div class="col-sm-1">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_length">Length</label>
-                                    <input type="text" class="form-control form-control-sm" id="stock-length" required disabled>
-                                </div>
-                                <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_material">Material</label>
-                                    <select class="form-select form-select-sm" id="stock-material" required disabled></select>
-                                </div>
-                                <div class="col-sm-1">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets Only" data-i18n="lbl_grain" data-i18n-title="tip_for_sheets_only">Grain</label>
-                                    <select class="form-select form-select-sm" id="stock-grain" disabled>
-                                        <option value="none" data-i18n="opt_none">None</option>
-                                        <option value="length" data-i18n="opt_length">Length</option>
-                                        <option value="width" data-i18n="opt_width">Width</option>
-                                    </select>
-                                </div>
-                                <div class="col-sm-1 text-center">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_scrap">Scrap?</label>
-                                    <div class="form-check d-flex justify-content-center">
-                                        <input class="form-check-input" type="checkbox" id="stock-is-cutoff">
-                                    </div>
-                                </div>
-                                <div class="col-sm-1">
-                                    <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
+            <!-- Input Section -->
+            <div id="input-section-stock">
+                <div class="p-3 mb-2 rounded-3 input-panel">
+                    <form id="form-add-stock" onsubmit="handleAddStock(event)">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_category">Category</label>
+                                <select class="form-select form-select-sm" id="stock-category" onchange="handleStockCategoryChange()" required>
+                                    <option value="" disabled selected data-i18n="opt_select">Select...</option>
+                                    <option value="lumber" data-i18n="opt_lumber">Lumber</option>
+                                    <option value="sheet" data-i18n="opt_sheet">Sheet</option>
+                                    <option value="fastener" data-i18n="opt_fastener">Fastener</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_qty">Qty</label>
+                                <input type="number" class="form-control form-control-sm text-center" id="stock-qty" value="1" min="1" required>
+                            </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_profile">Profile</label>
+                                <select class="form-select form-select-sm" id="stock-profile" required disabled></select>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_width">Width</label>
+                                <input type="text" class="form-control form-control-sm" id="stock-width" disabled>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_length">Length</label>
+                                <input type="text" class="form-control form-control-sm" id="stock-length" required disabled>
+                            </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_material">Material</label>
+                                <select class="form-select form-select-sm" id="stock-material" required disabled></select>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets Only" data-i18n="lbl_grain" data-i18n-title="tip_for_sheets_only">Grain</label>
+                                <select class="form-select form-select-sm" id="stock-grain" disabled>
+                                    <option value="none" data-i18n="opt_none">None</option>
+                                    <option value="length" data-i18n="opt_length">Length</option>
+                                    <option value="width" data-i18n="opt_width">Width</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-1 text-center">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_scrap">Scrap?</label>
+                                <div class="form-check d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" id="stock-is-cutoff">
                                 </div>
                             </div>
-                        </form>
-                    </div>
+                            <div class="col-sm-1">
+                                <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-                <!-- Table -->
-                <div id="table-wrapper-stock" class="table-responsive border rounded table-viewport">
-                    <table id="table-stock" class="table table-sm table-hover align-middle table-striped mb-0">
-                        <thead class="table-light thead-sticky">
-                            <tr>
-                                <th class="col-category text-center text-nowrap">
-                                    <span onclick="handleSort('stock', 'categoryId', 'string')" class="cursor-pointer">
-                                        <span data-i18n="col_category">Category</span> ⇅
-                                    </span>
-                                    <span id="flt-icon-stock-categoryId" onclick="openFilterModal(event, 'stock', 'categoryId', 'Category')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
-                                </th>
-                                <th class="col-qty text-center">
-                                    <span onclick="handleSort('stock', 'qty', 'number')" class="cursor-pointer">
-                                        <span data-i18n="col_qty">Qty</span> ⇅
-                                    </span>
-                                </th>
-                                <th class="col-profile text-center text-nowrap">
-                                    <span onclick="handleSort('stock', 'profileId', 'string')" class="cursor-pointer">
-                                        <span data-i18n="col_profile">Profile</span> ⇅
-                                    </span>
-                                    <span id="flt-icon-stock-profileId" onclick="openFilterModal(event, 'stock', 'profileId', 'Profile')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
-                                </th>
-                                <th class="col-size text-center text-nowrap">
-                                    <span class="group-icon">🗜️</span> <span onclick="handleSort('stock', 'dimensions', 'number')" class="cursor-pointer">
-                                        <span data-i18n="col_size">Size (<span class="display-unit-label">mm</span>)</span> ⇅
-                                    </span>
-                                </th>
-                                <th class="col-material text-center text-nowrap">
-                                    <span onclick="handleSort('stock', 'materialId', 'string')" class="cursor-pointer">
-                                        <span data-i18n="col_material">Material</span> ⇅
-                                    </span>
-                                    <span id="flt-icon-stock-materialId" onclick="openFilterModal(event, 'stock', 'materialId', 'Material')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
-                                </th>
-                                <th class="col-grain text-center text-nowrap">
-                                    <span class="group-icon">🗜️</span> <span onclick="handleSort('stock', 'grain', 'string')" class="cursor-pointer">
-                                        <span data-i18n="col_grain">Grain</span> ⇅
-                                    </span>
-                                    <span id="flt-icon-stock-grain" onclick="openFilterModal(event, 'stock', 'grain', 'Grain')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
-                                </th>
-                                <th class="col-type text-center text-nowrap">
-                                    <span class="group-icon">🗜️</span> <span onclick="handleSort('stock', 'isCutoff', 'string')" class="cursor-pointer">
-                                        <span data-i18n="col_type">Type</span> ⇅
-                                    </span>
-                                    <span id="flt-icon-stock-isCutoff" onclick="openFilterModal(event, 'stock', 'isCutoff', 'Type')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
-                                </th>
-                                <th class="col-actions text-end">
-                                    <span id="flt-clear-stock" onclick="clearAllFiltersForTable('stock')" class="text-secondary opacity-25 px-2 cursor-pointer" title="Clear all filters">▼⨯</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-stock-body"></tbody>
-                    </table>
-                </div>
+            </div>
+            <!-- Table -->
+            <div id="table-wrapper-stock" class="table-responsive border rounded table-viewport">
+                <table id="table-stock" class="table table-sm table-hover align-middle table-striped mb-0">
+                    <thead class="table-light thead-sticky">
+                        <tr>
+                            <th class="col-category text-center text-nowrap">
+                                <span onclick="handleSort('stock', 'categoryId', 'string')" class="cursor-pointer">
+                                    <span data-i18n="col_category">Category</span> ⇅
+                                </span>
+                                <span id="flt-icon-stock-categoryId" onclick="openFilterModal(event, 'stock', 'categoryId', 'Category')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
+                            </th>
+                            <th class="col-qty text-center">
+                                <span onclick="handleSort('stock', 'qty', 'number')" class="cursor-pointer">
+                                    <span data-i18n="col_qty">Qty</span> ⇅
+                                </span>
+                            </th>
+                            <th class="col-profile text-center text-nowrap">
+                                <span onclick="handleSort('stock', 'profileId', 'string')" class="cursor-pointer">
+                                    <span data-i18n="col_profile">Profile</span> ⇅
+                                </span>
+                                <span id="flt-icon-stock-profileId" onclick="openFilterModal(event, 'stock', 'profileId', 'Profile')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
+                            </th>
+                            <th class="col-size text-center text-nowrap">
+                                <span class="group-icon">🗜️</span> <span onclick="handleSort('stock', 'dimensions', 'number')" class="cursor-pointer">
+                                    <span data-i18n="col_size">Size (<span class="display-unit-label">mm</span>)</span> ⇅
+                                </span>
+                            </th>
+                            <th class="col-material text-center text-nowrap">
+                                <span onclick="handleSort('stock', 'materialId', 'string')" class="cursor-pointer">
+                                    <span data-i18n="col_material">Material</span> ⇅
+                                </span>
+                                <span id="flt-icon-stock-materialId" onclick="openFilterModal(event, 'stock', 'materialId', 'Material')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
+                            </th>
+                            <th class="col-grain text-center text-nowrap">
+                                <span class="group-icon">🗜️</span> <span onclick="handleSort('stock', 'grain', 'string')" class="cursor-pointer">
+                                    <span data-i18n="col_grain">Grain</span> ⇅
+                                </span>
+                                <span id="flt-icon-stock-grain" onclick="openFilterModal(event, 'stock', 'grain', 'Grain')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
+                            </th>
+                            <th class="col-type text-center text-nowrap">
+                                <span class="group-icon">🗜️</span> <span onclick="handleSort('stock', 'isCutoff', 'string')" class="cursor-pointer">
+                                    <span data-i18n="col_type">Type</span> ⇅
+                                </span>
+                                <span id="flt-icon-stock-isCutoff" onclick="openFilterModal(event, 'stock', 'isCutoff', 'Type')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
+                            </th>
+                            <th class="col-actions text-end">
+                                <span id="flt-clear-stock" onclick="clearAllFiltersForTable('stock')" class="text-secondary opacity-25 px-2 cursor-pointer" title="Clear all filters">▼⨯</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-stock-body"></tbody>
+                </table>
             </div>
         </div>
 
         <!-- Prices -->
         <div class="tab-pane" id="pane-catalog" role="tabpanel" tabindex="0">
-            <div class="card-body py-3">
-                <!-- Input Section -->
-                <div id="input-section-prices">
-                    <div class="p-3 mb-3 rounded-3 input-panel">
-                        <form id="form-add-catalog" onsubmit="handleAddCatalogItem(event)">
-                            <div class="row g-2 align-items-end">
-                                <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_category">Category</label>
-                                    <select class="form-select form-select-sm" id="cat-category" onchange="handleCatalogCategoryChange()" required>
-                                        <option value="" disabled selected data-i18n="opt_select">Select...</option>
-                                        <option value="lumber" data-i18n="opt_lumber">Lumber</option>
-                                        <option value="sheet" data-i18n="opt_sheet">Sheet</option>
-                                        <option value="fastener" data-i18n="opt_fastener">Fastener</option>
-                                    </select>
-                                </div>
-                                <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_profile">Profile</label>
-                                    <select class="form-select form-select-sm" id="cat-profile" required disabled></select>
-                                </div>
-                                <div class="col-sm-1">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_width">Width</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control form-control-sm" id="cat-width" disabled>
-                                    </div>
-                                </div>
-                                <div class="col-sm-1">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_length">Length</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control form-control-sm" id="cat-length" required disabled>
-                                    </div>
-                                </div>
-                                <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_material">Material</label>
-                                    <select class="form-select form-select-sm" id="cat-material" required disabled></select>
-                                </div>
-                                <div class="col-sm-1">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets" data-i18n="lbl_grain" data-i18n-title="tip_for_sheets_only">Grain</label>
-                                    <select class="form-select form-select-sm" id="cat-grain" disabled>
-                                        <option value="none">-</option>
-                                        <option value="length" data-i18n="opt_length">Length</option>
-                                        <option value="width" data-i18n="opt_width">Width</option>
-                                    </select>
-                                </div>
-                                <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">
-                                        <span data-i18n="lbl_store">Store</span> <span class="btn-icon-subtle" onclick="openStoreModal()">⚙️</span>
-                                    </label>
-                                    <select class="form-select form-select-sm" id="cat-store" required></select>
-                                </div>
-                                <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_price">Price</label>
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text currency-label">$</span>
-                                        <input type="number" step="0.01" class="form-control form-control-sm" id="cat-price" required>
-                                        <select class="form-select form-select-sm input-group-text" 
-                                                id="cat-price-unit" 
-                                                style="flex: none; width: 95px;">
-                                            <option value="piece" data-i18n="lbl_unit_pc">/ pc</option>
-                                            <option value="linear">/ m</option>
-                                            <option value="area">/ m²</option>
-                                            <option value="volume">/ m³</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-sm-1">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_link">Link</label>
-                                    <input type="text" class="form-control form-control-sm" id="cat-link">
-                                </div>
-                                <div class="col-sm-1">
-                                    <button type="submit" class="btn btn-primary btn-sm w-100" id="btn-add-catalog" data-i18n="btn_add">Add</button>
+            <!-- Input Section -->
+            <div id="input-section-prices">
+                <div class="p-3 mb-2 rounded-3 input-panel">
+                    <form id="form-add-catalog" onsubmit="handleAddCatalogItem(event)">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_category">Category</label>
+                                <select class="form-select form-select-sm" id="cat-category" onchange="handleCatalogCategoryChange()" required>
+                                    <option value="" disabled selected data-i18n="opt_select">Select...</option>
+                                    <option value="lumber" data-i18n="opt_lumber">Lumber</option>
+                                    <option value="sheet" data-i18n="opt_sheet">Sheet</option>
+                                    <option value="fastener" data-i18n="opt_fastener">Fastener</option>
+                                </select>
+                            </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_profile">Profile</label>
+                                <select class="form-select form-select-sm" id="cat-profile" required disabled></select>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_width">Width</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" id="cat-width" disabled>
                                 </div>
                             </div>
-                        </form>
-                    </div>
-                </div>
-                <!-- Table -->
-                <div id="table-wrapper-prices" class="table-responsive border rounded table-viewport">
-                    <table id="table-catalog" class="table table-sm table-hover align-middle table-striped">
-                        <thead class="table-light thead-sticky">
-                            <tr>
-                                <th class="col-category text-center text-nowrap">
-                                    <span onclick="handleSort('catalog', 'categoryId', 'string')" class="cursor-pointer">
-                                        <span data-i18n="col_category">Category</span> ⇅
-                                    </span>
-                                    <span id="flt-icon-catalog-categoryId" onclick="openFilterModal(event, 'catalog', 'categoryId', 'Category')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
-                                </th>
-                                <th class="col-profile text-center text-nowrap">
-                                    <span onclick="handleSort('catalog', 'profileId', 'string')" class="cursor-pointer">
-                                        <span data-i18n="col_profile">Profile</span> ⇅
-                                    </span>
-                                    <span id="flt-icon-catalog-profileId" onclick="openFilterModal(event, 'catalog', 'profileId', 'Profile')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
-                                </th>
-                                <th class="col-size text-center text-nowrap">
-                                    <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'dimensions', 'number')" class="cursor-pointer">
-                                        <span data-i18n="col_size">Size (<span class="display-unit-label">mm</span>)</span> ⇅
-                                    </span>
-                                </th>
-                                <th class="col-material text-center text-nowrap">
-                                    <span onclick="handleSort('catalog', 'materialId', 'string')" class="cursor-pointer">
-                                        <span data-i18n="col_material">Material</span> ⇅
-                                    </span>
-                                    <span id="flt-icon-catalog-materialId" onclick="openFilterModal(event, 'catalog', 'materialId', 'Material')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
-                                </th>
-                                <th class="col-grain text-center text-nowrap">
-                                    <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'grain', 'string')" class="cursor-pointer">
-                                        <span data-i18n="col_grain">Grain</span> ⇅
-                                    </span>
-                                    <span id="flt-icon-catalog-grain" onclick="openFilterModal(event, 'catalog', 'grain', 'Grain')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
-                                </th>
-                                <th class="col-store text-center text-nowrap">
-                                    <span onclick="handleSort('catalog', 'storeId', 'string')" class="cursor-pointer">
-                                        <span data-i18n="lbl_store">Store</span> ⇅
-                                    </span>
-                                    <span id="flt-icon-catalog-storeId" onclick="openFilterModal(event, 'catalog', 'storeId', 'Store')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
-                                </th>
-                                <th class="col-costweight text-center" id="th-catalog-price">
-                                    <span onclick="handleSort('catalog', 'price', 'number')" class="cursor-pointer">
-                                        <span data-i18n="col_shelf_price">Shelf Price (<span class="currency-label">$</span>)</span> ⇅
-                                    </span>
-                                </th> 
-                                <th class="col-costweight text-center">
-                                    <div class="d-flex align-items-center justify-content-center gap-1">
-                                        <span class="group-icon">🗜️</span> <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center select-inline" id="table-price-view" onchange="if(!appState.settings)appState.settings={};appState.settings.catalogViewUnit=this.value;saveState();renderCatalogTable()">
-                                            <option value="piece" data-i18n="opt_cost_piece">Cost/Piece</option>
-                                            <option value="linear">Cost/Length</option>
-                                            <option value="area">Cost/Area</option>
-                                            <option value="volume">Cost/Volume</option>
-                                        </select>
-                                        <span onclick="handleSort('catalog', 'calculatedPrice', 'number')" class="sortable" title="Sort by Calculated Price">⇅</span>
-                                    </div>
-                                </th>
-                                <th class="col-freshness text-center">
-                                    <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'lastVerified', 'number')" class="cursor-pointer">
-                                        Updated ⇅
-                                    </span>
-                                </th>
-                                <th class="col-actions text-center" id="th-catalog-links" data-i18n="col_links">Links</th>
-                                <th class="col-actions text-end">
-                                    <span id="flt-clear-catalog" onclick="clearAllFiltersForTable('catalog')" class="text-secondary opacity-25 px-2 cursor-pointer" title="Clear all filters">▼⨯</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-catalog-body"></tbody>
-                    </table>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_length">Length</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" id="cat-length" required disabled>
+                                </div>
+                            </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_material">Material</label>
+                                <select class="form-select form-select-sm" id="cat-material" required disabled></select>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets" data-i18n="lbl_grain" data-i18n-title="tip_for_sheets_only">Grain</label>
+                                <select class="form-select form-select-sm" id="cat-grain" disabled>
+                                    <option value="none">-</option>
+                                    <option value="length" data-i18n="opt_length">Length</option>
+                                    <option value="width" data-i18n="opt_width">Width</option>
+                                </select>
+                            </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">
+                                    <span data-i18n="lbl_store">Store</span> <span class="btn-icon-subtle" onclick="openStoreModal()">⚙️</span>
+                                </label>
+                                <select class="form-select form-select-sm" id="cat-store" required></select>
+                            </div>
+                            <div class="col-sm">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_price">Price</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text currency-label">$</span>
+                                    <input type="number" step="0.01" class="form-control form-control-sm" id="cat-price" required>
+                                    <select class="form-select form-select-sm input-group-text"
+                                            id="cat-price-unit"
+                                            style="flex: none; width: 95px;">
+                                        <option value="piece" data-i18n="lbl_unit_pc">/ pc</option>
+                                        <option value="linear">/ m</option>
+                                        <option value="area">/ m²</option>
+                                        <option value="volume">/ m³</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-sm-1">
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_link">Link</label>
+                                <input type="text" class="form-control form-control-sm" id="cat-link">
+                            </div>
+                            <div class="col-sm-1">
+                                <button type="submit" class="btn btn-primary btn-sm w-100" id="btn-add-catalog" data-i18n="btn_add">Add</button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
+            <!-- Table -->
+            <div id="table-wrapper-prices" class="table-responsive border rounded table-viewport">
+                <table id="table-catalog" class="table table-sm table-hover align-middle table-striped">
+                    <thead class="table-light thead-sticky">
+                        <tr>
+                            <th class="col-category text-center text-nowrap">
+                                <span onclick="handleSort('catalog', 'categoryId', 'string')" class="cursor-pointer">
+                                    <span data-i18n="col_category">Category</span> ⇅
+                                </span>
+                                <span id="flt-icon-catalog-categoryId" onclick="openFilterModal(event, 'catalog', 'categoryId', 'Category')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
+                            </th>
+                            <th class="col-profile text-center text-nowrap">
+                                <span onclick="handleSort('catalog', 'profileId', 'string')" class="cursor-pointer">
+                                    <span data-i18n="col_profile">Profile</span> ⇅
+                                </span>
+                                <span id="flt-icon-catalog-profileId" onclick="openFilterModal(event, 'catalog', 'profileId', 'Profile')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
+                            </th>
+                            <th class="col-size text-center text-nowrap">
+                                <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'dimensions', 'number')" class="cursor-pointer">
+                                    <span data-i18n="col_size">Size (<span class="display-unit-label">mm</span>)</span> ⇅
+                                </span>
+                            </th>
+                            <th class="col-material text-center text-nowrap">
+                                <span onclick="handleSort('catalog', 'materialId', 'string')" class="cursor-pointer">
+                                    <span data-i18n="col_material">Material</span> ⇅
+                                </span>
+                                <span id="flt-icon-catalog-materialId" onclick="openFilterModal(event, 'catalog', 'materialId', 'Material')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
+                            </th>
+                            <th class="col-grain text-center text-nowrap">
+                                <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'grain', 'string')" class="cursor-pointer">
+                                    <span data-i18n="col_grain">Grain</span> ⇅
+                                </span>
+                                <span id="flt-icon-catalog-grain" onclick="openFilterModal(event, 'catalog', 'grain', 'Grain')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
+                            </th>
+                            <th class="col-store text-center text-nowrap">
+                                <span onclick="handleSort('catalog', 'storeId', 'string')" class="cursor-pointer">
+                                    <span data-i18n="lbl_store">Store</span> ⇅
+                                </span>
+                                <span id="flt-icon-catalog-storeId" onclick="openFilterModal(event, 'catalog', 'storeId', 'Store')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
+                            </th>
+                            <th class="col-costweight text-center" id="th-catalog-price">
+                                <span onclick="handleSort('catalog', 'price', 'number')" class="cursor-pointer">
+                                    <span data-i18n="col_shelf_price">Shelf Price (<span class="currency-label">$</span>)</span> ⇅
+                                </span>
+                            </th>
+                            <th class="col-costweight text-center">
+                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                    <span class="group-icon">🗜️</span> <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center select-inline" id="table-price-view" onchange="if(!appState.settings)appState.settings={};appState.settings.catalogViewUnit=this.value;saveState();renderCatalogTable()">
+                                        <option value="piece" data-i18n="opt_cost_piece">Cost/Piece</option>
+                                        <option value="linear">Cost/Length</option>
+                                        <option value="area">Cost/Area</option>
+                                        <option value="volume">Cost/Volume</option>
+                                    </select>
+                                    <span onclick="handleSort('catalog', 'calculatedPrice', 'number')" class="sortable" title="Sort by Calculated Price">⇅</span>
+                                </div>
+                            </th>
+                            <th class="col-freshness text-center">
+                                <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'lastVerified', 'number')" class="cursor-pointer">
+                                    Updated ⇅
+                                </span>
+                            </th>
+                            <th class="col-actions text-center" id="th-catalog-links" data-i18n="col_links">Links</th>
+                            <th class="col-actions text-end">
+                                <span id="flt-clear-catalog" onclick="clearAllFiltersForTable('catalog')" class="text-secondary opacity-25 px-2 cursor-pointer" title="Clear all filters">▼⨯</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-catalog-body"></tbody>
+                </table>
+            </div>
         </div>
-        
-        <!-- Profiles & Materials -->
+
+        <!-- Profiles & Materials — two-column flex layout -->
         <div class="tab-pane" id="pane-dictionaries" role="tabpanel" tabindex="0">
-            <div class="row g-3">
+            <div class="row g-2" style="flex: 1 1 0; min-height: 0; overflow: hidden;">
 
                 <!-- Profiles -->
-                <div class="col-lg-6">
-                    <div class="card-body py-3">
-                        <!-- Input Section -->
-                        <div id="input-section-profiles">
-                            <div class="p-3 mb-3 rounded-3 input-panel">
-                                <form id="form-add-profile" onsubmit="handleAddProfile(event)">
-                                    <div class="row g-2 align-items-end">
-                                        <div class="col-sm">
-                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_category">Category</label>
-                                            <select class="form-select form-select-sm" id="prof-category" onchange="handleProfileCategoryChange()" required>
-                                                <option value="lumber" data-i18n="opt_lumber">Lumber</option>
-                                                <option value="sheet" data-i18n="opt_sheet">Sheet</option>
-                                                <option value="fastener" data-i18n="opt_fastener">Fastener</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-sm">
-                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_profile_name">Profile Name</label>
-                                            <input type="text" class="form-control form-control-sm" id="prof-name" required>
-                                        </div>
-                                        <div class="col-sm-2">
-                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_thickness">Thickness</label>
-                                            <div class="input-group input-group-sm">
-                                                <input type="text" class="form-control form-control-sm" id="prof-thickness" required>
-                                                <span class="input-group-text display-unit-label">mm</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-sm-2">
-                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_width">Width</label>
-                                            <div class="input-group input-group-sm">
-                                                <input type="text" class="form-control form-control-sm" id="prof-width" required>
-                                                <span class="input-group-text display-unit-label">mm</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-sm-2">
-                                            <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
+                <div class="col-lg-6 d-flex flex-column" style="min-height: 0; overflow: hidden;">
+                    <!-- Input Section -->
+                    <div id="input-section-profiles">
+                        <div class="p-3 mb-2 rounded-3 input-panel">
+                            <form id="form-add-profile" onsubmit="handleAddProfile(event)">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-sm">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_category">Category</label>
+                                        <select class="form-select form-select-sm" id="prof-category" onchange="handleProfileCategoryChange()" required>
+                                            <option value="lumber" data-i18n="opt_lumber">Lumber</option>
+                                            <option value="sheet" data-i18n="opt_sheet">Sheet</option>
+                                            <option value="fastener" data-i18n="opt_fastener">Fastener</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_profile_name">Profile Name</label>
+                                        <input type="text" class="form-control form-control-sm" id="prof-name" required>
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_thickness">Thickness</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control form-control-sm" id="prof-thickness" required>
+                                            <span class="input-group-text display-unit-label">mm</span>
                                         </div>
                                     </div>
-                                </form>
-                            </div>
+                                    <div class="col-sm-2">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_width">Width</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control form-control-sm" id="prof-width" required>
+                                            <span class="input-group-text display-unit-label">mm</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-2">
+                                        <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
-                        <!-- Table -->
-                        <div id="table-wrapper-profiles" class="table-responsive border rounded table-viewport">
-                            <table class="table table-sm table-hover align-middle table-striped">
-                                <thead class="table-light thead-sticky">
-                                    <tr>
-                                        <th class="col-category text-center text-nowrap">
-                                            <span onclick="handleSort('profiles', 'type', 'string')" class="cursor-pointer">
-                                                <span data-i18n="col_category">Category</span> ⇅
-                                            </span>
-                                            <span id="flt-icon-profiles-type" onclick="openFilterModal(event, 'profiles', 'type', 'Category')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
-                                        </th>
-                                        <th class="col-profile text-nowrap text-center">
-                                            <span onclick="handleSort('profiles', 'name', 'string')" class="cursor-pointer">
-                                                <span data-i18n="col_profile">Profile Name</span> ⇅
-                                            </span>
-                                            <span id="flt-icon-profiles-name" onclick="openFilterModal(event, 'profiles', 'name', 'Profile Name')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
-                                        </th>
-                                        <th class="col-size text-center">
-                                            <span onclick="handleSort('profiles', 'dimensions', 'number')" class="cursor-pointer">
-                                                <span data-i18n="col_size">Size (<span class="display-unit-label">mm</span>)</span> ⇅
-                                            </span>
-                                        </th>
-                                        <th class="col-actions text-end">
-                                            <span id="flt-clear-profiles" onclick="clearAllFiltersForTable('profiles')" class="text-secondary opacity-25 px-2 cursor-pointer" title="Clear all filters">▼⨯</span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody id="table-profiles-body"></tbody>
-                            </table>
-                        </div>
+                    </div>
+                    <!-- Table -->
+                    <div id="table-wrapper-profiles" class="table-responsive border rounded table-viewport">
+                        <table class="table table-sm table-hover align-middle table-striped">
+                            <thead class="table-light thead-sticky">
+                                <tr>
+                                    <th class="col-category text-center text-nowrap">
+                                        <span onclick="handleSort('profiles', 'type', 'string')" class="cursor-pointer">
+                                            <span data-i18n="col_category">Category</span> ⇅
+                                        </span>
+                                        <span id="flt-icon-profiles-type" onclick="openFilterModal(event, 'profiles', 'type', 'Category')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
+                                    </th>
+                                    <th class="col-profile text-nowrap text-center">
+                                        <span onclick="handleSort('profiles', 'name', 'string')" class="cursor-pointer">
+                                            <span data-i18n="col_profile">Profile Name</span> ⇅
+                                        </span>
+                                        <span id="flt-icon-profiles-name" onclick="openFilterModal(event, 'profiles', 'name', 'Profile Name')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
+                                    </th>
+                                    <th class="col-size text-center">
+                                        <span onclick="handleSort('profiles', 'dimensions', 'number')" class="cursor-pointer">
+                                            <span data-i18n="col_size">Size (<span class="display-unit-label">mm</span>)</span> ⇅
+                                        </span>
+                                    </th>
+                                    <th class="col-actions text-end">
+                                        <span id="flt-clear-profiles" onclick="clearAllFiltersForTable('profiles')" class="text-secondary opacity-25 px-2 cursor-pointer" title="Clear all filters">▼⨯</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-profiles-body"></tbody>
+                        </table>
                     </div>
                 </div>
 
                 <!-- Materials -->
-                <div class="col-lg-6">
-                    <div class="card-body py-3">
-
-                        <!-- Input Section -->
-                        <div id="input-section-materials">
-                            <div class="p-3 mb-3 rounded-3 input-panel">
-                                <form id="form-add-material" onsubmit="handleAddMaterial(event)">
-                                    <div class="row g-2 align-items-end">
-                                        <div class="col-sm">
-                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_category">Category</label>
-                                            <select class="form-select form-select-sm" id="mat-category" required>
-                                                <option value="lumber" data-i18n="opt_lumber">Lumber</option>
-                                                <option value="sheet" data-i18n="opt_sheet">Sheet</option>
-                                                <option value="fastener" data-i18n="opt_fastener">Fastener</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-sm">
-                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_material_name">Material Name</label>
-                                            <input type="text" class="form-control form-control-sm" id="mat-name" required>
-                                        </div>
-                                        <div class="col-sm">
-                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_density">Density</label>
-                                            <div class="input-group input-group-sm">
-                                                <input type="number" step="0.01" class="form-control form-control-sm" id="mat-density" value="0" required>
-                                                <span class="input-group-text density-unit-label">kg/m³</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-sm-2">
-                                            <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
+                <div class="col-lg-6 d-flex flex-column" style="min-height: 0; overflow: hidden;">
+                    <!-- Input Section -->
+                    <div id="input-section-materials">
+                        <div class="p-3 mb-2 rounded-3 input-panel">
+                            <form id="form-add-material" onsubmit="handleAddMaterial(event)">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-sm">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_category">Category</label>
+                                        <select class="form-select form-select-sm" id="mat-category" required>
+                                            <option value="lumber" data-i18n="opt_lumber">Lumber</option>
+                                            <option value="sheet" data-i18n="opt_sheet">Sheet</option>
+                                            <option value="fastener" data-i18n="opt_fastener">Fastener</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_material_name">Material Name</label>
+                                        <input type="text" class="form-control form-control-sm" id="mat-name" required>
+                                    </div>
+                                    <div class="col-sm">
+                                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_density">Density</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" step="0.01" class="form-control form-control-sm" id="mat-density" value="0" required>
+                                            <span class="input-group-text density-unit-label">kg/m³</span>
                                         </div>
                                     </div>
-                                </form>
-                            </div>
+                                    <div class="col-sm-2">
+                                        <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
-
-                        <!-- Table -->
-                        <div id="table-wrapper-materials" class="table-responsive border rounded table-viewport">
-                            <table class="table table-sm table-hover align-middle table-striped">
-                                <thead class="table-light thead-sticky">
-                                    <tr>
-                                        <th class="col-category text-center text-nowrap">
-                                            <span onclick="handleSort('materials', 'category', 'string')" class="cursor-pointer">
-                                                <span data-i18n="col_category">Category</span> ⇅
-                                            </span>
-                                            <span id="flt-icon-materials-category" onclick="openFilterModal(event, 'materials', 'category', 'Category')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
-                                        </th>
-                                        <th class="col-material text-nowrap text-center">
-                                            <span onclick="handleSort('materials', 'name', 'string')" class="cursor-pointer">
-                                                <span data-i18n="col_material">Material Name</span> ⇅
-                                            </span>
-                                            <span id="flt-icon-materials-name" onclick="openFilterModal(event, 'materials', 'name', 'Material Name')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
-                                        </th>
-                                        <th class="col-density text-center">
-                                            <span onclick="handleSort('materials', 'density', 'number')" class="cursor-pointer">
-                                                <span data-i18n="lbl_density">Density (<span class="density-unit-label">kg/m³</span>)</span> ⇅
-                                            </span>
-                                        </th>
-                                        <th class="col-actions text-end">
-                                            <span id="flt-clear-materials" onclick="clearAllFiltersForTable('materials')" class="text-secondary opacity-25 px-2 cursor-pointer" title="Clear all filters">▼⨯</span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody id="table-materials-body"></tbody>
-                            </table>
-                        </div>
-
+                    </div>
+                    <!-- Table -->
+                    <div id="table-wrapper-materials" class="table-responsive border rounded table-viewport">
+                        <table class="table table-sm table-hover align-middle table-striped">
+                            <thead class="table-light thead-sticky">
+                                <tr>
+                                    <th class="col-category text-center text-nowrap">
+                                        <span onclick="handleSort('materials', 'category', 'string')" class="cursor-pointer">
+                                            <span data-i18n="col_category">Category</span> ⇅
+                                        </span>
+                                        <span id="flt-icon-materials-category" onclick="openFilterModal(event, 'materials', 'category', 'Category')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
+                                    </th>
+                                    <th class="col-material text-nowrap text-center">
+                                        <span onclick="handleSort('materials', 'name', 'string')" class="cursor-pointer">
+                                            <span data-i18n="col_material">Material Name</span> ⇅
+                                        </span>
+                                        <span id="flt-icon-materials-name" onclick="openFilterModal(event, 'materials', 'name', 'Material Name')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
+                                    </th>
+                                    <th class="col-density text-center">
+                                        <span onclick="handleSort('materials', 'density', 'number')" class="cursor-pointer">
+                                            <span data-i18n="lbl_density">Density (<span class="density-unit-label">kg/m³</span>)</span> ⇅
+                                        </span>
+                                    </th>
+                                    <th class="col-actions text-end">
+                                        <span id="flt-clear-materials" onclick="clearAllFiltersForTable('materials')" class="text-secondary opacity-25 px-2 cursor-pointer" title="Clear all filters">▼⨯</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-materials-body"></tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -450,16 +436,11 @@
     <div class="modal fade" id="modal-stock-details" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content shadow border-secondary">
-                
-                <!-- Modal Header -->
                 <div class="modal-header bg-light border-bottom">
                     <h6 class="modal-title fw-bold text-dark mb-0" id="modal-stock-details-title">📦 Manage Stock Details</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                
-                <!-- Modal Body -->
                 <div class="modal-body py-4 bg-white">
-                    <!-- Input Section -->
                     <div class="p-3 mb-3 rounded-3 input-panel">
                         <input type="hidden" id="modal-stock-details-fingerprint">
                         <form id="form-modal-stock" onsubmit="handleAddModalStock(event); return false;">
@@ -495,8 +476,7 @@
                                 </div>
                             </div>
                         </form>
-                    </div> 
-                    <!-- Table -->
+                    </div>
                     <div class="table-responsive" style="max-height: 55vh; overflow-y: auto;">
                         <table class="table table-sm table-hover align-middle table-striped">
                             <thead class="thead-sticky">
@@ -508,12 +488,10 @@
                                     <th class="text-end"></th>
                                 </tr>
                             </thead>
-                            <tbody id="table-modal-stock-details-body">
-                            </tbody>
+                            <tbody id="table-modal-stock-details-body"></tbody>
                         </table>
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
@@ -522,16 +500,11 @@
     <div class="modal fade" id="modal-catalog-details" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content shadow border-secondary">
-                
-                <!-- Modal Header -->
                 <div class="modal-header bg-light border-bottom">
                     <h6 class="modal-title fw-bold text-dark mb-0" id="modal-catalog-details-title">🏷️ Manage Prices</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-
-                <!-- Modal Body -->
                 <div class="modal-body py-4 bg-white">
-                    <!-- Input Section -->
                     <div class="p-3 mb-3 rounded-3 input-panel">
                         <input type="hidden" id="modal-catalog-details-fingerprint">
                         <form id="form-modal-catalog" onsubmit="handleAddModalCatalog(event); return false;">
@@ -555,9 +528,9 @@
                                 <div class="col-sm-3">
                                     <label class="form-label form-label-sm fw-bold text-secondary mb-1">Price</label>
                                     <div class="input-group input-group-sm">
-                                        <span class="input-group-text currency-label">$</span> 
+                                        <span class="input-group-text currency-label">$</span>
                                         <input type="number" step="0.01" class="form-control form-control-sm" id="modal-catalog-input-price" required>
-                                        <select class="form-select form-select-sm input-group-text" style="flex: none; width: 95px;" id="modal-catalog-input-unit"></select>                                        
+                                        <select class="form-select form-select-sm input-group-text" style="flex: none; width: 95px;" id="modal-catalog-input-unit"></select>
                                     </div>
                                 </div>
                                 <div class="col-sm ms-auto">
@@ -566,7 +539,6 @@
                             </div>
                         </form>
                     </div>
-                    <!-- Table -->
                     <div class="table-responsive" style="max-height: 55vh; overflow-y: auto;">
                         <table class="table table-sm table-hover align-middle table-striped">
                             <thead class="thead-sticky">
@@ -589,12 +561,10 @@
                                     <th class="text-end"></th>
                                 </tr>
                             </thead>
-                            <tbody id="table-modal-catalog-details-body">
-                            </tbody>
+                            <tbody id="table-modal-catalog-details-body"></tbody>
                         </table>
                     </div>
                 </div>
-
             </div>
         </div>
     </div>

@@ -17,94 +17,138 @@
     }
 
     /* Phase 1: Active view fills the app-container exactly */
+    /* Phase 2: Views are flex columns so toolbar (auto) + content (fill) stack correctly */
     .app-view {
         height: 100%;
+        display: flex;
+        flex-direction: column;
     }
 
-          /* ==========================================
-       PHASE 4: MOBILE APP-BAR TRANSFORMATION
+    /* ==========================================
+       PHASE 2: SECONDARY TOOLBAR + VIEW CONTENT
        ========================================== */
-       @media (max-width: 767.98px) {
-        /* 🪄 1. Hide the config panel entirely */
-        #optimizer-config-form {
-            display: none !important;
-        }
-        
-        /* 🪄 2. Results card takes over the full screen */
-        #optimizer-results-form {
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            height: calc(100vh - 60px) !important; /* Leaves room for the top navbar */
-            padding-bottom: 70px; /* Space for the bottom app bar */
-        }
-        
-        /* 🪄 3. Sticky top header for Action Buttons (Exit, Print) */
-        #optimizer-results-form .card-header {
-            top: 0 !important;
-            border-radius: 0 !important;
-            padding-bottom: 0.5rem !important;
-            background-color: var(--bs-body-bg) !important;
-            border-bottom: 1px solid var(--bs-border-color-translucent) !important;
-        }
 
-        /* 🪄 4. The App-Bar (Tabs move to the bottom) */
-        #optimizer-results-form .card-header-tabs {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background-color: var(--bs-body-bg);
-            border-top: 1px solid var(--bs-border-color-translucent) !important;
-            z-index: 1050;
-            display: flex;
-            flex-wrap: nowrap;
-            margin: 0 !important;
-            padding: 0;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-        }
-
-        #optimizer-results-form .nav-item {
-            flex: 1;
-            text-align: center;
-        }
-
-        #optimizer-results-form .nav-link {
-            border: none !important;
-            border-radius: 0 !important;
-            padding: 0.5rem 0 !important;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: var(--bs-secondary);
-        }
-
-        /* 🪄 5. Active Tab Styling */
-        #optimizer-results-form .nav-link.active {
-            color: var(--bs-primary) !important;
-            background-color: transparent !important;
-            border-top: 3px solid var(--bs-primary) !important;
-            font-weight: bold;
-        }
-
-        /* 🪄 6. Swap Text for Mobile Layout */
-        .tab-text-desktop { display: none !important; }
-        .tab-text-mobile { 
-            display: block !important; 
-            font-size: 0.65rem; 
-            margin-top: 2px;
-        }
-        .tab-icon {
-            font-size: 1.25rem;
-            line-height: 1;
-        }
+    /* Secondary toolbar: tabs left, actions right */
+    .view-toolbar {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: stretch;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--bs-border-color);
+        background: var(--bs-body-bg);
+        padding: 0 0.5rem;
+        min-height: 40px;
+    }
+    .view-toolbar-tabs {
+        display: flex;
+        align-items: flex-end;
+    }
+    .view-toolbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0;
     }
 
-    /* Desktop overrides for the text/icon spans */
+    /* Secondary toolbar action buttons — theme-aware, clearly visible */
+    .toolbar-btn {
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        color: var(--bs-body-color);
+        transition: background 0.1s, border-color 0.1s;
+    }
+    .toolbar-btn:hover {
+        background: var(--bs-secondary-bg);
+        border-color: var(--bs-secondary-color);
+        color: var(--bs-body-color);
+    }
+
+    /* Underline tab style — no card-bg backdrop required */
+    .vtab {
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        padding: 0.4rem 0.85rem;
+        margin-bottom: -1px; /* overlaps the toolbar border-bottom */
+        cursor: pointer;
+        color: var(--bs-secondary-color);
+        font-size: 0.875rem;
+        font-weight: 500;
+        white-space: nowrap;
+        border-radius: 0;
+        transition: color 0.1s;
+    }
+    .vtab.active {
+        border-bottom-color: var(--theme-primary);
+        color: var(--theme-primary);
+        font-weight: 700;
+    }
+    .vtab:hover:not(.active):not(.disabled) {
+        color: var(--bs-body-color);
+        background: var(--bs-tertiary-bg);
+    }
+    .vtab.disabled {
+        opacity: 0.35;
+        pointer-events: none;
+        cursor: default;
+    }
+
+    /* View content: fills all remaining space below the toolbar */
+    .view-content {
+        flex: 1 1 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding: 4px;
+    }
+
+    /* tab-content inherits the fill */
+    .view-content .tab-content {
+        flex: 1 1 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* Active tab-pane becomes a flex column — overrides Bootstrap's display:block */
+    .view-content .tab-pane.active.show {
+        display: flex !important;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    /* Input section takes its natural height */
+    .view-content .input-section {
+        flex: 0 0 auto;
+    }
+
+    /* Table/card mode wrappers fill remaining space */
+    .view-content #view-mode-table,
+    .view-content #view-mode-cards {
+        flex: 1 1 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* table-viewport in flex context: flex: 1 fills remaining space after the input section.
+       max-height override clears any legacy calc() from old JS. */
+    .view-content .table-viewport {
+        flex: 1 1 0;
+        min-height: 0;
+        max-height: none !important;
+        overflow-y: auto;
+    }
+
+    /* Tab icon / label visibility: desktop shows full text, mobile shows short label */
+    @media (max-width: 767.98px) {
+        .tab-text-desktop { display: none !important; }
+        .tab-text-mobile { display: inline !important; font-size: 0.8rem; }
+        .tab-icon { font-size: 1rem; }
+    }
     @media (min-width: 768px) {
         .tab-text-mobile { display: none !important; }
-        .tab-icon { margin-right: 5px; }
+        .tab-icon { margin-right: 4px; }
     }
 
     /* * The app-view class is applied to our main sections. 
@@ -338,110 +382,6 @@
             animation: pulseGreen 5s ease-out forwards !important;
         }
 
-    /* Elegant File Cabinet Tabs */
-    #dictionaryTabs,
-    #configTabs, 
-    #resultsTabs,
-    #importTabs {
-        gap: 4px; /* Small breathing room between folders */
-    }
-    
-    #dictionaryTabs .nav-link, 
-    #configTabs .nav-link,
-    #resultsTabs .nav-link,
-    #importTabs .nav-link {
-        color: rgba(255, 255, 255, 0.7) !important; 
-        background-color: rgba(255, 255, 255, 0.06); 
-        border: none;
-        border-radius: 0.5rem 0.5rem 0 0; 
-        padding: 0.35rem 1.25rem; 
-        font-size: 0.9rem; 
-        font-weight: 600; 
-        transition: none !important;
-    }
-    
-    #dictionaryTabs .nav-link:hover:not(.active),
-    #configTabs .nav-link:hover:not(.active), 
-    #resultsTabs .nav-link:hover:not(.active),
-    #importTabs .nav-link:hover:not(.active) {
-        color: #ffffff !important;
-        background-color: rgba(255, 255, 255, 0.15); /* Brighten on hover */
-    }
-    
-    #dictionaryTabs .nav-link.active, 
-    #configTabs .nav-link.active, 
-    #resultsTabs .nav-link.active,
-    #importTabs .nav-link.active {
-        color: var(--bs-primary) !important; /* Brand blue text for the active tab */
-        background-color: var(--bs-card-bg); /* Perfectly matches the pane below */
-        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15); /* Elegant upward drop-shadow */
-        z-index: 2; /* Ensures the shadow renders over the blue header */
-    }
-
-    /* 🪄 Dimmer styling for disabled/locked tabs */
-    #dictionaryTabs .nav-link.disabled, 
-    #configTabs .nav-link.disabled, 
-    #resultsTabs .nav-link.disabled,
-    #importTabs .nav-link.disabled {
-        color: rgba(255, 255, 255, 0.25) !important; /* Dims the text significantly */
-        background-color: rgba(255, 255, 255, 0.02) !important; /* Barely visible folder background */
-        cursor: not-allowed !important; /* Shows the 'locked' mouse cursor */
-    }
-
-    /* 🪄 Locks the color in place with ZERO visual reaction on hover or click */
-    .btn-outline-light.header-btn-small,
-    .btn-outline-light.header-btn-small:hover,
-    .btn-outline-light.header-btn-small:focus,
-    .btn-outline-light.header-btn-small:active {
-        background-color: transparent !important; /* 🪄 This stops the Bootstrap fill effect */
-        border-color: #bbbbbb !important;
-        color: #bbbbbb !important;
-        opacity: 1 !important; /* Absolutely no fade */
-        outline: none !important;
-        box-shadow: none !important; /* Kills the focus ring */
-        transform: none !important; /* Kills any native pressing movement */
-    }
-
-    .btn-light.header-btn-small,
-    .btn-light.header-btn-small:hover,
-    .btn-light.header-btn-small:focus,
-    .btn-light.header-btn-small:active {
-        background-color: hsl(210, 29%, 85%) !important; /* Forces the clean white/light-grey */
-        border-color: hsl(210, 29%, 85%) !important;
-        color: #000 !important;
-        opacity: 1 !important; /* Absolutely no fade */
-        outline: none !important;
-        box-shadow: none !important; /* Kills the focus ring */
-        transform: none !important; /* Kills any native pressing movement */
-    }
-
-    .btn-light.header-btn,
-    .btn-light.header-btn:hover,
-    .btn-light.header-btn:focus,
-    .btn-light.header-btn:active {
-        background-color: #f8f9fa !important; /* Forces the clean white/light-grey */
-        border-color: #f8f9fa !important;
-        color: #000 !important;
-        opacity: 1 !important; /* Absolutely no fade */
-        outline: none !important;
-        box-shadow: none !important; /* Kills the focus ring */
-        transform: none !important; /* Kills any native pressing movement */
-    }
-
-    /* 🪄 Locks the btn-warning color in place with ZERO visual reaction on hover or click */
-    .btn-warning.header-btn,
-    .btn-warning.header-btn:hover,
-    .btn-warning.header-btn:focus,
-    .btn-warning.header-btn:active {
-        background-color: #d35400 !important; /* Forces the clean white/light-grey */
-        border-color: #d35400 !important;
-        color: #ffffff !important;
-        opacity: 1 !important; /* Absolutely no fade */
-        outline: none !important;
-        box-shadow: none !important; /* Kills the focus ring */
-        transform: none !important; /* Kills any native pressing movement */
-    }
-
     /* 🪄 EXPLICIT OVERRIDE: Force white text on yellow warning rows ONLY in Dark Mode */
         /* 🪄 FIXED: Added :not(.badge) so the Category column keeps its custom colors */
         [data-bs-theme="dark"] .table-warning td,
@@ -529,22 +469,9 @@
             -webkit-tap-highlight-color: transparent !important;
         }
 
-        .text-shadow-basic {
-            text-shadow: 0px 0px 4px rgba(0, 0, 0, 0.3);
-        }
-
         /* ==========================================
            LAYOUT UTILITY CLASSES
            ========================================== */
-
-        /* Phase 1: Cards fill the view (view fills the container via flex chain) */
-        .card-full-height { height: 100%; }
-
-        /* Preserves border-radius inheritance on card headers */
-        .card-header-rounded {
-            border-top-left-radius: inherit;
-            border-top-right-radius: inherit;
-        }
 
         /* Subtle panel background for form input sections */
         .input-panel {
@@ -552,12 +479,8 @@
             border: 1px solid var(--bs-border-color-translucent);
         }
 
-        /* Scrollable table container locked to viewport
-           (258px = navbar ~56px + card header ~52px + card-body top-pad ~16px + input section ~134px)
-           Phase 2+ will replace this calc with a flex-grow layout */
+        /* Scrollable table container — height managed by flex chain inside .view-content */
         .table-viewport {
-            max-height: calc(100vh - 258px);
-            height: calc(100vh - 258px);
             overflow-y: auto;
         }
 
@@ -578,20 +501,6 @@
             background-color: var(--bs-secondary-bg);
             outline: 1px solid var(--bs-secondary-bg);
             box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
-        }
-
-        /* Sticky card action/button footer with rounded bottom corners */
-        .card-footer-sticky {
-            position: sticky;
-            bottom: 0;
-            background-color: var(--bs-card-bg, #fff);
-            padding: 1rem;
-            border-top: 1px solid var(--bs-border-color-translucent, #dee2e6);
-            z-index: 10;
-            width: 100%;
-            margin-top: auto;
-            border-bottom-left-radius: calc(var(--bs-card-border-radius, 0.375rem) - 1px);
-            border-bottom-right-radius: calc(var(--bs-card-border-radius, 0.375rem) - 1px);
         }
 
         /* Cursor utilities */
