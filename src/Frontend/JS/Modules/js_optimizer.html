@@ -59,6 +59,13 @@
         const t2D = appState.settings.sheetFactoryTrim !== undefined ? appState.settings.sheetFactoryTrim : 6.35;
         const pref2D = appState.settings.optimizer.sheetCutPreference || 'auto';
         const useStock = appState.settings.optimizer.useStock;
+        const _tr = appState.settings.optimizer?.transport || {};
+        const transportEnabled   = !!_tr.enabled;
+        const boardTransportLmax = _tr.boardLmax  || 0;
+        const boardMargin        = _tr.boardMargin !== undefined ? _tr.boardMargin : 20;
+        const sheetTransportLmax = _tr.sheetLmax  || 0;
+        const sheetTransportWmax = _tr.sheetWmax  || 0;
+        const sheetMargin        = _tr.sheetMargin !== undefined ? _tr.sheetMargin : 10;
         
         const finalCutlist = [];
 
@@ -169,10 +176,19 @@
                     const boardCost = (typeof calculateCostPerPiece === 'function') ? calculateCostPerPiece(option) : option.price;
                     let packResult;
 
+                    const use1DTransport = transportEnabled && boardTransportLmax > 0;
+                    const use2DTransport = transportEnabled && (sheetTransportLmax > 0 || sheetTransportWmax > 0);
+
                     if (isSheet) {
                         if (pref2D === 'auto') {
-                            let resRip = pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, 'rip');
-                            let resCross = pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, 'cross');
+                            let resRip, resCross;
+                            if (use2DTransport) {
+                                resRip   = pack2DTransport(currentParts, option.length, option.width, option.grain, k2D, t2D, sheetTransportLmax, sheetTransportWmax, sheetMargin, 'rip');
+                                resCross = pack2DTransport(currentParts, option.length, option.width, option.grain, k2D, t2D, sheetTransportLmax, sheetTransportWmax, sheetMargin, 'cross');
+                            } else {
+                                resRip   = pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, 'rip');
+                                resCross = pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, 'cross');
+                            }
                             // Pick the orientation with fewer unmapped parts; tiebreak on waste
                             if (resRip.unmapped.length <= resCross.unmapped.length) {
                                 packResult = (resRip.unmapped.length === resCross.unmapped.length && resCross.totalWaste < resRip.totalWaste) ? resCross : resRip;
@@ -180,10 +196,14 @@
                                 packResult = resCross;
                             }
                         } else {
-                            packResult = pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, pref2D);
+                            packResult = use2DTransport
+                                ? pack2DTransport(currentParts, option.length, option.width, option.grain, k2D, t2D, sheetTransportLmax, sheetTransportWmax, sheetMargin, pref2D)
+                                : pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, pref2D);
                         }
                     } else {
-                        packResult = pack1D(currentParts, option.length, k1D, t1D);
+                        packResult = use1DTransport
+                            ? pack1DTransport(currentParts, option.length, k1D, t1D, boardTransportLmax, boardMargin)
+                            : pack1D(currentParts, option.length, k1D, t1D);
                     }
 
                     if (!packResult) return;
@@ -417,6 +437,271 @@
     }
 
     // ==========================================
+    // TRANSPORT PACKING: SEGMENT-BASED ENGINES
+    // ==========================================
+    //
+    // These functions wrap pack1D / pack2D with physical store-cut margin zones.
+    // When transport is disabled, pack1D / pack2D are called directly (zero regression).
+    //
+    function pack1DTransport(parts, boardLength, kerf, trim, transportLmax, margin) {
+        // Fall through to normal packer when board fits within the transport limit.
+        if (boardLength <= transportLmax) return pack1D(parts, boardLength, kerf, trim);
+
+        let boards     = [];
+        let unmapped   = [];
+        let totalWaste = 0;
+
+        // Attempt to fit part into an open segment. Tracks absolute partsEnd position.
+        function fitInSeg(seg, part, boardCuts) {
+            if (seg.sealed) return false;                        // segment is frozen — no more parts
+            const k         = seg.cuts.length === 0 ? 0 : kerf; // no kerf before first part
+            const available = Math.min(seg.segAbsStart + transportLmax, boardLength) - seg.partsEnd;
+            if (available >= part.length + k) {
+                seg.cuts.push(part);
+                boardCuts.push(part);
+                seg.partsEnd += k + part.length;
+                return true;
+            }
+            return false;
+        }
+
+        // Try to open a new segment on an existing board (after its last segment's partsEnd + margin).
+        function openNewSeg(b, part) {
+            const lastSeg  = b.segments[b.segments.length - 1];
+            const newStart = lastSeg.partsEnd + margin;
+            if (newStart >= boardLength) return false;                                       // no board left
+            if (part.length > Math.min(transportLmax, boardLength - newStart)) return false; // won't fit
+            lastSeg.sealed = true;                               // commit — freeze partsEnd before opening next seg
+            const newSeg = { segAbsStart: newStart, partsEnd: newStart, cuts: [], remaining: 0 };
+            b.segments.push(newSeg);
+            b.transportZones.push({ width: margin });
+            newSeg.cuts.push(part);
+            b.cuts.push(part);
+            newSeg.partsEnd += part.length;
+            return true;
+        }
+
+        parts.forEach(part => {
+            let placed = false;
+
+            // Pass 1: try all open segments across all boards (first-fit)
+            for (let b of boards) {
+                for (let seg of b.segments) {
+                    if (fitInSeg(seg, part, b.cuts)) { placed = true; break; }
+                }
+                if (placed) break;
+            }
+
+            // Pass 2: extend an existing board with a new segment
+            if (!placed) {
+                for (let b of boards) {
+                    if (openNewSeg(b, part)) { placed = true; break; }
+                }
+            }
+
+            // Pass 3: open a new board
+            if (!placed) {
+                if (part.length <= Math.min(transportLmax, boardLength) - trim) {
+                    const firstSeg = { segAbsStart: 0, partsEnd: trim, cuts: [], remaining: 0 };
+                    const newBoard = { cuts: [], segments: [firstSeg], transportZones: [], remaining: 0 };
+                    firstSeg.cuts.push(part);
+                    newBoard.cuts.push(part);
+                    firstSeg.partsEnd = trim + part.length;
+                    boards.push(newBoard);
+                    placed = true;
+                } else {
+                    unmapped.push(part);
+                }
+            }
+        });
+
+        // Finalize: last segment's remaining = space from partsEnd to board end
+        boards.forEach(b => {
+            b.cuts = b.segments.flatMap(seg => seg.cuts);        // canonical segment order for table/canvas sync
+            const lastSeg     = b.segments[b.segments.length - 1];
+            lastSeg.remaining = boardLength - lastSeg.partsEnd;
+            let boardWaste    = lastSeg.remaining;
+            b.transportZones.forEach(tz => boardWaste += tz.width);
+            b.remaining  = boardWaste;
+            totalWaste  += boardWaste;
+        });
+
+        return { boards, unmapped, totalWaste };
+    }
+
+    function pack2DTransport(parts, sheetLength, sheetWidth, sheetGrain, kerf, trim, transportLmax, transportWmax, margin, pref) {
+        const widthExceeds  = transportWmax > 0 && sheetWidth  > transportWmax;
+        const lengthExceeds = transportLmax > 0 && sheetLength > transportLmax;
+
+        // No splitting required — fall through to normal 2D packer
+        if (!widthExceeds && !lengthExceeds) {
+            return pack2D(parts, sheetLength, sheetWidth, sheetGrain, kerf, trim, pref);
+        }
+
+        // Determine which axis to split.  Both exceeding → split the more critical one.
+        let splitAxis, transportWarning = null;
+        if (widthExceeds && !lengthExceeds) {
+            splitAxis = 'width';
+        } else if (lengthExceeds && !widthExceeds) {
+            splitAxis = 'length';
+        } else {
+            const wr = sheetWidth / transportWmax;
+            const lr = sheetLength / transportLmax;
+            splitAxis = (wr >= lr) ? 'width' : 'length';
+            transportWarning = (splitAxis === 'width') ? 'length' : 'width';
+        }
+
+        const segMax   = splitAxis === 'width' ? transportWmax : transportLmax;
+        const totalDim = splitAxis === 'width' ? sheetWidth    : sheetLength;
+        const otherDim = splitAxis === 'width' ? sheetLength   : sheetWidth;
+
+        // Build strip specifications and transport zone specs
+        const stripSpecs = [];
+        const tzSpecs    = [];
+        let k = 0;
+        while (true) {
+            const segStart = k * (segMax + margin);
+            if (segStart >= totalDim) break;
+            const segEnd  = Math.min(segStart + segMax, totalDim);
+            const segSize = segEnd - segStart;
+            if (splitAxis === 'width') {
+                stripSpecs.push({ stripW: segSize, stripL: sheetLength, trimW: k === 0 ? trim : 0, trimL: trim });
+            } else {
+                stripSpecs.push({ stripW: sheetWidth, stripL: segSize,    trimW: trim, trimL: k === 0 ? trim : 0 });
+            }
+            if (segEnd < totalDim) {
+                tzSpecs.push({ axis: splitAxis, start: segEnd, size: Math.min(margin, totalDim - segEnd) });
+                k++;
+            } else {
+                break;
+            }
+        }
+
+        function makeNewBoard() {
+            return {
+                cuts: [],
+                freeRects: [],   // rebuilt with absolute coords after packing
+                strips: stripSpecs.map(ss => ({
+                    freeRects: [{ x: ss.trimW, y: ss.trimL, w: Math.max(0, ss.stripW - ss.trimW), l: Math.max(0, ss.stripL - ss.trimL) }],
+                    cuts: []
+                })),
+                transportZones: tzSpecs.map(tz => ({ ...tz })),
+                splitAxis,
+                transportWarning
+            };
+        }
+
+        let boards   = [];
+        let unmapped = [];
+
+        parts.forEach(part => {
+            let placed = false;
+
+            // Try existing boards
+            for (let b of boards) {
+                for (let strip of b.strips) {
+                    strip.freeRects.sort((r1, r2) => (r1.w * r1.l) - (r2.w * r2.l));
+                    for (let i = 0; i < strip.freeRects.length; i++) {
+                        let fit = checkFit(part, strip.freeRects[i], sheetGrain);
+                        if (fit.fits) {
+                            place2DPart({ cuts: strip.cuts, freeRects: strip.freeRects }, i, part, fit.rotated, kerf, pref);
+                            placed = true;
+                            break;
+                        }
+                    }
+                    if (placed) break;
+                }
+                if (placed) break;
+            }
+
+            if (!placed) {
+                // Open a new board; find the first strip that fits
+                const newBoard = makeNewBoard();
+                for (let strip of newBoard.strips) {
+                    strip.freeRects.sort((r1, r2) => (r1.w * r1.l) - (r2.w * r2.l));
+                    for (let i = 0; i < strip.freeRects.length; i++) {
+                        let fit = checkFit(part, strip.freeRects[i], sheetGrain);
+                        if (fit.fits) {
+                            place2DPart({ cuts: strip.cuts, freeRects: strip.freeRects }, i, part, fit.rotated, kerf, pref);
+                            boards.push(newBoard);
+                            placed = true;
+                            break;
+                        }
+                    }
+                    if (placed) break;
+                }
+                if (!placed) unmapped.push(part);
+            }
+        });
+
+        // Build absolute-coordinate cuts and freeRects from actual packed extents (dynamic).
+        // Transport zone positions are placed where parts actually end — not at fixed segMax boundaries.
+        // Empty strips (no parts) don't advance cumOffset; instead, after the strips loop the entire
+        // remaining tail is divided into transportable chunks at segMax intervals.
+        let totalWaste = 0;
+        boards.forEach(b => {
+            b.cuts      = [];
+            b.freeRects = [];
+            b.transportZones = [];
+            let cumOffset = 0;
+
+            b.strips.forEach((strip, si) => {
+                const isLast = si === b.strips.length - 1;
+                let actualSize = 0;
+                if (splitAxis === 'width')  strip.cuts.forEach(c => actualSize = Math.max(actualSize, c.x + c.w));
+                else                        strip.cuts.forEach(c => actualSize = Math.max(actualSize, c.y + c.l));
+
+                const offX = splitAxis === 'width'  ? cumOffset : 0;
+                const offY = splitAxis === 'length' ? cumOffset : 0;
+                strip.cuts.forEach(cut => b.cuts.push({ ...cut, x: cut.x + offX, y: cut.y + offY }));
+
+                if (actualSize > 0) {
+                    // Strip has parts: clip its freeRects to the actual extent and add to board
+                    strip.freeRects.map(r => {
+                        if (splitAxis === 'width') {
+                            if (r.x >= actualSize) return null;
+                            return { ...r, w: Math.min(r.w, actualSize - r.x) };
+                        } else {
+                            if (r.y >= actualSize) return null;
+                            return { ...r, l: Math.min(r.l, actualSize - r.y) };
+                        }
+                    }).filter(r => r && r.w > 0 && r.l > 0)
+                      .forEach(r => b.freeRects.push({ ...r, x: r.x + offX, y: r.y + offY }));
+
+                    if (!isLast) {
+                        // Add transport zone after this strip and advance offset
+                        b.transportZones.push({ axis: splitAxis, start: cumOffset + actualSize, size: margin });
+                        cumOffset += actualSize + margin;
+                    } else {
+                        // Last strip: advance offset past its parts (no zone after it)
+                        cumOffset += actualSize;
+                    }
+                }
+                // Empty strips: skip — their area is covered by tail processing below
+            });
+
+            // Fill remaining tail (cumOffset → totalDim) with transport-sized freeRects.
+            // If the tail exceeds segMax, add additional transport cuts at segMax intervals.
+            let tailPos = cumOffset;
+            while (totalDim - tailPos > segMax) {
+                b.transportZones.push({ axis: splitAxis, start: tailPos + segMax, size: margin });
+                if (splitAxis === 'width') b.freeRects.push({ x: tailPos, y: 0, w: segMax, l: sheetLength });
+                else                       b.freeRects.push({ x: 0, y: tailPos, w: sheetWidth, l: segMax });
+                tailPos += segMax + margin;
+            }
+            if (tailPos < totalDim) {
+                if (splitAxis === 'width') b.freeRects.push({ x: tailPos, y: 0, w: totalDim - tailPos, l: sheetLength });
+                else                       b.freeRects.push({ x: 0, y: tailPos, w: sheetWidth, l: totalDim - tailPos });
+            }
+
+            b.freeRects.forEach(r  => totalWaste += r.w * r.l);
+            b.transportZones.forEach(tz => totalWaste += tz.size * otherDim);
+        });
+
+        return { boards, unmapped, totalWaste };
+    }
+
+    // ==========================================
     // PHASE C: OPTIMIZER UI & CONFIG STATE
     // ==========================================
     function renderOptimizerConfig() {
@@ -612,6 +897,15 @@
         btnAction1.innerText = 'Recalculate';
         btnAction1.className = 'btn btn-info flex-grow-1 shadow-sm';
         btnAction1.onclick = runOptimization;
+    }
+    function toggleTransportMode(isChecked) {
+        if (!appState.settings.optimizer) appState.settings.optimizer = {};
+        if (!appState.settings.optimizer.transport) appState.settings.optimizer.transport = {};
+        appState.settings.optimizer.transport.enabled = isChecked;
+        saveState();
+        const transportPanel = document.getElementById('transport-settings-panel');
+        if (transportPanel) transportPanel.style.display = isChecked ? '' : 'none';
+        if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
     }
     // --- UI LOCK STATES ---
     function toggleConfiguratorState(isLocked, isSaved = false, lockInputs = true) {
@@ -1266,17 +1560,35 @@
                         }
                     });
                 } else {
-                    if (board.remaining >= threshold) {
-                        boardOffcutVol += (board.remaining * sheetW * thick);
-                        usableOffcuts.push({ 
-                            category: 'lumber',
-                            profileId: prof.id,
-                            materialId: mat.id,
-                            profName: prof.name, 
-                            matName: mat.name, 
-                            grain: 'none',
-                            length: board.remaining 
+                    if (board.segments) {
+                        // Transport mode: check each segment's remaining independently
+                        board.segments.forEach(seg => {
+                            if (seg.remaining >= threshold) {
+                                boardOffcutVol += seg.remaining * sheetW * thick;
+                                usableOffcuts.push({
+                                    category: 'lumber',
+                                    profileId: prof.id,
+                                    materialId: mat.id,
+                                    profName: prof.name,
+                                    matName: mat.name,
+                                    grain: 'none',
+                                    length: seg.remaining
+                                });
+                            }
                         });
+                    } else {
+                        if (board.remaining >= threshold) {
+                            boardOffcutVol += (board.remaining * sheetW * thick);
+                            usableOffcuts.push({
+                                category: 'lumber',
+                                profileId: prof.id,
+                                materialId: mat.id,
+                                profName: prof.name,
+                                matName: mat.name,
+                                grain: 'none',
+                                length: board.remaining
+                            });
+                        }
                     }
                 }
                 

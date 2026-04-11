@@ -34,6 +34,25 @@
         document.getElementById('setting-sheet-trim').value = formatForDisplay(appState.settings.sheetFactoryTrim); // 🪄 NEW
         document.getElementById('setting-currency').value = appState.settings.currency; // 🪄 NEW
 
+        // Transport settings
+        if (!appState.settings.optimizer) appState.settings.optimizer = {};
+        if (!appState.settings.optimizer.transport) appState.settings.optimizer.transport = {};
+        const transport = appState.settings.optimizer.transport;
+        if (transport.boardMargin === undefined) transport.boardMargin = 20;
+        if (transport.boardLmax === undefined) transport.boardLmax = 0;
+        if (transport.sheetMargin === undefined) transport.sheetMargin = 10;
+        if (transport.sheetLmax === undefined) transport.sheetLmax = 0;
+        if (transport.sheetWmax === undefined) transport.sheetWmax = 0;
+        document.getElementById('setting-transport-board-lmax').value = formatForDisplay(transport.boardLmax);
+        document.getElementById('setting-transport-board-margin').value = formatForDisplay(transport.boardMargin);
+        document.getElementById('setting-transport-sheet-lmax').value = formatForDisplay(transport.sheetLmax);
+        document.getElementById('setting-transport-sheet-wmax').value = formatForDisplay(transport.sheetWmax);
+        document.getElementById('setting-transport-sheet-margin').value = formatForDisplay(transport.sheetMargin);
+        const transportToggle = document.getElementById('opt-transport-enable');
+        const transportPanel = document.getElementById('transport-settings-panel');
+        if (transportToggle) transportToggle.checked = !!transport.enabled;
+        if (transportPanel) transportPanel.style.display = transport.enabled ? '' : 'none';
+
         const langDropdown = document.getElementById('setting-language');
         if (langDropdown) langDropdown.value = appState.settings.language;
 
@@ -47,7 +66,15 @@
         appState.settings.sheetScrapMinLength = parseToBaseUnit(document.getElementById('setting-sheet-scrap-length').value); // 🪄 NEW
         appState.settings.factoryEdgeTrim = parseToBaseUnit(document.getElementById('setting-factory-trim').value);
         appState.settings.sheetFactoryTrim = parseToBaseUnit(document.getElementById('setting-sheet-trim').value); // 🪄 NEW
-        
+
+        if (!appState.settings.optimizer) appState.settings.optimizer = {};
+        if (!appState.settings.optimizer.transport) appState.settings.optimizer.transport = {};
+        appState.settings.optimizer.transport.boardLmax = parseToBaseUnit(document.getElementById('setting-transport-board-lmax').value) || 0;
+        appState.settings.optimizer.transport.boardMargin = parseToBaseUnit(document.getElementById('setting-transport-board-margin').value) || 20;
+        appState.settings.optimizer.transport.sheetLmax = parseToBaseUnit(document.getElementById('setting-transport-sheet-lmax').value) || 0;
+        appState.settings.optimizer.transport.sheetWmax = parseToBaseUnit(document.getElementById('setting-transport-sheet-wmax').value) || 0;
+        appState.settings.optimizer.transport.sheetMargin = parseToBaseUnit(document.getElementById('setting-transport-sheet-margin').value) || 10;
+
         saveState();
         renderSettings();
         showToast(t('msg_settings_saved'));

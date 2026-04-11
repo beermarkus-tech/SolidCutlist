@@ -7,9 +7,15 @@
         const t1D = appState.settings.factoryEdgeTrim !== undefined ? appState.settings.factoryEdgeTrim : 6.35;
         const k2D = appState.settings.sheetBladeKerf !== undefined ? appState.settings.sheetBladeKerf : 3.175;
         const t2D = appState.settings.sheetFactoryTrim !== undefined ? appState.settings.sheetFactoryTrim : 6.35;
-        const threshold = appState.settings.cutoffThreshold !== undefined ? appState.settings.cutoffThreshold : 200.0; 
-        const minW = appState.settings.sheetScrapMinWidth !== undefined ? appState.settings.sheetScrapMinWidth : 50.0;   
+        const threshold = appState.settings.cutoffThreshold !== undefined ? appState.settings.cutoffThreshold : 200.0;
+        const minW = appState.settings.sheetScrapMinWidth !== undefined ? appState.settings.sheetScrapMinWidth : 50.0;
         const minL = appState.settings.sheetScrapMinLength !== undefined ? appState.settings.sheetScrapMinLength : 400.0;
+        const _tr = appState.settings.optimizer?.transport || {};
+        const boardTransportLmax = _tr.boardLmax  || 0;
+        const boardTransportMargin = _tr.boardMargin !== undefined ? _tr.boardMargin : 20;
+        const sheetTransportLmax = _tr.sheetLmax  || 0;
+        const sheetTransportWmax = _tr.sheetWmax  || 0;
+        const sheetTransportMargin = _tr.sheetMargin !== undefined ? _tr.sheetMargin : 10;
         
         let boardCounter = 1; 
         const canvasDrawQueue = []; 
@@ -115,19 +121,69 @@
                 let wasteVal = 0;
                 if (isSheet) {
                     board.freeRects.forEach(r => wasteVal += (r.w * r.l));
+                    // Add transport zone area to waste display (physical offcuts, not usable space)
+                    if (board.transportZones && board.transportZones.length > 0) {
+                        const perpDim = board.splitAxis === 'width' ? group.length : group.width;
+                        board.transportZones.forEach(tz => wasteVal += tz.size * perpDim);
+                    }
                 } else {
                     wasteVal = board.remaining;
                 }
                 const wasteLabel = isSheet ? t('lbl_waste_area') : t('lbl_waste_length');
-                const wasteDisplay = isSheet 
-                    ? (wasteVal / 1000000).toFixed(2) + ' m²' 
+                const wasteDisplay = isSheet
+                    ? (wasteVal / 1000000).toFixed(2) + ' m²'
                     : formatForDisplay(wasteVal);
 
                 // 🪄 THE 1D HTML ENGINE: Build the HTML string BEFORE appending it to the main layout
+                let labelStripHtml = '';
+                let verticalStripHtml = '';
+                let cardBodyFlex = 'flex-column align-items-center';
                 let diagramHtml = '';
                 if (isSheet) {
                     // Keep the canvas strictly for 2D Sheets
                     diagramHtml = `<canvas id="${canvasId}" width="${canvasWidth}" height="${canvasHeight}" style="width: ${canvasWidth}px !important; max-width: 100% !important; height: auto !important; border-radius: 4px; border: 1px solid #ced4da; margin: 0 auto; display: block;"></canvas>`;
+                    // Piece-length label strip for 2D transport sheets
+                    if (board.transportZones && board.transportZones.length > 0) {
+                        const _nP = board.transportZones.length + 1;
+                        const _sa = board.splitAxis;
+                        const _fal = _sa === 'width' ? group.width : group.length;
+                        const _flip = group.width > group.length;
+                        const _aligns = (!_flip && _sa === 'length') || (_flip && _sa === 'width');
+                        // Piece lengths from actual transport zone positions (dynamic, not fixed segMax)
+                        const _pl = [];
+                        let _prevEnd = 0;
+                        board.transportZones.forEach(tz => {
+                            _pl.push(tz.start - _prevEnd);
+                            _prevEnd = tz.start + tz.size;
+                        });
+                        _pl.push(_fal - _prevEnd);
+                        if (_aligns) {
+                            // Horizontal strip above the canvas (split axis is horizontal in the canvas)
+                            let _si = '';
+                            for (let _i = 0; _i < _nP; _i++) {
+                                const _last = _i === _nP - 1;
+                                const _pp = (_pl[_i] / _fal) * 100;
+                                const _mp = (sheetTransportMargin / _fal) * 100;
+                                const _r = _i === 0 ? '3px 0 0 3px' : (_last ? '0 3px 3px 0' : '0');
+                                _si += `<div style="width:${_pp}%;min-width:0;background:#f8f9fa;border:1px solid #adb5bd;border-radius:${_r};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;font-size:10px;font-weight:bold;color:#495057;white-space:nowrap;padding:0 2px;">${formatForDisplay(_pl[_i])}</div>`;
+                                if (!_last) _si += `<div style="width:${_mp}%;min-width:0;flex-shrink:0;background:#dc3545;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>`;
+                            }
+                            labelStripHtml = `<div style="width:${canvasWidth}px;max-width:100%;display:flex;height:22px;margin-bottom:4px;box-sizing:border-box;">${_si}</div>`;
+                        } else {
+                            // Vertical strip beside the canvas (split axis is vertical in the canvas)
+                            let _vsi = '';
+                            for (let _i = 0; _i < _nP; _i++) {
+                                const _last = _i === _nP - 1;
+                                const _hp = (_pl[_i] / _fal) * 100;
+                                const _mhp = (sheetTransportMargin / _fal) * 100;
+                                const _r = _i === 0 ? '3px 3px 0 0' : (_last ? '0 0 3px 3px' : '0');
+                                _vsi += `<div style="height:${_hp}%;min-height:0;background:#f8f9fa;border:1px solid #adb5bd;border-radius:${_r};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;font-size:10px;font-weight:bold;color:#495057;writing-mode:vertical-rl;text-orientation:mixed;white-space:nowrap;padding:2px 0;">${formatForDisplay(_pl[_i])}</div>`;
+                                if (!_last) _vsi += `<div style="height:${_mhp}%;min-height:0;flex-shrink:0;background:#dc3545;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>`;
+                            }
+                            verticalStripHtml = `<div style="width:30px;height:${canvasHeight}px;display:flex;flex-direction:column;flex-shrink:0;margin-right:6px;box-sizing:border-box;">${_vsi}</div>`;
+                            cardBodyFlex = 'flex-row justify-content-center align-items-start';
+                        }
+                    }
                 } else {
                     // Generate 1D Lumber as pure Flexbox HTML using percentages
                     const fullLen = group.length;
@@ -137,21 +193,100 @@
                         const trimPct = (t1D / fullLen) * 100;
                         innerCuts += `<div style="width: ${trimPct}%; background: #adb5bd; height: 100%;"></div>`;
                     }
-                    board.cuts.forEach((cut, index) => {
-                        if (index > 0) {
-                            const kerfPct = (k1D / fullLen) * 100;
-                            innerCuts += `<div style="width: ${kerfPct}%; height: 100%; background: #e9ecef;"></div>`;
-                        }
-                        const cutPct = (cut.length / fullLen) * 100;
-                        innerCuts += `
-                        <div style="width: ${cutPct}%; background: #8B4513; border: 2px solid #5c2e0b; display: flex; align-items: center; justify-content: center; height: 100%; position: relative; box-sizing: border-box; overflow: hidden; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
-                            <div style="position: absolute; top: 33%; left: 0; right: 0; border-top: 1px solid rgba(0,0,0,0.15);"></div>
-                            <div style="position: absolute; top: 66%; left: 0; right: 0; border-top: 1px solid rgba(0,0,0,0.15);"></div>
-                            <span style="color: #fff; font-weight: bold; font-size: 16px; position: relative; z-index: 1;">${index + 1}</span>
-                        </div>`;
-                    });
-                    
+
+                    // Helper: renders an explicit remaining-space div, green if usable offcut, red if waste
+                    function remainDiv(remainMm) {
+                        if (remainMm <= 0) return '';
+                        const pct = (remainMm / fullLen) * 100;
+                        const usable = remainMm >= threshold;
+                        const bg     = usable ? 'rgba(40,167,69,0.15)'  : 'rgba(220,53,69,0.1)';
+                        const border = usable ? '1px dashed #28a745'     : '1px dashed #dc3545';
+                        return `<div style="width: ${pct}%; height: 100%; background: ${bg}; border-left: ${border}; box-sizing: border-box; flex-shrink: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact;"></div>`;
+                    }
+
+                    if (board.segments) {
+                        // Transport mode: render segment-by-segment with red ✂ zones between them
+                        let globalCutIndex = 0;
+                        board.segments.forEach((seg, segIdx) => {
+                            const isLastSeg = segIdx === board.segments.length - 1;
+                            seg.cuts.forEach((cut, localIdx) => {
+                                if (localIdx > 0) {
+                                    const kerfPct = (k1D / fullLen) * 100;
+                                    innerCuts += `<div style="width: ${kerfPct}%; height: 100%; background: #e9ecef;"></div>`;
+                                }
+                                const cutPct = (cut.length / fullLen) * 100;
+                                innerCuts += `<div style="width: ${cutPct}%; background: #8B4513; border: 2px solid #5c2e0b; display: flex; align-items: center; justify-content: center; height: 100%; position: relative; box-sizing: border-box; overflow: hidden; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                                    <div style="position: absolute; top: 33%; left: 0; right: 0; border-top: 1px solid rgba(0,0,0,0.15);"></div>
+                                    <div style="position: absolute; top: 66%; left: 0; right: 0; border-top: 1px solid rgba(0,0,0,0.15);"></div>
+                                    <span style="color: #fff; font-weight: bold; font-size: 16px; position: relative; z-index: 1;">${globalCutIndex + 1}</span>
+                                </div>`;
+                                globalCutIndex++;
+                            });
+                            // Remaining: for single-segment transport boards split at the transportLmax boundary
+                            if (isLastSeg && board.segments.length === 1 && boardTransportLmax > 0 && boardTransportLmax < fullLen) {
+                                const _wt = boardTransportLmax - seg.partsEnd;
+                                if (_wt > 0) innerCuts += remainDiv(_wt);
+                                const _ep = ((fullLen - boardTransportLmax) / fullLen) * 100;
+                                innerCuts += `<div style="width: ${_ep}%; height: 100%; background: #dc3545; flex-shrink: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact;"></div>`;
+                            } else {
+                                innerCuts += remainDiv(seg.remaining);
+                            }
+                            if (!isLastSeg) {
+                                // Physical margin zone: red hatched, exactly margin mm wide
+                                const tzWidth = board.transportZones[segIdx].width;
+                                if (tzWidth > 0) {
+                                    const gapPct = (tzWidth / fullLen) * 100;
+                                    innerCuts += `<div style="width: ${gapPct}%; height: 100%; background: #dc3545; flex-shrink: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact;"></div>`;
+                                }
+                            }
+                        });
+                    } else {
+                        // Normal mode
+                        board.cuts.forEach((cut, index) => {
+                            if (index > 0) {
+                                const kerfPct = (k1D / fullLen) * 100;
+                                innerCuts += `<div style="width: ${kerfPct}%; height: 100%; background: #e9ecef;"></div>`;
+                            }
+                            const cutPct = (cut.length / fullLen) * 100;
+                            innerCuts += `
+                            <div style="width: ${cutPct}%; background: #8B4513; border: 2px solid #5c2e0b; display: flex; align-items: center; justify-content: center; height: 100%; position: relative; box-sizing: border-box; overflow: hidden; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                                <div style="position: absolute; top: 33%; left: 0; right: 0; border-top: 1px solid rgba(0,0,0,0.15);"></div>
+                                <div style="position: absolute; top: 66%; left: 0; right: 0; border-top: 1px solid rgba(0,0,0,0.15);"></div>
+                                <span style="color: #fff; font-weight: bold; font-size: 16px; position: relative; z-index: 1;">${index + 1}</span>
+                            </div>`;
+                        });
+                        // Remaining: green if usable offcut, red if waste
+                        innerCuts += remainDiv(board.remaining);
+                    }
+
                     diagramHtml = `<div style="width: ${canvasWidth}px !important; max-width: 100% !important; height: 40px !important; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; display: flex; margin: 0 auto; overflow: hidden; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact;">${innerCuts}</div>`;
+                    // Piece-length label strip for 1D transport boards
+                    const _isSingleSegTransport = board.segments && board.segments.length === 1 && boardTransportLmax > 0 && boardTransportLmax < fullLen;
+                    if (board.segments && (board.segments.length > 1 || _isSingleSegTransport)) {
+                        let _si = '';
+                        if (_isSingleSegTransport) {
+                            // One take-home piece up to transportLmax, then red store-excess zone
+                            const _pp = (boardTransportLmax / fullLen) * 100;
+                            const _ep = ((fullLen - boardTransportLmax) / fullLen) * 100;
+                            _si = `<div style="width:${_pp}%;min-width:0;background:#f8f9fa;border:1px solid #adb5bd;border-radius:3px 0 0 3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;font-size:10px;font-weight:bold;color:#495057;white-space:nowrap;padding:0 2px;">${formatForDisplay(boardTransportLmax)}</div>` +
+                                  `<div style="width:${_ep}%;min-width:0;flex-shrink:0;background:#dc3545;border-radius:0 3px 3px 0;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>`;
+                        } else {
+                            const _nP = board.segments.length;
+                            for (let _i = 0; _i < _nP; _i++) {
+                                const _last = _i === _nP - 1;
+                                const _seg = board.segments[_i];
+                                const _len = _last
+                                    ? fullLen - _seg.segAbsStart          // tail piece: segStart to board end
+                                    : _seg.partsEnd - _seg.segAbsStart;   // interior piece: actual packed extent
+                                const _pp = (_len / fullLen) * 100;
+                                const _mp = (boardTransportMargin / fullLen) * 100;
+                                const _r = _i === 0 ? '3px 0 0 3px' : (_last ? '0 3px 3px 0' : '0');
+                                _si += `<div style="width:${_pp}%;min-width:0;background:#f8f9fa;border:1px solid #adb5bd;border-radius:${_r};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;font-size:10px;font-weight:bold;color:#495057;white-space:nowrap;padding:0 2px;">${formatForDisplay(_len)}</div>`;
+                                if (!_last) _si += `<div style="width:${_mp}%;min-width:0;flex-shrink:0;background:#dc3545;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>`;
+                            }
+                        }
+                        labelStripHtml = `<div style="width:${canvasWidth}px;max-width:100%;display:flex;height:22px;margin-bottom:4px;box-sizing:border-box;">${_si}</div>`;
+                    }
                 }
 
                 html += `
@@ -161,8 +296,8 @@
                         <small class="text-muted">${wasteLabel}: ${wasteDisplay} ${isSheet ? '' : '<span class="display-unit-label"></span>'}</small>
                     </div>
                     
-                    <div class="card-body p-3 text-center overflow-auto d-flex justify-content-center">
-                        ${diagramHtml}
+                    <div class="card-body p-3 text-center overflow-auto d-flex ${cardBodyFlex}">
+                        ${verticalStripHtml}${labelStripHtml}${diagramHtml}
                     </div>
                     
                     <div class="table-responsive">
@@ -237,6 +372,13 @@
                 if (showBoardGrainWarning) {
                     html += `<div class="card-footer text-danger py-1">
                         ⚠️ <strong>${t('lbl_warning')}:</strong> ${t('msg_grain_warning')}
+                    </div>`;
+                }
+                if (board.transportWarning) {
+                    const axis = board.transportWarning === 'width' ? 'Width' : 'Length';
+                    const splitOn = board.splitAxis === 'width' ? 'width' : 'length';
+                    html += `<div class="card-footer text-warning py-1" style="font-size: 0.8rem;">
+                        ✂ <strong>Transport:</strong> Both width and length exceed limits. Split on ${splitOn} only — verify ${axis.toLowerCase()} fits your vehicle.
                     </div>`;
                 }
 
@@ -366,16 +508,16 @@
         board.cuts.forEach((cut, index) => {
             const mapped = mapCoords(cut.x, cut.y, cut.w, cut.l);
 
-            ctx.fillStyle = '#DEB887'; 
+            ctx.fillStyle = '#DEB887';
             ctx.fillRect(mapped.cx, mapped.cy, mapped.cw, mapped.ch);
 
             if (sheetGrain !== 'none') {
-                ctx.strokeStyle = 'rgba(139, 69, 19, 0.25)'; 
+                ctx.strokeStyle = 'rgba(139, 69, 19, 0.25)';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
-                
+
                 if (isVisualHorizontal) {
-                    const stepY = mapped.ch < 45 ? mapped.ch / 4 : 15; 
+                    const stepY = mapped.ch < 45 ? mapped.ch / 4 : 15;
                     for (let y = mapped.cy + stepY; y < mapped.cy + mapped.ch - 1; y += stepY) {
                         ctx.moveTo(mapped.cx, y);
                         ctx.lineTo(mapped.cx + mapped.cw, y);
@@ -402,6 +544,24 @@
                 ctx.fillText(index + 1, mapped.cx + (mapped.cw / 2), mapped.cy + (mapped.ch / 2));
             }
         });
+
+        // Draw transport zone bands (red hatched stripes)
+        if (board.transportZones && board.transportZones.length > 0) {
+            board.transportZones.forEach(tz => {
+                // tz: { axis, start, size } — start and size are in sheet-math coordinates
+                let mapped;
+                if (tz.axis === 'width') {
+                    // Band runs across the full length at position tz.start along the width axis
+                    mapped = mapCoords(tz.start, 0, tz.size, sheetLength);
+                } else {
+                    // Band runs across the full width at position tz.start along the length axis
+                    mapped = mapCoords(0, tz.start, sheetWidth, tz.size);
+                }
+
+                ctx.fillStyle = '#dc3545';
+                ctx.fillRect(mapped.cx, mapped.cy, mapped.cw, mapped.ch);
+            });
+        }
     }
 
     // ==========================================
