@@ -54,13 +54,24 @@
         }
 
         // 2. MINT THE JOB OBJECT (The Sandbox Capsule)
+        // Lean catalog: only catalog items for SKUs present in this job's parts.
+        // No need to copy the entire price database.
+        const _sandboxSKUs = new Set(clonedParts.map(p => `${p.profileId}|${p.materialId}|${p.category || ''}`));
+        const _sandboxCatalog = (appState.catalog || []).filter(c =>
+            _sandboxSKUs.has(`${c.profileId}|${c.materialId}|${c.categoryId || ''}`)
+        );
+        const _sandboxStock = (appState.stock || []).filter(s =>
+            _sandboxSKUs.has(`${s.profileId}|${s.materialId}|${s.categoryId || ''}`)
+        );
+
         const newJob = {
             id: 'JOB-' + Date.now() + Math.floor(Math.random() * 1000),
             name: jobName,
             status: 'draft',
             timestamp: Date.now(),
-            parts: partsToOptimize,
-            catalog: JSON.parse(JSON.stringify(appState.catalog)),
+            parts: clonedParts,  // was: partsToOptimize (undefined in this scope — bug fix)
+            catalog: JSON.parse(JSON.stringify(_sandboxCatalog)),
+            stock: JSON.parse(JSON.stringify(_sandboxStock)),
             settings: JSON.parse(JSON.stringify(appState.settings)),
             selections: selections // 🪄 MAKE SURE THIS LINE EXISTS!
         };
@@ -180,17 +191,25 @@
         // 4. 🪄 THE MAGIC TRICK: Temporarily shadow master data with Sandbox data
         const masterCatalog = appState.catalog;
         const masterSettings = appState.settings;
+        const masterStock = appState.stock;
 
         appState.catalog = job.catalog;
         appState.settings = job.settings;
+        // Use the job's frozen stock snapshot. Older jobs without job.stock fall back to live stock.
+        appState.stock = job.stock !== undefined ? job.stock : appState.stock;
 
         // 5. Run the packing engine using the frozen parts array
         let allowedStores = appState.stores ? appState.stores.map(s => s.id) : [];
-        const results = runPackingEngine(job.parts, allowedStores);
-
-        // 6. Instantly restore master data to protect the database!
-        appState.catalog = masterCatalog;
-        appState.settings = masterSettings;
+        let results;
+        try {
+            results = runPackingEngine(job.parts, allowedStores);
+        } finally {
+            // 6. Instantly restore master data to protect the database!
+            // try-finally guarantees restore even if the engine throws an exception.
+            appState.catalog = masterCatalog;
+            appState.settings = masterSettings;
+            appState.stock = masterStock;
+        }
 
         // 7. Track the active job in AppState (Single Source of Truth) + RAM cache + Mobile backup
         if (!appState.ui) appState.ui = {};
@@ -295,15 +314,55 @@
         }
 
         // 3. MINT THE JOB SANDBOX
+        // Lean catalog: only the specific boards the optimizer chose or failed on.
+        // Never copy the entire price database into a job.
+        const _catalogMap = new Map();
+        (appState.latestResults || []).forEach(res => {
+            // Winning vendor board
+            if (res.purchase?.catalogItem && res.purchase.catalogItem.storeId !== 'shop_stock') {
+                const c = res.purchase.catalogItem;
+                if (!_catalogMap.has(c.id)) _catalogMap.set(c.id, c);
+            }
+            // Failed vendor boards (user can edit these to fix the error)
+            (res.failedCatalogItems || []).forEach(c => {
+                if (c.id && !_catalogMap.has(c.id)) _catalogMap.set(c.id, c);
+            });
+        });
+
+        // Lean stock: only stock items for the SKUs the optimizer drew from shop stock.
+        const _stockItems = [];
+        const _usedStockSKUs = new Set();
+        const _seenStockIds = new Set();
+        (appState.latestResults || []).forEach(res => {
+            if (res.purchase?.catalogItem?.storeId === 'shop_stock' && res.sku) {
+                const key = `${res.sku.profileId}|${res.sku.materialId}|${res.sku.category}`;
+                if (!_usedStockSKUs.has(key)) {
+                    _usedStockSKUs.add(key);
+                    (appState.stock || [])
+                        .filter(s => s.profileId === res.sku.profileId &&
+                                     s.materialId === res.sku.materialId &&
+                                     s.categoryId === res.sku.category)
+                        .forEach(s => {
+                            const sid = s.id || `${key}|${s.length}`;
+                            if (!_seenStockIds.has(sid)) {
+                                _seenStockIds.add(sid);
+                                _stockItems.push(s);
+                            }
+                        });
+                }
+            }
+        });
+
         const newJob = {
             id: 'JOB-' + Date.now() + Math.floor(Math.random() * 1000),
             name: jobName,
             status: 'draft',
             timestamp: Date.now(),
             parts: partsToOptimize,
-            catalog: JSON.parse(JSON.stringify(appState.catalog)),
+            catalog: JSON.parse(JSON.stringify([..._catalogMap.values()])),
+            stock: JSON.parse(JSON.stringify(_stockItems)),
             settings: JSON.parse(JSON.stringify(appState.settings)),
-            selections: selections 
+            selections: selections
         };
 
         // 4. PUSH TO STATE & CLEANUP
@@ -411,17 +470,25 @@
         // 🪄 THE MAGIC TRICK: Temporarily shadow master data with Sandbox data
         const masterCatalog = appState.catalog;
         const masterSettings = appState.settings;
+        const masterStock = appState.stock;
 
         appState.catalog = job.catalog;
         appState.settings = job.settings;
+        // Use the job's frozen stock snapshot. Older jobs without job.stock fall back to live stock.
+        appState.stock = job.stock !== undefined ? job.stock : appState.stock;
 
         // Run the packing engine using the frozen parts array
         let allowedStores = appState.stores ? appState.stores.map(s => s.id) : [];
-        const results = runPackingEngine(job.parts, allowedStores);
-
-        // Instantly restore master data to protect the database!
-        appState.catalog = masterCatalog;
-        appState.settings = masterSettings;
+        let results;
+        try {
+            results = runPackingEngine(job.parts, allowedStores);
+        } finally {
+            // Instantly restore master data to protect the database!
+            // try-finally guarantees restore even if the engine throws an exception.
+            appState.catalog = masterCatalog;
+            appState.settings = masterSettings;
+            appState.stock = masterStock;
+        }
 
         // Render the UI
         appState.latestResults = results;

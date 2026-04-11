@@ -51,6 +51,7 @@
         saveState();
         renderSettings();
         showToast(t('msg_settings_saved'));
+        if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
     }
     function updateUnitLabels() {
         const isMetric = appState.settings.displayUnit === 'mm';

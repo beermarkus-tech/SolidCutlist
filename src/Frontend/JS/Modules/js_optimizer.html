@@ -142,12 +142,16 @@
 
             // 🪄 STAGE 2: THE STORE RUN (Infinite Supply)
             if (currentParts.length > 0) {
-                const vendorOptions = appState.catalog.filter(c => 
-                    c.profileId === batch.profileId && 
+                const allVendorOptions = appState.catalog.filter(c =>
+                    c.profileId === batch.profileId &&
                     c.materialId === batch.materialId &&
                     c.categoryId === batch.category &&
                     allowedStoreIds.includes(c.storeId)
                 );
+                // If the user has pinned a specific board for this SKU via the shopping list editor,
+                // use only that entry — never silently switch to another store's board.
+                const chosenOptions = allVendorOptions.filter(c => c._userChosen);
+                const vendorOptions = chosenOptions.length > 0 ? chosenOptions : allVendorOptions;
 
                 if (vendorOptions.length === 0) {
                     finalCutlist.push({ sku: batch, error: `Missing store inventory for remaining ${currentParts.length} parts.` });
@@ -453,37 +457,37 @@
                     ${safeHTML(proj.name)}
                 </label>
                 
-                <input type="number" class="form-control form-control-sm text-center proj-multi" id="multi-${proj.id}" value="1" min="1" style="width: 50px; height: 24px; font-size: 0.8rem;">
+                <input type="number" class="form-control form-control-sm text-center proj-multi" id="multi-${proj.id}" value="1" min="1" onchange="notifyConfigChanged()" style="width: 50px; height: 24px; font-size: 0.8rem;">
             </div>
             `;
 
-            // Groups Container 
+            // Groups Container
             html += `<div class="collapse ms-3 mb-2 border-start border-2 ps-2" id="collapse-${proj.id}">`;
-            
+
             // "Ungrouped Parts" pseudo-group
             const ungroupedCount = allParts.filter(p => p.projectId === proj.id && (!p.groupId || p.groupId.trim() === '')).length;
-            
+
             html += `
             <div class="d-flex align-items-center mb-1">
                 <input class="form-check-input me-2 grp-check grp-of-${proj.id}" type="checkbox" id="chk-nogroup-${proj.id}" onchange="toggleGroupTree('${proj.id}', this.checked)">
                 <label class="form-check-label flex-grow-1 text-truncate text-muted font-italic" for="chk-nogroup-${proj.id}" style="font-size: 0.85rem; cursor: pointer;">
                     <em>Ungrouped Parts</em> <span style="font-size: 0.75rem;">(${ungroupedCount} parts)</span>
                 </label>
-                <input type="number" class="form-control form-control-sm text-center grp-multi" id="multi-nogroup-${proj.id}" value="1" min="1" style="width: 50px; height: 24px; font-size: 0.8rem;">
+                <input type="number" class="form-control form-control-sm text-center grp-multi" id="multi-nogroup-${proj.id}" value="1" min="1" onchange="notifyConfigChanged()" style="width: 50px; height: 24px; font-size: 0.8rem;">
             </div>
             `;
 
             // Render actual groups
             projGroups.forEach(grp => {
                 const grpCount = allParts.filter(p => p.groupId === grp.id).length;
-                
+
                 html += `
                 <div class="d-flex align-items-center mb-1">
                     <input class="form-check-input me-2 grp-check grp-of-${proj.id}" type="checkbox" id="chk-${grp.id}" onchange="toggleGroupTree('${proj.id}', this.checked)">
                     <label class="form-check-label flex-grow-1 text-truncate" for="chk-${grp.id}" style="font-size: 0.85rem; cursor: pointer;">
                         ${safeHTML(grp.name)} <span class="text-muted" style="font-size: 0.75rem;">(${grpCount} parts)</span>
                     </label>
-                    <input type="number" class="form-control form-control-sm text-center grp-multi" id="multi-${grp.id}" value="1" min="1" style="width: 50px; height: 24px; font-size: 0.8rem;">
+                    <input type="number" class="form-control form-control-sm text-center grp-multi" id="multi-${grp.id}" value="1" min="1" onchange="notifyConfigChanged()" style="width: 50px; height: 24px; font-size: 0.8rem;">
                 </div>
                 `;
             });
@@ -572,12 +576,14 @@
         // If I check a project, check all its child groups
         const groupChecks = document.querySelectorAll(`.grp-of-${projId}`);
         groupChecks.forEach(chk => chk.checked = isChecked);
+        notifyConfigChanged();
     }
     function toggleGroupTree(projId, isChecked) {
         // If I check any group, automatically check the parent project
         if (isChecked) {
             document.getElementById(`chk-${projId}`).checked = true;
         }
+        notifyConfigChanged();
     }
     function updateTempSetting(key, val) {
         // Saves local UI tweaks directly to state instantly
@@ -588,14 +594,27 @@
         if (!appState.settings.optimizer) appState.settings.optimizer = {};
         appState.settings.optimizer.useStock = isChecked;
         saveState();
+        notifyConfigChanged();
     }
     function updateSheetCutPreference(val) {
         if (!appState.settings.optimizer) appState.settings.optimizer = {};
         appState.settings.optimizer.sheetCutPreference = val;
         saveState();
+        notifyConfigChanged();
+    }
+    // --- DIRTY-STATE SIGNAL (pre-save) ---
+    function notifyConfigChanged() {
+        if (!window.hasCalculated) return;
+        const activeActions = document.getElementById('job-config-actions-active');
+        if (!activeActions || activeActions.classList.contains('d-none')) return;
+        const btnAction1 = document.getElementById('btn-active-action1');
+        if (!btnAction1 || btnAction1.innerText === 'Recalculate') return;
+        btnAction1.innerText = 'Recalculate';
+        btnAction1.className = 'btn btn-info flex-grow-1 shadow-sm';
+        btnAction1.onclick = runOptimization;
     }
     // --- UI LOCK STATES ---
-    function toggleConfiguratorState(isLocked, isSaved = false) {
+    function toggleConfiguratorState(isLocked, isSaved = false, lockInputs = true) {
         const settingsDiv = document.getElementById('job-config-settings');
         const treeDiv = document.getElementById('job-configurator-tree');
         const defaultActions = document.getElementById('job-config-actions-default');
@@ -609,11 +628,13 @@
         const allInputs = document.querySelectorAll('#job-config-settings input, #job-config-settings select, #job-configurator-tree input');
 
         if (isLocked) {
-            if (settingsDiv) settingsDiv.classList.add('pointer-events-none');
-            if (treeDiv) treeDiv.classList.add('pointer-events-none');
+            if (lockInputs) {
+                if (settingsDiv) settingsDiv.classList.add('pointer-events-none');
+                if (treeDiv) treeDiv.classList.add('pointer-events-none');
+            }
             if (defaultActions) defaultActions.classList.add('d-none');
             if (activeActions) activeActions.classList.remove('d-none');
-            
+
             // Toggle the Save/Load buttons based on the isSaved flag
             if (btnSave) {
                 if (isSaved) btnSave.classList.add('d-none');
@@ -630,8 +651,8 @@
                 else btnExitJob.classList.add('d-none');
             }
 
-            // Physically disable the DOM elements
-            allInputs.forEach(input => input.disabled = true);
+            // Physically disable the DOM elements only when fully locking
+            if (lockInputs) allInputs.forEach(input => input.disabled = true);
         } else {
             // Unlock Visuals
             if (settingsDiv) settingsDiv.classList.remove('pointer-events-none');
@@ -652,6 +673,9 @@
         const jobLabel = document.getElementById('current-job-label-container');
         if (jobLabel) jobLabel.classList.add('d-none');
         
+        // Purge calculate flag so pre-calculate changes don't trigger Recalculate
+        window.hasCalculated = false;
+
         // 🪄 Purge both RAM and LocalStorage tracking
         window.activeJobId = null;
         localStorage.removeItem('activeJobId');
@@ -769,8 +793,18 @@
             return;
         }
 
-        // Lock the UI
-        toggleConfiguratorState(true);
+        // Switch button row without locking inputs (inputs stay interactive until Save Job)
+        const isRecalculate = window.hasCalculated === true;
+        window.hasCalculated = true;
+        toggleConfiguratorState(true, false, false);
+        // Reset action button to Restart (handles the Recalculate→Restart transition too)
+        const _btnA1 = document.getElementById('btn-active-action1');
+        if (_btnA1) {
+            _btnA1.innerText = '↻ Restart';
+            _btnA1.className = 'btn btn-primary flex-grow-1 shadow-sm';
+            _btnA1.onclick = resetConfigurator;
+        }
+
         if (typeof showToast === 'function') showToast("Calculating cutlist...", "info");
 
         // Gather Allowed Stores
@@ -778,23 +812,26 @@
 
         // FEED THE ENGINE
         const results = runPackingEngine(partsToOptimize, allowedStores);
-        
+
         // Render the UI
         document.getElementById('optimizer-empty-state').classList.add('d-none');
         document.getElementById('optimizer-tab-content').classList.remove('d-none');
         appState.latestResults = results;
 
-        const shopCtrl = document.getElementById('shopping-controls');
-        const diagCtrl = document.getElementById('diagram-controls');
-        if (shopCtrl) shopCtrl.classList.remove('d-none');
-        if (diagCtrl) diagCtrl.classList.add('d-none');
+        if (!isRecalculate) {
+            // First calculation: reveal shopping controls and switch to shopping tab
+            const shopCtrl = document.getElementById('shopping-controls');
+            const diagCtrl = document.getElementById('diagram-controls');
+            if (shopCtrl) shopCtrl.classList.remove('d-none');
+            if (diagCtrl) diagCtrl.classList.add('d-none');
 
-        const defaultTabBtn = document.getElementById('tab-shopping');
-        if (defaultTabBtn) {
-            const tabInstance = new bootstrap.Tab(defaultTabBtn);
-            tabInstance.show();
+            const defaultTabBtn = document.getElementById('tab-shopping');
+            if (defaultTabBtn) {
+                const tabInstance = new bootstrap.Tab(defaultTabBtn);
+                tabInstance.show();
+            }
         }
-        
+
         renderShoppingListTab(results);
         if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
         if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
@@ -955,43 +992,48 @@
         let totalCost = 0;
         let totalWeightKg = 0;
         let html = '';
-        const isMetric = appState.settings.displayUnit === 'mm';
+        const activeJob = window.activeJobId ? appState.jobs.find(j => j.id === window.activeJobId) : null;
+        const isMetric = (activeJob?.settings?.displayUnit || appState.settings.displayUnit) === 'mm';
         const weightUnit = isMetric ? 'kg' : 'lbs';
-        const currency = appState.settings.currency || '$';
+        const currency = activeJob?.settings?.currency || appState.settings.currency || '$';
 
         const storeBuckets = {};
         
         results.forEach(res => {
             if (res.error) {
-                // 🪄 If we are in a saved job, keep the broken rows alive in the UI so the user can fix them!
+                // 🪄 If we are in a saved job, keep ONE broken row alive so the user can fix it.
+                // Showing all vendor options causes confusing duplicate rows with different lengths.
+                // Prefer the item the user last edited; otherwise pick the longest board (most useful reference).
                 if (window.activeJobId && res.failedCatalogItems && res.failedCatalogItems.length > 0) {
-                    res.failedCatalogItems.forEach(opt => {
-                        const storeId = opt.storeId;
-                        const storeName = (storeId === 'shop_stock') ? '🏪 My Shop Stock' : (appState.stores.find(s => s.id === storeId)?.name || 'Unknown Store');
-                        if (!storeBuckets[storeName]) storeBuckets[storeName] = [];
-                        
-                        const prof = appState.profiles.find(p => p.id === res.sku.profileId);
-                        const mat = appState.materials.find(m => m.id === res.sku.materialId);
+                    const repOpt = res.failedCatalogItems.find(o => o.id === _editingCatalogId)
+                        || res.failedCatalogItems.find(o => o._userChosen)
+                        || res.failedCatalogItems.reduce((best, o) => (o.length > best.length ? o : best), res.failedCatalogItems[0]);
 
-                        storeBuckets[storeName].push({
-                            catalogId: opt.id,
-                            category: res.sku.category,
-                            length: opt.length,
-                            width: opt.width,
-                            qty: '⚠️',
-                            profName: prof?.name || 'Unknown',
-                            matName: mat?.name || 'Unknown',
-                            cost: 0,
-                            weight: 0,
-                            url: opt.url || opt.link || '',
-                            price: opt.price || 0,
-                            priceUnit: opt.priceUnit || 'piece',
-                            profileThickness: prof?.thickness || 0,
-                            profileWidth: prof?.width || 0,
-                            isError: true,
-                            errorMessage: res.error,
-                            unmappedParts: res.unmappedParts
-                        });
+                    const storeId = repOpt.storeId;
+                    const storeName = (storeId === 'shop_stock') ? '🏪 My Shop Stock' : (appState.stores.find(s => s.id === storeId)?.name || 'Unknown Store');
+                    if (!storeBuckets[storeName]) storeBuckets[storeName] = [];
+
+                    const prof = appState.profiles.find(p => p.id === res.sku.profileId);
+                    const mat = appState.materials.find(m => m.id === res.sku.materialId);
+
+                    storeBuckets[storeName].push({
+                        catalogId: repOpt.id,
+                        category: res.sku.category,
+                        length: repOpt.length,
+                        width: repOpt.width,
+                        qty: '⚠️',
+                        profName: prof?.name || 'Unknown',
+                        matName: mat?.name || 'Unknown',
+                        cost: 0,
+                        weight: 0,
+                        url: repOpt.url || repOpt.link || '',
+                        price: repOpt.price || 0,
+                        priceUnit: repOpt.priceUnit || 'piece',
+                        profileThickness: prof?.thickness || 0,
+                        profileWidth: prof?.width || 0,
+                        isError: true,
+                        errorMessage: res.error,
+                        unmappedParts: res.unmappedParts
                     });
                 }
                 return; // Continue to next result, but we've successfully injected the ghosts!
@@ -1626,6 +1668,17 @@
 
         const catalogItem = job.catalog.find(c => c.id === _editingCatalogId);
         if (!catalogItem) { showToast('Catalog item not found in job.', 'warning'); return; }
+
+        // Pin this as the chosen board for its SKU. Clear any prior choice on same-SKU siblings
+        // so the engine doesn't silently switch to another store's entry that still has the old length.
+        job.catalog.forEach(c => {
+            if (c.profileId === catalogItem.profileId &&
+                c.materialId === catalogItem.materialId &&
+                c.categoryId === catalogItem.categoryId) {
+                delete c._userChosen;
+            }
+        });
+        catalogItem._userChosen = true;
 
         catalogItem.length = lengthMm;
         if (item.category === 'sheet') catalogItem.width = widthMm;
