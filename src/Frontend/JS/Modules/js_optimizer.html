@@ -469,10 +469,11 @@
         function openNewSeg(b, part) {
             const lastSeg  = b.segments[b.segments.length - 1];
             const newStart = lastSeg.partsEnd + margin;
-            if (newStart >= boardLength) return false;                                       // no board left
-            if (part.length > Math.min(transportLmax, boardLength - newStart)) return false; // won't fit
+            if (newStart >= boardLength) return false;              // no board left
+            if (part.length > boardLength - newStart) return false; // truly won't fit on board
             lastSeg.sealed = true;                               // commit — freeze partsEnd before opening next seg
-            const newSeg = { segAbsStart: newStart, partsEnd: newStart, cuts: [], remaining: 0 };
+            const oversized = part.length > transportLmax;
+            const newSeg = { segAbsStart: newStart, partsEnd: newStart, cuts: [], remaining: 0, oversized };
             b.segments.push(newSeg);
             b.transportZones.push({ width: margin });
             newSeg.cuts.push(part);
@@ -499,10 +500,11 @@
                 }
             }
 
-            // Pass 3: open a new board
+            // Pass 3: open a new board (allow parts that exceed transportLmax but fit on the board)
             if (!placed) {
-                if (part.length <= Math.min(transportLmax, boardLength) - trim) {
-                    const firstSeg = { segAbsStart: 0, partsEnd: trim, cuts: [], remaining: 0 };
+                if (part.length <= boardLength - trim) {
+                    const oversized = part.length > transportLmax;
+                    const firstSeg = { segAbsStart: 0, partsEnd: trim, cuts: [], remaining: 0, oversized };
                     const newBoard = { cuts: [], segments: [firstSeg], transportZones: [], remaining: 0 };
                     firstSeg.cuts.push(part);
                     newBoard.cuts.push(part);
@@ -1455,7 +1457,12 @@
                         errorText += `<div class="text-danger ms-5 mt-1 mb-2" style="font-size: 0.75rem; opacity: 0.9;"><strong>Failed to fit:</strong> ${buildPartList(item.unmappedParts)}</div>`;
                     }
                 } else if (isPartial) {
-                    errorText = `<div class="text-danger fw-bold ms-5 mt-1" style="font-size: 0.8rem;">⚠️ Parts too large for this board:</div>
+                    const _tr2 = appState.settings?.optimizer?.transport;
+                    const _btLmax = (_tr2?.enabled && _tr2.boardLmax > 0) ? _tr2.boardLmax : 0;
+                    const _overMsg = (_btLmax > 0 && item.length > _btLmax)
+                        ? 'Parts too large for the max transport length:'
+                        : 'Parts too large for this board:';
+                    errorText = `<div class="text-danger fw-bold ms-5 mt-1" style="font-size: 0.8rem;">⚠️ ${_overMsg}</div>
                                  <div class="text-danger ms-5 mt-1 mb-2" style="font-size: 0.75rem; opacity: 0.9;">${buildPartList(item.oversizedParts)}</div>`;
                 }
 

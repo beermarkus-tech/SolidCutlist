@@ -106,11 +106,71 @@
                 <div class="tab-pane" id="pane-job-settings" role="tabpanel" tabindex="0">
                     <div class="p-3" id="job-config-settings">
                         <!-- Use Shop Stock -->
-                        <div class="form-check form-switch mt-2 pb-3">
+                        <div class="form-check form-switch mt-2 pb-3 border-bottom">
                             <input class="form-check-input" type="checkbox" id="opt-use-stock" onchange="toggleUseStock(this.checked)">
                             <label class="form-check-label fw-bold" for="opt-use-stock" data-i18n="lbl_use_shop_stock">Use Shop Stock</label>
                         </div>
-                        <div class="mb-4 pb-3 border-bottom">
+                        <!-- Transport Settings -->
+                        <div class="pt-3 pb-3 border-bottom">
+                            <div class="form-check form-switch pt-2 pb-1">
+                                <input class="form-check-input" type="checkbox" id="opt-transport-enable" onchange="toggleTransportMode(this.checked)">
+                                <label class="form-check-label fw-bold" for="opt-transport-enable">Max Transport Size</label>
+                            </div>
+                            <div class="form-text mt-0 mb-2 form-text-xs">Reserve a physical offcut zone for store pre-cuts.</div>
+                            <div id="transport-settings-panel" style="display: none;">
+                                <div class="p-3 mb-2 rounded-3 input-panel">
+                                    <div class="mb-2 fw-bold text-secondary small text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Lumber</div>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Max Length</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control form-control-sm" id="setting-transport-board-lmax" onchange="handleSettingsValueChange()">
+                                                <span class="input-group-text display-unit-label">mm</span>
+                                            </div>
+                                            <div class="form-text mt-1 form-text-xs">Max piece length to transport.</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Store Margin</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control form-control-sm" id="setting-transport-board-margin" onchange="handleSettingsValueChange()">
+                                                <span class="input-group-text display-unit-label">mm</span>
+                                            </div>
+                                            <div class="form-text mt-1 form-text-xs">Offcut reserved for the store cut.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-3 mb-2 rounded-3 input-panel">
+                                    <div class="mb-2 fw-bold text-secondary small text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Sheet</div>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Max Width</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control form-control-sm" id="setting-transport-sheet-wmax" onchange="handleSettingsValueChange()">
+                                                <span class="input-group-text display-unit-label">mm</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Max Length</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control form-control-sm" id="setting-transport-sheet-lmax" onchange="handleSettingsValueChange()">
+                                                <span class="input-group-text display-unit-label">mm</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Store Margin</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control form-control-sm" id="setting-transport-sheet-margin" onchange="handleSettingsValueChange()">
+                                                <span class="input-group-text display-unit-label">mm</span>
+                                            </div>
+                                            <div class="form-text mt-1 form-text-xs">Offcut reserved for each store cut.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- First Cut Settings for Sheets -->
+                        <div class="pt-3 pb-3 border-bottom">
+                            <label class="fw-bold pb-2">Sheet Cut Direction</label>
                             <select class="form-select form-select-sm" id="opt-sheet-cut" onchange="updateSheetCutPreference(this.value)">
                                 <option value="auto">Auto (Best Yield)</option>
                                 <option value="rip">Rip Cut First</option>
@@ -119,6 +179,7 @@
                             <div class="form-text mt-1 form-text-xs" data-i18n="txt_sheet_cut_strategy">Determines the primary direction of the first cuts on sheet materials.</div>
                         </div>
                         <!-- Kerf Settings -->
+                        <label class="fw-bold pt-3 pb-2">Kerf, Trim & Scrap Settings</label>
                         <div class="p-3 mb-3 rounded-3 input-panel">
                             <div class="row g-3">
                                 <div class="col-6">
@@ -180,64 +241,6 @@
                                         <span class="input-group-text display-unit-label">mm</span>
                                     </div>
                                     <div class="form-text mt-1 form-text-xs" data-i18n="txt_sheet_scrap_length">Offcuts smaller than this are trash.</div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Transport Settings -->
-                        <div class="mb-3">
-                            <div class="form-check form-switch pt-2 pb-1">
-                                <input class="form-check-input" type="checkbox" id="opt-transport-enable" onchange="toggleTransportMode(this.checked)">
-                                <label class="form-check-label fw-bold" for="opt-transport-enable">Max Transport Size</label>
-                            </div>
-                            <div class="form-text mt-0 mb-2 form-text-xs">Reserve a physical offcut zone for store pre-cuts.</div>
-                            <div id="transport-settings-panel" style="display: none;">
-                                <div class="p-3 mb-2 rounded-3 input-panel">
-                                    <div class="mb-2 fw-bold text-secondary small text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Lumber</div>
-                                    <div class="row g-2">
-                                        <div class="col-6">
-                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Max Length</label>
-                                            <div class="input-group input-group-sm">
-                                                <input type="text" class="form-control form-control-sm" id="setting-transport-board-lmax" onchange="handleSettingsValueChange()">
-                                                <span class="input-group-text display-unit-label">mm</span>
-                                            </div>
-                                            <div class="form-text mt-1 form-text-xs">Max piece length to transport.</div>
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Store Margin</label>
-                                            <div class="input-group input-group-sm">
-                                                <input type="text" class="form-control form-control-sm" id="setting-transport-board-margin" onchange="handleSettingsValueChange()">
-                                                <span class="input-group-text display-unit-label">mm</span>
-                                            </div>
-                                            <div class="form-text mt-1 form-text-xs">Offcut reserved for the store cut.</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="p-3 mb-2 rounded-3 input-panel">
-                                    <div class="mb-2 fw-bold text-secondary small text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Sheet</div>
-                                    <div class="row g-2">
-                                        <div class="col-6">
-                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Max Width</label>
-                                            <div class="input-group input-group-sm">
-                                                <input type="text" class="form-control form-control-sm" id="setting-transport-sheet-wmax" onchange="handleSettingsValueChange()">
-                                                <span class="input-group-text display-unit-label">mm</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Max Length</label>
-                                            <div class="input-group input-group-sm">
-                                                <input type="text" class="form-control form-control-sm" id="setting-transport-sheet-lmax" onchange="handleSettingsValueChange()">
-                                                <span class="input-group-text display-unit-label">mm</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-12">
-                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Store Margin</label>
-                                            <div class="input-group input-group-sm">
-                                                <input type="text" class="form-control form-control-sm" id="setting-transport-sheet-margin" onchange="handleSettingsValueChange()">
-                                                <span class="input-group-text display-unit-label">mm</span>
-                                            </div>
-                                            <div class="form-text mt-1 form-text-xs">Offcut reserved for each store cut.</div>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
