@@ -593,13 +593,30 @@
             };
         }
 
+        // Creates a board whose first (and only) strip is sized to fit the oversized part.
+        // Post-processing will place the transport zone dynamically after the part's actual extent.
+        function makeOversizedBoard(oversizedDim) {
+            const fr = splitAxis === 'width'
+                ? { x: trim, y: trim, w: oversizedDim, l: Math.max(0, sheetLength - trim) }
+                : { x: trim, y: trim, w: Math.max(0, sheetWidth  - trim), l: oversizedDim };
+            return {
+                cuts: [],
+                freeRects: [],
+                strips: [{ freeRects: [fr], cuts: [], oversized: true }],
+                transportZones: [],
+                splitAxis,
+                transportWarning,
+                hasOversized: true
+            };
+        }
+
         let boards   = [];
         let unmapped = [];
 
         parts.forEach(part => {
             let placed = false;
 
-            // Try existing boards
+            // Pass 1: try existing boards (normal strips first, then oversized strips)
             for (let b of boards) {
                 for (let strip of b.strips) {
                     strip.freeRects.sort((r1, r2) => (r1.w * r1.l) - (r2.w * r2.l));
@@ -607,6 +624,7 @@
                         let fit = checkFit(part, strip.freeRects[i], sheetGrain);
                         if (fit.fits) {
                             place2DPart({ cuts: strip.cuts, freeRects: strip.freeRects }, i, part, fit.rotated, kerf, pref);
+                            if (strip.oversized) strip.cuts[strip.cuts.length - 1].oversized = true;
                             placed = true;
                             break;
                         }
@@ -617,7 +635,7 @@
             }
 
             if (!placed) {
-                // Open a new board; find the first strip that fits
+                // Pass 2: open a new normal board; find the first strip that fits
                 const newBoard = makeNewBoard();
                 for (let strip of newBoard.strips) {
                     strip.freeRects.sort((r1, r2) => (r1.w * r1.l) - (r2.w * r2.l));
@@ -632,6 +650,23 @@
                     }
                     if (placed) break;
                 }
+
+                // Pass 3: part exceeds segMax but fits on the full sheet → oversized board
+                if (!placed) {
+                    const partSplitDim = splitAxis === 'width' ? part.width : part.length;
+                    if (partSplitDim > segMax && partSplitDim <= totalDim) {
+                        const ozBoard = makeOversizedBoard(partSplitDim);
+                        const ozStrip = ozBoard.strips[0];
+                        const fit = checkFit(part, ozStrip.freeRects[0], sheetGrain);
+                        if (fit.fits) {
+                            place2DPart({ cuts: ozStrip.cuts, freeRects: ozStrip.freeRects }, 0, part, fit.rotated, kerf, pref);
+                            ozStrip.cuts[ozStrip.cuts.length - 1].oversized = true;
+                            boards.push(ozBoard);
+                            placed = true;
+                        }
+                    }
+                }
+
                 if (!placed) unmapped.push(part);
             }
         });
@@ -886,8 +921,19 @@
     function updateSheetCutPreference(val) {
         if (!appState.settings.optimizer) appState.settings.optimizer = {};
         appState.settings.optimizer.sheetCutPreference = val;
-        saveState();
-        notifyConfigChanged();
+        // When a saved job is active, sync into job.settings and mark dirty instead of auto-saving
+        const _activeJob = window.activeJobId && appState.jobs
+            ? appState.jobs.find(j => j.id === window.activeJobId)
+            : null;
+        if (_activeJob) {
+            if (!_activeJob.settings) _activeJob.settings = {};
+            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
+            _activeJob.settings.optimizer.sheetCutPreference = val;
+            if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
+        } else {
+            saveState();
+            notifyConfigChanged();
+        }
     }
     // --- DIRTY-STATE SIGNAL (pre-save) ---
     function notifyConfigChanged() {
@@ -904,10 +950,22 @@
         if (!appState.settings.optimizer) appState.settings.optimizer = {};
         if (!appState.settings.optimizer.transport) appState.settings.optimizer.transport = {};
         appState.settings.optimizer.transport.enabled = isChecked;
-        saveState();
         const transportPanel = document.getElementById('transport-settings-panel');
         if (transportPanel) transportPanel.style.display = isChecked ? '' : 'none';
-        if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
+        // When a saved job is active, sync into job.settings and mark dirty instead of auto-saving
+        const _activeJob = window.activeJobId && appState.jobs
+            ? appState.jobs.find(j => j.id === window.activeJobId)
+            : null;
+        if (_activeJob) {
+            if (!_activeJob.settings) _activeJob.settings = {};
+            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
+            if (!_activeJob.settings.optimizer.transport) _activeJob.settings.optimizer.transport = {};
+            _activeJob.settings.optimizer.transport.enabled = isChecked;
+            if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
+        } else {
+            saveState();
+            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
+        }
     }
     // --- UI LOCK STATES ---
     function toggleConfiguratorState(isLocked, isSaved = false, lockInputs = true) {
@@ -920,14 +978,21 @@
         const btnSave = document.getElementById('btn-active-save');
         const btnLoad = document.getElementById('btn-active-load');
 
-        // Target inputs
-        const allInputs = document.querySelectorAll('#job-config-settings input, #job-config-settings select, #job-configurator-tree input');
+        // Target inputs — settings pane stays editable on saved jobs; only tree + use-stock are locked
+        const treeInputs = document.querySelectorAll('#job-configurator-tree input');
+        const settingsInputs = document.querySelectorAll('#job-config-settings input, #job-config-settings select');
+        const useStockInput = document.getElementById('opt-use-stock');
 
         if (isLocked) {
             if (lockInputs) {
-                if (settingsDiv) settingsDiv.classList.add('pointer-events-none');
+                // Lock the part tree — never lock the settings pane
                 if (treeDiv) treeDiv.classList.add('pointer-events-none');
+                treeInputs.forEach(input => input.disabled = true);
+                // Use Shop Stock must stay locked on saved jobs (avoids catalog coupling)
+                if (useStockInput) useStockInput.disabled = true;
             }
+            // Ensure settings pane is always interactive
+            if (settingsDiv) settingsDiv.classList.remove('pointer-events-none');
             if (defaultActions) defaultActions.classList.add('d-none');
             if (activeActions) activeActions.classList.remove('d-none');
 
@@ -940,27 +1005,16 @@
                 if (isSaved) btnLoad.classList.remove('d-none');
                 else btnLoad.classList.add('d-none');
             }
-            // 🪄 Show Exit Button if a Job is active
-            const btnExitJob = document.getElementById('btn-global-exit-job');
-            if (btnExitJob) {
-                if (isSaved) btnExitJob.classList.remove('d-none');
-                else btnExitJob.classList.add('d-none');
-            }
-
-            // Physically disable the DOM elements only when fully locking
-            if (lockInputs) allInputs.forEach(input => input.disabled = true);
         } else {
             // Unlock Visuals
             if (settingsDiv) settingsDiv.classList.remove('pointer-events-none');
             if (treeDiv) treeDiv.classList.remove('pointer-events-none');
             if (defaultActions) defaultActions.classList.remove('d-none');
             if (activeActions) activeActions.classList.add('d-none');
-            
-            const btnExitJob = document.getElementById('btn-global-exit-job');
-            if (btnExitJob) btnExitJob.classList.add('d-none'); // 🪄 Hide Exit Button on unlock
-            
-            // Restore functionality
-            allInputs.forEach(input => input.disabled = false);
+
+            // Restore functionality for all inputs
+            treeInputs.forEach(input => input.disabled = false);
+            settingsInputs.forEach(input => input.disabled = false);
         }
     }
     function resetConfigurator() {
@@ -1503,8 +1557,23 @@
         let totalRawVolume = 0;
         let totalPartVolume = 0;
         let totalOffcutVolume = 0;
-        let totalWasteVolume = 0; 
-        const usableOffcuts = []; 
+        let totalWasteVolume = 0;
+        const usableOffcuts = [];
+
+        // --- Operational KPI accumulators ---
+        let boardCount = 0;
+        let boardCutsTotal = 0;
+        let boardCutLengthMm = 0;   // blade travel: cuts × profile width
+        let boardUniqueLengths = new Set();
+        let boardTransportCuts = 0;
+        let boardWidthKnown = false; // true if at least one board has a profile width
+
+        let sheetCount = 0;
+        let sheetCutsTotal = 0;
+        let sheetCutLengthMm = 0;   // blade travel: rip + cross cut travel
+        let sheetTransportCuts = 0;
+        let hasBoardData = false;
+        let hasSheetData = false;
 
         results.forEach(res => {
             if (res.error) return;
@@ -1601,6 +1670,42 @@
                 
                 totalOffcutVolume += boardOffcutVol;
                 totalWasteVolume += (boardVol - boardPartsVol - boardOffcutVol);
+
+                // --- Operational KPI computation ---
+                if (isSheet) {
+                    hasSheetData = true;
+                    sheetCount++;
+                    // Active strips = strips that have at least one placed part
+                    const _activeStrips = (board.strips || []).filter(s => s.cuts && s.cuts.length > 0);
+                    const _nActive = _activeStrips.length;
+                    const _ripCuts   = Math.max(0, _nActive - 1);
+                    const _crossCuts = board.cuts.length; // one cross-cut per part placed
+                    sheetCutsTotal += _ripCuts + _crossCuts;
+                    // Blade travel: rip cuts run along the longer sheet dimension,
+                    // cross cuts run across the average strip width (perp ÷ strips)
+                    const _longDim  = Math.max(sheetL, sheetW);
+                    const _shortDim = Math.min(sheetL, sheetW);
+                    const _avgStrip = _nActive > 0 ? _shortDim / _nActive : _shortDim;
+                    sheetCutLengthMm += _ripCuts * _longDim + _crossCuts * _avgStrip;
+                    // Transport pre-cuts
+                    sheetTransportCuts += (board.transportZones || []).length;
+                } else {
+                    hasBoardData = true;
+                    boardCount++;
+                    const _trimCut  = (appState.settings.factoryEdgeTrim || 0) > 0 ? 1 : 0;
+                    const _partCuts = board.cuts.length;
+                    const _tCuts    = board.segments ? Math.max(0, board.segments.length - 1) : 0;
+                    const _total    = _trimCut + _partCuts + _tCuts;
+                    boardCutsTotal      += _total;
+                    boardTransportCuts  += _tCuts;
+                    // Blade travel: each cross-cut travels across the board profile width
+                    if (sheetW > 0) {
+                        boardWidthKnown = true;
+                        boardCutLengthMm += _total * sheetW;
+                    }
+                    // Unique part lengths → distinct stop-block positions on miter saw
+                    board.cuts.forEach(cut => { if (cut.length) boardUniqueLengths.add(Math.round(cut.length)); });
+                }
             });
         });
 
@@ -1623,6 +1728,42 @@
             pctOffcut = (totalOffcutVolume / totalRawVolume) * 100;
             pctWaste = (totalWasteVolume / totalRawVolume) * 100;
         }
+
+        // --- Operational KPI formatting ---
+        const _unitDiv = isMetric ? 1000 : 304.8; // mm → m or mm → ft
+        const _unitLbl = isMetric ? 'm' : 'ft';
+        const _fmtLen  = mm => (mm / _unitDiv).toFixed(isMetric ? 1 : 2) + '\u202f' + _unitLbl;
+        const _kpiCard = (label, value, sub, accent) => `
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm h-100 border-0" style="border-left:4px solid ${accent} !important;">
+                    <div class="card-body text-center py-2 px-2">
+                        <div class="text-muted fw-bold text-uppercase mb-1" style="font-size:0.65rem;letter-spacing:0.04em;">${label}</div>
+                        <div class="fw-bold" style="font-size:1.4rem;line-height:1.2;">${value}</div>
+                        ${sub ? `<div class="text-muted mt-1" style="font-size:0.7rem;">${sub}</div>` : ''}
+                    </div>
+                </div>
+            </div>`;
+        const _sectionHeader = (icon, title) =>
+            `<h6 class="fw-bold text-uppercase text-muted mt-4 mb-2" style="font-size:0.72rem;letter-spacing:0.06em;">${icon} ${title}</h6>`;
+
+        const boardKpis = !hasBoardData ? '' : `
+            ${_sectionHeader('🪵', 'Lumber')}
+            <div class="row g-2">
+                ${_kpiCard('Boards Purchased', boardCount, '', '#6c757d')}
+                ${_kpiCard('Total Cuts', boardCutsTotal, 'cross-cuts', '#6c757d')}
+                ${_kpiCard('Blade Travel', boardWidthKnown ? _fmtLen(boardCutLengthMm) : '—', 'face\u00a0width\u00a0×\u00a0cuts', '#6c757d')}
+                ${_kpiCard('Unique Lengths', boardUniqueLengths.size, 'stop-block positions', '#6c757d')}
+                ${boardTransportCuts > 0 ? _kpiCard('Store Pre-cuts', boardTransportCuts, 'transport cuts', '#fd7e14') : ''}
+            </div>`;
+
+        const sheetKpis = !hasSheetData ? '' : `
+            ${_sectionHeader('📐', 'Sheets')}
+            <div class="row g-2">
+                ${_kpiCard('Sheets Purchased', sheetCount, '', '#6c757d')}
+                ${_kpiCard('Total Cuts', sheetCutsTotal, 'rip\u00a0+\u00a0cross-cuts', '#6c757d')}
+                ${_kpiCard('Blade Travel', _fmtLen(sheetCutLengthMm), 'rip\u00a0+\u00a0cross\u00a0travel', '#6c757d')}
+                ${sheetTransportCuts > 0 ? _kpiCard('Store Pre-cuts', sheetTransportCuts, 'transport cuts', '#fd7e14') : ''}
+            </div>`;
 
         let html = `
             <div class="row mt-3 g-3">
@@ -1651,12 +1792,9 @@
                     </div>
                 </div>
             </div>
-            <div class="progress mt-4 mb-4 shadow-sm" style="height: 25px;">
-                <div class="progress-bar bg-success fw-bold" role="progressbar" style="width: ${pctYield}%" title="Yield: ${pctYield.toFixed(1)}%">Yield</div>
-                <div class="progress-bar bg-primary fw-bold" role="progressbar" style="width: ${pctOffcut}%" title="Offcut: ${pctOffcut.toFixed(1)}%">Offcut</div>
-                <div class="progress-bar bg-danger fw-bold" role="progressbar" style="width: ${pctWaste}%" title="Waste: ${pctWaste.toFixed(1)}%">Waste</div>
-            </div>
-            <div class="card mt-4">
+            ${boardKpis}
+            ${sheetKpis}
+            <div class="card mt-4 d-none d-md-block">
                 <div class="card-header py-2">
                     <h6 class="card-title mb-0 fw-bold">📦 Usable Offcuts Generated</h6>
                 </div>

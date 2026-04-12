@@ -75,10 +75,31 @@
         appState.settings.optimizer.transport.sheetWmax = parseToBaseUnit(document.getElementById('setting-transport-sheet-wmax').value) || 0;
         appState.settings.optimizer.transport.sheetMargin = parseToBaseUnit(document.getElementById('setting-transport-sheet-margin').value) || 10;
 
-        saveState();
-        renderSettings();
-        showToast(t('msg_settings_saved'));
-        if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
+        // When a saved job is active, sync the changed settings into job.settings so
+        // executeRecalculate uses the new values. Don't auto-save — user must click Save Changes.
+        const _activeJob = window.activeJobId && appState.jobs
+            ? appState.jobs.find(j => j.id === window.activeJobId)
+            : null;
+        if (_activeJob) {
+            if (!_activeJob.settings) _activeJob.settings = {};
+            _activeJob.settings.bladeKerf          = appState.settings.bladeKerf;
+            _activeJob.settings.sheetBladeKerf      = appState.settings.sheetBladeKerf;
+            _activeJob.settings.cutoffThreshold     = appState.settings.cutoffThreshold;
+            _activeJob.settings.sheetScrapMinWidth  = appState.settings.sheetScrapMinWidth;
+            _activeJob.settings.sheetScrapMinLength = appState.settings.sheetScrapMinLength;
+            _activeJob.settings.factoryEdgeTrim     = appState.settings.factoryEdgeTrim;
+            _activeJob.settings.sheetFactoryTrim    = appState.settings.sheetFactoryTrim;
+            if (appState.settings.optimizer) {
+                if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
+                _activeJob.settings.optimizer.transport = Object.assign({}, appState.settings.optimizer.transport);
+            }
+            if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
+        } else {
+            saveState();
+            renderSettings();
+            showToast(t('msg_settings_saved'));
+            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
+        }
     }
     function updateUnitLabels() {
         const isMetric = appState.settings.displayUnit === 'mm';

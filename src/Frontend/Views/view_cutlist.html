@@ -55,9 +55,38 @@
         overflow: hidden;
     }
 
-    /* Results tab-panes scroll their rendered content */
+    /* Make the results tab-content a flex column so the active pane can use flex sizing */
+    .cutlist-results .view-content .tab-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Results tab-pane: fill available height via flex (not height:100%) and scroll */
     .cutlist-results .tab-pane.active.show {
-        overflow-y: auto;
+        flex: 1 1 0 !important;
+        min-height: 0 !important;
+        height: auto !important;
+        overflow-y: auto !important;
+        overflow-x: hidden;
+    }
+
+    /* Mobile: leave room for the sticky action bar at the bottom */
+    @media (max-width: 767.98px) {
+        .cutlist-results .tab-pane.active.show,
+        #optimizer-empty-state {
+            /* Extra clearance for the sticky action bar, accounting for device safe-area insets */
+            padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+        }
+        /* Cuts detail table: auto layout so hidden columns don't leave dead space */
+        .cuts-detail-table { table-layout: auto !important; }
+        /* Never show toolbar actions on mobile */
+        .view-toolbar-actions {
+            display: none !important;
+        }
+        /* Toasts overlap the sticky bar — suppress on mobile */
+        #toast-container {
+            display: none !important;
+        }
     }
 
     /* Trap hardware-accelerated canvases below z-index layers */
@@ -308,9 +337,7 @@
                 </button>
             </div>
             <div class="view-toolbar-actions">
-                <button id="btn-global-exit-job" class="btn btn-sm toolbar-btn text-danger d-none"
-                    onclick="resetConfigurator(); openLoadJobModal();" title="Exit Sandbox">🚪</button>
-                <div id="shopping-controls" class="d-none">
+<div id="shopping-controls" class="d-none">
                     <button class="btn btn-sm toolbar-btn" onclick="printOptimizer('shopping')" data-i18n="btn_print_shopping_list">🖨️</button>
                 </div>
                 <div id="analytics-controls" class="d-none">
@@ -322,6 +349,7 @@
                 <div id="diagram-controls" class="d-none">
                     <button class="btn btn-sm toolbar-btn" onclick="printOptimizer('diagrams')">🖨️</button>
                     <button class="btn btn-sm toolbar-btn" onclick="openLabelModal()">🏷️</button>
+                    <button id="btn-toggle-all-cuts" class="btn btn-sm toolbar-btn" onclick="toggleAllCutsTables()" title="Hide all cut lists">⊟</button>
                     <button id="btn-toggle-diagrams-view" class="btn btn-sm toolbar-btn" onclick="toggleDiagramsExpandCollapse()" title="Toggle Expand/Collapse">
                         <span id="diagram-toggle-icon">🗜️</span>
                     </button>
@@ -336,10 +364,7 @@
             <div id="optimizer-empty-state" class="text-center text-muted mt-5">
                 <h1>🧮</h1>
                 <p class="mt-2 d-none d-md-block" data-i18n="txt_optimizer_empty_state">Select your configuration on the left and click Calculate<br>to generate your optimized shopping list and cut diagrams.</p>
-                <div class="d-md-none mt-4">
-                    <p class="mb-3 text-dark fw-bold">Mobile Sandbox Mode</p>
-                    <button class="btn btn-primary btn-lg rounded-pill shadow-sm fw-bold px-4" onclick="openLoadJobModal()">📂 Load Saved Job</button>
-                </div>
+                <p class="d-md-none mt-3 text-muted" style="font-size:0.9rem;">Tap <strong>Load Job</strong> below to open a saved job.</p>
             </div>
 
             <!-- Results tab content -->
@@ -354,6 +379,200 @@
 
     </div>
 
+</div>
+
+<!-- ===== MOBILE STICKY ACTION BAR (hidden on desktop) ===== -->
+<div id="mobile-action-bar" class="d-md-none"
+     style="position:fixed;bottom:0;left:0;right:0;z-index:1040;
+            background:var(--bs-body-bg);border-top:2px solid var(--bs-border-color);
+            padding:10px 12px;
+            padding-bottom:calc(10px + env(safe-area-inset-bottom, 0px));">
+
+    <!-- State A: no job active -->
+    <div id="mobile-bar-load" style="display:flex;gap:8px;">
+        <button class="btn btn-primary flex-grow-1 shadow-sm fw-bold"
+                style="height:48px;font-size:1rem;"
+                onclick="openLoadJobModal()">
+            📂 Load Job
+        </button>
+        <button id="mob-settings-btn-load" class="btn btn-outline-secondary shadow-sm d-none"
+                style="height:48px;min-width:48px;font-size:1.2rem;"
+                data-bs-toggle="offcanvas" data-bs-target="#mobileSettingsOffcanvas"
+                onclick="openMobileSettings()">⚙️</button>
+    </div>
+
+    <!-- State B: settings changed, recalculate needed -->
+    <div id="mobile-bar-recalculate" style="display:none;gap:8px;">
+        <button class="btn btn-info flex-grow-1 shadow-sm fw-bold"
+                style="height:48px;"
+                onclick="executeRecalculate()">
+            ↻ Recalculate
+        </button>
+        <button class="btn btn-outline-secondary shadow-sm"
+                style="height:48px;min-width:48px;font-size:1.2rem;"
+                data-bs-toggle="offcanvas" data-bs-target="#mobileSettingsOffcanvas"
+                onclick="openMobileSettings()">⚙️</button>
+    </div>
+
+    <!-- State C: recalculated, save pending -->
+    <div id="mobile-bar-actions" style="display:none;gap:8px;">
+        <button class="btn btn-danger flex-grow-1 shadow-sm"
+                style="height:48px;"
+                onclick="mobilePressUndo()">
+            ↩ Undo Changes
+        </button>
+        <button class="btn btn-success flex-grow-1 fw-bold shadow-sm"
+                style="height:48px;"
+                onclick="mobilePresseSave()">
+            💾 Save Changes
+        </button>
+        <button class="btn btn-outline-secondary shadow-sm"
+                style="height:48px;min-width:48px;font-size:1.2rem;"
+                data-bs-toggle="offcanvas" data-bs-target="#mobileSettingsOffcanvas"
+                onclick="openMobileSettings()">⚙️</button>
+    </div>
+
+</div>
+
+<!-- ===== MOBILE SETTINGS OFFCANVAS (hidden on desktop) ===== -->
+<div class="offcanvas offcanvas-bottom d-md-none" tabindex="-1" id="mobileSettingsOffcanvas"
+     style="height:90vh;border-radius:16px 16px 0 0;">
+    <div class="offcanvas-header border-bottom">
+        <h6 class="offcanvas-title fw-bold mb-0">⚙️ Settings</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body p-3" style="overflow-y:auto;">
+
+        <!-- Transport -->
+        <div class="pb-3 border-bottom">
+            <div class="form-check form-switch pt-1 pb-1">
+                <input class="form-check-input" type="checkbox" id="mob-transport-enable" onchange="handleMobileSettingsValueChange()">
+                <label class="form-check-label fw-bold" for="mob-transport-enable">Max Transport Size</label>
+            </div>
+            <div class="form-text mt-0 mb-2 form-text-xs">Reserve a physical offcut zone for store pre-cuts.</div>
+            <div id="mob-transport-settings-panel" style="display:none;">
+                <div class="p-3 mb-2 rounded-3 input-panel">
+                    <div class="mb-2 fw-bold text-secondary small text-uppercase" style="font-size:0.7rem;letter-spacing:0.05em;">Lumber</div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Max Length</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control form-control-sm" id="mob-transport-board-lmax" onchange="handleMobileSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Store Margin</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control form-control-sm" id="mob-transport-board-margin" onchange="handleMobileSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3 mb-2 rounded-3 input-panel">
+                    <div class="mb-2 fw-bold text-secondary small text-uppercase" style="font-size:0.7rem;letter-spacing:0.05em;">Sheet</div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Max Width</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control form-control-sm" id="mob-transport-sheet-wmax" onchange="handleMobileSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Max Length</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control form-control-sm" id="mob-transport-sheet-lmax" onchange="handleMobileSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Store Margin</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control form-control-sm" id="mob-transport-sheet-margin" onchange="handleMobileSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sheet Cut Direction -->
+        <div class="pt-3 pb-3 border-bottom">
+            <label class="fw-bold pb-2 d-block">Sheet Cut Direction</label>
+            <select class="form-select form-select-sm" id="mob-sheet-cut" onchange="handleMobileSettingsValueChange()">
+                <option value="auto">Auto (Best Yield)</option>
+                <option value="rip">Rip Cut First</option>
+                <option value="cross">Cross Cut First</option>
+            </select>
+        </div>
+
+        <!-- Kerf -->
+        <label class="fw-bold pt-3 pb-2 d-block">Kerf, Trim &amp; Scrap Settings</label>
+        <div class="p-3 mb-3 rounded-3 input-panel">
+            <div class="row g-3">
+                <div class="col-6">
+                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Lumber Kerf</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control form-control-sm" id="mob-kerf" onchange="handleMobileSettingsValueChange()">
+                        <span class="input-group-text display-unit-label">mm</span>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Sheet Kerf</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control form-control-sm" id="mob-sheet-kerf" onchange="handleMobileSettingsValueChange()">
+                        <span class="input-group-text display-unit-label">mm</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trim -->
+        <div class="p-3 mb-3 rounded-3 input-panel">
+            <div class="row g-3">
+                <div class="col-6">
+                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Lumber Trim</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control form-control-sm" id="mob-factory-trim" onchange="handleMobileSettingsValueChange()">
+                        <span class="input-group-text display-unit-label">mm</span>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Sheet Trim</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control form-control-sm" id="mob-sheet-trim" onchange="handleMobileSettingsValueChange()">
+                        <span class="input-group-text display-unit-label">mm</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scrap -->
+        <div class="p-3 mb-3 rounded-3 input-panel">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Lumber Scrap (Min Length)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control form-control-sm" id="mob-cutoff" onchange="handleMobileSettingsValueChange()">
+                        <span class="input-group-text display-unit-label">mm</span>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Sheet Scrap (Min Size)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control form-control-sm text-end" id="mob-sheet-scrap-width" onchange="handleMobileSettingsValueChange()">
+                        <span class="input-group-text px-1 border-start-0 border-end-0">x</span>
+                        <input type="text" class="form-control form-control-sm" id="mob-sheet-scrap-length" onchange="handleMobileSettingsValueChange()">
+                        <span class="input-group-text display-unit-label">mm</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </div>
 
 <!-- Save Job Modal -->

@@ -178,9 +178,30 @@
             
             const stockInput = document.getElementById('opt-use-stock');
             if (stockInput) {
-                stockInput.checked = (job.settings.optimizer && job.settings.optimizer.useStock !== undefined) 
-                    ? job.settings.optimizer.useStock 
+                stockInput.checked = (job.settings.optimizer && job.settings.optimizer.useStock !== undefined)
+                    ? job.settings.optimizer.useStock
                     : true;
+            }
+
+            // Transport settings
+            const transport = job.settings.optimizer && job.settings.optimizer.transport;
+            const transportToggle = document.getElementById('opt-transport-enable');
+            const transportPanel = document.getElementById('transport-settings-panel');
+            const transportEnabled = transport && transport.enabled;
+            if (transportToggle) transportToggle.checked = !!transportEnabled;
+            if (transportPanel) transportPanel.style.display = transportEnabled ? '' : 'none';
+            if (transport) {
+                setVal('setting-transport-board-lmax',  transport.boardLmax,   0);
+                setVal('setting-transport-board-margin', transport.boardMargin, 20);
+                setVal('setting-transport-sheet-wmax',  transport.sheetWmax,   0);
+                setVal('setting-transport-sheet-lmax',  transport.sheetLmax,   0);
+                setVal('setting-transport-sheet-margin', transport.sheetMargin, 10);
+            }
+
+            // Sheet cut preference
+            const sheetCutEl = document.getElementById('opt-sheet-cut');
+            if (sheetCutEl && job.settings.optimizer && job.settings.optimizer.sheetCutPreference) {
+                sheetCutEl.value = job.settings.optimizer.sheetCutPreference;
             }
         }
 
@@ -393,6 +414,137 @@
     // ==========================================
     // PHASE 4: SMART RE-OPTIMIZATION
     // ==========================================
+    // ==========================================
+    // MOBILE ACTION BAR
+    // ==========================================
+    // 'load'        — no active job: Load button only
+    // 'clean'       — job active, no changes: Load button + gear
+    // 'recalculate' — job active, settings changed: Recalculate + gear
+    // 'dirty'       — job active, recalculated: Undo + Save + gear
+    function setMobileBarState(state) {
+        const barLoad   = document.getElementById('mobile-bar-load');
+        const barRecalc = document.getElementById('mobile-bar-recalculate');
+        const barActions= document.getElementById('mobile-bar-actions');
+        const gearLoad  = document.getElementById('mob-settings-btn-load');
+        if (!barLoad) return;
+        barLoad.style.display    = 'none';
+        if (barRecalc)  barRecalc.style.display  = 'none';
+        if (barActions) barActions.style.display = 'none';
+        if (state === 'load') {
+            barLoad.style.display = 'flex';
+            if (gearLoad) gearLoad.classList.add('d-none');
+        } else if (state === 'clean') {
+            barLoad.style.display = 'flex';
+            if (gearLoad) gearLoad.classList.remove('d-none');
+        } else if (state === 'recalculate') {
+            if (barRecalc) barRecalc.style.display = 'flex';
+        } else if (state === 'dirty') {
+            if (barActions) barActions.style.display = 'flex';
+        }
+    }
+    // Kept for any call sites not yet migrated
+    function setMobileDirty(dirty) {
+        setMobileBarState(dirty ? 'dirty' : (window.activeJobId ? 'clean' : 'load'));
+    }
+
+    function openMobileSettings() {
+        const activeJob = window.activeJobId && appState.jobs
+            ? appState.jobs.find(j => j.id === window.activeJobId)
+            : null;
+        if (!activeJob || !activeJob.settings) return;
+        const s = activeJob.settings;
+        const tr = s.optimizer && s.optimizer.transport;
+        const setMobVal = (id, val, fallback) => {
+            const el = document.getElementById(id);
+            if (el) el.value = formatForDisplay(val !== undefined ? val : fallback);
+        };
+        // Transport toggle + panel
+        const trToggle = document.getElementById('mob-transport-enable');
+        const trPanel  = document.getElementById('mob-transport-settings-panel');
+        const trEnabled = tr && tr.enabled;
+        if (trToggle) trToggle.checked = !!trEnabled;
+        if (trPanel)  trPanel.style.display = trEnabled ? '' : 'none';
+        if (tr) {
+            setMobVal('mob-transport-board-lmax',   tr.boardLmax,   0);
+            setMobVal('mob-transport-board-margin', tr.boardMargin, 20);
+            setMobVal('mob-transport-sheet-wmax',   tr.sheetWmax,   0);
+            setMobVal('mob-transport-sheet-lmax',   tr.sheetLmax,   0);
+            setMobVal('mob-transport-sheet-margin', tr.sheetMargin, 10);
+        }
+        // Sheet cut preference
+        const sheetCutEl = document.getElementById('mob-sheet-cut');
+        if (sheetCutEl) sheetCutEl.value = (s.optimizer && s.optimizer.sheetCutPreference) || 'auto';
+        // Kerf
+        setMobVal('mob-kerf',         s.bladeKerf,        3.175);
+        setMobVal('mob-sheet-kerf',   s.sheetBladeKerf,   3.175);
+        // Trim
+        setMobVal('mob-factory-trim', s.factoryEdgeTrim,  6.35);
+        setMobVal('mob-sheet-trim',   s.sheetFactoryTrim, 6.35);
+        // Scrap
+        setMobVal('mob-cutoff',              s.cutoffThreshold,    200.0);
+        setMobVal('mob-sheet-scrap-width',   s.sheetScrapMinWidth,  50.0);
+        setMobVal('mob-sheet-scrap-length',  s.sheetScrapMinLength, 400.0);
+    }
+
+    function handleMobileSettingsValueChange() {
+        const activeJob = window.activeJobId && appState.jobs
+            ? appState.jobs.find(j => j.id === window.activeJobId)
+            : null;
+        if (!activeJob) return;
+        // Show/hide mob transport panel
+        const trToggle = document.getElementById('mob-transport-enable');
+        const trPanel  = document.getElementById('mob-transport-settings-panel');
+        if (trToggle && trPanel) trPanel.style.display = trToggle.checked ? '' : 'none';
+        // Read helpers
+        const getVal = id => { const el = document.getElementById(id); return el ? parseToBaseUnit(el.value) : 0; };
+        const getChk = id => { const el = document.getElementById(id); return el ? el.checked : false; };
+        const getSel = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+        // Write to appState.settings
+        appState.settings.bladeKerf           = getVal('mob-kerf');
+        appState.settings.sheetBladeKerf      = getVal('mob-sheet-kerf');
+        appState.settings.cutoffThreshold     = getVal('mob-cutoff');
+        appState.settings.sheetScrapMinWidth  = getVal('mob-sheet-scrap-width');
+        appState.settings.sheetScrapMinLength = getVal('mob-sheet-scrap-length');
+        appState.settings.factoryEdgeTrim     = getVal('mob-factory-trim');
+        appState.settings.sheetFactoryTrim    = getVal('mob-sheet-trim');
+        if (!appState.settings.optimizer) appState.settings.optimizer = {};
+        if (!appState.settings.optimizer.transport) appState.settings.optimizer.transport = {};
+        appState.settings.optimizer.transport.enabled     = getChk('mob-transport-enable');
+        appState.settings.optimizer.transport.boardLmax   = getVal('mob-transport-board-lmax');
+        appState.settings.optimizer.transport.boardMargin = getVal('mob-transport-board-margin');
+        appState.settings.optimizer.transport.sheetLmax   = getVal('mob-transport-sheet-lmax');
+        appState.settings.optimizer.transport.sheetWmax   = getVal('mob-transport-sheet-wmax');
+        appState.settings.optimizer.transport.sheetMargin = getVal('mob-transport-sheet-margin');
+        appState.settings.optimizer.sheetCutPreference    = getSel('mob-sheet-cut');
+        // Sync to job.settings so executeRecalculate picks up the changes
+        if (!activeJob.settings) activeJob.settings = {};
+        activeJob.settings.bladeKerf           = appState.settings.bladeKerf;
+        activeJob.settings.sheetBladeKerf      = appState.settings.sheetBladeKerf;
+        activeJob.settings.cutoffThreshold     = appState.settings.cutoffThreshold;
+        activeJob.settings.sheetScrapMinWidth  = appState.settings.sheetScrapMinWidth;
+        activeJob.settings.sheetScrapMinLength = appState.settings.sheetScrapMinLength;
+        activeJob.settings.factoryEdgeTrim     = appState.settings.factoryEdgeTrim;
+        activeJob.settings.sheetFactoryTrim    = appState.settings.sheetFactoryTrim;
+        if (!activeJob.settings.optimizer) activeJob.settings.optimizer = {};
+        activeJob.settings.optimizer.transport = Object.assign({}, appState.settings.optimizer.transport);
+        activeJob.settings.optimizer.sheetCutPreference = appState.settings.optimizer.sheetCutPreference;
+        // Mark dirty — requires manual Recalculate
+        if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
+    }
+
+    function mobilePressUndo() {
+        executeUndoChanges();
+    }
+
+    function mobilePresseSave() {
+        requestConfirm(
+            'This will overwrite the saved job with your changes. You cannot undo this.',
+            executeSaveChanges,
+            'warning',
+            'Save Changes'
+        );
+    }
+
     function setUnsavedChangesState(state) {
         // 🪄 FIX: Targeting exactly by ID so it never fails!
         const btnAction1 = document.getElementById('btn-active-action1');
@@ -405,41 +557,47 @@
             btnAction1.innerText = '↻ Restart';
             btnAction1.className = 'btn btn-primary flex-grow-1';
             btnAction1.onclick = resetConfigurator;
-            
+
             // Explicitly repair the Save button back to defaults before hiding
             btnSave.innerText = 'Save Job';
             btnSave.className = 'btn btn-success flex-grow-1 fw-bold';
             btnSave.onclick = openSaveJobModal;
             btnSave.classList.add('d-none'); // Hide Save
-            
+
             btnLoad.innerText = 'Load Job';
             btnLoad.className = 'btn btn-outline-secondary flex-grow-1';
             btnLoad.onclick = openLoadJobModal;
             btnLoad.classList.remove('d-none'); // Show Load
-        } 
+
+            setMobileBarState(window.activeJobId ? 'clean' : 'load');
+        }
         else if (state === 'dirty_input') {
             btnAction1.innerText = 'Recalculate';
             btnAction1.className = 'btn btn-info flex-grow-1';
             btnAction1.onclick = executeRecalculate;
-            
+
             btnSave.classList.add('d-none'); // Hide Save
-            
+
             btnLoad.innerText = 'Load Job';
             btnLoad.className = 'btn btn-outline-secondary flex-grow-1';
             btnLoad.onclick = openLoadJobModal;
             btnLoad.classList.remove('d-none'); // Show Load
+
+            setMobileBarState('recalculate');
         }
         else if (state === 'dirty_recalculated') {
             btnAction1.innerText = 'Undo Changes';
             btnAction1.className = 'btn btn-danger flex-grow-1';
             btnAction1.onclick = executeUndoChanges;
-            
+
             btnSave.innerText = 'Save Changes';
             btnSave.className = 'btn btn-success flex-grow-1';
             btnSave.onclick = executeSaveChanges;
             btnSave.classList.remove('d-none'); // Show Save Changes
-            
+
             btnLoad.classList.add('d-none'); // Hide Load
+
+            setMobileDirty(true);
         }
     }
     function executeUndoChanges() {

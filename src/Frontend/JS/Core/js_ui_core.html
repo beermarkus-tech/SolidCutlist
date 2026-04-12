@@ -211,6 +211,17 @@
         if (toggle) {
             toggle.checked = (theme === 'dark');
         }
+
+        // 4. Keep the mobile navbar button icon in sync
+        const mobileBtn = document.getElementById('mobile-theme-toggle');
+        if (mobileBtn) mobileBtn.innerText = theme === 'dark' ? '☀️' : '🌙';
+    }
+
+    function toggleThemeDirect() {
+        if (!appState.settings) appState.settings = {};
+        appState.settings.theme = appState.settings.theme === 'dark' ? 'light' : 'dark';
+        saveState();
+        applyTheme();
     }
 
     // Freeze and Unfreeze UI while archiving

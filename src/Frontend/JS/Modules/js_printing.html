@@ -87,6 +87,8 @@
                 ${parentLinks}
                 ${parentStyles}
                 <style>
+                    /* Reset the app's flex/overflow lock so this window scrolls normally */
+                    body { height: auto !important; min-height: unset !important; overflow: visible !important; display: block !important; }
                     @page { margin: 15mm; }
                     body { font-family: Arial, sans-serif; background: #fff !important; color: #000 !important; font-size: 13px; }
                     .table { margin-bottom: 0 !important; width: 100%; border-collapse: collapse; }
@@ -193,9 +195,11 @@
                 ${parentLinks}
                 ${parentStyles}
                 <style>
+                    /* Reset the app's flex/overflow lock so this window scrolls normally */
+                    body { height: auto !important; min-height: unset !important; overflow: visible !important; display: block !important; }
                     /* 🪄 A4 vs Letter heuristic */
                     @page { margin: 15mm; }
-                    
+
                     /* Print-specific spacing */
                     body { padding: 20px; font-family: Arial, sans-serif; }
                     h5 { margin-top: 30px !important; font-size: 1.25rem !important; }
