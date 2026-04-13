@@ -64,7 +64,6 @@
         const boardTransportLmax = _tr.boardLmax  || 0;
         const boardMargin        = _tr.boardMargin !== undefined ? _tr.boardMargin : 20;
         const sheetTransportLmax = _tr.sheetLmax  || 0;
-        const sheetTransportWmax = _tr.sheetWmax  || 0;
         const sheetMargin        = _tr.sheetMargin !== undefined ? _tr.sheetMargin : 10;
         
         const finalCutlist = [];
@@ -177,14 +176,14 @@
                     let packResult;
 
                     const use1DTransport = transportEnabled && boardTransportLmax > 0;
-                    const use2DTransport = transportEnabled && (sheetTransportLmax > 0 || sheetTransportWmax > 0);
+                    const use2DTransport = transportEnabled && sheetTransportLmax > 0;
 
                     if (isSheet) {
                         if (pref2D === 'auto') {
                             let resRip, resCross;
                             if (use2DTransport) {
-                                resRip   = pack2DTransport(currentParts, option.length, option.width, option.grain, k2D, t2D, sheetTransportLmax, sheetTransportWmax, sheetMargin, 'rip');
-                                resCross = pack2DTransport(currentParts, option.length, option.width, option.grain, k2D, t2D, sheetTransportLmax, sheetTransportWmax, sheetMargin, 'cross');
+                                resRip   = pack2DTransport(currentParts, option.length, option.width, option.grain, k2D, t2D, sheetTransportLmax, sheetMargin, 'rip');
+                                resCross = pack2DTransport(currentParts, option.length, option.width, option.grain, k2D, t2D, sheetTransportLmax, sheetMargin, 'cross');
                             } else {
                                 resRip   = pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, 'rip');
                                 resCross = pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, 'cross');
@@ -197,7 +196,7 @@
                             }
                         } else {
                             packResult = use2DTransport
-                                ? pack2DTransport(currentParts, option.length, option.width, option.grain, k2D, t2D, sheetTransportLmax, sheetTransportWmax, sheetMargin, pref2D)
+                                ? pack2DTransport(currentParts, option.length, option.width, option.grain, k2D, t2D, sheetTransportLmax, sheetMargin, pref2D)
                                 : pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, pref2D);
                         }
                     } else {
@@ -531,33 +530,16 @@
         return { boards, unmapped, totalWaste };
     }
 
-    function pack2DTransport(parts, sheetLength, sheetWidth, sheetGrain, kerf, trim, transportLmax, transportWmax, margin, pref) {
-        const widthExceeds  = transportWmax > 0 && sheetWidth  > transportWmax;
-        const lengthExceeds = transportLmax > 0 && sheetLength > transportLmax;
-
+    function pack2DTransport(parts, sheetLength, sheetWidth, sheetGrain, kerf, trim, transportLmax, margin, pref) {
         // No splitting required — fall through to normal 2D packer
-        if (!widthExceeds && !lengthExceeds) {
+        if (transportLmax <= 0 || sheetLength <= transportLmax) {
             return pack2D(parts, sheetLength, sheetWidth, sheetGrain, kerf, trim, pref);
         }
 
-        // Determine which axis to split.  Both exceeding → split the more critical one.
-        let splitAxis, transportWarning = null;
-        if (widthExceeds && !lengthExceeds) {
-            splitAxis = 'width';
-        } else if (lengthExceeds && !widthExceeds) {
-            splitAxis = 'length';
-        } else {
-            const wr = sheetWidth / transportWmax;
-            const lr = sheetLength / transportLmax;
-            splitAxis = (wr >= lr) ? 'width' : 'length';
-            transportWarning = (splitAxis === 'width') ? 'length' : 'width';
-        }
+        const segMax   = transportLmax;
+        const totalDim = sheetLength;
 
-        const segMax   = splitAxis === 'width' ? transportWmax : transportLmax;
-        const totalDim = splitAxis === 'width' ? sheetWidth    : sheetLength;
-        const otherDim = splitAxis === 'width' ? sheetLength   : sheetWidth;
-
-        // Build strip specifications and transport zone specs
+        // Build strip specifications and transport zone specs (length axis only)
         const stripSpecs = [];
         const tzSpecs    = [];
         let k = 0;
@@ -566,13 +548,9 @@
             if (segStart >= totalDim) break;
             const segEnd  = Math.min(segStart + segMax, totalDim);
             const segSize = segEnd - segStart;
-            if (splitAxis === 'width') {
-                stripSpecs.push({ stripW: segSize, stripL: sheetLength, trimW: k === 0 ? trim : 0, trimL: trim });
-            } else {
-                stripSpecs.push({ stripW: sheetWidth, stripL: segSize,    trimW: trim, trimL: k === 0 ? trim : 0 });
-            }
+            stripSpecs.push({ stripW: sheetWidth, stripL: segSize, trimW: trim, trimL: k === 0 ? trim : 0 });
             if (segEnd < totalDim) {
-                tzSpecs.push({ axis: splitAxis, start: segEnd, size: Math.min(margin, totalDim - segEnd) });
+                tzSpecs.push({ axis: 'length', start: segEnd, size: Math.min(margin, totalDim - segEnd) });
                 k++;
             } else {
                 break;
@@ -588,24 +566,45 @@
                     cuts: []
                 })),
                 transportZones: tzSpecs.map(tz => ({ ...tz })),
-                splitAxis,
-                transportWarning
+                splitAxis: 'length'
             };
         }
 
-        // Creates a board whose first (and only) strip is sized to fit the oversized part.
-        // Post-processing will place the transport zone dynamically after the part's actual extent.
+        // Creates a board for an oversized part.  The oversized strip holds the part (and any
+        // additional oversized parts that fit beside it in width).  After the fixed transport cut
+        // (placed right at trim + oversizedDim), tail strips are pre-computed at segMax intervals
+        // so that normal parts can fill them without needing a separate raw sheet.
         function makeOversizedBoard(oversizedDim) {
-            const fr = splitAxis === 'width'
-                ? { x: trim, y: trim, w: oversizedDim, l: Math.max(0, sheetLength - trim) }
-                : { x: trim, y: trim, w: Math.max(0, sheetWidth  - trim), l: oversizedDim };
+            const ozZoneEnd = trim + oversizedDim;          // fixed transport cut position
+            const strips  = [{
+                freeRects: [{ x: trim, y: trim, w: Math.max(0, sheetWidth - trim), l: oversizedDim }],
+                cuts: [],
+                oversized: true
+            }];
+            const tzSpecs = [{ axis: 'length', start: ozZoneEnd, size: margin }];
+
+            // Pre-compute normal-capacity tail strips after the transport cut
+            let tailPos = ozZoneEnd + margin;
+            while (tailPos < totalDim) {
+                const segEnd  = Math.min(tailPos + segMax, totalDim);
+                const segSize = segEnd - tailPos;
+                strips.push({
+                    freeRects: [{ x: trim, y: 0, w: Math.max(0, sheetWidth - trim), l: segSize }],
+                    cuts: [],
+                    absStart: tailPos    // absolute y offset used during post-processing
+                });
+                if (segEnd < totalDim) {
+                    tzSpecs.push({ axis: 'length', start: segEnd, size: Math.min(margin, totalDim - segEnd) });
+                }
+                tailPos = segEnd + margin;
+            }
+
             return {
                 cuts: [],
                 freeRects: [],
-                strips: [{ freeRects: [fr], cuts: [], oversized: true }],
-                transportZones: [],
-                splitAxis,
-                transportWarning,
+                strips,
+                transportZones: tzSpecs,   // pre-set — not rebuilt in post-processing
+                splitAxis: 'length',
                 hasOversized: true
             };
         }
@@ -613,10 +612,22 @@
         let boards   = [];
         let unmapped = [];
 
-        parts.forEach(part => {
+        // Pre-sort: oversized parts (length > segMax) come first, sorted largest-first.
+        // This ensures the board is created for the largest oversized dimension, so smaller
+        // oversized parts can share that board's remaining width.  Normal parts follow in
+        // their original order (already sorted by area desc by the caller).
+        const partsOrdered = [
+            ...parts.filter(p => p.length > segMax).sort((a, b) => b.length - a.length),
+            ...parts.filter(p => p.length <= segMax)
+        ];
+
+        partsOrdered.forEach(part => {
             let placed = false;
 
-            // Pass 1: try existing boards (normal strips first, then oversized strips)
+            // Pass 1: try existing boards — all strips, in strip order.
+            // Oversized strips (strip.oversized) are safe to fill in the width direction
+            // because their freeRect is capped at l:oversizedDim, preventing any part from
+            // extending past the transport cut.
             for (let b of boards) {
                 for (let strip of b.strips) {
                     strip.freeRects.sort((r1, r2) => (r1.w * r1.l) - (r2.w * r2.l));
@@ -624,7 +635,7 @@
                         let fit = checkFit(part, strip.freeRects[i], sheetGrain);
                         if (fit.fits) {
                             place2DPart({ cuts: strip.cuts, freeRects: strip.freeRects }, i, part, fit.rotated, kerf, pref);
-                            if (strip.oversized) strip.cuts[strip.cuts.length - 1].oversized = true;
+                            if (part.length > segMax) strip.cuts[strip.cuts.length - 1].oversized = true;
                             placed = true;
                             break;
                         }
@@ -651,11 +662,10 @@
                     if (placed) break;
                 }
 
-                // Pass 3: part exceeds segMax but fits on the full sheet → oversized board
+                // Pass 3: part exceeds segMax but fits on the full sheet length → oversized board
                 if (!placed) {
-                    const partSplitDim = splitAxis === 'width' ? part.width : part.length;
-                    if (partSplitDim > segMax && partSplitDim <= totalDim) {
-                        const ozBoard = makeOversizedBoard(partSplitDim);
+                    if (part.length > segMax && part.length <= totalDim) {
+                        const ozBoard = makeOversizedBoard(part.length);
                         const ozStrip = ozBoard.strips[0];
                         const fit = checkFit(part, ozStrip.freeRects[0], sheetGrain);
                         if (fit.fits) {
@@ -671,68 +681,80 @@
             }
         });
 
-        // Build absolute-coordinate cuts and freeRects from actual packed extents (dynamic).
-        // Transport zone positions are placed where parts actually end — not at fixed segMax boundaries.
-        // Empty strips (no parts) don't advance cumOffset; instead, after the strips loop the entire
-        // remaining tail is divided into transportable chunks at segMax intervals.
+        // Build absolute-coordinate cuts and freeRects from actual packed extents.
+        // Two paths: oversized boards use pre-set zones + absStart offsets;
+        // normal boards compute zones dynamically from actual packed extents.
         let totalWaste = 0;
         boards.forEach(b => {
-            b.cuts      = [];
-            b.freeRects = [];
-            b.transportZones = [];
-            let cumOffset = 0;
+            b.cuts = []; b.freeRects = [];
 
-            b.strips.forEach((strip, si) => {
-                const isLast = si === b.strips.length - 1;
-                let actualSize = 0;
-                if (splitAxis === 'width')  strip.cuts.forEach(c => actualSize = Math.max(actualSize, c.x + c.w));
-                else                        strip.cuts.forEach(c => actualSize = Math.max(actualSize, c.y + c.l));
-
-                const offX = splitAxis === 'width'  ? cumOffset : 0;
-                const offY = splitAxis === 'length' ? cumOffset : 0;
-                strip.cuts.forEach(cut => b.cuts.push({ ...cut, x: cut.x + offX, y: cut.y + offY }));
-
-                if (actualSize > 0) {
-                    // Strip has parts: clip its freeRects to the actual extent and add to board
-                    strip.freeRects.map(r => {
-                        if (splitAxis === 'width') {
-                            if (r.x >= actualSize) return null;
-                            return { ...r, w: Math.min(r.w, actualSize - r.x) };
-                        } else {
+            if (b.hasOversized) {
+                // Oversized board: transportZones are pre-set by makeOversizedBoard.
+                // Each strip carries its absolute y-offset in absStart (tail strips)
+                // or is implicitly offset at 0 (the oversized strip itself, which uses
+                // absolute coords in its freeRects already).
+                b.strips.forEach(strip => {
+                    const yOff = strip.absStart !== undefined ? strip.absStart : 0;
+                    let actualSize = 0;
+                    strip.cuts.forEach(c => actualSize = Math.max(actualSize, c.y + c.l));
+                    strip.cuts.forEach(cut => b.cuts.push({ ...cut, y: cut.y + yOff }));
+                    if (actualSize > 0) {
+                        strip.freeRects.map(r => {
                             if (r.y >= actualSize) return null;
                             return { ...r, l: Math.min(r.l, actualSize - r.y) };
-                        }
-                    }).filter(r => r && r.w > 0 && r.l > 0)
-                      .forEach(r => b.freeRects.push({ ...r, x: r.x + offX, y: r.y + offY }));
-
-                    if (!isLast) {
-                        // Add transport zone after this strip and advance offset
-                        b.transportZones.push({ axis: splitAxis, start: cumOffset + actualSize, size: margin });
-                        cumOffset += actualSize + margin;
+                        }).filter(r => r && r.w > 0 && r.l > 0)
+                          .forEach(r => b.freeRects.push({ ...r, y: r.y + yOff }));
                     } else {
-                        // Last strip: advance offset past its parts (no zone after it)
-                        cumOffset += actualSize;
+                        // Empty strip (no parts placed): include its full free area for waste accounting
+                        strip.freeRects.filter(r => r.w > 0 && r.l > 0)
+                                       .forEach(r => b.freeRects.push({ ...r, y: r.y + yOff }));
                     }
+                });
+            } else {
+                // Normal board: compute transport zones dynamically from actual packed extents.
+                // Empty strips don't advance cumOffset; tail is filled with segMax-sized freeRects.
+                b.transportZones = [];
+                let cumOffset = 0;
+
+                b.strips.forEach((strip, si) => {
+                    const isLast = si === b.strips.length - 1;
+                    let actualSize = 0;
+                    strip.cuts.forEach(c => actualSize = Math.max(actualSize, c.y + c.l));
+
+                    strip.cuts.forEach(cut => b.cuts.push({ ...cut, y: cut.y + cumOffset }));
+
+                    if (actualSize > 0) {
+                        // Strip has parts: clip its freeRects to the actual extent and add to board
+                        strip.freeRects.map(r => {
+                            if (r.y >= actualSize) return null;
+                            return { ...r, l: Math.min(r.l, actualSize - r.y) };
+                        }).filter(r => r && r.w > 0 && r.l > 0)
+                          .forEach(r => b.freeRects.push({ ...r, y: r.y + cumOffset }));
+
+                        if (!isLast) {
+                            b.transportZones.push({ axis: 'length', start: cumOffset + actualSize, size: margin });
+                            cumOffset += actualSize + margin;
+                        } else {
+                            cumOffset += actualSize;
+                        }
+                    }
+                    // Empty strips: skip — their area is covered by tail processing below
+                });
+
+                // Fill remaining tail (cumOffset → totalDim) with transport-sized freeRects.
+                let tailPos = cumOffset;
+                while (totalDim - tailPos > segMax) {
+                    b.transportZones.push({ axis: 'length', start: tailPos + segMax, size: margin });
+                    b.freeRects.push({ x: 0, y: tailPos, w: sheetWidth, l: segMax });
+                    tailPos += segMax + margin;
                 }
-                // Empty strips: skip — their area is covered by tail processing below
-            });
-
-            // Fill remaining tail (cumOffset → totalDim) with transport-sized freeRects.
-            // If the tail exceeds segMax, add additional transport cuts at segMax intervals.
-            let tailPos = cumOffset;
-            while (totalDim - tailPos > segMax) {
-                b.transportZones.push({ axis: splitAxis, start: tailPos + segMax, size: margin });
-                if (splitAxis === 'width') b.freeRects.push({ x: tailPos, y: 0, w: segMax, l: sheetLength });
-                else                       b.freeRects.push({ x: 0, y: tailPos, w: sheetWidth, l: segMax });
-                tailPos += segMax + margin;
-            }
-            if (tailPos < totalDim) {
-                if (splitAxis === 'width') b.freeRects.push({ x: tailPos, y: 0, w: totalDim - tailPos, l: sheetLength });
-                else                       b.freeRects.push({ x: 0, y: tailPos, w: sheetWidth, l: totalDim - tailPos });
+                if (tailPos < totalDim) {
+                    b.freeRects.push({ x: 0, y: tailPos, w: sheetWidth, l: totalDim - tailPos });
+                }
             }
 
-            b.freeRects.forEach(r  => totalWaste += r.w * r.l);
-            b.transportZones.forEach(tz => totalWaste += tz.size * otherDim);
+            b.freeRects.forEach(r => totalWaste += r.w * r.l);
+            b.transportZones.forEach(tz => totalWaste += tz.size * sheetWidth);
         });
 
         return { boards, unmapped, totalWaste };
@@ -1734,7 +1756,7 @@
         const _unitLbl = isMetric ? 'm' : 'ft';
         const _fmtLen  = mm => (mm / _unitDiv).toFixed(isMetric ? 1 : 2) + '\u202f' + _unitLbl;
         const _kpiCard = (label, value, sub, accent) => `
-            <div class="col-6 col-md-3">
+            <div class="col-6 col-md-2">
                 <div class="card shadow-sm h-100 border-0" style="border-left:4px solid ${accent} !important;">
                     <div class="card-body text-center py-2 px-2">
                         <div class="text-muted fw-bold text-uppercase mb-1" style="font-size:0.65rem;letter-spacing:0.04em;">${label}</div>
@@ -1752,8 +1774,8 @@
                 ${_kpiCard('Boards Purchased', boardCount, '', '#6c757d')}
                 ${_kpiCard('Total Cuts', boardCutsTotal, 'cross-cuts', '#6c757d')}
                 ${_kpiCard('Blade Travel', boardWidthKnown ? _fmtLen(boardCutLengthMm) : '—', 'face\u00a0width\u00a0×\u00a0cuts', '#6c757d')}
-                ${_kpiCard('Unique Lengths', boardUniqueLengths.size, 'stop-block positions', '#6c757d')}
                 ${boardTransportCuts > 0 ? _kpiCard('Store Pre-cuts', boardTransportCuts, 'transport cuts', '#fd7e14') : ''}
+                ${_kpiCard('Unique Lengths', boardUniqueLengths.size, 'stop-block positions', '#6c757d')}
             </div>`;
 
         const sheetKpis = !hasSheetData ? '' : `

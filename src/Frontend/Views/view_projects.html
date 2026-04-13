@@ -138,7 +138,7 @@
                                 </div>
                                 <div class="col-sm">
                                     <label class="form-label form-label-sm fw-bold text-secondary mb-1">
-                                        <span data-i18n="lbl_group">Group</span> <span class="btn-icon-subtle" onclick="openGroupModalFromParts()" title="Manage Groups" data-i18n-title="tip_manage_groups">⚙️</span>
+                                        <span data-i18n="lbl_group">Group</span> <span class="btn-icon-subtle" onclick="openGroupModalFromParts()" title="Manage Groups" data-i18n-title="tip_manage_groups">⚙️</span><button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;margin-left:2px;" onclick="showInfoTooltip(event, 'Groups are optional sub-assemblies within a project (e.g. Carcass, Doors, Drawers). They help organise long part lists and let you run the optimizer on just one group instead of the full project.')">ⓘ</button>
                                     </label>
                                     <select class="form-select form-select-sm" id="part-group">
                                         <option value="">-</option>
@@ -183,7 +183,7 @@
                                     <select class="form-select form-select-sm" id="part-material" required disabled></select>
                                 </div>
                                 <div class="col-sm-1">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets" data-i18n="lbl_grain" data-i18n-title="tip_for_sheets_only">Grain</label>
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets" data-i18n="lbl_grain" data-i18n-title="tip_for_sheets_only">Grain <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, 'Sheet parts only. Length = face grain runs along the long dimension of the part. Width = grain runs along the short dimension. Leave as \u2014 if grain direction does not matter for this part.')">ⓘ</button></label>
                                     <select class="form-select form-select-sm" id="part-grain" disabled>
                                         <option value="none">-</option>
                                         <option value="length" data-i18n="opt_length">Length</option>

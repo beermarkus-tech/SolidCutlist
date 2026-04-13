@@ -1,0 +1,26 @@
+id,name,type,thickness,width
+PR-EU-001,18x34,lumber,18,34
+PR-EU-002,18x44,lumber,18,44
+PR-EU-003,18x69,lumber,18,69
+PR-EU-004,18x94,lumber,18,94
+PR-EU-005,18x119,lumber,18,119
+PR-EU-006,18x144,lumber,18,144
+PR-EU-007,28x44,lumber,28,44
+PR-EU-008,28x69,lumber,28,69
+PR-EU-009,28x94,lumber,28,94
+PR-EU-010,44x44,lumber,44,44
+PR-EU-011,44x69,lumber,44,69
+PR-EU-012,44x94,lumber,44,94
+PR-EU-013,44x119,lumber,44,119
+PR-EU-014,44x144,lumber,44,144
+PR-EU-015,44x195,lumber,44,195
+PR-EU-016,69x69,lumber,69,69
+PR-EU-017,69x94,lumber,69,94
+PR-EU-018,94x94,lumber,94,94
+PR-EU-019,6mm Sheet,sheet,6,0
+PR-EU-020,9mm Sheet,sheet,9,0
+PR-EU-021,12mm Sheet,sheet,12,0
+PR-EU-022,15mm Sheet,sheet,15,0
+PR-EU-023,18mm Sheet,sheet,18,0
+PR-EU-024,22mm Sheet,sheet,22,0
+PR-EU-025,25mm Sheet,sheet,25,0

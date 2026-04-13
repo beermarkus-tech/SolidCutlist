@@ -50,6 +50,57 @@
         if (modalInstance) modalInstance.hide();
     }
 
+    // ==========================================
+    // INFO TOOLTIP ENGINE
+    // ==========================================
+    function showInfoTooltip(event, text) {
+        event.stopPropagation();
+
+        // Remove any existing tooltip first
+        const existing = document.getElementById('info-tooltip');
+        if (existing) { existing.remove(); return; } // second tap on same icon = toggle off
+
+        const tip = document.createElement('div');
+        tip.id = 'info-tooltip';
+        tip.className = 'info-tooltip';
+        tip.innerText = text;
+        document.body.appendChild(tip);
+
+        // Position relative to the icon using viewport coords
+        const icon = event.currentTarget;
+        const r = icon.getBoundingClientRect();
+        const margin = 8;
+        const tipW = 270;
+
+        // Horizontal: align right edge of tooltip to right edge of icon; clamp to viewport
+        let left = r.right - tipW;
+        if (left < margin) left = margin;
+        if (left + tipW > window.innerWidth - margin) left = window.innerWidth - tipW - margin;
+
+        // Vertical: below icon by default; flip above if too close to bottom
+        let top = r.bottom + 6;
+        tip.style.left = left + 'px';
+        tip.style.top  = top  + 'px';
+
+        // After paint, check if it overflows bottom and flip above if so
+        requestAnimationFrame(() => {
+            const th = tip.getBoundingClientRect().height;
+            if (top + th > window.innerHeight - margin) {
+                tip.style.top = (r.top - th - 6) + 'px';
+            }
+        });
+
+        // Dismiss on next click or tap anywhere
+        setTimeout(() => {
+            document.addEventListener('click',      _dismissInfoTooltip, { once: true });
+            document.addEventListener('touchstart', _dismissInfoTooltip, { once: true });
+        }, 0);
+    }
+    function _dismissInfoTooltip() {
+        const tip = document.getElementById('info-tooltip');
+        if (tip) tip.remove();
+    }
+
     // The Global 'Enter' Key Listener
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {

@@ -137,17 +137,18 @@
                         <!-- Use Shop Stock -->
                         <div class="form-check form-switch mt-2 pb-3 border-bottom">
                             <input class="form-check-input" type="checkbox" id="opt-use-stock" onchange="toggleUseStock(this.checked)">
-                            <label class="form-check-label fw-bold" for="opt-use-stock" data-i18n="lbl_use_shop_stock">Use Shop Stock</label>
+                            <label class="form-check-label fw-bold" for="opt-use-stock" data-i18n="lbl_use_shop_stock">Use Shop Stock</label><button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;margin-left:4px;" onclick="showInfoTooltip(event, 'When on, the optimizer checks your shop stock before buying anything \u2014 scraps and cutoffs are used first. This toggle is locked off inside a saved Job to keep the job fully isolated from your live shop inventory.')">ⓘ</button>
                         </div>
                         <!-- Transport Settings -->
                         <div class="pt-3 pb-3 border-bottom">
                             <div class="form-check form-switch pt-2 pb-1">
                                 <input class="form-check-input" type="checkbox" id="opt-transport-enable" onchange="toggleTransportMode(this.checked)">
-                                <label class="form-check-label fw-bold" for="opt-transport-enable">Max Transport Size</label>
+                                <label class="form-check-label fw-bold" for="opt-transport-enable">Max Transport Size</label><button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;margin-left:4px;" onclick="showInfoTooltip(event, 'Use this if your lumber yard will pre-cut boards to fit in your vehicle. Set the max piece length you can transport, and the optimizer will plan cuts so no board segment exceeds it \u2014 flagging the store cuts needed.')">ⓘ</button>
                             </div>
                             <div class="form-text mt-0 mb-2 form-text-xs">Reserve a physical offcut zone for store pre-cuts.</div>
                             <div id="transport-settings-panel" style="display: none;">
                                 <div class="p-3 mb-2 rounded-3 input-panel">
+                                    <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, 'The minimum offcut the store must keep to make a clean cut. If your car fits 2400mm and the margin is 20mm, the optimizer requests pieces up to 2380mm. Ask your store what their minimum trim policy is \u2014 most need at least 50\u2013100mm.')">ⓘ</button>
                                     <div class="mb-2 fw-bold text-secondary small text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Lumber</div>
                                     <div class="row g-2">
                                         <div class="col-6">
@@ -172,20 +173,14 @@
                                     <div class="mb-2 fw-bold text-secondary small text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Sheet</div>
                                     <div class="row g-2">
                                         <div class="col-6">
-                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Max Width</label>
-                                            <div class="input-group input-group-sm">
-                                                <input type="text" class="form-control form-control-sm" id="setting-transport-sheet-wmax" onchange="handleSettingsValueChange()">
-                                                <span class="input-group-text display-unit-label">mm</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
                                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Max Length</label>
                                             <div class="input-group input-group-sm">
                                                 <input type="text" class="form-control form-control-sm" id="setting-transport-sheet-lmax" onchange="handleSettingsValueChange()">
                                                 <span class="input-group-text display-unit-label">mm</span>
                                             </div>
+                                            <div class="form-text mt-1 form-text-xs">Max piece length to transport.</div>
                                         </div>
-                                        <div class="col-12">
+                                        <div class="col-6">
                                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Store Margin</label>
                                             <div class="input-group input-group-sm">
                                                 <input type="text" class="form-control form-control-sm" id="setting-transport-sheet-margin" onchange="handleSettingsValueChange()">
@@ -199,7 +194,7 @@
                         </div>
                         <!-- First Cut Settings for Sheets -->
                         <div class="pt-3 pb-3 border-bottom">
-                            <label class="fw-bold pb-2">Sheet Cut Direction</label>
+                            <label class="fw-bold pb-2">Sheet Cut Direction <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;margin-left:4px;" onclick="showInfoTooltip(event, 'Rip cuts run along the long edge of the sheet. Cross cuts run across the width. Auto lets the optimizer choose the orientation that wastes the least material. Use Rip or Cross to match your saw setup or if your saw has a length limitation.')">ⓘ</button></label>
                             <select class="form-select form-select-sm" id="opt-sheet-cut" onchange="updateSheetCutPreference(this.value)">
                                 <option value="auto">Auto (Best Yield)</option>
                                 <option value="rip">Rip Cut First</option>
@@ -210,6 +205,7 @@
                         <!-- Kerf Settings -->
                         <label class="fw-bold pt-3 pb-2">Kerf, Trim & Scrap Settings</label>
                         <div class="p-3 mb-3 rounded-3 input-panel">
+                            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, 'The kerf is the width of wood removed by your saw blade with each cut. A standard blade removes about 3.2mm (⅛\u201d). The optimizer deducts this amount for every cut on a board \u2014 so if you make 5 cuts, you lose 5 \u00d7 kerf in material. Measure a test cut or check your blade spec sheet to dial this in accurately.')">ⓘ</button>
                             <div class="row g-3">
                                 <div class="col-6">
                                     <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_kerf">Lumber Kerf</label>
@@ -231,6 +227,7 @@
                         </div>
                         <!-- Trim Settings -->
                         <div class="p-3 mb-3 rounded-3 input-panel">
+                            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, 'Before cutting parts, the optimizer trims one end of each new lumber board to create a clean square reference edge. For sheets, two adjacent edges are trimmed. Standard is 6mm (\u00bc\u201d). Set to 0 to skip this step.')">ⓘ</button>
                             <div class="row g-3">
                                 <div class="col-6">
                                     <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_trim">Lumber Trim</label>
@@ -252,6 +249,7 @@
                         </div>
                         <!-- Scrap Settings -->
                         <div class="p-3 mb-3 rounded-3 input-panel">
+                            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, 'After each cut, leftover offcuts are measured against these minimums. Above the threshold \u2014 kept as usable scrap for the next part in the same job. Below \u2014 counted as waste. Raise these values if you prefer not to track small pieces.')">ⓘ</button>
                             <div class="row g-3">
                                 <div class="col-12">
                                     <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_scrap_min_length">Lumber Scrap (Min Length)</label>
@@ -447,11 +445,12 @@
         <div class="pb-3 border-bottom">
             <div class="form-check form-switch pt-1 pb-1">
                 <input class="form-check-input" type="checkbox" id="mob-transport-enable" onchange="handleMobileSettingsValueChange()">
-                <label class="form-check-label fw-bold" for="mob-transport-enable">Max Transport Size</label>
+                <label class="form-check-label fw-bold" for="mob-transport-enable">Max Transport Size</label><button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;margin-left:4px;" onclick="showInfoTooltip(event, 'Use this if your lumber yard will pre-cut boards to fit in your vehicle. Set the max piece length you can transport, and the optimizer will plan cuts so no board segment exceeds it \u2014 flagging the store cuts needed.')">ⓘ</button>
             </div>
             <div class="form-text mt-0 mb-2 form-text-xs">Reserve a physical offcut zone for store pre-cuts.</div>
             <div id="mob-transport-settings-panel" style="display:none;">
                 <div class="p-3 mb-2 rounded-3 input-panel">
+                    <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, 'The minimum offcut the store must keep to make a clean cut. If your car fits 2400mm and the margin is 20mm, the optimizer requests pieces up to 2380mm. Ask your store what their minimum trim policy is \u2014 most need at least 50\u2013100mm.')">ⓘ</button>
                     <div class="mb-2 fw-bold text-secondary small text-uppercase" style="font-size:0.7rem;letter-spacing:0.05em;">Lumber</div>
                     <div class="row g-2">
                         <div class="col-6">
@@ -474,20 +473,13 @@
                     <div class="mb-2 fw-bold text-secondary small text-uppercase" style="font-size:0.7rem;letter-spacing:0.05em;">Sheet</div>
                     <div class="row g-2">
                         <div class="col-6">
-                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">Max Width</label>
-                            <div class="input-group input-group-sm">
-                                <input type="text" class="form-control form-control-sm" id="mob-transport-sheet-wmax" onchange="handleMobileSettingsValueChange()">
-                                <span class="input-group-text display-unit-label">mm</span>
-                            </div>
-                        </div>
-                        <div class="col-6">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Max Length</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control form-control-sm" id="mob-transport-sheet-lmax" onchange="handleMobileSettingsValueChange()">
                                 <span class="input-group-text display-unit-label">mm</span>
                             </div>
                         </div>
-                        <div class="col-12">
+                        <div class="col-6">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Store Margin</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control form-control-sm" id="mob-transport-sheet-margin" onchange="handleMobileSettingsValueChange()">
@@ -501,7 +493,7 @@
 
         <!-- Sheet Cut Direction -->
         <div class="pt-3 pb-3 border-bottom">
-            <label class="fw-bold pb-2 d-block">Sheet Cut Direction</label>
+            <label class="fw-bold pb-2 d-block">Sheet Cut Direction <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;margin-left:4px;" onclick="showInfoTooltip(event, 'Rip cuts run along the long edge of the sheet. Cross cuts run across the width. Auto lets the optimizer choose the orientation that wastes the least material. Use Rip or Cross to match your saw setup or if your saw has a length limitation.')">ⓘ</button></label>
             <select class="form-select form-select-sm" id="mob-sheet-cut" onchange="handleMobileSettingsValueChange()">
                 <option value="auto">Auto (Best Yield)</option>
                 <option value="rip">Rip Cut First</option>
@@ -512,6 +504,7 @@
         <!-- Kerf -->
         <label class="fw-bold pt-3 pb-2 d-block">Kerf, Trim &amp; Scrap Settings</label>
         <div class="p-3 mb-3 rounded-3 input-panel">
+            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, 'The kerf is the width of wood removed by your saw blade with each cut. A standard blade removes about 3.2mm (\u215b\u201d). The optimizer deducts this amount for every cut on a board \u2014 so if you make 5 cuts, you lose 5 \u00d7 kerf in material. Measure a test cut or check your blade spec sheet to dial this in accurately.')">ⓘ</button>
             <div class="row g-3">
                 <div class="col-6">
                     <label class="form-label form-label-sm fw-bold text-secondary mb-1">Lumber Kerf</label>
@@ -532,6 +525,7 @@
 
         <!-- Trim -->
         <div class="p-3 mb-3 rounded-3 input-panel">
+            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, 'Before cutting parts, the optimizer trims one end of each new lumber board to create a clean square reference edge. For sheets, two adjacent edges are trimmed. Standard is 6mm (\u00bc\u201d). Set to 0 to skip this step.')">ⓘ</button>
             <div class="row g-3">
                 <div class="col-6">
                     <label class="form-label form-label-sm fw-bold text-secondary mb-1">Lumber Trim</label>
@@ -552,6 +546,7 @@
 
         <!-- Scrap -->
         <div class="p-3 mb-3 rounded-3 input-panel">
+            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, 'After each cut, leftover offcuts are measured against these minimums. Above the threshold \u2014 kept as usable scrap for the next part in the same job. Below \u2014 counted as waste. Raise these values if you prefer not to track small pieces.')">ⓘ</button>
             <div class="row g-3">
                 <div class="col-12">
                     <label class="form-label form-label-sm fw-bold text-secondary mb-1">Lumber Scrap (Min Length)</label>

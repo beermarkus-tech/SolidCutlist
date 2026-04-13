@@ -193,7 +193,6 @@
             if (transport) {
                 setVal('setting-transport-board-lmax',  transport.boardLmax,   0);
                 setVal('setting-transport-board-margin', transport.boardMargin, 20);
-                setVal('setting-transport-sheet-wmax',  transport.sheetWmax,   0);
                 setVal('setting-transport-sheet-lmax',  transport.sheetLmax,   0);
                 setVal('setting-transport-sheet-margin', transport.sheetMargin, 10);
             }
@@ -467,7 +466,6 @@
         if (tr) {
             setMobVal('mob-transport-board-lmax',   tr.boardLmax,   0);
             setMobVal('mob-transport-board-margin', tr.boardMargin, 20);
-            setMobVal('mob-transport-sheet-wmax',   tr.sheetWmax,   0);
             setMobVal('mob-transport-sheet-lmax',   tr.sheetLmax,   0);
             setMobVal('mob-transport-sheet-margin', tr.sheetMargin, 10);
         }
@@ -513,7 +511,6 @@
         appState.settings.optimizer.transport.boardLmax   = getVal('mob-transport-board-lmax');
         appState.settings.optimizer.transport.boardMargin = getVal('mob-transport-board-margin');
         appState.settings.optimizer.transport.sheetLmax   = getVal('mob-transport-sheet-lmax');
-        appState.settings.optimizer.transport.sheetWmax   = getVal('mob-transport-sheet-wmax');
         appState.settings.optimizer.transport.sheetMargin = getVal('mob-transport-sheet-margin');
         appState.settings.optimizer.sheetCutPreference    = getSel('mob-sheet-cut');
         // Sync to job.settings so executeRecalculate picks up the changes

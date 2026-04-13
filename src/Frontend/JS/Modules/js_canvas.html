@@ -14,7 +14,6 @@
         const boardTransportLmax = _tr.boardLmax  || 0;
         const boardTransportMargin = _tr.boardMargin !== undefined ? _tr.boardMargin : 20;
         const sheetTransportLmax = _tr.sheetLmax  || 0;
-        const sheetTransportWmax = _tr.sheetWmax  || 0;
         const sheetTransportMargin = _tr.sheetMargin !== undefined ? _tr.sheetMargin : 10;
         
         let boardCounter = 1; 
@@ -162,7 +161,7 @@
                         const _sCutLine = `<div style="flex:0 0 2px;width:2px;min-width:2px;background:#dc3545;flex-shrink:0;"></div>`;
                         const _vCutLine = `<div style="flex:0 0 2px;height:2px;min-height:2px;background:#dc3545;flex-shrink:0;"></div>`;
                         // segMax for this board's split axis — used to detect oversized pieces
-                        const _segMax = _sa === 'width' ? sheetTransportWmax : sheetTransportLmax;
+                        const _segMax = sheetTransportLmax;
                         if (_aligns) {
                             // Horizontal strip above the canvas — labels use calc(X% - Ypx) so they
                             // scale proportionally at any container width (mobile or desktop).
@@ -462,20 +461,6 @@
                         ⚠️ <strong>${t('lbl_warning')}:</strong> ${t('msg_grain_warning')}
                     </div>`;
                 }
-                if (board.hasOversized) {
-                    const ozAxis = board.splitAxis === 'width' ? 'width' : 'length';
-                    html += `<div class="card-footer text-danger py-1" style="font-size: 0.8rem;">
-                        ⚠️ <strong>Transport:</strong> One or more parts exceed the max transport ${ozAxis}. These pieces require special transport arrangements (highlighted in red).
-                    </div>`;
-                }
-                if (board.transportWarning) {
-                    const axis = board.transportWarning === 'width' ? 'Width' : 'Length';
-                    const splitOn = board.splitAxis === 'width' ? 'width' : 'length';
-                    html += `<div class="card-footer text-warning py-1" style="font-size: 0.8rem;">
-                        ✂ <strong>Transport:</strong> Both width and length exceed limits. Split on ${splitOn} only — verify ${axis.toLowerCase()} fits your vehicle.
-                    </div>`;
-                }
-
                 html += `
                     </div>
                 </div>
@@ -638,19 +623,12 @@
                 ctx.stroke();
             }
 
-            if (cut.oversized) {
-                // Red outline signals this piece exceeds the transport limit
-                ctx.strokeStyle = '#dc3545';
-                ctx.lineWidth = 3;
-                ctx.setLineDash([]);
-                ctx.strokeRect(mapped.cx + 1.5, mapped.cy + 1.5, mapped.cw - 3, mapped.ch - 3);
-            }
             ctx.strokeStyle = '#8B4513';
             ctx.lineWidth = 1.5;
             ctx.strokeRect(mapped.cx, mapped.cy, mapped.cw, mapped.ch);
 
             if (mapped.cw > 25 && mapped.ch > 25) {
-                ctx.fillStyle = cut.oversized ? '#dc3545' : '#000';
+                ctx.fillStyle = '#000';
                 ctx.font = 'bold 16px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';

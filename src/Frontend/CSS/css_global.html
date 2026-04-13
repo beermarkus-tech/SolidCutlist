@@ -477,6 +477,45 @@
         .input-panel {
             background-color: rgba(128, 128, 128, 0.08);
             border: 1px solid var(--bs-border-color-translucent);
+            position: relative;
+        }
+
+        /* Info icon button — sits top-right of any .input-panel or section label */
+        .info-icon-btn {
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            background: none;
+            border: none;
+            padding: 2px 4px;
+            font-size: 0.8rem;
+            line-height: 1;
+            cursor: pointer;
+            color: var(--bs-secondary-color);
+            opacity: 0.5;
+            transition: opacity 0.15s;
+        }
+        .info-icon-btn:hover, .info-icon-btn:focus {
+            opacity: 1;
+            color: var(--theme-info);
+            outline: none;
+        }
+
+        /* Floating info tooltip */
+        .info-tooltip {
+            position: fixed;
+            z-index: 9999;
+            width: 270px;
+            background-color: var(--bs-body-bg);
+            color: var(--bs-body-color);
+            border: 1px solid var(--bs-border-color);
+            border-left: 3px solid var(--theme-info);
+            border-radius: 6px;
+            padding: 10px 13px;
+            font-size: 0.82rem;
+            line-height: 1.55;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.15);
+            pointer-events: none;
         }
 
         /* Scrollable table container — height managed by flex chain inside .view-content */

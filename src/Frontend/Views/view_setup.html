@@ -62,7 +62,7 @@
                                 <select class="form-select form-select-sm" id="stock-material" required disabled></select>
                             </div>
                             <div class="col-sm-1">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets Only" data-i18n="lbl_grain" data-i18n-title="tip_for_sheets_only">Grain</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets Only" data-i18n="lbl_grain" data-i18n-title="tip_for_sheets_only">Grain <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, 'Sheet panels only. Length = face grain runs along the long edge of the panel. Width = grain runs across. The optimizer will not rotate a sheet part in a way that violates its grain setting. Leave as None if grain direction does not matter.')">ⓘ</button></label>
                                 <select class="form-select form-select-sm" id="stock-grain" disabled>
                                     <option value="none" data-i18n="opt_none">None</option>
                                     <option value="length" data-i18n="opt_length">Length</option>
@@ -70,7 +70,7 @@
                                 </select>
                             </div>
                             <div class="col-sm-1 text-center">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_scrap">Scrap?</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_scrap">Scrap? <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, 'Mark a board as scrap if it is a cutoff from a previous job. When Use Shop Stock is on, the optimizer uses scraps before full boards \u2014 keeping your offcut pile from growing.')">ⓘ</button></label>
                                 <div class="form-check d-flex justify-content-center">
                                     <input class="form-check-input" type="checkbox" id="stock-is-cutoff">
                                 </div>
@@ -293,6 +293,7 @@
                     <!-- Input Section -->
                     <div id="input-section-profiles">
                         <div class="p-3 mb-2 rounded-3 input-panel">
+                            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, 'A profile is the cross-section of a board \u2014 its thickness and width. It has no length. For lumber, enter both dimensions (e.g. 38\u00d789mm for a 2\u00d74). For sheets, enter thickness only (e.g. 18mm). The lengths you can buy are set separately in Store Prices.')">ⓘ</button>
                             <form id="form-add-profile" onsubmit="handleAddProfile(event)">
                                 <div class="row g-2 align-items-end">
                                     <div class="col-sm">
@@ -364,6 +365,7 @@
                     <!-- Input Section -->
                     <div id="input-section-materials">
                         <div class="p-3 mb-2 rounded-3 input-panel">
+                            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, 'A material is the wood species or panel type (e.g. Pine, MDF). It is always paired with a profile to fully describe a board. Density is used for weight estimates in your cut list \u2014 leave it at 0 if you do not need that feature.')">ⓘ</button>
                             <form id="form-add-material" onsubmit="handleAddMaterial(event)">
                                 <div class="row g-2 align-items-end">
                                     <div class="col-sm">
