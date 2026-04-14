@@ -571,9 +571,10 @@
         }
 
         // Creates a board for an oversized part.  The oversized strip holds the part (and any
-        // additional oversized parts that fit beside it in width).  After the fixed transport cut
-        // (placed right at trim + oversizedDim), tail strips are pre-computed at segMax intervals
-        // so that normal parts can fill them without needing a separate raw sheet.
+        // additional oversized parts that fit beside it in width).  Tail strips are NOT pre-computed
+        // here; they are added in Phase B after all oversized parts have been placed, so that
+        // multiple oversized strips can be stacked length-wise on the same raw sheet before tails
+        // consume the remaining space.
         function makeOversizedBoard(oversizedDim) {
             const ozZoneEnd = trim + oversizedDim;          // fixed transport cut position
             const strips  = [{
@@ -581,61 +582,54 @@
                 cuts: [],
                 oversized: true
             }];
-            const tzSpecs = [{ axis: 'length', start: ozZoneEnd, size: margin }];
-
-            // Pre-compute normal-capacity tail strips after the transport cut
-            let tailPos = ozZoneEnd + margin;
-            while (tailPos < totalDim) {
-                const segEnd  = Math.min(tailPos + segMax, totalDim);
-                const segSize = segEnd - tailPos;
-                strips.push({
-                    freeRects: [{ x: trim, y: 0, w: Math.max(0, sheetWidth - trim), l: segSize }],
-                    cuts: [],
-                    absStart: tailPos    // absolute y offset used during post-processing
-                });
-                if (segEnd < totalDim) {
-                    tzSpecs.push({ axis: 'length', start: segEnd, size: Math.min(margin, totalDim - segEnd) });
-                }
-                tailPos = segEnd + margin;
-            }
-
             return {
                 cuts: [],
                 freeRects: [],
                 strips,
-                transportZones: tzSpecs,   // pre-set — not rebuilt in post-processing
+                transportZones: [{ axis: 'length', start: ozZoneEnd, size: margin }],
                 splitAxis: 'length',
-                hasOversized: true
+                hasOversized: true,
+                nextOzStart: ozZoneEnd + margin   // where the next oz strip (or tail zone) begins
             };
         }
 
         let boards   = [];
         let unmapped = [];
 
-        // Pre-sort: oversized parts (length > segMax) come first, sorted largest-first.
-        // This ensures the board is created for the largest oversized dimension, so smaller
-        // oversized parts can share that board's remaining width.  Normal parts follow in
-        // their original order (already sorted by area desc by the caller).
-        const partsOrdered = [
-            ...parts.filter(p => p.length > segMax).sort((a, b) => b.length - a.length),
-            ...parts.filter(p => p.length <= segMax)
-        ];
+        // Effective transport-direction length of a part, accounting for grain-forced rotation.
+        // When grains are set and mismatched the part MUST be rotated, so its width becomes the
+        // transport-direction dimension.  When one grain is 'none' the optimizer can choose the
+        // shorter dimension, so we use Math.min as the best-case classification.
+        function effectiveTransportL(p) {
+            if (p.grain !== 'none' && sheetGrain !== 'none') {
+                return p.grain === sheetGrain ? p.length : p.width;
+            }
+            return Math.min(p.length, p.width);
+        }
 
-        partsOrdered.forEach(part => {
+        // Split parts: oversized (effective transport-L > segMax) sorted largest-first, then normal.
+        const ozParts = parts.filter(p => effectiveTransportL(p) > segMax)
+                             .sort((a, b) => effectiveTransportL(b) - effectiveTransportL(a));
+        const nmParts = parts.filter(p => effectiveTransportL(p) <= segMax);
+
+        // === PHASE A: Pack all oversized parts ===
+        // Each oversized part first tries to share an existing oz strip (width-wise), then tries
+        // to extend an existing ozBoard with a new oz strip (length-wise), and only as a last
+        // resort opens a new raw sheet.  This lets multiple oversized parts stack on one board.
+        ozParts.forEach(part => {
             let placed = false;
 
-            // Pass 1: try existing boards — all strips, in strip order.
-            // Oversized strips (strip.oversized) are safe to fill in the width direction
-            // because their freeRect is capped at l:oversizedDim, preventing any part from
-            // extending past the transport cut.
+            // Pass 1-OZ: fit width-wise in any existing oversized strip
             for (let b of boards) {
+                if (!b.hasOversized) continue;
                 for (let strip of b.strips) {
+                    if (!strip.oversized) continue;
                     strip.freeRects.sort((r1, r2) => (r1.w * r1.l) - (r2.w * r2.l));
                     for (let i = 0; i < strip.freeRects.length; i++) {
                         let fit = checkFit(part, strip.freeRects[i], sheetGrain);
                         if (fit.fits) {
                             place2DPart({ cuts: strip.cuts, freeRects: strip.freeRects }, i, part, fit.rotated, kerf, pref);
-                            if (part.length > segMax) strip.cuts[strip.cuts.length - 1].oversized = true;
+                            strip.cuts[strip.cuts.length - 1].oversized = true;
                             placed = true;
                             break;
                         }
@@ -645,8 +639,97 @@
                 if (placed) break;
             }
 
+            // Pass 2-OZ: extend an existing ozBoard with a fresh oversized strip
             if (!placed) {
-                // Pass 2: open a new normal board; find the first strip that fits
+                const ozL = effectiveTransportL(part);
+                for (let b of boards) {
+                    if (!b.hasOversized) continue;
+                    if (b.nextOzStart + ozL <= totalDim) {
+                        const newStripStart = b.nextOzStart;
+                        const newStrip = {
+                            freeRects: [{ x: trim, y: 0, w: Math.max(0, sheetWidth - trim), l: ozL }],
+                            cuts: [],
+                            oversized: true,
+                            absStart: newStripStart
+                        };
+                        const fit = checkFit(part, newStrip.freeRects[0], sheetGrain);
+                        if (fit.fits) {
+                            b.strips.push(newStrip);
+                            b.transportZones.push({ axis: 'length', start: newStripStart + ozL, size: margin });
+                            b.nextOzStart = newStripStart + ozL + margin;
+                            place2DPart({ cuts: newStrip.cuts, freeRects: newStrip.freeRects }, 0, part, fit.rotated, kerf, pref);
+                            newStrip.cuts[newStrip.cuts.length - 1].oversized = true;
+                            placed = true;
+                        }
+                        if (placed) break;
+                    }
+                }
+            }
+
+            // Pass 3-OZ: open a brand-new oversized board
+            const ozL3 = effectiveTransportL(part);
+            if (!placed && ozL3 <= totalDim) {
+                const ozBoard = makeOversizedBoard(ozL3);
+                const ozStrip = ozBoard.strips[0];
+                const fit = checkFit(part, ozStrip.freeRects[0], sheetGrain);
+                if (fit.fits) {
+                    place2DPart({ cuts: ozStrip.cuts, freeRects: ozStrip.freeRects }, 0, part, fit.rotated, kerf, pref);
+                    ozStrip.cuts[ozStrip.cuts.length - 1].oversized = true;
+                    boards.push(ozBoard);
+                    placed = true;
+                }
+            }
+
+            if (!placed) unmapped.push(part);
+        });
+
+        // === PHASE B: Add tail strips to every oversized board ===
+        // Now that all oz parts are placed we know where each board's oz zone ends, so we can
+        // append segMax-length tail strips in the remaining length without risk of them being
+        // "stolen" by subsequent oz parts.
+        boards.forEach(b => {
+            if (!b.hasOversized) return;
+            let tailPos = b.nextOzStart;
+            while (tailPos < totalDim) {
+                const segEnd  = Math.min(tailPos + segMax, totalDim);
+                const segSize = segEnd - tailPos;
+                b.strips.push({
+                    freeRects: [{ x: trim, y: 0, w: Math.max(0, sheetWidth - trim), l: segSize }],
+                    cuts: [],
+                    absStart: tailPos
+                });
+                if (segEnd < totalDim) {
+                    b.transportZones.push({ axis: 'length', start: segEnd, size: Math.min(margin, totalDim - segEnd) });
+                }
+                tailPos = segEnd + margin;
+            }
+        });
+
+        // === PHASE C: Pack all normal parts ===
+        // Normal parts fill remaining width in oz strips first (Pass 1), then fall back to new
+        // normal boards (Pass 2).
+        nmParts.forEach(part => {
+            let placed = false;
+
+            // Pass 1: try all strips of all boards (oz strips' remaining width + tail strips)
+            for (let b of boards) {
+                for (let strip of b.strips) {
+                    strip.freeRects.sort((r1, r2) => (r1.w * r1.l) - (r2.w * r2.l));
+                    for (let i = 0; i < strip.freeRects.length; i++) {
+                        let fit = checkFit(part, strip.freeRects[i], sheetGrain);
+                        if (fit.fits) {
+                            place2DPart({ cuts: strip.cuts, freeRects: strip.freeRects }, i, part, fit.rotated, kerf, pref);
+                            placed = true;
+                            break;
+                        }
+                    }
+                    if (placed) break;
+                }
+                if (placed) break;
+            }
+
+            // Pass 2: open a new normal board
+            if (!placed) {
                 const newBoard = makeNewBoard();
                 for (let strip of newBoard.strips) {
                     strip.freeRects.sort((r1, r2) => (r1.w * r1.l) - (r2.w * r2.l));
@@ -661,24 +744,9 @@
                     }
                     if (placed) break;
                 }
-
-                // Pass 3: part exceeds segMax but fits on the full sheet length → oversized board
-                if (!placed) {
-                    if (part.length > segMax && part.length <= totalDim) {
-                        const ozBoard = makeOversizedBoard(part.length);
-                        const ozStrip = ozBoard.strips[0];
-                        const fit = checkFit(part, ozStrip.freeRects[0], sheetGrain);
-                        if (fit.fits) {
-                            place2DPart({ cuts: ozStrip.cuts, freeRects: ozStrip.freeRects }, 0, part, fit.rotated, kerf, pref);
-                            ozStrip.cuts[ozStrip.cuts.length - 1].oversized = true;
-                            boards.push(ozBoard);
-                            placed = true;
-                        }
-                    }
-                }
-
-                if (!placed) unmapped.push(part);
             }
+
+            if (!placed) unmapped.push(part);
         });
 
         // Build absolute-coordinate cuts and freeRects from actual packed extents.
