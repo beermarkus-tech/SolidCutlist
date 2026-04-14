@@ -138,6 +138,7 @@
         saveState();
         renderPartsTable();
         showToast(t('msg_part_added'));
+        setTimeout(() => activateEditRow('parts', newPart.id), 0);
 
         // BATCH ENTRY LOOP: Clear only what needs to be cleared
         nameInput.value = '';
@@ -156,262 +157,261 @@
         renderPartsTable();
     }
     function renderPartsTable() {
+        clearEditRowRegistry('parts');
         const tbody = document.getElementById('table-parts-body');
         if (!tbody) return;
         tbody.innerHTML = '';
 
-        // 🪄 1. Initialize the running totals
-        let totalVisibleQty = 0;
-        let totalVisibleWeightKg = 0;
-        let totalVisibleCost = 0;
-
-        // Retrieve the saved user preference (or default to weight)
+        // Sync metric mode dropdown
         const metricMode = (appState.settings && appState.settings.partsMetricMode) ? appState.settings.partsMetricMode : 'weight';
         const metricDropdown = document.getElementById('table-parts-metric-view');
         if (metricDropdown) metricDropdown.value = metricMode;
-        const currencySymbol = (appState.settings && appState.settings.currency) ? appState.settings.currency : '$';
 
         if (!appState.parts || appState.parts.length === 0) {
-            // Updated colspan to match the new number of headers
             tbody.innerHTML = `<tr><td colspan="11" class="text-center py-4 text-muted">${t('msg_no_parts_added')}</td></tr>`;
             return;
         }
 
+        // O(1) indexes — built once, used per row for totals
+        const _profileMap = new Map(appState.profiles.map(p => [p.id, p]));
+        const _materialMap = new Map(appState.materials.map(m => [m.id, m]));
+        const _catalogIndex = {};
+        if (appState.catalog) {
+            appState.catalog.forEach(c => {
+                const k = c.profileId + '|' + c.materialId;
+                if (!_catalogIndex[k]) _catalogIndex[k] = [];
+                _catalogIndex[k].push(c);
+            });
+        }
+
+        let totalVisibleQty = 0, totalVisibleWeightKg = 0, totalVisibleCost = 0;
+
         appState.parts.forEach(part => {
             if (typeof rowPassesFilters === 'function' && !rowPassesFilters(part, 'parts')) return;
 
-            const tr = document.createElement('tr');
-            
-            // Relational Lookups (Moved up so we can use them for validation)
-            const proj = appState.projects.find(p => p.id === part.projectId);
-            const prof = appState.profiles.find(p => p.id === part.profileId);
-            const mat = appState.materials.find(m => m.id === part.materialId);
+            const prof = _profileMap.get(part.profileId);
+            const mat  = _materialMap.get(part.materialId);
+            const isReady = !!(prof && mat);
+            part.status = isReady ? 'ready' : 'needs_mapping';
 
-            // 🪄 1. EVALUATE STATUS & COLOR THE ROW (Reality Check Standard)
-            const isReady = prof && mat; // Only true if the objects actually exist in the dictionary
-            part.status = isReady ? 'ready' : 'needs_mapping'; 
-            
-            if (!isReady) {
-                tr.classList.add('table-warning'); 
-            }
-            
-            // 🪄 2. INLINE DROPDOWNS & WARNINGS
-            let projOptions = `<option value="" disabled>${t('opt_select')}</option>`;
-            [...appState.projects].sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
-                projOptions += `<option value="${p.id}" ${p.id === part.projectId ? 'selected' : ''}>${safeHTML(p.name)}</option>`;
-            });
-
-            // Profile Dropdown with ⚠️ Warning
-            let profOptions = !prof ? `<option value="" disabled selected>⚠️ ${t('opt_select_profile')}</option>` : '';
-            const filteredProfiles = appState.profiles.filter(p => p.type === part.category).sort((a, b) => a.name.localeCompare(b.name));
-            filteredProfiles.forEach(p => {
-                const unitText = appState.settings.displayUnit === 'mm' ? 'mm' : 'in';
-                const dimLabel = `${formatForDisplay(p.thickness)} x ${formatForDisplay(p.width)} ${unitText}`;
-                profOptions += `<option value="${p.id}" ${p.id === part.profileId ? 'selected' : ''}>${safeHTML(p.name)}</option>`;
-            });
-
-            // Material Dropdown with ⚠️ Warning
-            let matOptions = !mat ? `<option value="" disabled selected>⚠️ ${t('opt_select_material')}</option>` : '';
-            const filteredMaterials = appState.materials.filter(m => m.category === part.category).sort((a, b) => a.name.localeCompare(b.name));
-            filteredMaterials.forEach(m => {
-                matOptions += `<option value="${m.id}" ${m.id === part.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
-            });
-
-            // 🪄 NEW: Filter Groups for this specific row's Project
-            let groupOptions = '<option value="">-</option>';
-            if (appState.groups) {
-                const rowGroups = appState.groups.filter(g => g.projectId === part.projectId).sort((a, b) => a.name.localeCompare(b.name));
-                rowGroups.forEach(g => {
-                    groupOptions += `<option value="${g.id}" ${g.id === part.groupId ? 'selected' : ''}>${safeHTML(g.name)}</option>`;
-                });
-            }
-
-            // 🪄 3. DIMENSIONS LOGIC
-            const displayW = part.category === 'lumber' ? formatForDisplay(prof ? prof.width : 0) : formatForDisplay(part.width);
-            const displayL = formatForDisplay(part.length);
-            
-            let dimHtml = '';
-            if (part.category === 'lumber') {
-                dimHtml = `<input type="text" class="form-control form-control-sm border-0 bg-transparent text-center mx-auto py-0" style="width: 60px;"
-                           value="${displayL}" onchange="updatePart('${part.id}', 'length', this.value)" title="${t('title_tap_to_edit_length')}">
-                `;
-            } else if (part.category === 'sheet') {
-                dimHtml = `
-                    <div class="d-flex align-items-baseline justify-content-center gap-1">
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0 py-0" style="width: 60px;"
-                            value="${displayW}" onchange="updatePart('${part.id}', 'width', this.value)" title="${t('title_tap_to_edit_width')}">
-                        <span class="text-muted text-sm px-1">x</span>
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-left px-0 py-0" style="width: 60px;"
-                            value="${displayL}" onchange="updatePart('${part.id}', 'length', this.value)" title="${t('title_tap_to_edit_length')}">
-                    </div>
-                `;
-            } else {
-                dimHtml = `<span class="text-muted">-</span>`;
-            }
-
-            // 🪄 4. DUAL ENGINE: WEIGHT & ESTIMATED COST
-            let displayMetric = '-';
-            let rowWeightKg = 0; 
-            let rowCost = 0;
+            // Tally totals
             const rowQty = parseInt(part.qty) || 1;
             const trueWidth = part.category === 'lumber' ? (prof ? prof.width : 0) : (part.width || 0);
-            
-            // --- A. Weight Math ---
+            let rowWeightKg = 0, rowCost = 0;
             if (part.category !== 'fastener' && prof && mat) {
-                const safeThick = prof.thickness || 0;
-                const volumeM3 = ((part.length || 0) * trueWidth * safeThick) / 1000000000;
-                rowWeightKg = volumeM3 * (mat.density || 0) * rowQty; 
+                const vol = ((part.length || 0) * trueWidth * (prof.thickness || 0)) / 1000000000;
+                rowWeightKg = vol * (mat.density || 0) * rowQty;
             }
-
-            // --- B. Average Cost Math ---
-            if (part.category !== 'fastener' && appState.catalog && appState.catalog.length > 0) {
-                // Find all matching items in the catalog
-                const matchingItems = appState.catalog.filter(c => 
-                    c.categoryId === part.category && 
-                    c.profileId === part.profileId && 
-                    c.materialId === part.materialId
-                );
-
-                if (matchingItems.length > 0) {
-                    let totalNormalizedPrice = 0;
-                    
-                    // Convert every matching item into a "Price per millimeter" (or mm² for sheets)
-                    matchingItems.forEach(catItem => {
-                        const baseCost = calculateCostPerPiece(catItem); // Native base cost
-                        if (part.category === 'sheet') {
-                            const catArea = catItem.length * catItem.width;
-                            if (catArea > 0) totalNormalizedPrice += (baseCost / catArea);
-                        } else {
-                            if (catItem.length > 0) totalNormalizedPrice += (baseCost / catItem.length);
-                        }
+            if (part.category !== 'fastener') {
+                const matches = _catalogIndex[part.profileId + '|' + part.materialId] || [];
+                if (matches.length > 0) {
+                    let norm = 0;
+                    matches.forEach(c => {
+                        const bc = calculateCostPerPiece(c);
+                        if (part.category === 'sheet') { const a = c.length * c.width; if (a > 0) norm += bc / a; }
+                        else { if (c.length > 0) norm += bc / c.length; }
                     });
-
-                    // Average the price per unit
-                    const avgPricePerUnit = totalNormalizedPrice / matchingItems.length;
-
-                    // Apply the average back to our specific Part geometry
-                    if (part.category === 'sheet') {
-                        const partArea = part.length * trueWidth;
-                        rowCost = avgPricePerUnit * partArea * rowQty;
-                    } else {
-                        rowCost = avgPricePerUnit * part.length * rowQty;
-                    }
+                    const avg = norm / matches.length;
+                    rowCost = part.category === 'sheet' ? avg * (part.length * trueWidth) * rowQty : avg * part.length * rowQty;
                 }
             }
-
-            // --- C. Format the Visual Output based on user selection ---
-            if (metricMode === 'cost') {
-                if (rowCost > 0) {
-                    displayMetric = `<small>${currencySymbol}${rowCost.toFixed(2)}</small>`;
-                } else {
-                    displayMetric = `<small>${t('lbl_no_data')}</small>`;
-                }
-            } else {
-                if (rowWeightKg > 0) {
-                    const isMetric = appState.settings.displayUnit === 'mm';
-                    const finalWeight = isMetric ? rowWeightKg : (rowWeightKg * 2.20462);
-                    const weightUnit = isMetric ? 'kg' : 'lbs';
-                    displayMetric = `<small>${finalWeight.toFixed(2)} ${weightUnit}</small>`;
-                }
-            }
-
-            // 🪄 ADD TO RUNNING TOTALS
             totalVisibleQty += rowQty;
             totalVisibleWeightKg += rowWeightKg;
             totalVisibleCost += rowCost;
 
-            // COLOR CODED BADGE LOGIC
-            let badgeClass = getCategoryBadgeClass(part.category);
-
-            // 🪄 NEW: INLINE GRAIN DROPDOWN
-            let grainHtml = '<span class="text-muted">-</span>';
-            if (part.category === 'sheet') {
-                grainHtml = `
-                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width: 75px;" onchange="updatePart('${part.id}', 'grain', this.value)" title="${t('title_change_grain')}">
-                        <option value="none" ${part.grain === 'none' ? 'selected' : ''}>-</option>
-                        <option value="length" ${part.grain === 'length' ? 'selected' : ''}>${t('opt_length')}</option>
-                        <option value="width" ${part.grain === 'width' ? 'selected' : ''}>${t('opt_width')}</option>
-                    </select>
-                `;
-            }
-
-            // 🪄 5. BUILD THE ROW
-            tr.innerHTML = `
-                <td class="p-0 px-1">
-                    <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" onchange="updatePart('${part.id}', 'projectId', this.value)">
-                        ${projOptions}
-                    </select>
-                </td>
-                <td class="p-0 px-1">
-                    <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" onchange="updatePart('${part.id}', 'groupId', this.value)">
-                        ${groupOptions}
-                    </select>
-                </td>
-                <td class="p-0 px-1">
-                    <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" 
-                           value="${safeHTML(part.name)}" 
-                           onchange="updatePart('${part.id}', 'name', this.value)" title="${t('title_tap_to_edit')}">
-                </td>
-                <td>
-                    <div class="d-flex justify-content-center px-1">
-                        <span class="badge ${badgeClass} py-1 d-inline-block" 
-                              style="width: 85px; text-align: center; font-size: 0.75rem; text-transform: uppercase;">
-                              ${t('opt_' + part.category)}
-                        </span>
-                    </div>
-                </td>
-                <td class="p-0 px-1">
-                    <div class="d-flex justify-content-center">
-                        <input type="number" class="form-control form-control-sm border-0 bg-transparent text-center text-primary fw-bold px-0" style="width: 40px;"
-                           value="${part.qty}" min="1"
-                           onchange="updatePart('${part.id}', 'qty', this.value)" title="${t('title_tap_to_edit')}">
-                    </div>
-                </td>
-                <td class="p-0 px-1">
-                    <select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 align-middle text-center" onchange="updatePart('${part.id}', 'profileId', this.value)" title="${t('title_tap_to_edit_profile')}">
-                        ${profOptions}
-                    </select>
-                </td>
-                <td class="text-center p-0 px-1 align-middle">${dimHtml}</td>
-                <td class="p-0 px-1">
-                    <select class="text-center form-select form-select-sm border-0 bg-transparent px-0 py-0" onchange="updatePart('${part.id}', 'materialId', this.value)" title="${t('title_tap_to_edit_material')}">
-                        ${matOptions}
-                    </select>
-                </td>
-                <td class="p-0 px-1 align-middle text-center">${grainHtml}</td>
-                <td class="p-0 px-1 text-center">${displayMetric}</td>
-                 
-                <td class="text-end">
-                    <button class="btn btn-sm py-0 px-0" onclick="duplicateRow('parts', '${part.id}')" title="${t('title_duplicate_row')}">➕</button>
-                    <button class="btn btn-sm py-0 px-0 me-2" onclick="deletePart('${part.id}')">🗑️</button>
-                </td>
-            `;
+            // Build read-only TR — text only, no inputs or selects
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-table', 'parts');
+            tr.setAttribute('data-row-id', part.id);
+            tr.setAttribute('onclick', `activateEditRow('parts', '${part.id}')`);
+            tr.classList.add('editable-row');
+            if (!isReady) tr.classList.add('table-warning');
+            tr.innerHTML = buildPartsReadRowInner(part.id);
             tbody.appendChild(tr);
         });
-        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
-        const filterColumns = ['projectId', 'groupId', 'category', 'profileId', 'materialId', 'grain'];
-        const hasAnyFilter = updateFilterUI('parts', filterColumns);
 
-        // 🪄 UPDATE THE STICKY FOOTER TOTALS
-        const tfootQty = document.getElementById('tfoot-parts-qty');
-        const tfootWeight = document.getElementById('tfoot-parts-weight');
+        updateFilterUI('parts', ['projectId', 'groupId', 'category', 'profileId', 'materialId', 'grain']);
+        _setPartsFooter(totalVisibleQty, totalVisibleWeightKg, totalVisibleCost);
+    }
+
+    function _setPartsFooter(qty, weightKg, cost) {
+        const metricMode = (appState.settings && appState.settings.partsMetricMode) ? appState.settings.partsMetricMode : 'weight';
+        const currencySymbol = (appState.settings && appState.settings.currency) ? appState.settings.currency : '$';
+        const tfootQty    = document.getElementById('tfoot-parts-qty');
         const tfootMetric = document.getElementById('tfoot-parts-metric');
-        
-        if (tfootQty) {
-            tfootQty.innerText = totalVisibleQty;
-        }
-
+        if (tfootQty) tfootQty.innerText = qty;
         if (tfootMetric) {
             if (metricMode === 'cost') {
-                tfootMetric.innerText = `${currencySymbol}${totalVisibleCost.toFixed(2)}`;
+                tfootMetric.innerText = `${currencySymbol}${cost.toFixed(2)}`;
             } else {
                 const isMetric = appState.settings.displayUnit === 'mm';
-                const finalTotalWeight = isMetric ? totalVisibleWeightKg : (totalVisibleWeightKg * 2.20462);
-                const weightUnit = isMetric ? 'kg' : 'lbs';
-                tfootMetric.innerText = `${finalTotalWeight.toFixed(1)} ${weightUnit}`;
+                tfootMetric.innerText = `${(isMetric ? weightKg : weightKg * 2.20462).toFixed(1)} ${isMetric ? 'kg' : 'lbs'}`;
             }
         }
+    }
 
+    function _updatePartsFooterTotals() {
+        if (!appState.parts) return;
+        const _ci = {};
+        if (appState.catalog) {
+            appState.catalog.forEach(c => {
+                const k = c.profileId + '|' + c.materialId;
+                if (!_ci[k]) _ci[k] = [];
+                _ci[k].push(c);
+            });
+        }
+        let qty = 0, weightKg = 0, cost = 0;
+        appState.parts.forEach(part => {
+            if (typeof rowPassesFilters === 'function' && !rowPassesFilters(part, 'parts')) return;
+            const prof = appState.profiles?.find(p => p.id === part.profileId);
+            const mat  = appState.materials?.find(m => m.id === part.materialId);
+            const rowQty = parseInt(part.qty) || 1;
+            const trueWidth = part.category === 'lumber' ? (prof ? prof.width : 0) : (part.width || 0);
+            qty += rowQty;
+            if (part.category !== 'fastener' && prof && mat) {
+                const vol = ((part.length || 0) * trueWidth * (prof.thickness || 0)) / 1000000000;
+                weightKg += vol * (mat.density || 0) * rowQty;
+            }
+            if (part.category !== 'fastener') {
+                const matches = _ci[part.profileId + '|' + part.materialId] || [];
+                if (matches.length > 0) {
+                    let norm = 0;
+                    matches.forEach(c => {
+                        const bc = calculateCostPerPiece(c);
+                        if (part.category === 'sheet') { const a = c.length * c.width; if (a > 0) norm += bc / a; }
+                        else { if (c.length > 0) norm += bc / c.length; }
+                    });
+                    const avg = norm / matches.length;
+                    cost += part.category === 'sheet' ? avg * (part.length * trueWidth) * rowQty : avg * part.length * rowQty;
+                }
+            }
+        });
+        _setPartsFooter(qty, weightKg, cost);
+    }
+
+    function _computePartMetric(part, prof, mat) {
+        const metricMode = (appState.settings && appState.settings.partsMetricMode) ? appState.settings.partsMetricMode : 'weight';
+        const currencySymbol = (appState.settings && appState.settings.currency) ? appState.settings.currency : '$';
+        const rowQty = parseInt(part.qty) || 1;
+        const trueWidth = part.category === 'lumber' ? (prof ? prof.width : 0) : (part.width || 0);
+        let rowWeightKg = 0, rowCost = 0;
+        if (part.category !== 'fastener' && prof && mat) {
+            const vol = ((part.length || 0) * trueWidth * (prof.thickness || 0)) / 1000000000;
+            rowWeightKg = vol * (mat.density || 0) * rowQty;
+        }
+        if (part.category !== 'fastener' && appState.catalog && appState.catalog.length > 0) {
+            const matches = appState.catalog.filter(c => c.profileId === part.profileId && c.materialId === part.materialId);
+            if (matches.length > 0) {
+                let norm = 0;
+                matches.forEach(c => {
+                    const bc = calculateCostPerPiece(c);
+                    if (part.category === 'sheet') { const a = c.length * c.width; if (a > 0) norm += bc / a; }
+                    else { if (c.length > 0) norm += bc / c.length; }
+                });
+                const avg = norm / matches.length;
+                rowCost = part.category === 'sheet' ? avg * (part.length * trueWidth) * rowQty : avg * part.length * rowQty;
+            }
+        }
+        if (metricMode === 'cost') {
+            return rowCost > 0 ? `<small>${currencySymbol}${rowCost.toFixed(2)}</small>` : `<small>${t('lbl_no_data')}</small>`;
+        }
+        if (rowWeightKg > 0) {
+            const isMetric = appState.settings.displayUnit === 'mm';
+            return `<small>${(isMetric ? rowWeightKg : rowWeightKg * 2.20462).toFixed(2)} ${isMetric ? 'kg' : 'lbs'}</small>`;
+        }
+        return '-';
+    }
+
+    function buildPartsReadRowInner(partId) {
+        const part = appState.parts?.find(p => p.id === partId);
+        if (!part) return '';
+        const proj = appState.projects?.find(p => p.id === part.projectId);
+        const grp  = appState.groups?.find(g => g.id === part.groupId);
+        const prof = appState.profiles?.find(p => p.id === part.profileId);
+        const mat  = appState.materials?.find(m => m.id === part.materialId);
+        const isReady = !!(prof && mat);
+        const badgeClass = getCategoryBadgeClass(part.category);
+        const grainText = part.category === 'sheet'
+            ? (part.grain === 'length' ? t('opt_length') : part.grain === 'width' ? t('opt_width') : '-') : '-';
+        const displayW = part.category === 'lumber' ? formatForDisplay(prof ? prof.width : 0) : formatForDisplay(part.width);
+        const displayL = formatForDisplay(part.length);
+        let dimText = '-';
+        if (part.category === 'lumber') dimText = displayL;
+        else if (part.category === 'sheet') dimText = `${displayW} × ${displayL}`;
+        return `
+            <td class="p-0 px-1"><small class="text-truncate d-block" style="max-width:110px">${safeHTML(proj?.name || '—')}</small></td>
+            <td class="p-0 px-1"><small class="text-muted text-truncate d-block" style="max-width:90px">${safeHTML(grp?.name || '-')}</small></td>
+            <td class="p-0 px-1"><small class="fw-bold">${safeHTML(part.name)}</small></td>
+            <td><div class="d-flex justify-content-center px-1"><span class="badge ${badgeClass} py-1 d-inline-block" style="width:85px;text-align:center;font-size:0.75rem;text-transform:uppercase;">${t('opt_' + part.category)}</span></div></td>
+            <td class="text-center text-primary fw-bold"><small>${part.qty}</small></td>
+            <td class="p-0 px-1 text-center"><small class="${isReady ? '' : 'text-warning fw-bold'}">${safeHTML(prof?.name || '⚠️')}</small></td>
+            <td class="text-center p-0 px-1" style="width:130px"><small>${dimText}</small></td>
+            <td class="p-0 px-1 text-center"><small class="${isReady ? '' : 'text-warning fw-bold'}">${safeHTML(mat?.name || '⚠️')}</small></td>
+            <td class="p-0 px-1 align-middle text-center"><small>${grainText}</small></td>
+            <td class="p-0 px-1 text-center">${_computePartMetric(part, prof, mat)}</td>
+            <td class="text-end">
+                <button class="btn btn-sm py-0 px-0" onclick="event.stopPropagation(); duplicateRow('parts', '${part.id}')" title="${t('title_duplicate_row')}">➕</button>
+                <button class="btn btn-sm py-0 px-0 me-2" onclick="event.stopPropagation(); deletePart('${part.id}')">🗑️</button>
+            </td>`;
+    }
+
+    function buildPartsEditRowInner(partId) {
+        const part = appState.parts?.find(p => p.id === partId);
+        if (!part) return '';
+        const prof = appState.profiles?.find(p => p.id === part.profileId);
+        const mat  = appState.materials?.find(m => m.id === part.materialId);
+        const badgeClass = getCategoryBadgeClass(part.category);
+        let projOptions = `<option value="" disabled>${t('opt_select')}</option>`;
+        [...(appState.projects || [])].sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+            projOptions += `<option value="${p.id}" ${p.id === part.projectId ? 'selected' : ''}>${safeHTML(p.name)}</option>`;
+        });
+        let groupOptions = '<option value="">-</option>';
+        (appState.groups || []).filter(g => g.projectId === part.projectId).sort((a, b) => a.name.localeCompare(b.name)).forEach(g => {
+            groupOptions += `<option value="${g.id}" ${g.id === part.groupId ? 'selected' : ''}>${safeHTML(g.name)}</option>`;
+        });
+        let profOptions = !prof ? `<option value="" disabled selected>⚠️ ${t('opt_select_profile')}</option>` : '';
+        (appState.profiles || []).filter(p => p.type === part.category).sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+            profOptions += `<option value="${p.id}" ${p.id === part.profileId ? 'selected' : ''}>${safeHTML(p.name)}</option>`;
+        });
+        let matOptions = !mat ? `<option value="" disabled selected>⚠️ ${t('opt_select_material')}</option>` : '';
+        (appState.materials || []).filter(m => m.category === part.category).sort((a, b) => a.name.localeCompare(b.name)).forEach(m => {
+            matOptions += `<option value="${m.id}" ${m.id === part.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
+        });
+        const displayW = part.category === 'lumber' ? formatForDisplay(prof ? prof.width : 0) : formatForDisplay(part.width);
+        const displayL = formatForDisplay(part.length);
+        let dimHtml = '<span class="text-muted">-</span>';
+        if (part.category === 'lumber') {
+            dimHtml = `<input type="text" class="form-control form-control-sm border-0 bg-transparent text-center mx-auto py-0" style="width:55px;" value="${displayL}" onchange="updatePart('${part.id}', 'length', this.value)" title="${t('title_tap_to_edit_length')}">`;
+        } else if (part.category === 'sheet') {
+            dimHtml = `<div class="d-flex align-items-baseline justify-content-center gap-1">
+                <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0 py-0" style="width:48px;" value="${displayW}" onchange="updatePart('${part.id}', 'width', this.value)" title="${t('title_tap_to_edit_width')}">
+                <span class="text-muted px-0">×</span>
+                <input type="text" class="form-control form-control-sm border-0 bg-transparent text-left px-0 py-0" style="width:48px;" value="${displayL}" onchange="updatePart('${part.id}', 'length', this.value)" title="${t('title_tap_to_edit_length')}">
+            </div>`;
+        }
+        let grainHtml = '<span class="text-muted">-</span>';
+        if (part.category === 'sheet') {
+            grainHtml = `<select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 mx-auto text-center" style="width:75px;" onchange="updatePart('${part.id}', 'grain', this.value)" title="${t('title_change_grain')}">
+                <option value="none" ${part.grain === 'none' ? 'selected' : ''}>-</option>
+                <option value="length" ${part.grain === 'length' ? 'selected' : ''}>${t('opt_length')}</option>
+                <option value="width" ${part.grain === 'width' ? 'selected' : ''}>${t('opt_width')}</option>
+            </select>`;
+        }
+        return `
+            <td class="p-0 px-1"><select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" onchange="updatePart('${part.id}', 'projectId', this.value)">${projOptions}</select></td>
+            <td class="p-0 px-1"><select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" onchange="updatePart('${part.id}', 'groupId', this.value)">${groupOptions}</select></td>
+            <td class="p-0 px-1"><input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" value="${safeHTML(part.name)}" onchange="updatePart('${part.id}', 'name', this.value)" title="${t('title_tap_to_edit')}"></td>
+            <td><div class="d-flex justify-content-center px-1"><span class="badge ${badgeClass} py-1 d-inline-block" style="width:85px;text-align:center;font-size:0.75rem;text-transform:uppercase;">${t('opt_' + part.category)}</span></div></td>
+            <td class="p-0 px-1"><div class="d-flex justify-content-center"><input type="number" class="form-control form-control-sm border-0 bg-transparent text-center text-primary fw-bold px-0" style="width:40px;" value="${part.qty}" min="1" onchange="updatePart('${part.id}', 'qty', this.value)" title="${t('title_tap_to_edit')}"></div></td>
+            <td class="p-0 px-1"><select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 align-middle text-center" onchange="updatePart('${part.id}', 'profileId', this.value)" title="${t('title_tap_to_edit_profile')}">${profOptions}</select></td>
+            <td class="text-center p-0 px-1 align-middle" style="width:130px">${dimHtml}</td>
+            <td class="p-0 px-1"><select class="text-center form-select form-select-sm border-0 bg-transparent px-0 py-0" onchange="updatePart('${part.id}', 'materialId', this.value)" title="${t('title_tap_to_edit_material')}">${matOptions}</select></td>
+            <td class="p-0 px-1 align-middle text-center">${grainHtml}</td>
+            <td class="p-0 px-1 text-center">${_computePartMetric(part, prof, mat)}</td>
+            <td class="text-end">
+                <button class="btn btn-sm py-0 px-0" onclick="duplicateRow('parts', '${part.id}')" title="${t('title_duplicate_row')}">➕</button>
+                <button class="btn btn-sm py-0 px-0 me-2" onclick="deletePart('${part.id}')">🗑️</button>
+            </td>`;
     }
     function updatePartCategory(partId, newCategory) {
         const part = appState.parts.find(p => p.id === partId);
@@ -431,20 +431,30 @@
         const part = appState.parts.find(p => p.id === partId);
         if (part) {
             if (field === 'width' || field === 'length') {
-                // Run dimensions through the fractional math engine
                 part[field] = parseToBaseUnit(newValue) || 0;
             } else if (field === 'qty') {
                 part[field] = parseInt(newValue) || 1;
             } else if (field === 'projectId') {
                 part.projectId = newValue;
-                part.groupId = ''; 
+                part.groupId = '';
                 showToast(t('msg_project_changed'));
             } else {
-                part[field] = newValue; // For text like Name
+                part[field] = newValue;
             }
-            
             saveState();
-            renderPartsTable();
+            // If this row is active in edit mode: refresh it in place, skip full rebuild
+            if (_activeEditRow['parts'] === partId) {
+                const prof = appState.profiles?.find(p => p.id === part.profileId);
+                const mat  = appState.materials?.find(m => m.id === part.materialId);
+                const tr = document.querySelector(`tr[data-table="parts"][data-row-id="${partId}"]`);
+                if (tr) {
+                    tr.classList.toggle('table-warning', !(prof && mat));
+                    tr.innerHTML = buildPartsEditRowInner(partId);
+                }
+                _updatePartsFooterTotals();
+            } else {
+                renderPartsTable();
+            }
             showToast(t('msg_part_updated'));
         }
     }
@@ -493,4 +503,7 @@
         // Pass the ID if one is selected, otherwise pass the empty string
         if (typeof openGroupModal === 'function') openGroupModal(currentProjId);
     }
+
+    // Register Parts table with the central click-to-edit engine
+    registerEditableTable('parts', buildPartsEditRowInner, buildPartsReadRowInner);
 </script>

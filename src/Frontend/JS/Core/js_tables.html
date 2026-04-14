@@ -373,6 +373,74 @@
         return hasAnyFilter; 
     }
 
+    // ==========================================
+    // CLICK-TO-EDIT ROW ENGINE
+    // ==========================================
+
+    const _activeEditRow  = {};   // { tableId: rowId } — at most one active row per table
+    const _editRowBuilders = {};  // { tableId: { edit: fn(rowId)→html, read: fn(rowId)→html } }
+
+    function registerEditableTable(tableId, editFn, readFn) {
+        _editRowBuilders[tableId] = { edit: editFn, read: readFn };
+    }
+
+    // Activate a row (switch to edit inputs). No-op if already active.
+    function activateEditRow(tableId, rowId) {
+        if (_activeEditRow[tableId] === rowId) return;
+        deactivateEditRow(tableId);
+        const builders = _editRowBuilders[tableId];
+        if (!builders) return;
+        const tr = document.querySelector(`tr[data-table="${tableId}"][data-row-id="${rowId}"]`);
+        if (!tr) return;
+        tr.innerHTML = builders.edit(rowId);
+        tr.classList.add('edit-row-active');
+        _activeEditRow[tableId] = rowId;
+        const first = tr.querySelector('input, select, textarea');
+        if (first) setTimeout(() => first.focus(), 0);
+    }
+
+    // Deactivate the currently active row for a table (switch back to read text).
+    function deactivateEditRow(tableId) {
+        const rowId = _activeEditRow[tableId];
+        if (!rowId) return;
+        const builders = _editRowBuilders[tableId];
+        const tr = document.querySelector(`tr[data-table="${tableId}"][data-row-id="${rowId}"]`);
+        if (tr && builders) {
+            tr.innerHTML = builders.read(rowId);
+            tr.classList.remove('edit-row-active');
+        }
+        delete _activeEditRow[tableId];
+    }
+
+    // Called at the start of a full table re-render — clears the registry without touching DOM
+    // (the DOM is about to be rebuilt anyway).
+    function clearEditRowRegistry(tableId) {
+        delete _activeEditRow[tableId];
+    }
+
+    // Outside-click / outside-tap: deactivate if the interaction lands outside the active row
+    document.addEventListener('mousedown', function(e) {
+        Object.keys(_activeEditRow).forEach(tableId => {
+            const rowId = _activeEditRow[tableId];
+            if (!rowId) return;
+            const tr = document.querySelector(`tr[data-table="${tableId}"][data-row-id="${rowId}"]`);
+            if (tr && !tr.contains(e.target)) deactivateEditRow(tableId);
+        });
+    });
+    document.addEventListener('touchstart', function(e) {
+        Object.keys(_activeEditRow).forEach(tableId => {
+            const rowId = _activeEditRow[tableId];
+            if (!rowId) return;
+            const tr = document.querySelector(`tr[data-table="${tableId}"][data-row-id="${rowId}"]`);
+            if (tr && !tr.contains(e.target)) deactivateEditRow(tableId);
+        });
+    }, { passive: true });
+
+    // Escape key: deactivate all active rows
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') Object.keys(_activeEditRow).forEach(id => deactivateEditRow(id));
+    });
+
     let modalSortStates = { stock: { key: '', dir: 1 }, catalog: { key: '', dir: 1 } };
     function handleModalSort(type, key) {
         let state = modalSortStates[type];

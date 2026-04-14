@@ -559,4 +559,10 @@
 
         /* Uppercase section label with tracking (e.g. settings panel headings) */
         .section-label { font-size: 0.75rem; letter-spacing: 0.5px; }
+
+        /* Click-to-edit table rows */
+        tr.editable-row { cursor: pointer; }
+        tr.editable-row:hover td { background-color: rgba(var(--bs-primary-rgb), 0.04); }
+        tr.edit-row-active { cursor: default; outline: 2px solid rgba(var(--bs-primary-rgb), 0.4); outline-offset: -1px; }
+        tr.edit-row-active td { background-color: rgba(var(--bs-primary-rgb), 0.06) !important; }
 </style>
