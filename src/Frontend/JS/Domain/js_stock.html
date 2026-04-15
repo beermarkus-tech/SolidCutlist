@@ -541,12 +541,26 @@
                 item[field] = newValue; // Handles grain strings and boolean drop-downs
             }
             saveState();
-            renderStockTable();
+            // If this row is active in edit mode: refresh it in place, skip full rebuild
+            if (_activeEditRow['stock'] === id) {
+                const prof = appState.profiles?.find(p => p.id === item.profileId);
+                const mat  = appState.materials?.find(m => m.id === item.materialId);
+                const tr = document.querySelector(`tr[data-table="stock"][data-row-id="${id}"]`);
+                if (tr) {
+                    tr.classList.toggle('table-warning', !(prof && mat));
+                    tr.innerHTML = buildStockEditRowInner(id);
+                }
+            } else {
+                renderStockTable();
+            }
             showToast(t('msg_stock_updated'));
         }
     }
     function deleteStock(id, isConfirmed = false) {
         deleteItem('stock', id, 'confirm_delete_stock', null, renderStockTable, 'msg_item_removed_stock', isConfirmed);
     }
-    
+
+    // Register Stock table with the central click-to-edit engine
+    registerEditableTable('stock', buildStockEditRowInner, buildStockReadRowInner);
+
 </script>

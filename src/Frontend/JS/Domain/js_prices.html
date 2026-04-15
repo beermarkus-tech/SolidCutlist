@@ -442,195 +442,183 @@
     
     // Flat View Engine
     function renderFlatCatalogTable() {
+        clearEditRowRegistry('catalog');
         const tbody = document.getElementById('table-catalog-body');
         if (!tbody) return;
-        tbody.innerHTML = ''; 
+        tbody.innerHTML = '';
         if (!appState.catalog) appState.catalog = [];
-
-        const viewUnit = appState.settings?.catalogViewUnit || 'piece';
-        const isMetric = appState.settings.displayUnit === 'mm';
-        const currency = appState.settings.currency || '$'; // 🪄 ADD THIS
 
         appState.catalog.forEach(item => {
             if (typeof rowPassesFilters === 'function' && !rowPassesFilters(item, 'catalog')) return;
-
-            const tr = document.createElement('tr');
+            const prof = appState.profiles?.find(p => p.id === item.profileId);
+            const mat  = appState.materials?.find(m => m.id === item.materialId);
             const store = appState.stores?.find(s => s.id === item.storeId);
-            const badgeClass = getCategoryBadgeClass(item.categoryId);
-            
-            // 🪄 0. VALIDATE REALITY & DYNAMIC DROPDOWNS
-            const filteredProfiles = appState.profiles.filter(p => p.type === item.categoryId).sort((a, b) => a.name.localeCompare(b.name));
-            const isProfValid = filteredProfiles.some(p => p.id === item.profileId);
-            
-            let profOptions = !isProfValid ? `<option value="" disabled selected>⚠️ ${t('opt_select_profile')}</option>` : '';
-            filteredProfiles.forEach(p => {
-                profOptions += `<option value="${p.id}" ${p.id === item.profileId ? 'selected' : ''}>${safeHTML(p.name)}</option>`;
+            const isReady = !!(prof && mat && store);
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-table', 'catalog');
+            tr.setAttribute('data-row-id', item.id);
+            tr.setAttribute('onclick', `activateEditRow('catalog', '${item.id}')`);
+            tr.classList.add('editable-row');
+            if (!isReady) tr.classList.add('table-warning');
+            tr.innerHTML = buildCatalogReadRowInner(item.id);
+            tbody.appendChild(tr);
+        });
+
+        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
+        const filterColumns = ['categoryId', 'length', 'profileId', 'materialId', 'grain', 'storeId'];
+        updateFilterUI('catalog', filterColumns);
+    }
+
+    function buildCatalogReadRowInner(itemId) {
+        const item = appState.catalog?.find(c => c.id === itemId);
+        if (!item) return '';
+        const prof = appState.profiles?.find(p => p.id === item.profileId);
+        const mat  = appState.materials?.find(m => m.id === item.materialId);
+        const store = appState.stores?.find(s => s.id === item.storeId);
+        const isReady = !!(prof && mat && store);
+        const badgeClass = getCategoryBadgeClass(item.categoryId);
+        const viewUnit = appState.settings?.catalogViewUnit || 'piece';
+        const currency = appState.settings.currency || '$';
+        const isMetric = appState.settings.displayUnit === 'mm';
+        const displayL = formatForDisplay(item.length);
+        let dimText = displayL;
+        if (item.categoryId === 'sheet') dimText = `${formatForDisplay(item.width)} × ${displayL}`;
+        const grainText = item.categoryId === 'sheet'
+            ? (item.grain === 'length' ? t('opt_length') : item.grain === 'width' ? t('opt_width') : '-') : '-';
+        const displayPrice = getNormalizedPriceDisplay(item, viewUnit);
+        // Freshness badge
+        const verifiedTime = item.lastVerified || Date.now();
+        const daysOld = (Date.now() - verifiedTime) / (1000 * 60 * 60 * 24);
+        let badgeBg = '#198754'; let badgeColor = '#ffffff';
+        if (daysOld >= 28) badgeBg = '#dc3545';
+        else if (daysOld >= 14) { badgeBg = '#ffc107'; badgeColor = '#000000'; }
+        const dateObj = new Date(verifiedTime);
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const freshnessHtml = `<span class="badge shadow-sm" style="background-color:${badgeBg};color:${badgeColor};cursor:pointer;display:inline-flex;justify-content:center;align-items:center;user-select:none;" onclick="event.stopPropagation();verifyPrice('${item.id}')" title="${t('title_click_to_verify')}">${dd}/${mm}</span>`;
+        const linkHtml = item.link
+            ? `<a href="${safeHTML(item.link)}" target="_blank" class="text-decoration-none" onclick="event.stopPropagation()" title="${t('title_open_link')}">🔗</a>`
+            : `<span class="text-muted" style="opacity:0.3;">🔗</span>`;
+        const warnClass = isReady ? '' : 'text-warning fw-bold';
+        return `
+            <td><div class="d-flex justify-content-center px-1"><span class="badge ${badgeClass} py-1 d-inline-block" style="width:85px;text-align:center;font-size:0.75rem;text-transform:uppercase;">${t('opt_' + item.categoryId)}</span></div></td>
+            <td class="px-1 py-0 align-middle text-center"><small class="${warnClass}">${safeHTML(prof?.name || '⚠️')}</small></td>
+            <td class="text-center px-1 py-0 align-middle" style="width:130px"><small>${dimText}</small></td>
+            <td class="px-1 py-0 align-middle text-center"><small class="${warnClass}">${safeHTML(mat?.name || '⚠️')}</small></td>
+            <td class="text-center px-1 py-0 align-middle"><small>${grainText}</small></td>
+            <td class="px-1 py-0 align-middle text-center"><small class="${warnClass}">${safeHTML(store?.name || '⚠️')}</small></td>
+            <td class="text-center px-1 py-0 align-middle"><small class="text-muted">${currency}${parseFloat(item.price || 0).toFixed(2)} /${{'piece': t('opt_pc'), 'linear': isMetric ? 'm' : 'ft', 'area': isMetric ? 'm²' : 'sqft', 'volume': isMetric ? 'm³' : 'BF'}[item.priceUnit] || item.priceUnit}</small></td>
+            <td class="text-center fw-bold text-success align-middle"><small>${currency}${displayPrice}</small></td>
+            <td class="text-center align-middle">${freshnessHtml}</td>
+            <td class="text-nowrap align-middle">
+                <div class="d-flex justify-content-end align-items-center">
+                    ${linkHtml}
+                    <button class="btn btn-sm py-0 px-1" onclick="event.stopPropagation();openLinkModal('${item.id}', '${safeHTML(item.link || '')}')" title="${t('title_edit_link')}">✏️</button>
+                </div>
+            </td>
+            <td class="text-end">
+                <button class="btn btn-sm py-0 px-0" onclick="event.stopPropagation();duplicateRow('catalog', '${item.id}')" title="${t('title_duplicate_row')}">➕</button>
+                <button class="btn btn-sm py-0 px-0 me-2" onclick="event.stopPropagation();deleteCatalogItem('${item.id}')">🗑️</button>
+            </td>`;
+    }
+
+    function buildCatalogEditRowInner(itemId) {
+        const item = appState.catalog?.find(c => c.id === itemId);
+        if (!item) return '';
+        const badgeClass = getCategoryBadgeClass(item.categoryId);
+        const viewUnit = appState.settings?.catalogViewUnit || 'piece';
+        const currency = appState.settings.currency || '$';
+        const isMetric = appState.settings.displayUnit === 'mm';
+        // Profile dropdown
+        const filteredProfiles = (appState.profiles || []).filter(p => p.type === item.categoryId).sort((a, b) => a.name.localeCompare(b.name));
+        const isProfValid = filteredProfiles.some(p => p.id === item.profileId);
+        let profOptions = !isProfValid ? `<option value="" disabled selected>⚠️ ${t('opt_select_profile')}</option>` : '';
+        filteredProfiles.forEach(p => { profOptions += `<option value="${p.id}" ${p.id === item.profileId ? 'selected' : ''}>${safeHTML(p.name)}</option>`; });
+        const profHtml = `<select class="form-select form-select-sm border-0 bg-transparent px-1 py-0 text-center" onchange="updateCatalogItem('${item.id}', 'profileId', this.value)" title="${t('title_tap_to_change_profile')}">${profOptions}</select>`;
+        // Material dropdown
+        const filteredMaterials = (appState.materials || []).filter(m => m.category === item.categoryId).sort((a, b) => a.name.localeCompare(b.name));
+        const isMatValid = filteredMaterials.some(m => m.id === item.materialId);
+        let matOptions = !isMatValid ? `<option value="" disabled selected>⚠️ ${t('opt_select_material')}</option>` : '';
+        filteredMaterials.forEach(m => { matOptions += `<option value="${m.id}" ${m.id === item.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`; });
+        const matHtml = `<select class="text-center form-select form-select-sm border-0 bg-transparent px-0 py-0" onchange="updateCatalogItem('${item.id}', 'materialId', this.value)" title="${t('title_tap_to_change_material')}">${matOptions}</select>`;
+        // Dimensions
+        const displayL = formatForDisplay(item.length);
+        let dimHtml = `<input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0 mx-auto" style="width:60px;" value="${displayL}" onchange="updateCatalogItem('${item.id}', 'length', this.value)" title="${t('title_tap_to_edit_length')}">`;
+        if (item.categoryId === 'sheet') {
+            const displayW = formatForDisplay(item.width);
+            dimHtml = `<div class="d-flex align-items-baseline justify-content-center gap-1">
+                <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0" style="width:48px;" value="${displayW}" onchange="updateCatalogItem('${item.id}', 'width', this.value)" title="${t('title_tap_to_edit_width')}">
+                <span class="text-muted px-0">×</span>
+                <input type="text" class="form-control form-control-sm border-0 bg-transparent text-start px-0" style="width:48px;" value="${displayL}" onchange="updateCatalogItem('${item.id}', 'length', this.value)" title="${t('title_tap_to_edit_length')}">
+            </div>`;
+        }
+        // Grain
+        let grainHtml = '<span class="text-muted">-</span>';
+        if (item.categoryId === 'sheet') {
+            grainHtml = `<select class="form-select form-select-sm border-0 bg-transparent px-1 py-0 mx-auto text-center" style="width:75px;" onchange="updateCatalogItem('${item.id}', 'grain', this.value)" title="${t('title_change_grain')}">
+                <option value="none" ${item.grain === 'none' ? 'selected' : ''}>-</option>
+                <option value="length" ${item.grain === 'length' ? 'selected' : ''}>${t('opt_length')}</option>
+                <option value="width" ${item.grain === 'width' ? 'selected' : ''}>${t('opt_width')}</option>
+            </select>`;
+        }
+        // Store dropdown
+        const isStoreValid = appState.stores?.some(s => s.id === item.storeId);
+        let storeOptions = !isStoreValid ? `<option value="" disabled selected>⚠️ ${t('opt_select_store')}</option>` : '';
+        if (appState.stores) {
+            [...appState.stores].sort((a, b) => a.name.localeCompare(b.name)).forEach(s => {
+                storeOptions += `<option value="${s.id}" ${s.id === item.storeId ? 'selected' : ''}>${safeHTML(s.name)}</option>`;
             });
-            // Text is standard, no yellow text classes
-            let profHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0 text-center align-middle" margin: 0 auto;" onchange="updateCatalogItem('${item.id}', 'profileId', this.value)" title="${t('title_tap_to_change_profile')}">
-                    ${profOptions}
-                </select>`;
-
-            const filteredMaterials = appState.materials.filter(m => m.category === item.categoryId).sort((a, b) => a.name.localeCompare(b.name));
-            const isMatValid = filteredMaterials.some(m => m.id === item.materialId);
-
-            let matOptions = !isMatValid ? `<option value="" disabled selected>⚠️ ${t('opt_select_material')}</option>` : '';
-            filteredMaterials.forEach(m => {
-                matOptions += `<option value="${m.id}" ${m.id === item.materialId ? 'selected' : ''}>${safeHTML(m.name)}</option>`;
-            });
-            // Text is standard, no yellow text classes
-            let matHtml = `
-                <select class="text-center form-select form-select-sm border-0 bg-transparent px-0 py-0" margin: 0 auto;" onchange="updateCatalogItem('${item.id}', 'materialId', this.value)" title="${t('title_tap_to_change_material')}">
-                    ${matOptions}
-                </select>`;
-
-            // 🪄 NEW: Pre-calculate if the store actually exists
-            const isStoreValid = appState.stores && appState.stores.some(s => s.id === item.storeId);
-
-            // 🪄 0.5 APPLY ROW HIGHLIGHT IF INVALID (Now includes Store)
-            if (!isProfValid || !isMatValid || !isStoreValid) {
-                tr.classList.add('table-warning');
-            }
-            
-            // 🪄 1. DYNAMIC SIZE INPUTS
-            let dimHtml = '';
-            const displayL = formatForDisplay(item.length);
-            if (item.categoryId === 'sheet') {
-                const displayW = formatForDisplay(item.width);
-                dimHtml = `
-                    <div class="d-flex align-items-baseline justify-content-center gap-1">
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0 py-0" style="width: 50px;" 
-                               value="${displayW}" onchange="updateCatalogItem('${item.id}', 'width', this.value)" title="${t('title_tap_to_edit_width')}">
-                        <span class="text-muted text-sm">x</span>
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-start px-0 py-0" style="width: 50px;" 
-                               value="${displayL}" onchange="updateCatalogItem('${item.id}', 'length', this.value)" title="${t('title_tap_to_edit_length')}">
-                    </div>
-                `;
-            } else {
-                dimHtml = `
-                    <input type="text" class="form-control form-control-sm border-0 bg-transparent text-center px-0 py-0 mx-auto" style="width: 60px;" 
-                           value="${displayL}" onchange="updateCatalogItem('${item.id}', 'length', this.value)" title="${t('title_tap_to_edit_length')}">
-                `;
-            }
-
-            // 🪄 2. INLINE STORE DROPDOWN
-            let storeOptions = !isStoreValid ? `<option value="" disabled selected>⚠️ ${t('opt_select_store')}</option>` : '';
-            
-            if (appState.stores) {
-                [...appState.stores].sort((a, b) => a.name.localeCompare(b.name)).forEach(s => {
-                    storeOptions += `<option value="${s.id}" ${s.id === item.storeId ? 'selected' : ''}>${safeHTML(s.name)}</option>`;
-                });
-            }
-            let storeHtml = `
-                <select class="text-center form-select form-select-sm border-0 bg-transparent px-1 py-0" onchange="updateCatalogItem('${item.id}', 'storeId', this.value)" title="${t('title_tap_to_change_store')}">
-                    ${storeOptions}
-                </select>`;
-
-            // 🪄 3. DYNAMIC PRICE INPUT & INLINE UNIT DROPDOWN
-            const uLin = isMetric ? 'm' : 'ft';
-            const uArea = isMetric ? 'm²' : 'sqft';
-            const uVol = isMetric ? 'm³' : 'BF';
-
-            let unitSelectHtml = `
-                <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0 text-muted" 
-                        style="width: auto; appearance: none; cursor: pointer; text-align: left;" 
-                        onchange="updateCatalogItem('${item.id}', 'priceUnit', this.value)" title="${t('title_tap_to_change_unit')}">
+        }
+        const storeHtml = `<select class="text-center form-select form-select-sm border-0 bg-transparent px-1 py-0" onchange="updateCatalogItem('${item.id}', 'storeId', this.value)" title="${t('title_tap_to_change_store')}">${storeOptions}</select>`;
+        // Price input + unit dropdown
+        const uLin = isMetric ? 'm' : 'ft'; const uArea = isMetric ? 'm²' : 'sqft'; const uVol = isMetric ? 'm³' : 'BF';
+        const priceHtml = `
+            <div class="d-flex align-items-center justify-content-center text-nowrap mx-auto" style="width:130px;">
+                <input type="number" step="0.01" class="form-control form-control-sm border-0 bg-transparent text-end px-0" style="width:60px;"
+                       value="${parseFloat(item.price || 0).toFixed(2)}" onchange="updateCatalogItem('${item.id}', 'price', this.value)" title="${t('title_tap_to_edit_price')}">
+                <span class="text-muted px-1">/</span>
+                <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0 text-muted" style="width:auto;appearance:none;cursor:pointer;" onchange="updateCatalogItem('${item.id}', 'priceUnit', this.value)" title="${t('title_tap_to_change_unit')}">
                     <option value="piece" ${item.priceUnit === 'piece' ? 'selected' : ''}>${t('opt_pc')}</option>
                     <option value="linear" ${item.priceUnit === 'linear' ? 'selected' : ''}>${uLin}</option>
                     <option value="area" ${item.priceUnit === 'area' ? 'selected' : ''}>${uArea}</option>
                     <option value="volume" ${item.priceUnit === 'volume' ? 'selected' : ''}>${uVol}</option>
                 </select>
-            `;
-
-            let priceHtml = `
-                <div class="d-flex align-items-center justify-content-center text-nowrap mx-auto" style="width: 130px;">
-                    <input type="number" step="0.01" class="form-control form-control-sm border-0 bg-transparent text-end px-0" style="width: 60px;" 
-                           value="${parseFloat(item.price).toFixed(2)}" onchange="updateCatalogItem('${item.id}', 'price', this.value)" title="${t('title_tap_to_edit_price')}">
-                    <span class="text-muted px-1">/</span>
-                    ${unitSelectHtml}
-                </div>`;
-
-            let grainHtml = '<span class="text-muted">-</span>';
-            if (item.categoryId === 'sheet') {
-                grainHtml = `
-                    <select class="form-select form-select-sm border-0 bg-transparent px-1 py-0 mx-auto text-center" style="width: 75px;" onchange="updateCatalogItem('${item.id}', 'grain', this.value)" title="${t('title_change_grain')}">
-                        <option value="none" ${item.grain === 'none' ? 'selected' : ''}>-</option>
-                        <option value="length" ${item.grain === 'length' ? 'selected' : ''}>${t('opt_length')}</option>
-                        <option value="width" ${item.grain === 'width' ? 'selected' : ''}>${t('opt_width')}</option>
-                    </select>
-                `;
-            }
-
-            // Calculate normalized comparison price
-            const displayPrice = getNormalizedPriceDisplay(item, viewUnit);
-
-            // 🪄 FRESHNESS BADGE ENGINE
-            const verifiedTime = item.lastVerified || Date.now(); // Fallback to today for old data
-            const daysOld = (Date.now() - verifiedTime) / (1000 * 60 * 60 * 24);
-            
-            // Custom Signal Colors (Bypasses Bootstrap variables)
-            let badgeBg = '#198754'; // Solid Green (< 14 days)
-            let badgeColor = '#ffffff';
-            if (daysOld >= 28) {
-                badgeBg = '#dc3545'; // Solid Red (> 4 weeks)
-            } else if (daysOld >= 14) {
-                badgeBg = '#ffc107'; // Solid Amber (> 2 weeks)
-                badgeColor = '#000000'; // Black text for readability on yellow
-            }
-
-            // Universal dd/mm formatting
-            const dateObj = new Date(verifiedTime);
-            const dd = String(dateObj.getDate()).padStart(2, '0');
-            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-            
-            // fixed width: 6ch guarantees it won't warp the table columns
-            let freshnessHtml = `
-                <span class="badge shadow-sm" 
-                      style="background-color: ${badgeBg}; color: ${badgeColor}; cursor: pointer; display: inline-flex; text-align: center; justify-content: center; align-items: center; user-select: none;" 
-                      onclick="verifyPrice('${item.id}')" 
-                      title="${t('title_click_to_verify')}">
-                    ${dd}/${mm}
-                </span>
-            `;
-
-            let linkHtml = item.link 
-                ? `<a href="${safeHTML(item.link)}" target="_blank" class="text-decoration-none" title="${t('title_open_link')}">🔗</a>` 
-                : `<span class="text-muted" style="opacity: 0.3;">🔗</span>`;
-
-                tr.innerHTML = `
-                <td>
-                    <div class="d-flex justify-content-center px-1">
-                        <span class="badge ${badgeClass} py-1 d-inline-block" 
-                              style="width: 85px; text-align: center; font-size: 0.75rem; text-transform: uppercase;">
-                              ${t('opt_' + item.categoryId)}
-                        </span>
-                    </div>
-                </td>
-                <td class="px-1 py-0 align-middle text-center">${profHtml}</td>
-                <td class="text-center px-1 py-0 align-middle">${dimHtml}</td>
-                <td class="px-1 py-0 align-middle text-center">${matHtml}</td>
-                <td class="text-center px-1 py-0 align-middle">${grainHtml}</td>
-                <td class="px-1 py-0 align-middle">${storeHtml}</td>
-                <td class="text-center px-1 py-0 align-middle">${priceHtml}</td>
-                <td class="text-center fw-bold text-success align-middle"><small>${currency}${displayPrice}</small></td>
-                <td class="text-center align-middle">${freshnessHtml}</td>
-                <td class="text-nowrap align-middle">
-                    <div class="d-flex justify-content-end align-items-center">
-                        ${linkHtml}
-                        <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${item.id}', '${safeHTML(item.link || '')}')" title="${t('title_edit_link')}">✏️</button>
-                    </div>
-                </td>
-                <td class="text-end">
-                    <button class="btn btn-sm py-0 px-0" onclick="duplicateRow('catalog', '${item.id}')" title="${t('title_duplicate_row')}">➕</button>
-                    <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteCatalogItem('${item.id}')">🗑️</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-        // 🪄 COLORIZE ACTIVE FILTERS (Powered by Central Engine)
-        const filterColumns = ['categoryId', 'length', 'profileId', 'materialId', 'grain', 'storeId'];
-        const hasAnyFilter = updateFilterUI('catalog', filterColumns);
+            </div>`;
+        // Normalized price display
+        const displayPrice = getNormalizedPriceDisplay(item, viewUnit);
+        // Freshness badge
+        const verifiedTime = item.lastVerified || Date.now();
+        const daysOld = (Date.now() - verifiedTime) / (1000 * 60 * 60 * 24);
+        let badgeBg = '#198754'; let badgeColor = '#ffffff';
+        if (daysOld >= 28) badgeBg = '#dc3545';
+        else if (daysOld >= 14) { badgeBg = '#ffc107'; badgeColor = '#000000'; }
+        const dateObj = new Date(verifiedTime);
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const freshnessHtml = `<span class="badge shadow-sm" style="background-color:${badgeBg};color:${badgeColor};cursor:pointer;display:inline-flex;justify-content:center;align-items:center;user-select:none;" onclick="verifyPrice('${item.id}')" title="${t('title_click_to_verify')}">${dd}/${mm}</span>`;
+        const linkHtml = item.link
+            ? `<a href="${safeHTML(item.link)}" target="_blank" class="text-decoration-none" onclick="event.stopPropagation()" title="${t('title_open_link')}">🔗</a>`
+            : `<span class="text-muted" style="opacity:0.3;">🔗</span>`;
+        return `
+            <td><div class="d-flex justify-content-center px-1"><span class="badge ${badgeClass} py-1 d-inline-block" style="width:85px;text-align:center;font-size:0.75rem;text-transform:uppercase;">${t('opt_' + item.categoryId)}</span></div></td>
+            <td class="px-1 py-0 align-middle text-center">${profHtml}</td>
+            <td class="text-center px-1 py-0 align-middle" style="width:130px">${dimHtml}</td>
+            <td class="px-1 py-0 align-middle text-center">${matHtml}</td>
+            <td class="text-center px-1 py-0 align-middle">${grainHtml}</td>
+            <td class="px-1 py-0 align-middle">${storeHtml}</td>
+            <td class="text-center px-1 py-0 align-middle">${priceHtml}</td>
+            <td class="text-center fw-bold text-success align-middle"><small>${currency}${displayPrice}</small></td>
+            <td class="text-center align-middle">${freshnessHtml}</td>
+            <td class="text-nowrap align-middle">
+                <div class="d-flex justify-content-end align-items-center">
+                    ${linkHtml}
+                    <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${item.id}', '${safeHTML(item.link || '')}')" title="${t('title_edit_link')}">✏️</button>
+                </div>
+            </td>
+            <td class="text-end">
+                <button class="btn btn-sm py-0 px-0" onclick="duplicateRow('catalog', '${item.id}')" title="${t('title_duplicate_row')}">➕</button>
+                <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteCatalogItem('${item.id}')">🗑️</button>
+            </td>`;
     }
     function handleAddCatalogItem(event) {
         event.preventDefault();
@@ -678,19 +666,27 @@
         const item = appState.catalog.find(c => c.id === id);
         if (item) {
             if (field === 'length' || field === 'width') {
-                // Safely convert fractional UI input to base mm
                 item[field] = parseToBaseUnit(newValue) || 0;
             } else if (field === 'price') {
-                // Ensure price is a clean float
                 item[field] = parseFloat(newValue) || 0;
                 item.lastVerified = Date.now(); // 🪄 AUTO-TAGGING: Instantly reset freshness
             } else {
-                // For storeId or generic text
                 item[field] = newValue;
             }
-            
             saveState();
-            renderCatalogTable();
+            // If this row is active in edit mode: refresh it in place, skip full rebuild
+            if (_activeEditRow['catalog'] === id) {
+                const prof = appState.profiles?.find(p => p.id === item.profileId);
+                const mat  = appState.materials?.find(m => m.id === item.materialId);
+                const store = appState.stores?.find(s => s.id === item.storeId);
+                const tr = document.querySelector(`tr[data-table="catalog"][data-row-id="${id}"]`);
+                if (tr) {
+                    tr.classList.toggle('table-warning', !(prof && mat && store));
+                    tr.innerHTML = buildCatalogEditRowInner(id);
+                }
+            } else {
+                renderCatalogTable();
+            }
             showToast(t('msg_catalog_item_updated'));
         }
     }
@@ -979,5 +975,8 @@
         
         linkModalInstance.hide();
     }
+
+    // Register Catalog table with the central click-to-edit engine
+    registerEditableTable('catalog', buildCatalogEditRowInner, buildCatalogReadRowInner);
 
 </script>
