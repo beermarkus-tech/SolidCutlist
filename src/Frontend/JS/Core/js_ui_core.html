@@ -49,7 +49,10 @@
             }
         }
 
-        // 🪄 5. DYNAMIC IMPORT BUTTON STYLING
+        // 5. Refresh checklist progress on every navigation
+        if (typeof renderChecklist === 'function') renderChecklist();
+
+        // 🪄 6. DYNAMIC IMPORT BUTTON STYLING
         const importBtn = document.getElementById('nav-btn-resume-import');
         if (importBtn) {
             if (viewId === 'view-import') {

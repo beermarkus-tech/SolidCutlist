@@ -304,7 +304,26 @@
             "msg_row_duplicated": "Row duplicated.",
             "hdr_confirm_action": "Confirm Action",
             "msg_project_duplicated": "Project duplicated successfully.",
-            "lbl_copy": "copy"
+            "lbl_copy": "copy",
+            "tour_welcome_title": "Welcome to SolidCutlist! 🪵",
+            "tour_welcome_subtitle": "Let's start by picking your language:",
+            "tour_step1_title": "1. Setup",
+            "tour_step1_body": "Load your starter data — profiles and materials — then add your stock and store prices. This is the foundation for everything else.",
+            "tour_step2_title": "2. Projects & Parts",
+            "tour_step2_body": "Create a project and organize your parts into groups. Assign dimensions, profile and material to each part.",
+            "tour_step3_title": "3. Import from SketchUp",
+            "tour_step3_body": "Have a SketchUp model? Export a CSV and import it — map the columns, adjust the scale if needed, and review the staging table.",
+            "tour_step4_title": "4. Optimizer & Results",
+            "tour_step4_body": "Select which projects to cut, configure the optimizer, and hit Calculate. Review cut sheets, waste stats and shopping list. On mobile, take the results to the workshop floor.",
+            "tour_btn_next": "Next →",
+            "tour_btn_finish": "Let's go! →",
+            "tour_checklist_title": "Getting Started",
+            "tour_checklist_1": "Load starter data",
+            "tour_checklist_2": "Create first project",
+            "tour_checklist_3": "Run first optimization",
+            "tour_checklist_done": "You're all set! 🎉",
+            "tour_btn_show_again": "Show Welcome Tour",
+            "tour_btn_dismiss": "Dismiss"
         },
         de: {
             "lbl_settings_leftpane": "Allgemeine Einstellungen",
@@ -607,7 +626,26 @@
             "msg_row_duplicated": "Zeile dupliziert.",
             "hdr_confirm_action": "Aktion bestätigen",
             "msg_project_duplicated": "Projekt erfolgreich dupliziert.",
-            "lbl_copy": "Kopie"
+            "lbl_copy": "Kopie",
+            "tour_welcome_title": "Willkommen bei SolidCutlist! 🪵",
+            "tour_welcome_subtitle": "Beginnen wir mit deiner Sprache:",
+            "tour_step1_title": "1. Einrichtung",
+            "tour_step1_body": "Lade deine Startdaten — Profile und Materialien — und erfasse dann Lagerbestand und Ladenpreise. Das ist die Grundlage für alles andere.",
+            "tour_step2_title": "2. Projekte & Teile",
+            "tour_step2_body": "Erstelle ein Projekt und organisiere deine Teile in Gruppen. Weise jedem Teil Abmessungen, Profil und Material zu.",
+            "tour_step3_title": "3. Import aus SketchUp",
+            "tour_step3_body": "Hast du ein SketchUp-Modell? Exportiere eine CSV und importiere sie — ordne die Spalten zu, passe den Maßstab an und überprüfe die Vorschautabelle.",
+            "tour_step4_title": "4. Optimierer & Ergebnisse",
+            "tour_step4_body": "Wähle aus, welche Projekte geschnitten werden, konfiguriere den Optimierer und klicke auf Berechnen. Prüfe Schnittlisten, Verschnitt und Einkaufsliste. Auf dem Handy: Ergebnisse direkt in der Werkstatt nutzen.",
+            "tour_btn_next": "Weiter →",
+            "tour_btn_finish": "Los geht's! →",
+            "tour_checklist_title": "Erste Schritte",
+            "tour_checklist_1": "Startdaten laden",
+            "tour_checklist_2": "Erstes Projekt erstellen",
+            "tour_checklist_3": "Erste Optimierung starten",
+            "tour_checklist_done": "Alles bereit! 🎉",
+            "tour_btn_show_again": "Willkommenstour anzeigen",
+            "tour_btn_dismiss": "Schließen"
         },
         fr: {
             "lbl_settings_leftpane": "Préférences Générales",
@@ -910,7 +948,26 @@
             "msg_row_duplicated": "Ligne dupliquée.",
             "hdr_confirm_action": "Confirmer l'action",
             "msg_project_duplicated": "Projet dupliqué avec succès.",
-            "lbl_copy": "copie"
+            "lbl_copy": "copie",
+            "tour_welcome_title": "Bienvenue sur SolidCutlist ! 🪵",
+            "tour_welcome_subtitle": "Commençons par choisir votre langue :",
+            "tour_step1_title": "1. Configuration",
+            "tour_step1_body": "Chargez vos données de démarrage — profils et matériaux — puis ajoutez votre stock et vos prix en magasin. C'est la base de tout le reste.",
+            "tour_step2_title": "2. Projets & Pièces",
+            "tour_step2_body": "Créez un projet et organisez vos pièces en groupes. Assignez les dimensions, le profil et le matériau à chaque pièce.",
+            "tour_step3_title": "3. Import depuis SketchUp",
+            "tour_step3_body": "Vous avez un modèle SketchUp ? Exportez un CSV et importez-le — mappez les colonnes, ajustez l'échelle si besoin et vérifiez le tableau de contrôle.",
+            "tour_step4_title": "4. Optimiseur & Résultats",
+            "tour_step4_body": "Sélectionnez les projets à découper, configurez l'optimiseur et cliquez sur Calculer. Consultez les plans de coupe, le gaspillage et la liste d'achats. Sur mobile, emportez les résultats à l'atelier.",
+            "tour_btn_next": "Suivant →",
+            "tour_btn_finish": "C'est parti ! →",
+            "tour_checklist_title": "Premiers pas",
+            "tour_checklist_1": "Charger les données de démarrage",
+            "tour_checklist_2": "Créer le premier projet",
+            "tour_checklist_3": "Lancer la première optimisation",
+            "tour_checklist_done": "Tout est prêt ! 🎉",
+            "tour_btn_show_again": "Afficher la visite guidée",
+            "tour_btn_dismiss": "Fermer"
         }
     };
 
@@ -947,7 +1004,8 @@
         if (!appState.settings) appState.settings = {};
         appState.settings.language = newLang;
         saveState();
-        applyTranslations(); 
+        applyTranslations();
+        if (typeof renderSettings === 'function') renderSettings();
         showToast( t('msg_lang_changed') );
     }
 </script>

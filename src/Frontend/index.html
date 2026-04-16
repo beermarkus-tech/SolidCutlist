@@ -570,10 +570,36 @@
                         
                     </form>
                 </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-secondary w-100 fw-bold" data-bs-dismiss="modal">Close</button>
+                <div class="modal-footer border-top-0 pt-0 flex-column gap-2">
+                    <button type="button" class="btn btn-outline-secondary w-100 btn-sm" onclick="showWelcomeTour(true); bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();" data-i18n="tour_btn_show_again">Show Welcome Tour</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Welcome Tour Overlay -->
+    <div id="welcome-tour-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:2000;display:none;align-items:center;justify-content:center;padding:1rem;">
+        <!-- Click outside card to skip -->
+        <div style="position:absolute;inset:0;" onclick="skipTour()"></div>
+        <div class="bg-body rounded-4 shadow-lg p-4" style="max-width:480px;width:100%;position:relative;z-index:1;">
+            <button type="button" class="btn-close position-absolute top-0 end-0 m-3" onclick="skipTour()" aria-label="Skip"></button>
+            <div class="d-flex justify-content-center gap-2 mb-4" id="tour-dots"></div>
+            <div id="tour-content" class="text-center" style="min-height:190px;"></div>
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <button class="btn btn-outline-secondary btn-sm" id="tour-btn-prev" onclick="tourPrev()">← Back</button>
+                <button class="btn btn-primary btn-sm px-4" id="tour-btn-next" onclick="tourNext()">Next →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Getting Started Checklist Widget (Desktop only) -->
+    <div id="getting-started-widget" class="d-none" style="position:fixed;bottom:24px;left:24px;z-index:1040;width:235px;">
+        <div class="rounded-3 shadow p-3" style="background:var(--bs-primary);color:#fff;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-bold" style="font-size:0.85rem;" data-i18n="tour_checklist_title">Getting Started</span>
+                <button type="button" class="btn-close btn-close-white" style="font-size:0.6rem;" onclick="dismissChecklist()"></button>
+            </div>
+            <ul class="list-unstyled mb-0" id="checklist-items" style="font-size:0.85rem;"></ul>
         </div>
     </div>
 
@@ -603,6 +629,7 @@
     <?!= include('Frontend/JS/Modules/js_import'); ?>
     <?!= include('Frontend/JS/Modules/js_optimizer'); ?>
     <?!= include('Frontend/JS/Modules/js_printing'); ?>
+    <?!= include('Frontend/JS/Modules/js_welcome_tour'); ?>
 
     
 </body>

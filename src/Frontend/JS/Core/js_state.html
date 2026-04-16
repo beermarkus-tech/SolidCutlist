@@ -209,7 +209,16 @@
         // 6. Hide loader
         const loader = document.getElementById('boot-loader');
         if (loader) loader.classList.add('d-none');
-        
+
+        // 7. Welcome tour (desktop only) or checklist
+        if (!isMobile) {
+            if (!appState.settings.tourComplete && typeof showWelcomeTour === 'function') {
+                showWelcomeTour(false);
+            } else if (typeof renderChecklist === 'function') {
+                renderChecklist();
+            }
+        }
+
         console.log(`🪵 SolidCutlist successfully booted into ${isMobile ? 'MOBILE' : 'DESKTOP'} mode.`);
         updateSyncUI('success');
     }

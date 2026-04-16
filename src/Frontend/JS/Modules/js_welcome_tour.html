@@ -1,0 +1,184 @@
+<script>
+    // ==========================================
+    // WELCOME TOUR & GETTING STARTED CHECKLIST
+    // ==========================================
+
+    const TOUR_STEPS = [
+        { key: 'welcome', icon: '🪵' },
+        { key: 'step1',   icon: '🔧' },
+        { key: 'step2',   icon: '📁' },
+        { key: 'step3',   icon: '📥' },
+        { key: 'step4',   icon: '✂️'  }
+    ];
+
+    let _tourStep = 0;
+    let _tourSessionOnly = false;
+
+    function showWelcomeTour(sessionOnly) {
+        if (window.innerWidth < 768) return;
+        _tourSessionOnly = sessionOnly === true;
+        _tourStep = 0;
+        const overlay = document.getElementById('welcome-tour-overlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            renderTourStep();
+        }
+    }
+
+    function _hideTourOverlay() {
+        const overlay = document.getElementById('welcome-tour-overlay');
+        if (overlay) overlay.style.display = 'none';
+    }
+
+    function skipTour() {
+        _hideTourOverlay();
+        if (!_tourSessionOnly) {
+            appState.settings.tourComplete = true;
+            saveState();
+            renderChecklist();
+        }
+    }
+
+    function _finishTour() {
+        _hideTourOverlay();
+        if (!_tourSessionOnly) {
+            appState.settings.tourComplete = true;
+            saveState();
+        }
+        // Land in Setup → Profiles & Materials
+        if (typeof navigateTo === 'function') {
+            navigateTo('view-setup');
+            setTimeout(() => {
+                const tabDicts = document.getElementById('tab-dictionaries');
+                if (tabDicts) tabDicts.click();
+            }, 150);
+        }
+        if (!_tourSessionOnly) renderChecklist();
+    }
+
+    function tourNext() {
+        // On step 0: apply language selection before advancing
+        if (_tourStep === 0) {
+            const langSel = document.getElementById('tour-lang-select');
+            if (langSel && langSel.value !== ((appState.settings || {}).language || 'en')) {
+                handleLanguageChange(langSel.value);
+            }
+        }
+        if (_tourStep < TOUR_STEPS.length - 1) {
+            _tourStep++;
+            renderTourStep();
+        } else {
+            _finishTour();
+        }
+    }
+
+    function tourPrev() {
+        if (_tourStep > 0) {
+            _tourStep--;
+            renderTourStep();
+        }
+    }
+
+    function renderTourStep() {
+        const step = TOUR_STEPS[_tourStep];
+        const total = TOUR_STEPS.length;
+
+        // Dots
+        const dotsEl = document.getElementById('tour-dots');
+        if (dotsEl) {
+            dotsEl.innerHTML = TOUR_STEPS.map((_, i) =>
+                `<div style="width:10px;height:10px;border-radius:50%;transition:background 0.2s;background:${i === _tourStep ? 'var(--bs-primary)' : 'var(--bs-secondary-bg,#dee2e6)'}"></div>`
+            ).join('');
+        }
+
+        // Content
+        const contentEl = document.getElementById('tour-content');
+        if (contentEl) {
+            if (_tourStep === 0) {
+                const currentLang = (appState.settings || {}).language || 'en';
+                contentEl.innerHTML = `
+                    <div style="font-size:3.5rem;line-height:1;">${step.icon}</div>
+                    <h5 class="fw-bold mt-3 mb-2">${t('tour_welcome_title')}</h5>
+                    <p class="text-muted small mb-3">${t('tour_welcome_subtitle')}</p>
+                    <select class="form-select form-select-sm mx-auto" id="tour-lang-select" style="max-width:200px;">
+                        <option value="en" ${currentLang === 'en' ? 'selected' : ''}>🇬🇧 English</option>
+                        <option value="de" ${currentLang === 'de' ? 'selected' : ''}>🇩🇪 Deutsch</option>
+                        <option value="fr" ${currentLang === 'fr' ? 'selected' : ''}>🇫🇷 Français</option>
+                    </select>`;
+            } else {
+                contentEl.innerHTML = `
+                    <div style="font-size:3.5rem;line-height:1;">${step.icon}</div>
+                    <h5 class="fw-bold mt-3 mb-2">${t('tour_' + step.key + '_title')}</h5>
+                    <p class="text-muted small mb-0">${t('tour_' + step.key + '_body')}</p>`;
+            }
+        }
+
+        // Buttons
+        const prevBtn = document.getElementById('tour-btn-prev');
+        const nextBtn = document.getElementById('tour-btn-next');
+        if (prevBtn) prevBtn.classList.toggle('invisible', _tourStep === 0);
+        if (nextBtn) {
+            const isLast = _tourStep === total - 1;
+            nextBtn.textContent = isLast ? t('tour_btn_finish') : t('tour_btn_next');
+            nextBtn.className = `btn btn-sm px-4 ${isLast ? 'btn-success' : 'btn-primary'}`;
+        }
+    }
+
+    // ==========================================
+    // GETTING STARTED CHECKLIST
+    // ==========================================
+
+    function renderChecklist() {
+        const widget = document.getElementById('getting-started-widget');
+        if (!widget || window.innerWidth < 768) return;
+
+        const settings = appState.settings || {};
+        if (!settings.tourComplete || settings.checklistDismissed) {
+            widget.classList.add('d-none');
+            return;
+        }
+
+        const hasData    = (appState.profiles  || []).length > 0 || (appState.materials || []).length > 0;
+        const hasProject = (appState.projects  || []).length > 0;
+        const hasJob     = (appState.jobs      || []).length > 0;
+
+        const items = [
+            { done: hasData,    key: 'tour_checklist_1' },
+            { done: hasProject, key: 'tour_checklist_2' },
+            { done: hasJob,     key: 'tour_checklist_3' }
+        ];
+
+        widget.classList.remove('d-none');
+
+        // Update title (re-apply translation in case language changed)
+        const titleEl = widget.querySelector('[data-i18n="tour_checklist_title"]');
+        if (titleEl) titleEl.textContent = t('tour_checklist_title');
+
+        const listEl = document.getElementById('checklist-items');
+        if (!listEl) return;
+
+        const allDone = items.every(i => i.done);
+        listEl.innerHTML = items.map(item =>
+            `<li class="mb-1">
+                <span style="${item.done ? 'opacity:0.7;' : ''}">${item.done ? '✅' : '⬜'} ${t(item.key)}</span>
+            </li>`
+        ).join('');
+
+        if (allDone) {
+            listEl.innerHTML += `
+                <li class="mt-2 pt-2" style="border-top:1px solid rgba(255,255,255,0.3);">
+                    <div class="fw-bold small mb-2">${t('tour_checklist_done')}</div>
+                    <button class="btn btn-sm btn-light w-100" onclick="dismissChecklist()">${t('tour_btn_dismiss')}</button>
+                </li>`;
+        }
+    }
+
+    function dismissChecklist() {
+        const widget = document.getElementById('getting-started-widget');
+        if (widget) widget.classList.add('d-none');
+        if (appState && appState.settings) {
+            appState.settings.checklistDismissed = true;
+            saveState();
+        }
+    }
+</script>
