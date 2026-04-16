@@ -572,6 +572,28 @@
                 </div>
                 <div class="modal-footer border-top-0 pt-0 flex-column gap-2">
                     <button type="button" class="btn btn-outline-secondary w-100 btn-sm" onclick="showWelcomeTour(true); bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();" data-i18n="tour_btn_show_again">Show Welcome Tour</button>
+                    <hr class="w-100 my-0">
+                    <button type="button" class="btn btn-outline-danger w-100 btn-sm" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#resetConfirmModal" data-i18n="btn_reset_app">Reset App &amp; All Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset App Confirmation Modal -->
+    <div class="modal fade" id="resetConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-danger text-white py-2">
+                    <h6 class="modal-title fw-bold" data-i18n="hdr_reset_confirm">⚠️ Reset App</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <p class="fw-bold mb-2" data-i18n="msg_reset_confirm_title">All data will be permanently deleted.</p>
+                    <p class="text-muted small mb-0" data-i18n="msg_reset_confirm_detail">Projects, parts, stock, materials, profiles, catalog, jobs, and all images will be wiped. Your archive is preserved. This cannot be undone.</p>
+                </div>
+                <div class="modal-footer p-2 d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal" data-i18n="btn_cancel">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-danger px-4 fw-bold" onclick="resetApp()" data-i18n="btn_reset_confirm">Yes, delete everything</button>
                 </div>
             </div>
         </div>

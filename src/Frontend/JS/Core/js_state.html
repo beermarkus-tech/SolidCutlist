@@ -251,6 +251,46 @@
     saveState();
     }
 
+    /** Full factory reset: wipes all user data, clears thumbnails, reloads. */
+    function resetApp() {
+        // 1. Close the confirm modal cleanly
+        const modal = bootstrap.Modal.getInstance(document.getElementById('resetConfirmModal'));
+        if (modal) modal.hide();
+
+        // 2. Build a clean state with hardcoded defaults
+        appState = {
+            projects: [], groups: [], parts: [],
+            stock: [], catalog: [], materials: [],
+            profiles: [], stores: [], jobs: [],
+            ui: {},
+            settings: {
+                baseUnit:          'mm',
+                displayUnit:       'mm',
+                bladeKerf:         3.175,
+                cutoffThreshold:   200.0,
+                factoryEdgeTrim:   6.35,
+                theme:             'light',
+                language:          'en',
+                tourComplete:      false,
+                checklistDismissed: false
+            }
+        };
+
+        // 3. Persist to localStorage + trigger cloud sync
+        saveState();
+
+        // 4. Clear Thumbnails tab, then reload regardless of outcome
+        const reload = () => location.reload();
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(reload)
+                .withFailureHandler(reload)
+                .clearAllThumbnails();
+        } else {
+            reload();
+        }
+    }
+
     // ==========================================
     // CLOUD SYNC ENGINE (Debounced 1-Way Sync)
     // ==========================================

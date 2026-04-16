@@ -425,15 +425,33 @@ function deleteThumbnail(projectId) {
     if (!sheet) return JSON.stringify({ status: 'success' }); // Nothing to delete
 
     const data = sheet.getDataRange().getValues();
-    
+
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === projectId) {
         sheet.deleteRow(i + 1);
         return JSON.stringify({ status: 'success' });
       }
     }
-    
+
     return JSON.stringify({ status: 'success' }); // ID not found, safely ignore
+  } catch(e) {
+    return JSON.stringify({ status: 'error', message: e.toString() });
+  }
+}
+
+function clearAllThumbnails() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('Thumbnails');
+    if (!sheet) return JSON.stringify({ status: 'success' });
+
+    // Keep header row, delete everything else
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      sheet.deleteRows(2, lastRow - 1);
+    }
+
+    return JSON.stringify({ status: 'success' });
   } catch(e) {
     return JSON.stringify({ status: 'error', message: e.toString() });
   }
