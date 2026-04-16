@@ -1,3 +1,119 @@
 <style>
-    
+
+    /* ==========================================
+       DARK MODE OVERRIDES
+       All rules scoped to [data-bs-theme="dark"] — zero impact on light mode.
+    ========================================== */
+
+    [data-bs-theme="dark"] {
+
+        /* --- SURFACE FIXES --- */
+
+        /* bg-light modal headers, footers, any misc bg-light element */
+        .bg-light {
+            background-color: #2c3035 !important;
+            color: #dee2e6 !important;
+        }
+        .modal-header.bg-light {
+            border-bottom-color: rgba(255,255,255,0.1) !important;
+        }
+        .modal-footer.bg-light {
+            border-top-color: rgba(255,255,255,0.1) !important;
+        }
+
+        /* Table headers — table-light and sticky thead */
+        .table-light,
+        thead.table-light th,
+        .thead-sticky {
+            background-color: #2c3035 !important;
+            color: #dee2e6 !important;
+            border-color: rgba(255,255,255,0.08) !important;
+        }
+        .thead-sticky th {
+            background-color: #2c3035 !important;
+        }
+
+        /* Sticky table footer */
+        .tfoot-sticky td {
+            background-color: #212529 !important;
+        }
+
+        /* --- TEXT FIXES --- */
+
+        /* text-dark becomes unreadable on dark backgrounds — exclude badges which use it intentionally */
+        :not(.badge).text-dark {
+            color: #dee2e6 !important;
+        }
+
+        /* Slightly brighter muted text for legibility */
+        .text-muted {
+            color: #9ba3ab !important;
+        }
+
+        /* Lift semantic text colors that are too dark on dark backgrounds */
+        .text-success {
+            color: #6abf94 !important;
+        }
+        .text-primary {
+            color: #7aadff !important;
+        }
+
+        /* --- NAVIGATION ACTIVE BUTTON --- */
+        /* JS hardcodes bg-light + text-dark for active nav btn; override here */
+        .nav-buttons-container .btn.active,
+        .nav-buttons-container .btn.bg-light {
+            background-color: #3d4349 !important;
+            color: #f8f9fa !important;
+            border-color: transparent !important;
+        }
+
+        /* --- BRANDED COLOR LIFTS --- */
+        /* Primary (Slate Navy #2c3e50) — too muddy on dark bg, lift slightly */
+        .bg-primary {
+            background-color: #3d5166 !important;
+        }
+        .btn-primary {
+            background-color: #3d5166 !important;
+            border-color: #3d5166 !important;
+        }
+        .btn-primary:hover,
+        .btn-primary:focus {
+            background-color: #2c3e50 !important;
+            border-color: #2c3e50 !important;
+        }
+
+        /* Success (Forest Green #2b5c46) — lift for dark bg */
+        .bg-success {
+            background-color: #2d6e4e !important;
+        }
+        .btn-success {
+            background-color: #2d6e4e !important;
+            border-color: #2d6e4e !important;
+        }
+        .btn-success:hover,
+        .btn-success:focus {
+            background-color: #245a3f !important;
+            border-color: #245a3f !important;
+        }
+
+        /* --- MISC --- */
+
+        /* vtab active state inside setup/projects views */
+        .vtab.active {
+            background-color: #3d4349 !important;
+            color: #f8f9fa !important;
+        }
+
+        /* Badges that use bg-light */
+        .badge.bg-light {
+            background-color: #3d4349 !important;
+            color: #dee2e6 !important;
+        }
+
+        /* alert-info border gets lost on dark bg */
+        .alert-info {
+            border-color: rgba(49,112,142,0.5) !important;
+        }
+    }
+
 </style>
