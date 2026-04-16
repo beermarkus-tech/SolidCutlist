@@ -859,17 +859,20 @@
             const projGroups = appState.groups
                 .filter(g => g.projectId === proj.id)
                 .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-            
+
+            const projTotalCount = allParts.filter(p => p.projectId === proj.id).length;
+
             // Project Row
             html += `
-            <div class="d-flex align-items-center mb-1">
-                <input class="form-check-input me-2 proj-check" type="checkbox" id="chk-${proj.id}" onchange="toggleProjectTree('${proj.id}', this.checked)">
-                
-                <label class="form-check-label flex-grow-1 fw-bold text-truncate project-fold-icon collapsed" style="font-size: 0.9rem; cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-${proj.id}" aria-expanded="false">
-                    ${safeHTML(proj.name)}
+            <div class="d-flex align-items-start mb-1">
+                <input class="form-check-input me-2 proj-check flex-shrink-0" type="checkbox" id="chk-${proj.id}" onchange="toggleProjectTree('${proj.id}', this.checked)" style="margin-top:3px;">
+
+                <label class="form-check-label flex-grow-1 project-fold-icon collapsed" style="font-size:0.9rem;cursor:pointer;min-width:0;display:flex;flex-wrap:wrap;align-items:center;" data-bs-toggle="collapse" data-bs-target="#collapse-${proj.id}" aria-expanded="false">
+                    <span class="fw-bold text-truncate" style="flex:1;min-width:0;">${safeHTML(proj.name)}</span>
+                    <span class="fw-normal text-muted w-100" style="font-size:0.75rem;">(${projTotalCount} parts)</span>
                 </label>
-                
-                <input type="number" class="form-control form-control-sm text-center proj-multi" id="multi-${proj.id}" value="1" min="1" onchange="notifyConfigChanged()" style="width: 50px; height: 24px; font-size: 0.8rem;">
+
+                <input type="number" class="form-control form-control-sm text-center proj-multi flex-shrink-0" id="multi-${proj.id}" value="1" min="1" onchange="notifyConfigChanged()" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
             </div>
             `;
 
@@ -880,12 +883,13 @@
             const ungroupedCount = allParts.filter(p => p.projectId === proj.id && (!p.groupId || p.groupId.trim() === '')).length;
 
             html += `
-            <div class="d-flex align-items-center mb-1">
-                <input class="form-check-input me-2 grp-check grp-of-${proj.id}" type="checkbox" id="chk-nogroup-${proj.id}" onchange="toggleGroupTree('${proj.id}', this.checked)">
-                <label class="form-check-label flex-grow-1 text-truncate text-muted font-italic" for="chk-nogroup-${proj.id}" style="font-size: 0.85rem; cursor: pointer;">
-                    <em>Ungrouped Parts</em> <span style="font-size: 0.75rem;">(${ungroupedCount} parts)</span>
+            <div class="d-flex align-items-start mb-1">
+                <input class="form-check-input me-2 grp-check grp-of-${proj.id} flex-shrink-0" type="checkbox" id="chk-nogroup-${proj.id}" onchange="toggleGroupTree('${proj.id}', this.checked)" style="margin-top:3px;">
+                <label class="form-check-label flex-grow-1 text-muted" for="chk-nogroup-${proj.id}" style="font-size: 0.85rem; cursor: pointer; min-width:0;">
+                    <span class="d-block text-truncate"><em>Ungrouped Parts</em></span>
+                    <span style="font-size:0.75rem;">(${ungroupedCount} parts)</span>
                 </label>
-                <input type="number" class="form-control form-control-sm text-center grp-multi" id="multi-nogroup-${proj.id}" value="1" min="1" onchange="notifyConfigChanged()" style="width: 50px; height: 24px; font-size: 0.8rem;">
+                <input type="number" class="form-control form-control-sm text-center grp-multi flex-shrink-0" id="multi-nogroup-${proj.id}" value="1" min="1" onchange="notifyConfigChanged()" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
             </div>
             `;
 
@@ -894,12 +898,13 @@
                 const grpCount = allParts.filter(p => p.groupId === grp.id).length;
 
                 html += `
-                <div class="d-flex align-items-center mb-1">
-                    <input class="form-check-input me-2 grp-check grp-of-${proj.id}" type="checkbox" id="chk-${grp.id}" onchange="toggleGroupTree('${proj.id}', this.checked)">
-                    <label class="form-check-label flex-grow-1 text-truncate" for="chk-${grp.id}" style="font-size: 0.85rem; cursor: pointer;">
-                        ${safeHTML(grp.name)} <span class="text-muted" style="font-size: 0.75rem;">(${grpCount} parts)</span>
+                <div class="d-flex align-items-start mb-1">
+                    <input class="form-check-input me-2 grp-check grp-of-${proj.id} flex-shrink-0" type="checkbox" id="chk-${grp.id}" onchange="toggleGroupTree('${proj.id}', this.checked)" style="margin-top:3px;">
+                    <label class="form-check-label flex-grow-1" for="chk-${grp.id}" style="font-size: 0.85rem; cursor: pointer; min-width:0;">
+                        <span class="d-block text-truncate">${safeHTML(grp.name)}</span>
+                        <span class="text-muted" style="font-size:0.75rem;">(${grpCount} parts)</span>
                     </label>
-                    <input type="number" class="form-control form-control-sm text-center grp-multi" id="multi-${grp.id}" value="1" min="1" onchange="notifyConfigChanged()" style="width: 50px; height: 24px; font-size: 0.8rem;">
+                    <input type="number" class="form-control form-control-sm text-center grp-multi flex-shrink-0" id="multi-${grp.id}" value="1" min="1" onchange="notifyConfigChanged()" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
                 </div>
                 `;
             });
@@ -930,20 +935,22 @@
                 const proj = appState.projects.find(p => p.id === projId) || { id: projId, name: 'Saved Project' };
                 const projMulti = sel.multiplier || 1;
 
+                const partsInProject = jobParts.filter(p => p.projectId === projId);
+
                 // 🪄 FIX: Removed 'disabled', added 'readonly' to the number input
                 html += `
-                <div class="d-flex align-items-center mb-1">
-                    <input class="form-check-input me-2" type="checkbox" checked tabindex="-1" onclick="return false;">
-                    <label class="form-check-label flex-grow-1 fw-bold text-truncate project-fold-icon collapsed" style="font-size: 0.9rem; cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-${proj.id}">
-                        ${safeHTML(proj.name)}
+                <div class="d-flex align-items-start mb-1">
+                    <input class="form-check-input me-2 flex-shrink-0" type="checkbox" checked tabindex="-1" onclick="return false;" style="margin-top:3px;">
+                    <label class="form-check-label flex-grow-1 project-fold-icon collapsed" style="font-size:0.9rem;cursor:pointer;min-width:0;display:flex;flex-wrap:wrap;align-items:center;" data-bs-toggle="collapse" data-bs-target="#collapse-${proj.id}">
+                        <span class="fw-bold text-truncate" style="flex:1;min-width:0;">${safeHTML(proj.name)}</span>
+                        <span class="fw-normal text-muted w-100" style="font-size:0.75rem;">(${partsInProject.length} parts)</span>
                     </label>
-                    <input type="number" class="form-control form-control-sm text-center bg-white" value="${projMulti}" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem;">
+                    <input type="number" class="form-control form-control-sm text-center bg-white flex-shrink-0" value="${projMulti}" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
                 </div>
                 `;
 
                 html += `<div class="collapse ms-3 mb-2 border-start border-2 ps-2" id="collapse-${proj.id}">`;
 
-                const partsInProject = jobParts.filter(p => p.projectId === projId);
                 const activeGroupIds = [...new Set(partsInProject.map(p => p.groupId || 'nogroup'))];
 
                 activeGroupIds.forEach(grpId => {
@@ -951,12 +958,13 @@
                         const ungroupedCount = partsInProject.filter(p => !p.groupId || p.groupId.trim() === '').length;
                         if (ungroupedCount > 0) {
                             html += `
-                            <div class="d-flex align-items-center mb-1">
-                                <input class="form-check-input me-2" type="checkbox" checked tabindex="-1" onclick="return false;">
-                                <label class="form-check-label flex-grow-1 text-truncate font-italic" style="font-size: 0.85rem;">
-                                    <em>Ungrouped Parts</em> <span class="text-muted" style="font-size: 0.75rem;">(${ungroupedCount} parts)</span>
+                            <div class="d-flex align-items-start mb-1">
+                                <input class="form-check-input me-2 flex-shrink-0" type="checkbox" checked tabindex="-1" onclick="return false;" style="margin-top:3px;">
+                                <label class="form-check-label flex-grow-1 text-muted" style="font-size: 0.85rem; min-width:0;">
+                                    <span class="d-block text-truncate"><em>Ungrouped Parts</em></span>
+                                    <span style="font-size:0.75rem;">(${ungroupedCount} parts)</span>
                                 </label>
-                                <input type="number" class="form-control form-control-sm text-center bg-white" value="1" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem;">
+                                <input type="number" class="form-control form-control-sm text-center bg-white flex-shrink-0" value="1" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
                             </div>
                             `;
                         }
@@ -965,12 +973,13 @@
                         if (grpParts.length > 0) {
                             const grp = appState.groups.find(g => g.id === grpId) || { name: 'Saved Group' };
                             html += `
-                            <div class="d-flex align-items-center mb-1">
-                                <input class="form-check-input me-2" type="checkbox" checked tabindex="-1" onclick="return false;">
-                                <label class="form-check-label flex-grow-1 text-truncate" style="font-size: 0.85rem;">
-                                    ${safeHTML(grp.name)} <span class="text-muted" style="font-size: 0.75rem;">(${grpParts.length} parts)</span>
+                            <div class="d-flex align-items-start mb-1">
+                                <input class="form-check-input me-2 flex-shrink-0" type="checkbox" checked tabindex="-1" onclick="return false;" style="margin-top:3px;">
+                                <label class="form-check-label flex-grow-1" style="font-size: 0.85rem; min-width:0;">
+                                    <span class="d-block text-truncate">${safeHTML(grp.name)}</span>
+                                    <span class="text-muted" style="font-size:0.75rem;">(${grpParts.length} parts)</span>
                                 </label>
-                                <input type="number" class="form-control form-control-sm text-center bg-white" value="1" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem;">
+                                <input type="number" class="form-control form-control-sm text-center bg-white flex-shrink-0" value="1" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
                             </div>
                             `;
                         }
