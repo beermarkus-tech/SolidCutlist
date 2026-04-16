@@ -295,6 +295,12 @@
         // 4. Clear all input section forms
         document.querySelectorAll('[id^="input-section-"] form').forEach(f => f.reset());
 
+        // Zero parts footer immediately so stale values don't show during reboot
+        const _tfootQty    = document.getElementById('tfoot-parts-qty');
+        const _tfootMetric = document.getElementById('tfoot-parts-metric');
+        if (_tfootQty)    _tfootQty.innerText    = '0';
+        if (_tfootMetric) _tfootMetric.innerText = '0';
+
         // 5. Save to localStorage immediately (bypass the debounce)
         appState.local_timestamp = Date.now();
         localStorage.setItem('lumberLogicState', JSON.stringify(appState));
