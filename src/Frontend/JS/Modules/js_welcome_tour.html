@@ -41,28 +41,38 @@
 
     function _finishTour() {
         _hideTourOverlay();
+        if (!appState.settings) appState.settings = {};
+        appState.settings.isProjectCardView = false; // Land in table view — no data yet
         if (!_tourSessionOnly) {
             appState.settings.tourComplete = true;
             saveState();
         }
-        // Land in Setup → Profiles & Materials
-        if (typeof navigateTo === 'function') {
-            navigateTo('view-setup');
-            setTimeout(() => {
-                const tabDicts = document.getElementById('tab-dictionaries');
-                if (tabDicts) tabDicts.click();
-            }, 150);
-        }
+        if (typeof navigateTo === 'function') navigateTo('view-projects');
         if (!_tourSessionOnly) renderChecklist();
     }
 
     function tourNext() {
-        // On step 0: apply language selection before advancing
+        // On step 0: apply all preference selections before advancing
         if (_tourStep === 0) {
-            const langSel = document.getElementById('tour-lang-select');
-            if (langSel && langSel.value !== ((appState.settings || {}).language || 'en')) {
-                handleLanguageChange(langSel.value);
+            if (!appState.settings) appState.settings = {};
+
+            const langSel  = document.getElementById('tour-lang-select');
+            const unitSel  = document.getElementById('tour-unit-select');
+            const currSel  = document.getElementById('tour-currency-select');
+
+            // Language — handleLanguageChange handles its own save + re-translation
+            const newLang = langSel ? langSel.value : (appState.settings.language || 'en');
+            if (newLang !== (appState.settings.language || 'en')) {
+                handleLanguageChange(newLang);
             }
+
+            // Unit system + currency — set directly, then sync settings modal
+            if (unitSel) appState.settings.displayUnit = unitSel.value;
+            if (currSel) appState.settings.currency    = currSel.value;
+
+            if (typeof renderSettings    === 'function') renderSettings();
+            if (typeof updateUnitLabels  === 'function') updateUnitLabels();
+            saveState();
         }
         if (_tourStep < TOUR_STEPS.length - 1) {
             _tourStep++;
@@ -95,16 +105,40 @@
         const contentEl = document.getElementById('tour-content');
         if (contentEl) {
             if (_tourStep === 0) {
-                const currentLang = (appState.settings || {}).language || 'en';
+                const s            = appState.settings || {};
+                const currentLang  = s.language     || 'en';
+                const currentUnit  = s.displayUnit  || 'mm';
+                const currentCurr  = s.currency     || '€';
                 contentEl.innerHTML = `
                     <div style="font-size:3.5rem;line-height:1;">${step.icon}</div>
                     <h5 class="fw-bold mt-3 mb-2">${t('tour_welcome_title')}</h5>
                     <p class="text-muted small mb-3">${t('tour_welcome_subtitle')}</p>
-                    <select class="form-select form-select-sm mx-auto" id="tour-lang-select" style="max-width:200px;">
-                        <option value="en" ${currentLang === 'en' ? 'selected' : ''}>🇬🇧 English</option>
-                        <option value="de" ${currentLang === 'de' ? 'selected' : ''}>🇩🇪 Deutsch</option>
-                        <option value="fr" ${currentLang === 'fr' ? 'selected' : ''}>🇫🇷 Français</option>
-                    </select>`;
+                    <div style="max-width:270px;margin:0 auto;text-align:left;">
+                        <div class="mb-2">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">${t('lbl_settings_language')}</label>
+                            <select class="form-select form-select-sm" id="tour-lang-select">
+                                <option value="en" ${currentLang==='en'?'selected':''}>🇬🇧 English</option>
+                                <option value="de" ${currentLang==='de'?'selected':''}>🇩🇪 Deutsch</option>
+                                <option value="fr" ${currentLang==='fr'?'selected':''}>🇫🇷 Français</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">${t('lbl_display_units')}</label>
+                            <select class="form-select form-select-sm" id="tour-unit-select">
+                                <option value="mm"     ${currentUnit==='mm'    ?'selected':''}>${t('opt_metric')}</option>
+                                <option value="dec_in" ${currentUnit==='dec_in'?'selected':''}>${t('opt_decimal_inches')}</option>
+                                <option value="frac_in"${currentUnit==='frac_in'?'selected':''}>${t('opt_fractional_inches')}</option>
+                            </select>
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1">${t('lbl_currency')}</label>
+                            <select class="form-select form-select-sm" id="tour-currency-select">
+                                <option value="$" ${currentCurr==='$'?'selected':''}>${t('opt_dollars')}</option>
+                                <option value="€" ${currentCurr==='€'?'selected':''}>${t('opt_euros')}</option>
+                                <option value="£" ${currentCurr==='£'?'selected':''}>${t('opt_pounds')}</option>
+                            </select>
+                        </div>
+                    </div>`;
             } else {
                 contentEl.innerHTML = `
                     <div style="font-size:3.5rem;line-height:1;">${step.icon}</div>

@@ -127,6 +127,14 @@
     /** The Handshake: Compares timestamps and resolves conflicts */
     function handleCloudDataResponse(responseStr, localData) {
         try {
+            // If we just did a factory reset, always trust local — the cloud write
+            // may not have landed yet but localStorage is already clean.
+            if (sessionStorage.getItem('resetInProgress')) {
+                sessionStorage.removeItem('resetInProgress');
+                finalizeBoot(localData || initialAppState);
+                return;
+            }
+
             const response = JSON.parse(responseStr);
             if (response.status === 'error') throw new Error(response.message);
 
@@ -264,30 +272,58 @@
             profiles: [], stores: [], jobs: [],
             ui: {},
             settings: {
-                baseUnit:          'mm',
-                displayUnit:       'mm',
-                bladeKerf:         3.175,
-                cutoffThreshold:   200.0,
-                factoryEdgeTrim:   6.35,
-                theme:             'light',
-                language:          'en',
-                tourComplete:      false,
-                checklistDismissed: false
+                baseUnit:           'mm',
+                displayUnit:        'mm',
+                bladeKerf:          3.175,
+                cutoffThreshold:    200.0,
+                factoryEdgeTrim:    6.35,
+                theme:              'light',
+                language:           'en',
+                currency:             '€',
+                tourComplete:         false,
+                checklistDismissed:   false,
+                isProjectCardView:    false,
+                compactStockView:     false,
+                compactCatalogView:   false
             }
         };
 
-        // 3. Persist to localStorage + trigger cloud sync
-        saveState();
+        // 3. Save to localStorage immediately (bypass the debounce)
+        appState.local_timestamp = Date.now();
+        localStorage.setItem('lumberLogicState', JSON.stringify(appState));
+        if (syncTimeout) { clearTimeout(syncTimeout); syncTimeout = null; }
 
-        // 4. Clear Thumbnails tab, then reload regardless of outcome
-        const reload = () => location.reload();
+        // 4. SessionStorage flag: tells handleCloudDataResponse to skip the
+        //    confirm dialog and use local data if the cloud write hasn't landed yet.
+        sessionStorage.setItem('resetInProgress', '1');
+
+        _showPackSpinner();
+
+        // Navigation-based reloads blank the page in GAS callbacks.
+        // Instead, re-run the boot sequence directly within the same page.
+        const _reboot = () => {
+            _hidePackSpinner();
+            const loader = document.getElementById('boot-loader');
+            if (loader) loader.classList.remove('d-none');
+            loadState();
+        };
+
         if (typeof google !== 'undefined' && google.script && google.script.run) {
+            // Fire both GAS calls in parallel; reboot when both are done.
+            let syncDone = false, thumbsDone = false;
+            const tryReboot = () => { if (syncDone && thumbsDone) _reboot(); };
+
             google.script.run
-                .withSuccessHandler(reload)
-                .withFailureHandler(reload)
+                .withSuccessHandler(() => { syncDone  = true; tryReboot(); })
+                .withFailureHandler(_reboot)
+                .saveAppStateToSheet(JSON.stringify({ appState, timestamp: appState.local_timestamp }));
+
+            google.script.run
+                .withSuccessHandler(() => { thumbsDone = true; tryReboot(); })
+                .withFailureHandler(() => { thumbsDone = true; tryReboot(); })
                 .clearAllThumbnails();
         } else {
-            reload();
+            _reboot();
         }
     }
 
@@ -354,6 +390,9 @@
     function saveState() {
         // 1. Recalculate totals (from our Project Dashboard update)
         if (typeof recalculateAllProjectTotals === 'function') recalculateAllProjectTotals();
+
+        // Remove starter pack CTAs the moment any data exists
+        if (typeof _clearStarterPackCTAs === 'function') _clearStarterPackCTAs();
 
         // 2. Inject a local timestamp into the state 
         // (We will use this in Phase 3 to check if the browser crashed before the cloud sync finished)

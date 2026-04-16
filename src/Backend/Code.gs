@@ -439,6 +439,30 @@ function deleteThumbnail(projectId) {
   }
 }
 
+function getStarterPack(profileRegion) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const profileSheetName = (profileRegion === 'US') ? 'pck_profiles_US' : 'pck_profiles_EU';
+
+    const sheets = {
+      materials: ss.getSheetByName('pck_materials'),
+      profiles:  ss.getSheetByName(profileSheetName),
+      projects:  ss.getSheetByName('pck_projects'),
+      groups:    ss.getSheetByName('pck_groups'),
+      parts:     ss.getSheetByName('pck_parts')
+    };
+
+    const data = {};
+    for (const [key, sheet] of Object.entries(sheets)) {
+      data[key] = sheet ? readArrayFromSheet(sheet) : [];
+    }
+
+    return JSON.stringify({ status: 'success', data });
+  } catch(e) {
+    return JSON.stringify({ status: 'error', message: e.toString() });
+  }
+}
+
 function clearAllThumbnails() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();

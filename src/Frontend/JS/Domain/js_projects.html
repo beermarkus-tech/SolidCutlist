@@ -140,9 +140,16 @@
 
         const tbody = document.getElementById('table-projects-body');
         if (!tbody) return;
-        tbody.innerHTML = ''; 
-        
+        tbody.innerHTML = '';
+
         if (!appState.projects) appState.projects = [];
+
+        if (appState.projects.length === 0) {
+            const emptyHtml = _starterPackEmptyRow(10);
+            if (emptyHtml) tbody.innerHTML = emptyHtml;
+            return;
+        }
+
         const currency = appState.settings.currency || '$';
 
         appState.projects.forEach(proj => {
@@ -758,7 +765,15 @@
         grid.innerHTML = ''; 
 
         if (!appState.projects || appState.projects.length === 0) {
-            grid.innerHTML = `<div class="col-12 text-center text-muted mt-5"><h1>📭</h1><p>No projects yet.</p></div>`;
+            if (_isStarterPackAvailable()) {
+                grid.innerHTML = `<div class="col-12 text-center mt-5">
+                    <p class="fw-bold mb-1">${t('msg_starter_pack_title')}</p>
+                    <p class="text-muted small mb-3">${t('msg_starter_pack_body')}</p>
+                    <button class="btn btn-primary btn-sm px-4" onclick="loadStarterPack()">${t('btn_load_starter_pack')}</button>
+                </div>`;
+            } else {
+                grid.innerHTML = `<div class="col-12 text-center text-muted mt-5"><h1>📭</h1><p>No projects yet.</p></div>`;
+            }
             return;
         }
 

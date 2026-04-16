@@ -448,6 +448,12 @@
         tbody.innerHTML = '';
         if (!appState.catalog) appState.catalog = [];
 
+        if (appState.catalog.length === 0) {
+            const emptyHtml = _starterPackEmptyRow(11);
+            if (emptyHtml) tbody.innerHTML = emptyHtml;
+            return;
+        }
+
         appState.catalog.forEach(item => {
             if (typeof rowPassesFilters === 'function' && !rowPassesFilters(item, 'catalog')) return;
             const prof = appState.profiles?.find(p => p.id === item.profileId);

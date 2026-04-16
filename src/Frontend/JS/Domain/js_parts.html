@@ -168,7 +168,8 @@
         if (metricDropdown) metricDropdown.value = metricMode;
 
         if (!appState.parts || appState.parts.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-4 text-muted">${t('msg_no_parts_added')}</td></tr>`;
+            tbody.innerHTML = _starterPackEmptyRow(11) ||
+                `<tr><td colspan="11" class="text-center py-4 text-muted">${t('msg_no_parts_added')}</td></tr>`;
             return;
         }
 

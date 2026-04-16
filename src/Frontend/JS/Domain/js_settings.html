@@ -21,7 +21,7 @@
         if (appState.settings.sheetScrapMinLength === undefined) appState.settings.sheetScrapMinLength = 400.0; // 🪄 NEW
         if (appState.settings.factoryEdgeTrim === undefined) appState.settings.factoryEdgeTrim = 6.35;
         if (appState.settings.sheetFactoryTrim === undefined) appState.settings.sheetFactoryTrim = 6.35; // 🪄 NEW
-        if (!appState.settings.currency) appState.settings.currency = '$'; // 🪄 NEW
+        if (!appState.settings.currency) appState.settings.currency = '€';
         
         document.getElementById('setting-display-unit').value = appState.settings.displayUnit;
         document.getElementById('setting-kerf').value = formatForDisplay(appState.settings.bladeKerf);

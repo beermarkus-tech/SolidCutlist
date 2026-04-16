@@ -1,8 +1,108 @@
 <script>
+    // ==========================================
+    // STARTER PACK
+    // ==========================================
+
+    function _isStarterPackAvailable() {
+        return (appState.materials || []).length === 0 &&
+               (appState.profiles  || []).length === 0 &&
+               (appState.projects  || []).length === 0 &&
+               (appState.parts     || []).length === 0 &&
+               (appState.groups    || []).length === 0;
+    }
+
+    /** Returns a full-width empty-state tbody row, or '' if the pack is already loaded. */
+    function _starterPackEmptyRow(colSpan) {
+        if (!_isStarterPackAvailable()) return '';
+        return `<tr class="starter-pack-cta-row"><td colspan="${colSpan}" class="text-center py-5">
+            <p class="fw-bold mb-1">${t('msg_starter_pack_title')}</p>
+            <p class="text-muted small mb-3">${t('msg_starter_pack_body')}</p>
+            <button class="btn btn-primary btn-sm px-4" onclick="loadStarterPack()">${t('btn_load_starter_pack')}</button>
+        </td></tr>`;
+    }
+
+    /** Called after every saveState — removes CTA rows the moment any data exists. */
+    function _clearStarterPackCTAs() {
+        if (_isStarterPackAvailable()) return;
+        document.querySelectorAll('.starter-pack-cta-row').forEach(el => el.remove());
+    }
+
+    /** No-op kept for call-site compatibility — banner approach removed. */
+    function _updateDictionariesEmptyState() {}
+
+    function _showPackSpinner() {
+        let el = document.getElementById('starter-pack-spinner');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'starter-pack-spinner';
+            el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:center;justify-content:center;';
+            el.innerHTML = '<div class="spinner-border text-light" style="width:3rem;height:3rem;" role="status"><span class="visually-hidden">Loading…</span></div>';
+            document.body.appendChild(el);
+        }
+        el.style.display = 'flex';
+    }
+    function _hidePackSpinner() {
+        const el = document.getElementById('starter-pack-spinner');
+        if (el) el.style.display = 'none';
+    }
+
+    function loadStarterPack() {
+        if (!_isStarterPackAvailable()) {
+            showToast(t('msg_starter_pack_not_empty'), true);
+            return;
+        }
+        const displayUnit = (appState.settings || {}).displayUnit || 'mm';
+        const region = (displayUnit === 'dec_in' || displayUnit === 'frac_in') ? 'US' : 'EU';
+
+        _showPackSpinner();
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(function(responseStr) { _hidePackSpinner(); _applyStarterPack(responseStr); })
+                .withFailureHandler(function(err) { _hidePackSpinner(); console.error(err); showToast(t('msg_starter_pack_error'), true); })
+                .getStarterPack(region);
+        } else {
+            _hidePackSpinner();
+            showToast('Starter pack not available in local dev mode.', true);
+        }
+    }
+
+    function _applyStarterPack(responseStr) {
+        try {
+            const response = JSON.parse(responseStr);
+            if (response.status !== 'success') throw new Error(response.message);
+            const d = response.data;
+            appState.materials = d.materials || [];
+            appState.profiles  = d.profiles  || [];
+            appState.projects  = d.projects  || [];
+            appState.groups    = d.groups    || [];
+            appState.parts     = d.parts     || [];
+            if (!appState.settings) appState.settings = {};
+            appState.settings.isProjectCardView = true;
+            saveState();
+            renderDictionaries();
+            if (typeof renderProjectsTable === 'function') renderProjectsTable();
+            navigateTo('view-projects');
+            showToast(t('msg_starter_pack_loaded'));
+        } catch(e) {
+            console.error('Starter pack parse error:', e);
+            showToast(t('msg_starter_pack_error'), true);
+        }
+    }
+
+    // ==========================================
+    // MATERIALS TABLE
+    // ==========================================
+
     function renderMaterialsTable() {
         const tbody = document.getElementById('table-materials-body');
-        tbody.innerHTML = ''; 
-        
+        tbody.innerHTML = '';
+
+        if ((appState.materials || []).length === 0) {
+            const emptyHtml = _starterPackEmptyRow(4);
+            if (emptyHtml) tbody.innerHTML = emptyHtml;
+            return;
+        }
+
         appState.materials.forEach(mat => {
 
             if (typeof rowPassesFilters === 'function' && !rowPassesFilters(mat, 'materials')) return;
@@ -46,6 +146,7 @@
             updateFilterUI('materials', ['name', 'category']);
         }
 
+        _updateDictionariesEmptyState();
     }
     function handleAddMaterial(event) {
         event.preventDefault(); 
@@ -138,8 +239,14 @@
 
     function renderProfilesTable() {
         const tbody = document.getElementById('table-profiles-body');
-        tbody.innerHTML = ''; 
-        
+        tbody.innerHTML = '';
+
+        if ((appState.profiles || []).length === 0) {
+            const emptyHtml = _starterPackEmptyRow(4);
+            if (emptyHtml) tbody.innerHTML = emptyHtml;
+            return;
+        }
+
         appState.profiles.forEach(prof => {
 
             if (typeof rowPassesFilters === 'function' && !rowPassesFilters(prof, 'profiles')) return;
@@ -204,6 +311,7 @@
             updateFilterUI('profiles', ['name', 'type']);
         }
 
+        _updateDictionariesEmptyState();
     }
     function handleAddProfile(event) {
         event.preventDefault();
