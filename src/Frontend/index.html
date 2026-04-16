@@ -130,9 +130,6 @@
                     </div>
     
                 </div>
-                <div class="modal-footer py-1">
-                    <small class="text-muted w-100 text-center" data-i18n="txt_group_modal_footer">Type a name and press <b>ENTER</b> to add. Press <b>ESC</b> to close.</small>
-                </div>
             </div>
         </div>
     </div>
@@ -188,9 +185,6 @@
                         <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_save_link">Save Link</button>
                     </form>
                 </div>
-                <div class="modal-footer py-1">
-                    <small class="text-muted w-100 text-center" data-i18n="txt_edit_link_footer">Press <b>ENTER</b> to save.</small>
-                </div>
             </div>
         </div>
     </div>
@@ -199,7 +193,7 @@
     <div class="modal" id="universalFilterModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content shadow">
-                <div class="modal-header bg-secondary text-white py-2">
+                <div class="modal-header bg-dark text-white py-2">
                     <h6 class="modal-title mb-0" id="filterModalTitle" data-i18n="hdr_filter">Filter</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -207,9 +201,8 @@
                     <input type="hidden" id="filter-array-name">
                     <input type="hidden" id="filter-column-key">
                     
-                    <div class="d-flex justify-content-between p-2 border-bottom">
-                        <button class="btn btn-sm btn-outline-secondary py-0" onclick="toggleAllFilters(true)" data-i18n="btn_select_all">Select All</button>
-                        <button class="btn btn-sm btn-outline-secondary py-0" onclick="toggleAllFilters(false)" data-i18n="btn_clear">Clear</button>
+                    <div class="d-flex p-2 border-bottom">
+                        <button class="btn btn-sm btn-outline-secondary py-0" id="filter-toggle-all-btn" onclick="toggleAllFiltersToggle()" data-i18n="btn_select_all">Select All</button>
                     </div>
                     
                     <div id="filter-checkbox-list" class="p-2" style="max-height: 40vh; overflow-y: auto;">
@@ -233,7 +226,6 @@
                 </div>
                 <div class="modal-body text-center py-4">
                     <p id="modal-delete-message" class="fw-bold mb-0" data-i18n="msg_are_you_sure">Are you sure?</p>
-                    <small class="text-muted mt-2 d-block" data-i18n="txt_confirm_deletion_footer">Press <b>Enter</b> to confirm.</small>
                 </div>
                 <div class="modal-footer p-1 d-flex justify-content-between">
                     <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal" data-i18n="btn_cancel">Cancel</button>
@@ -247,7 +239,7 @@
     <div class="modal" id="modal-commit-offcuts" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header bg-success text-white py-2">
+                <div class="modal-header bg-dark text-white py-2">
                     <h6 class="modal-title fw-bold" data-i18n="hdr_commit_offcuts">📥 Commit Offcuts to Shop Stock</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -369,24 +361,24 @@
                     <div class="row g-2 mb-4 align-items-end">
                         <div class="col-md-4">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Saved Templates</label>
-                            <select class="form-select form-select-sm shadow-sm" id="label-template-select" onchange="handleLabelTemplateChange()">
+                            <select class="form-select form-select-sm" id="label-template-select" onchange="handleLabelTemplateChange()">
                                 <option value="custom">Custom...</option>
                                 </select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Template Name</label>
-                            <input type="text" class="form-control form-control-sm shadow-sm" id="label-template-name" placeholder="e.g., Avery 5160">
+                            <input type="text" class="form-control form-control-sm" id="label-template-name" placeholder="e.g., Avery 5160">
                         </div>
                         <div class="col-md-4 d-flex gap-2">
-                            <button class="btn btn-sm btn-outline-primary w-50 fw-bold shadow-sm" onclick="saveLabelTemplate()">💾 Save</button>
-                            <button class="btn btn-sm btn-outline-danger w-50 fw-bold shadow-sm" id="btn-delete-label-template" onclick="deleteLabelTemplate()" disabled>🗑️ Delete</button>
+                            <button class="btn btn-sm btn-outline-primary w-50 fw-bold" onclick="saveLabelTemplate()">💾 Save</button>
+                            <button class="btn btn-sm btn-outline-danger w-50 fw-bold" id="btn-delete-label-template" onclick="deleteLabelTemplate()" disabled>🗑️ Delete</button>
                         </div>
                     </div>
     
                     <div class="row mb-3">
                         <div class="col-12">
                             <label class="form-label form-label-sm fw-bold text-secondary mb-1">Printer Type</label>
-                            <select class="form-select form-select-sm shadow-sm w-auto" id="label-printer-type" onchange="toggleLabelPrinterType()">
+                            <select class="form-select form-select-sm w-auto" id="label-printer-type" onchange="toggleLabelPrinterType()">
                                 <option value="sheet">Standard Printer (Sticker Sheets)</option>
                                 <option value="roll">Thermal Printer (Continuous Roll)</option>
                             </select>

@@ -243,10 +243,23 @@
             const modal = new bootstrap.Modal(filterModal);
             modal.show();
         }
+        // Reset toggle button to "Select All"
+        const toggleBtn = document.getElementById('filter-toggle-all-btn');
+        if (toggleBtn) { toggleBtn.textContent = toggleBtn.getAttribute('data-i18n-select') || 'Select All'; toggleBtn.dataset.state = 'selectAll'; }
     }
 
     function toggleAllFilters(checkThem) {
         document.querySelectorAll('.filter-option-cb').forEach(cb => cb.checked = checkThem);
+    }
+
+    function toggleAllFiltersToggle() {
+        const btn = document.getElementById('filter-toggle-all-btn');
+        const isSelectAll = !btn || btn.dataset.state !== 'clear';
+        toggleAllFilters(isSelectAll);
+        if (btn) {
+            btn.dataset.state = isSelectAll ? 'clear' : 'selectAll';
+            btn.textContent = isSelectAll ? (btn.getAttribute('data-i18n-clear') || 'Clear') : (btn.getAttribute('data-i18n-select') || 'Select All');
+        }
     }
     
     function clearCurrentFilter() {

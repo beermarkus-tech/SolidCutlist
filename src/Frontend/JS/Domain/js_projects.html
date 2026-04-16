@@ -1041,8 +1041,13 @@
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
                 
-                // Compress to 60% quality JPEG (Yields a tiny Base64 string!)
-                const base64String = canvas.toDataURL('image/jpeg', 0.6); 
+                // Compress to JPEG, stepping down quality if base64 exceeds 45k chars
+                let quality = 0.8;
+                let base64String = canvas.toDataURL('image/jpeg', quality);
+                while (base64String.length > 45000 && quality > 0.2) {
+                    quality = Math.round((quality - 0.1) * 10) / 10;
+                    base64String = canvas.toDataURL('image/jpeg', quality);
+                }
 
                 // 🪄 3. RAM Storage & Instant Redraw
                 window.projectImages[currentUploadProjectId] = base64String;
