@@ -339,8 +339,8 @@
         if (part.category === 'lumber') dimText = displayL;
         else if (part.category === 'sheet') dimText = `${displayW} × ${displayL}`;
         return `
-            <td class="p-0 px-1"><small class="text-truncate d-block" style="max-width:110px">${safeHTML(proj?.name || '—')}</small></td>
-            <td class="p-0 px-1"><small class="text-muted text-truncate d-block" style="max-width:90px">${safeHTML(grp?.name || '-')}</small></td>
+            <td class="p-0 px-1"><small class="text-truncate d-block">${safeHTML(proj?.name || '—')}</small></td>
+            <td class="p-0 px-1"><small class="text-muted text-truncate d-block">${safeHTML(grp?.name || '-')}</small></td>
             <td class="p-0 px-1"><small class="fw-bold">${safeHTML(part.name)}</small></td>
             <td><div class="d-flex justify-content-center px-1"><span class="badge ${badgeClass} py-1 d-inline-block" style="width:85px;text-align:center;font-size:0.75rem;text-transform:uppercase;">${t('opt_' + part.category)}</span></div></td>
             <td class="text-center text-primary fw-bold"><small>${part.qty}</small></td>

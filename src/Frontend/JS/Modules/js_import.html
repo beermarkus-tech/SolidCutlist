@@ -534,7 +534,8 @@
             if (!profExists) part.profileId = '';
             if (!matExists) part.materialId = '';
             
-            part.status = (part.category && part.profileId && part.materialId && part.groupId !== '') ? 'ready' : 'needs_mapping';
+            // Only category is mandatory — group, profile, material may remain unassigned
+            part.status = part.category ? 'ready' : 'needs_mapping';
 
             const tr = document.createElement('tr');
             if (part.status === 'needs_mapping') {

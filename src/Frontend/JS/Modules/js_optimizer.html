@@ -1573,7 +1573,7 @@
             
             items.forEach(item => {
                 const wDisplay = isMetric ? item.weight : (item.weight * 2.20462);
-                const linkIcon = (item.url && storeName !== '🏪 My Shop Stock') 
+                const linkIcon = (item.url && storeName !== '🏪 My Shop Stock')
                     ? `<a href="${item.url}" target="_blank" class="text-decoration-none ms-2 fs-5" title="Open in Store">🔗</a>` : '';
 
                 const isEditable = window.activeJobId && storeName !== '🏪 My Shop Stock';
@@ -1589,6 +1589,12 @@
                 const badgeClass = item.isError ? 'bg-danger' : 'bg-primary';
                 const costDisplay = item.isError ? '<span class="text-danger fw-bold">ERROR</span>' : `${currency}${item.cost.toFixed(2)}`;
                 const weightDisplay = item.isError ? '' : `<small class="text-muted">⚖️ ${wDisplay.toFixed(2)} ${weightUnit}</small>`;
+
+                const isStoreItem = storeName !== '🏪 My Shop Stock' && !item.isError;
+                const isPurchased = isStoreItem && !!(activeJob?.purchasedItems?.[item.catalogId]);
+                const checkboxHtml = isStoreItem
+                    ? `<input type="checkbox" class="form-check-input flex-shrink-0" style="width:1.2em;height:1.2em;cursor:pointer;" ${isPurchased ? 'checked' : ''} onchange="toggleShoppingItemPurchased('${item.catalogId}', this.checked)" title="Mark as purchased">`
+                    : '';
 
                 // Helper to build a collapsed part list from an array of part objects
                 function buildPartList(parts) {
@@ -1620,8 +1626,8 @@
                 }
 
                 html += `
-                    <li class="list-group-item d-flex justify-content-between align-items-center ${rowClass}">
-                        <div>
+                    <li id="shop-item-${item.catalogId}" class="list-group-item d-flex justify-content-between align-items-center gap-3 ${rowClass} ${isPurchased ? 'shop-item-purchased' : ''}">
+                        <div class="flex-grow-1">
                             <span class="badge ${badgeClass} rounded-pill me-2 fs-6">${item.qty} ${item.isError ? '' : 'x'}</span>
                             <span class="fw-bold ${item.isError ? 'text-danger' : ''}">${safeHTML(item.profName)}</span>
                             <span class="text-muted"> - ${safeHTML(item.matName)}</span>
@@ -1629,10 +1635,11 @@
                             <small class="text-muted ms-5 d-flex align-items-center mt-1">Size: ${sizeDisplay} <span class="display-unit-label ms-1"></span>${pencilBtn}</small>
                             ${errorText}
                         </div>
-                        <div class="text-end">
+                        <div class="text-end flex-shrink-0">
                             <div class="fw-bold text-success">${costDisplay}</div>
                             ${weightDisplay}
                         </div>
+                        ${checkboxHtml}
                     </li>
                 `;
             });
@@ -2096,6 +2103,24 @@
                 stockTab.click();
             }
         }, 300); // 300ms delay allows the Bootstrap modal to fade out smoothly before the screen jumps
+    }
+
+    // ==========================================
+    // SHOPPING LIST: PURCHASED TOGGLE
+    // ==========================================
+    function toggleShoppingItemPurchased(catalogId, checked) {
+        // Update visual state immediately
+        const li = document.getElementById(`shop-item-${catalogId}`);
+        if (li) li.classList.toggle('shop-item-purchased', checked);
+
+        // Persist to active job
+        const activeJob = window.activeJobId ? appState.jobs?.find(j => j.id === window.activeJobId) : null;
+        if (activeJob) {
+            if (!activeJob.purchasedItems) activeJob.purchasedItems = {};
+            if (checked) activeJob.purchasedItems[catalogId] = true;
+            else delete activeJob.purchasedItems[catalogId];
+            saveState();
+        }
     }
 
     // ==========================================

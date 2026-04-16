@@ -36,27 +36,33 @@
                 <span data-i18n="txt_unit_mismatch_2">but your shop is set to</span> <strong id="shop-unit-label">...</strong>.<br>
                 <span data-i18n="txt_unit_mismatch_3">Please check your math carefully or change your shop settings before importing.</span>
             </div>
-            <div class="p-3 rounded-3 input-panel">
-                <div class="row align-items-end g-3" id="import-upload-ui">
-                    <div class="col-sm-3">
-                        <label class="form-label fw-bold text-secondary" data-i18n="lbl_target_project">Target Project</label>
-                        <select class="form-select form-select-sm" id="import-project-select" onchange="markImportDirty()">
-                            <option value="" disabled selected data-i18n="opt_select_a_project">Select...</option>
-                        </select>
+            <div class="d-flex justify-content-center">
+            <div class="p-3 rounded-3 input-panel" style="max-width: 840px; width: 100%;">
+                <div class="d-flex align-items-center gap-4 w-100" id="import-upload-ui">
+                    <!-- Left: project target stacked vertically -->
+                    <div class="d-flex flex-column gap-2 flex-grow-1" style="flex-basis: 0;">
+                        <div>
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_target_project">Select Target Project</label>
+                            <select class="form-select form-select-sm" id="import-project-select" onchange="markImportDirty()">
+                                <option value="" disabled selected data-i18n="opt_select_a_project">Select...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_or_new_project">Or Create New Project</label>
+                            <input type="text" class="form-control form-control-sm" id="import-new-project-name" placeholder="Project Name..." oninput="markImportDirty()">
+                        </div>
                     </div>
-                    <div class="col-sm-3">
-                        <label class="form-label fw-bold text-secondary" data-i18n="lbl_or_new_project">Or Create New</label>
-                        <input type="text" class="form-control form-control-sm" id="import-new-project-name" placeholder="Project Name..." oninput="markImportDirty()">
-                    </div>
-                    <div class="col-sm-6">
-                        <label class="form-label fw-bold text-secondary" data-i18n="lbl_select_csv_file">Select CSV File</label>
+                    <!-- Right: file selector, vertically centered -->
+                    <div class="flex-grow-1" style="flex-basis: 0;">
+                        <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_select_csv_file">Select CSV File</label>
                         <input type="file" id="import-file-input" accept=".csv" class="d-none" onclick="this.value=null" onchange="updateFileNameDisplay()">
-                        <div class="input-group">
+                        <div class="input-group input-group-sm">
                             <button class="btn btn-primary btn-sm" type="button" onclick="document.getElementById('import-file-input').click()" data-i18n="btn_choose_file">Choose File...</button>
                             <input type="text" id="file-name-display" class="form-control form-control-sm" placeholder="No file selected" data-i18n-placeholder="ph_no_file_selected" readonly>
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
 
@@ -68,6 +74,7 @@
 
         <!-- Step 3: Review Parts (staging table) -->
         <div class="tab-pane" id="pane-step-3" role="tabpanel" tabindex="0">
+            <p class="text-muted small mb-2">Assign any missing group, category, profile, or material. Category cannot be changed after import.</p>
             <div class="table-responsive border rounded table-viewport">
                 <table class="table table-sm table-hover align-middle table-striped mb-0">
                     <thead class="table-light thead-sticky">
@@ -106,7 +113,6 @@
                                 </span>
                                 <span id="flt-icon-stagingParts-profileId" onclick="openFilterModal(event, 'stagingParts', 'profileId', 'Profile')" class="cursor-pointer" title="Filter">▼</span>
                             </th>
-                            <th class="col-size text-nowrap text-center"></th>
                             <th class="col-size text-nowrap text-center">
                                 <span onclick="handleSort('stagingParts', 'dimensions', 'number')" class="cursor-pointer">
                                     <span data-i18n="col_size">Size</span> ⇅

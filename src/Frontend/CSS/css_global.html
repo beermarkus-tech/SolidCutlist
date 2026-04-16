@@ -198,9 +198,9 @@
     }
 
         /* 🪄 UNIVERSAL TABLE COLUMN WIDTHS */
-    .col-project    { width: 1%; min-width: 170px; }
-    .col-group      { width: 1%; min-width: 170px; }
-    .col-partname   { width: 1%; min-width: 170px; }
+    .col-project    { width: 1%; min-width: 220px; }
+    .col-group      { width: 1%; min-width: 220px; }
+    .col-partname   { width: 1%; min-width: 220px; }
     .col-sponge     { width: 100%; }
     .col-category   { width: 1%; min-width: 100px; }
     .col-qty        { width: 1%; min-width: 100px;  } 
@@ -565,4 +565,10 @@
         tr.editable-row:hover td { background-color: rgba(var(--bs-primary-rgb), 0.04); }
         tr.edit-row-active { cursor: default; outline: 2px solid rgba(var(--bs-primary-rgb), 0.4); outline-offset: -1px; }
         tr.edit-row-active td { background-color: rgba(var(--bs-primary-rgb), 0.06) !important; }
+
+        /* Shopping list: purchased row */
+        .shop-item-purchased { opacity: 0.4; }
+        .shop-item-purchased .fw-bold,
+        .shop-item-purchased .text-success,
+        .shop-item-purchased .text-muted { text-decoration: line-through; }
 </style>
