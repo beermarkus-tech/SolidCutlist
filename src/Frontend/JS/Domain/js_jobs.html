@@ -429,6 +429,8 @@
         barLoad.style.display    = 'none';
         if (barRecalc)  barRecalc.style.display  = 'none';
         if (barActions) barActions.style.display = 'none';
+        const mobLabel = document.getElementById('mobile-current-job-label');
+        if (mobLabel) mobLabel.classList.toggle('d-none', state === 'load');
         if (state === 'load') {
             barLoad.style.display = 'flex';
             if (gearLoad) gearLoad.classList.add('d-none');

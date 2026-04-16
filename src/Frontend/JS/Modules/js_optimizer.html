@@ -1121,6 +1121,8 @@
         
         const jobLabel = document.getElementById('current-job-label-container');
         if (jobLabel) jobLabel.classList.add('d-none');
+        const mobLabel = document.getElementById('mobile-current-job-label');
+        if (mobLabel) mobLabel.classList.add('d-none');
         
         // Purge calculate flag so pre-calculate changes don't trigger Recalculate
         window.hasCalculated = false;
@@ -1161,6 +1163,12 @@
         if (container && display && jobName) {
             display.innerText = jobName;
             container.classList.remove('d-none');
+        }
+        const mobLabel = document.getElementById('mobile-current-job-label');
+        const mobName  = document.getElementById('mobile-current-job-name');
+        if (mobLabel && mobName && jobName) {
+            mobName.innerText = jobName;
+            mobLabel.classList.remove('d-none');
         }
     }
     function saveOptConfig() {
@@ -1625,21 +1633,45 @@
                                  <div class="text-danger ms-5 mt-1 mb-2" style="font-size: 0.75rem; opacity: 0.9;">${buildPartList(item.oversizedParts)}</div>`;
                 }
 
+                const linkIconMobile = (item.url && storeName !== '🏪 My Shop Stock')
+                    ? `<a href="${item.url}" target="_blank" class="text-decoration-none" title="Open in Store">🔗</a>` : '';
+                const weightMobile = item.isError ? '' : `<span class="text-muted" style="font-size:0.8rem;">⚖️ ${wDisplay.toFixed(2)} ${weightUnit}</span>`;
+
                 html += `
-                    <li id="shop-item-${item.catalogId}" class="list-group-item d-flex justify-content-between align-items-center gap-3 ${rowClass} ${isPurchased ? 'shop-item-purchased' : ''}">
-                        <div class="flex-grow-1">
-                            <span class="badge ${badgeClass} rounded-pill me-2 fs-6">${item.qty} ${item.isError ? '' : 'x'}</span>
-                            <span class="fw-bold ${item.isError ? 'text-danger' : ''}">${safeHTML(item.profName)}</span>
-                            <span class="text-muted"> - ${safeHTML(item.matName)}</span>
-                            ${linkIcon} <br>
-                            <small class="text-muted ms-5 d-flex align-items-center mt-1">Size: ${sizeDisplay} <span class="display-unit-label ms-1"></span>${pencilBtn}</small>
-                            ${errorText}
+                    <li id="shop-item-${item.catalogId}" class="list-group-item ${rowClass} ${isPurchased ? 'shop-item-purchased' : ''}">
+
+                        <!-- MOBILE layout (hidden on md+) -->
+                        <div class="d-flex align-items-center gap-2 d-md-none">
+                            <div class="d-flex flex-column align-items-center flex-shrink-0" style="min-width:2.8rem;">
+                                <span class="badge ${badgeClass} rounded-pill fs-6">${item.qty}${item.isError ? '' : ' x'}</span>
+                                ${linkIconMobile ? `<span class="mt-1">${linkIconMobile}</span>` : ''}
+                            </div>
+                            <div class="flex-grow-1" style="min-width:0;">
+                                <div><span class="fw-bold ${item.isError ? 'text-danger' : ''}">${safeHTML(item.profName)}</span><span class="text-muted"> - ${safeHTML(item.matName)}</span></div>
+                                <div class="d-flex justify-content-between align-items-center mt-1">${weightMobile}<span class="fw-bold text-success" style="font-size:0.85rem;">${costDisplay}</span></div>
+                                <div class="d-flex align-items-center mt-1 text-muted" style="font-size:0.8rem;">Size: ${sizeDisplay}<span class="display-unit-label ms-1"></span>${pencilBtn}</div>
+                                ${errorText}
+                            </div>
+                            ${checkboxHtml}
                         </div>
-                        <div class="text-end flex-shrink-0">
-                            <div class="fw-bold text-success">${costDisplay}</div>
-                            ${weightDisplay}
+
+                        <!-- DESKTOP layout (hidden below md) -->
+                        <div class="d-none d-md-flex justify-content-between align-items-center gap-3">
+                            <div class="flex-grow-1">
+                                <span class="badge ${badgeClass} rounded-pill me-2 fs-6">${item.qty} ${item.isError ? '' : 'x'}</span>
+                                <span class="fw-bold ${item.isError ? 'text-danger' : ''}">${safeHTML(item.profName)}</span>
+                                <span class="text-muted"> - ${safeHTML(item.matName)}</span>
+                                ${linkIcon}<br>
+                                <small class="text-muted ms-5 d-flex align-items-center mt-1">Size: ${sizeDisplay} <span class="display-unit-label ms-1"></span>${pencilBtn}</small>
+                                ${errorText}
+                            </div>
+                            <div class="text-end flex-shrink-0">
+                                <div class="fw-bold text-success">${costDisplay}</div>
+                                ${weightDisplay}
+                            </div>
+                            ${checkboxHtml}
                         </div>
-                        ${checkboxHtml}
+
                     </li>
                 `;
             });

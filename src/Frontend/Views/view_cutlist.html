@@ -72,10 +72,15 @@
 
     /* Mobile: leave room for the sticky action bar at the bottom */
     @media (max-width: 767.98px) {
-        .cutlist-results .tab-pane.active.show,
-        #optimizer-empty-state {
-            /* Extra clearance for the sticky action bar, accounting for device safe-area insets */
-            padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+        /* padding-bottom on a flex overflow container is ignored by Chrome —
+           use a real ::after flex child as spacer instead */
+        .cutlist-results .tab-pane.active.show::after,
+        #optimizer-empty-state::after {
+            content: '';
+            display: block;
+            flex-shrink: 0;
+            width: 100%;
+            height: calc(100px + env(safe-area-inset-bottom, 0px));
         }
         /* Cuts detail table: auto layout so hidden columns don't leave dead space */
         .cuts-detail-table { table-layout: auto !important; }
@@ -385,6 +390,11 @@
             background:var(--bs-body-bg);border-top:2px solid var(--bs-border-color);
             padding:10px 12px;
             padding-bottom:calc(10px + env(safe-area-inset-bottom, 0px));">
+
+    <!-- Current job label (shown when a job is active) -->
+    <div id="mobile-current-job-label" class="d-none text-center mb-2">
+        <small class="text-muted fw-bold">Current Job: </small><small class="text-muted fw-bold" id="mobile-current-job-name"></small>
+    </div>
 
     <!-- State A: no job active -->
     <div id="mobile-bar-load" style="display:flex;gap:8px;">
