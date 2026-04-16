@@ -9,6 +9,8 @@
     let currentImportStep = 1;
     let isImportActive = false;
     let isMappingDirty = true; // Tracks if we need to recalculate Step 3
+    let importScaleFactor = 1;    // Multiplier: CSV raw number → mm
+    let importScaleUserSet = false; // True once the user has touched the dropdown
 
     // This is the quarantine tank before they go into appState.parts
     if (!appState.stagingParts) appState.stagingParts = [];
@@ -131,7 +133,14 @@
         
         clearCachedFile();
         toggleResumeButton(false);
-        
+
+        importScaleFactor = 1;
+        importScaleUserSet = false;
+        const importUnitSel = document.getElementById('import-unit-select');
+        if (importUnitSel) importUnitSel.value = '1';
+        const scaleStats = document.getElementById('import-scale-stats');
+        if (scaleStats) scaleStats.textContent = '';
+
         // 🪄 Re-Lock the Tabs
         const tab2 = document.getElementById('tab-step-2');
         const tab3 = document.getElementById('tab-step-3');
@@ -386,6 +395,14 @@
 
         appState.stagingParts = [];
 
+        // Set default scale factor based on display unit if user hasn't manually changed it
+        if (!importScaleUserSet) {
+            const displayUnit = (appState.settings || {}).displayUnit || 'mm';
+            importScaleFactor = (displayUnit === 'dec_in' || displayUnit === 'frac_in') ? 25.4 : 1;
+            const sel = document.getElementById('import-unit-select');
+            if (sel) sel.value = String(importScaleFactor);
+        }
+
         // 🪄 THE REAL AUTO-MERGE ENGINE
         const mergeMap = {};
         const safeMaterials = appState.materials || [];
@@ -401,24 +418,30 @@
             const rawName = cols[colMap.name] || `Part ${i}`;
             const rawPath = (!isNaN(colMap.group) && cols[colMap.group]) ? String(cols[colMap.group]) : '';
             const rawMaterial = isNaN(colMap.material) ? '' : (cols[colMap.material] || '');
-            
+
             // Slice the group down to just the parent
             let topLevelGroup = rawPath.split('>')[0].trim();
 
+            // Parse raw CSV number (no unit conversion — scale factor handles that)
             const cleanDim = (str) => {
                 if (!str) return 0;
-                let cleaned = str.replace(/[^0-9\.\/ ]/g, '').trim();
-                return parseToBaseUnit(cleaned) || 0;
+                let cleaned = str.replace(/[^0-9\.]/g, '').trim();
+                return parseFloat(cleaned) || 0;
             };
 
-            const tBase = cleanDim(cols[colMap.thickness]);
-            const wBase = cleanDim(cols[colMap.width]);
-            const lBase = cleanDim(cols[colMap.length]);
+            const tRaw = cleanDim(cols[colMap.thickness]);
+            const wRaw = cleanDim(cols[colMap.width]);
+            const lRaw = cleanDim(cols[colMap.length]);
 
-            if (tBase === 0 || lBase === 0) continue;
+            if (tRaw === 0 || lRaw === 0) continue;
 
-            // 🪄 BUILD THE MERGE KEY (Identical instances get merged automatically!)
-            const mergeKey = `${rawName}_${lBase}_${wBase}_${tBase}_${rawMaterial}_${topLevelGroup}`;
+            // Apply scale factor and round to max 2 decimal places (global mm rounding rule)
+            const tBase = Math.round(tRaw * importScaleFactor * 100) / 100;
+            const wBase = Math.round(wRaw * importScaleFactor * 100) / 100;
+            const lBase = Math.round(lRaw * importScaleFactor * 100) / 100;
+
+            // 🪄 BUILD THE MERGE KEY using raw values so deduplication is scale-independent
+            const mergeKey = `${rawName}_${lRaw}_${wRaw}_${tRaw}_${rawMaterial}_${topLevelGroup}`;
 
             if (mergeMap[mergeKey]) {
                 mergeMap[mergeKey].qty += 1; // Bump quantity for identical parts
@@ -453,7 +476,10 @@
                     qty: 1, // Start at 1 for each new unique instance
                     length: lBase,
                     width: wBase,
-                    thickness: tBase, 
+                    thickness: tBase,
+                    _rawLength: lRaw,
+                    _rawWidth: wRaw,
+                    _rawThickness: tRaw,
                     category: inferredCategory,
                     extractedGroup: topLevelGroup,
                     extractedMaterial: rawMaterial,
@@ -640,6 +666,8 @@
         const filterColumns = ['name', 'groupId', 'category', 'profileId', 'materialId'];
         updateFilterUI('stagingParts', filterColumns);
 
+        updateScaleStats();
+
         // 🪄 CALCULATE AND UPDATE THE STICKY FOOTER
         const totalRows = appState.stagingParts.length;
         const totalQty = appState.stagingParts.reduce((sum, part) => sum + (parseInt(part.qty) || 0), 0);
@@ -702,6 +730,33 @@
         renderStagingTable(); 
         showToast(t('msg_part_removed_import'), true);
     }
+    function applyImportScale(factor) {
+        importScaleFactor = parseFloat(factor) || 1;
+        importScaleUserSet = true;
+        appState.stagingParts.forEach(part => {
+            part.length    = Math.round(part._rawLength    * importScaleFactor * 100) / 100;
+            part.width     = Math.round(part._rawWidth     * importScaleFactor * 100) / 100;
+            part.thickness = Math.round(part._rawThickness * importScaleFactor * 100) / 100;
+            // Reset profile match — dimensions changed, re-matching will fire in renderStagingTable
+            part.profileId = '';
+        });
+        renderStagingTable();
+    }
+
+    function updateScaleStats() {
+        const statsEl = document.getElementById('import-scale-stats');
+        if (!statsEl) return;
+        const parts = appState.stagingParts || [];
+        if (parts.length === 0) { statsEl.textContent = ''; return; }
+        const lengths = parts.map(p => p.length).filter(v => v > 0);
+        const thicknesses = parts.map(p => p.thickness).filter(v => v > 0);
+        if (lengths.length === 0) { statsEl.textContent = ''; return; }
+        const minL = Math.min(...lengths), maxL = Math.max(...lengths);
+        const minT = Math.min(...thicknesses), maxT = Math.max(...thicknesses);
+        const unit = ((appState.settings || {}).displayUnit === 'mm') ? 'mm' : 'in';
+        statsEl.textContent = `Lengths ${formatForDisplay(minL)}–${formatForDisplay(maxL)} ${unit} · Thicknesses ${formatForDisplay(minT)}–${formatForDisplay(maxT)} ${unit}`;
+    }
+
     function commitImport() {
         const unmapped = appState.stagingParts.filter(p => p.status !== 'ready');
         if (unmapped.length > 0) {
