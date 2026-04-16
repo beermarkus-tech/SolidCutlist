@@ -1,19 +1,18 @@
 id,name,category,density
-M-STD-001,Pine / Spruce,lumber,550
-M-STD-002,Douglas Fir,lumber,530
-M-STD-003,Oak,lumber,750
-M-STD-004,Beech,lumber,720
-M-STD-005,Ash,lumber,670
-M-STD-006,Walnut,lumber,630
-M-STD-007,Cherry,lumber,580
-M-STD-008,Maple (Hard),lumber,720
-M-STD-009,Poplar,lumber,435
-M-STD-010,Cedar (Western Red),lumber,370
-M-STD-011,Larch,lumber,590
-M-STD-012,Plywood — Softwood,sheet,540
-M-STD-013,Plywood — Birch,sheet,680
-M-STD-014,MDF,sheet,720
-M-STD-015,OSB,sheet,600
-M-STD-016,Particle Board,sheet,650
+M-STD-001,Spruce / SPF — Framing,lumber,450
+M-STD-002,Pine — General,lumber,550
+M-STD-003,Cedar (Western Red),lumber,370
+M-STD-004,Pine — Treated (Outdoor),lumber,550
+M-STD-005,Pine — Treated (Ground Contact),lumber,560
+M-STD-006,Oak,lumber,720
+M-STD-007,Beech,lumber,720
+M-STD-008,Walnut,lumber,625
+M-STD-009,Maple,lumber,720
+M-STD-010,Cherry,lumber,580
+M-STD-011,Birch,lumber,670
+M-STD-012,Poplar,lumber,435
+M-STD-013,Larch,lumber,590
+M-STD-014,Plywood — Birch / Baltic,sheet,680
+M-STD-015,MDF,sheet,720
+M-STD-016,OSB,sheet,600
 M-STD-017,Melamine Board,sheet,680
-M-STD-018,HDF,sheet,860

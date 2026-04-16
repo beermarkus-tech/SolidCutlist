@@ -149,6 +149,11 @@
             showToast(t('msg_allow_popups'), true);
             return;
         }
+        if (appState && appState.settings && !appState.settings.hasPrinted) {
+            appState.settings.hasPrinted = true;
+            saveState();
+            if (typeof renderChecklist === 'function') renderChecklist();
+        }
 
         let htmlContent = '';
         

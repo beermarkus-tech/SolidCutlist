@@ -1157,6 +1157,18 @@
 
         if (typeof renderOptimizerConfig === 'function') renderOptimizerConfig();
     }
+
+    function clearOptimizerState() {
+        window.hasCalculated       = false;
+        window.activeJobId         = null;
+        window.currentSandboxParts = null;
+        window.currentOffcuts      = null;
+        _shoppingItemRegistry.clear();
+        localStorage.removeItem('activeJobId');
+        localStorage.removeItem('activeJobBackup');
+        if (appState && appState.ui) appState.ui.activeJobId = null;
+        if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('clean');
+    }
     function setCurrentJobLabel(jobName) {
         const container = document.getElementById('current-job-label-container');
         const display = document.getElementById('current-job-name-display');
@@ -1253,6 +1265,11 @@
         // Switch button row without locking inputs (inputs stay interactive until Save Job)
         const isRecalculate = window.hasCalculated === true;
         window.hasCalculated = true;
+        if (!isRecalculate && appState.settings && !appState.settings.hasOptimized) {
+            appState.settings.hasOptimized = true;
+            saveState();
+            if (typeof renderChecklist === 'function') renderChecklist();
+        }
         toggleConfiguratorState(true, false, false);
         // Reset action button to Restart (handles the Recalculate→Restart transition too)
         const _btnA1 = document.getElementById('btn-active-action1');
@@ -1461,7 +1478,7 @@
                 // 🪄 If we are in a saved job, keep ONE broken row alive so the user can fix it.
                 // Showing all vendor options causes confusing duplicate rows with different lengths.
                 // Prefer the item the user last edited; otherwise pick the longest board (most useful reference).
-                if (window.activeJobId && res.failedCatalogItems && res.failedCatalogItems.length > 0) {
+                if (res.failedCatalogItems && res.failedCatalogItems.length > 0) {
                     const repOpt = res.failedCatalogItems.find(o => o.id === _editingCatalogId)
                         || res.failedCatalogItems.find(o => o._userChosen)
                         || res.failedCatalogItems.reduce((best, o) => (o.length > best.length ? o : best), res.failedCatalogItems[0]);
@@ -1492,8 +1509,33 @@
                         errorMessage: res.error,
                         unmappedParts: res.unmappedParts
                     });
+                } else {
+                    // No catalog options exist at all for this SKU — show a sourcing error row
+                    const prof = appState.profiles.find(p => p.id === res.sku.profileId);
+                    const mat = appState.materials.find(m => m.id === res.sku.materialId);
+                    const bucketKey = '⚠️ Sourcing Issues';
+                    if (!storeBuckets[bucketKey]) storeBuckets[bucketKey] = [];
+                    storeBuckets[bucketKey].push({
+                        catalogId: `no-source-${res.sku.profileId}-${res.sku.materialId}`,
+                        category: res.sku.category,
+                        length: 0,
+                        width: 0,
+                        qty: '⚠️',
+                        profName: prof?.name || 'Unknown',
+                        matName: mat?.name || 'Unknown',
+                        cost: 0,
+                        weight: 0,
+                        url: '',
+                        price: 0,
+                        priceUnit: 'piece',
+                        profileThickness: prof?.thickness || 0,
+                        profileWidth: prof?.width || 0,
+                        isError: true,
+                        errorMessage: res.error,
+                        unmappedParts: res.unmappedParts
+                    });
                 }
-                return; // Continue to next result, but we've successfully injected the ghosts!
+                return;
             }
             
             const purchase = res.purchase;
@@ -1564,12 +1606,16 @@
         const sortedStores = Object.keys(storeBuckets).sort((a, b) => {
             if (a === '🏪 My Shop Stock') return -1;
             if (b === '🏪 My Shop Stock') return 1;
+            if (a === '⚠️ Sourcing Issues') return 1;
+            if (b === '⚠️ Sourcing Issues') return -1;
             return a.localeCompare(b);
         });
 
         for (const storeName of sortedStores) {
             const items = storeBuckets[storeName];
-            const headerClass = storeName === '🏪 My Shop Stock' ? 'bg-success' : 'bg-dark';
+            const headerClass = storeName === '🏪 My Shop Stock' ? 'bg-success'
+                : storeName === '⚠️ Sourcing Issues' ? 'bg-danger'
+                : 'bg-dark';
 
             html += `
                 <div class="card mb-3 border-0 shadow-sm">

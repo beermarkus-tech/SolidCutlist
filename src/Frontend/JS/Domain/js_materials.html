@@ -8,16 +8,30 @@
                (appState.profiles  || []).length === 0 &&
                (appState.projects  || []).length === 0 &&
                (appState.parts     || []).length === 0 &&
-               (appState.groups    || []).length === 0;
+               (appState.groups    || []).length === 0 &&
+               (appState.catalog   || []).length === 0 &&
+               (appState.stores    || []).length === 0;
+    }
+
+    function _navigateToPM() {
+        if (typeof navigateTo === 'function') navigateTo('view-setup');
+        setTimeout(() => {
+            const btn = document.getElementById('tab-dictionaries');
+            if (btn) btn.click();
+        }, 50);
     }
 
     /** Returns a full-width empty-state tbody row, or '' if the pack is already loaded. */
     function _starterPackEmptyRow(colSpan) {
         if (!_isStarterPackAvailable()) return '';
         return `<tr class="starter-pack-cta-row"><td colspan="${colSpan}" class="text-center py-5">
-            <p class="fw-bold mb-1">${t('msg_starter_pack_title')}</p>
+            <p class="fw-bold mb-2">${t('msg_starter_pack_title')}</p>
             <p class="text-muted small mb-3">${t('msg_starter_pack_body')}</p>
-            <button class="btn btn-primary btn-sm px-4" onclick="loadStarterPack()">${t('btn_load_starter_pack')}</button>
+            <div class="d-flex flex-column align-items-center gap-2">
+                <button class="btn btn-outline-secondary btn-sm px-4" onclick="_navigateToPM()">${t('btn_enter_manually')}</button>
+                <span class="text-muted small">${t('msg_empty_state_or')}</span>
+                <button class="btn btn-primary btn-sm px-4" onclick="loadStarterPack()">${t('btn_load_starter_pack')}</button>
+            </div>
         </td></tr>`;
     }
 
@@ -76,8 +90,11 @@
             appState.projects  = d.projects  || [];
             appState.groups    = d.groups    || [];
             appState.parts     = d.parts     || [];
+            appState.catalog   = d.catalog   || [];
+            appState.stores    = d.stores    || [];
             if (!appState.settings) appState.settings = {};
-            appState.settings.isProjectCardView = true;
+            appState.settings.isProjectCardView  = true;
+            appState.settings.starterPackLoaded  = true;
             saveState();
             renderDictionaries();
             if (typeof renderProjectsTable === 'function') renderProjectsTable();

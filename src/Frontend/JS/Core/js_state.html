@@ -288,12 +288,19 @@
             }
         };
 
-        // 3. Save to localStorage immediately (bypass the debounce)
+        // 3. Purge optimizer runtime state (window globals, localStorage job keys, cutlist DOM)
+        if (typeof clearOptimizerState  === 'function') clearOptimizerState();
+        if (typeof resetConfigurator    === 'function') resetConfigurator();
+
+        // 4. Clear all input section forms
+        document.querySelectorAll('[id^="input-section-"] form').forEach(f => f.reset());
+
+        // 5. Save to localStorage immediately (bypass the debounce)
         appState.local_timestamp = Date.now();
         localStorage.setItem('lumberLogicState', JSON.stringify(appState));
         if (syncTimeout) { clearTimeout(syncTimeout); syncTimeout = null; }
 
-        // 4. SessionStorage flag: tells handleCloudDataResponse to skip the
+        // 5. SessionStorage flag: tells handleCloudDataResponse to skip the
         //    confirm dialog and use local data if the cloud write hasn't landed yet.
         sessionStorage.setItem('resetInProgress', '1');
 
@@ -393,6 +400,9 @@
 
         // Remove starter pack CTAs the moment any data exists
         if (typeof _clearStarterPackCTAs === 'function') _clearStarterPackCTAs();
+
+        // Update getting-started checklist immediately on every save
+        if (typeof renderChecklist === 'function') renderChecklist();
 
         // 2. Inject a local timestamp into the state 
         // (We will use this in Phase 3 to check if the browser crashed before the cloud sync finished)

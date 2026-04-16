@@ -42,12 +42,13 @@
     function _finishTour() {
         _hideTourOverlay();
         if (!appState.settings) appState.settings = {};
-        appState.settings.isProjectCardView = false; // Land in table view — no data yet
+        appState.settings.isProjectCardView = false;
         if (!_tourSessionOnly) {
             appState.settings.tourComplete = true;
             saveState();
         }
         if (typeof navigateTo === 'function') navigateTo('view-projects');
+        if (typeof renderProjectsTable === 'function') renderProjectsTable();
         if (!_tourSessionOnly) renderChecklist();
     }
 
@@ -172,39 +173,53 @@
             return;
         }
 
-        const hasData    = (appState.profiles  || []).length > 0 || (appState.materials || []).length > 0;
-        const hasProject = (appState.projects  || []).length > 0;
-        const hasJob     = (appState.jobs      || []).length > 0;
+        const starterLoaded = !!settings.starterPackLoaded;
+        const hasMaterial   = (appState.materials || []).length > 0;
+        const hasProfile    = (appState.profiles  || []).length > 0;
+        const hasStock      = (appState.catalog   || []).length > 0 || (appState.stock || []).length > 0;
+        const hasProject    = (appState.projects  || []).length > 0;
+        const hasPart       = (appState.parts     || []).length > 0;
+        const hasOptimized  = !!settings.hasOptimized;
+        const hasPrinted    = !!settings.hasPrinted;
 
-        const items = [
-            { done: hasData,    key: 'tour_checklist_1' },
-            { done: hasProject, key: 'tour_checklist_2' },
-            { done: hasJob,     key: 'tour_checklist_3' }
+        const manualItems = [
+            { done: hasMaterial, key: 'tour_checklist_material' },
+            { done: hasProfile,  key: 'tour_checklist_profile'  },
+            { done: hasStock,    key: 'tour_checklist_stock'     },
+            { done: hasProject,  key: 'tour_checklist_project'   },
+            { done: hasPart,     key: 'tour_checklist_part'      },
+        ];
+        const actionItems = [
+            { done: hasOptimized, key: 'tour_checklist_optimize'  },
+            { done: hasPrinted,  key: 'tour_checklist_print'     },
         ];
 
-        widget.classList.remove('d-none');
+        const allDone = (starterLoaded || manualItems.every(i => i.done)) && actionItems.every(i => i.done);
 
-        // Update title (re-apply translation in case language changed)
+        widget.classList.remove('d-none');
         const titleEl = widget.querySelector('[data-i18n="tour_checklist_title"]');
         if (titleEl) titleEl.textContent = t('tour_checklist_title');
 
         const listEl = document.getElementById('checklist-items');
         if (!listEl) return;
 
-        const allDone = items.every(i => i.done);
-        listEl.innerHTML = items.map(item =>
-            `<li class="mb-1">
-                <span style="${item.done ? 'opacity:0.7;' : ''}">${item.done ? '✅' : '⬜'} ${t(item.key)}</span>
-            </li>`
-        ).join('');
+        const _item = (item) => `<li class="mb-1"><span style="${item.done ? 'opacity:0.6;' : ''}">${item.done ? '✅' : '⬜'} ${t(item.key)}</span></li>`;
+
+        let html = '';
+        html += _item({ done: starterLoaded, key: 'tour_checklist_1' });
+        html += `<li class="text-center my-1" style="opacity:0.55;font-size:0.72rem;">${t('tour_checklist_or')}</li>`;
+        manualItems.forEach(i => { html += _item(i); });
+        html += `<li><hr style="border-color:rgba(255,255,255,0.3);margin:6px 0;"></li>`;
+        actionItems.forEach(i => { html += _item(i); });
 
         if (allDone) {
-            listEl.innerHTML += `
-                <li class="mt-2 pt-2" style="border-top:1px solid rgba(255,255,255,0.3);">
-                    <div class="fw-bold small mb-2">${t('tour_checklist_done')}</div>
-                    <button class="btn btn-sm btn-light w-100" onclick="dismissChecklist()">${t('tour_btn_dismiss')}</button>
-                </li>`;
+            html += `<li class="mt-2 pt-2" style="border-top:1px solid rgba(255,255,255,0.3);">
+                <div class="fw-bold small mb-2">${t('tour_checklist_done')}</div>
+                <button class="btn btn-sm btn-light w-100" onclick="dismissChecklist()">${t('tour_btn_dismiss')}</button>
+            </li>`;
         }
+
+        listEl.innerHTML = html;
     }
 
     function dismissChecklist() {

@@ -858,12 +858,9 @@
     }
     function populateCatalogDropdowns() {
         const storeSelect = document.getElementById('cat-store');
-        
+
         if (storeSelect) {
-            // 🪄 1. MEMORIZE the current selection before wiping the list
             const currentStoreId = storeSelect.value;
-            
-            // 🪄 2. REBUILD the list safely
             storeSelect.innerHTML = `<option value="" disabled selected>${t('opt_select_store')}</option>`;
             if (appState.stores) {
                 [...appState.stores].sort((a, b) => a.name.localeCompare(b.name)).forEach(s => {
@@ -873,17 +870,23 @@
                     storeSelect.appendChild(opt);
                 });
             }
-            
-            // 🪄 3. RESTORE the selection
-            if (currentStoreId) {
-                storeSelect.value = currentStoreId;
-            }
+            if (currentStoreId) storeSelect.value = currentStoreId;
         }
 
-        // 🪄 4. RESTORE the Category dropdown trigger (fixes the missing Profile/Material bug)
-        const catSelect = document.getElementById('cat-category');
+        // Rebuild profile/material dropdowns for the selected category,
+        // then restore whatever the user had selected before the modal opened.
+        const catSelect  = document.getElementById('cat-category');
+        const profSelect = document.getElementById('cat-profile');
+        const matSelect  = document.getElementById('cat-material');
+
         if (catSelect && catSelect.value) {
+            const savedProf = profSelect ? profSelect.value : '';
+            const savedMat  = matSelect  ? matSelect.value  : '';
+
             handleCatalogCategoryChange();
+
+            if (savedProf && profSelect) profSelect.value = savedProf;
+            if (savedMat  && matSelect)  matSelect.value  = savedMat;
         }
     }
     function calculateCostPerPiece(item) {
