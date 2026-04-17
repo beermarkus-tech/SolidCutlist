@@ -1215,7 +1215,7 @@
         let partsToOptimize = [];
 
         if (!appState.parts || appState.parts.length === 0) {
-            if (typeof showToast === 'function') showToast("No parts found in database.", "warning");
+            if (typeof showToast === 'function') showToast(t('msg_no_parts_in_db'), "warning");
             return;
         }
 
@@ -1258,7 +1258,7 @@
         });
 
         if (partsToOptimize.length === 0) {
-            if (typeof showToast === 'function') showToast("Please select at least one project or group.", "warning");
+            if (typeof showToast === 'function') showToast(t('msg_select_project_or_group'), "warning");
             return;
         }
 
@@ -1279,7 +1279,7 @@
             _btnA1.onclick = resetConfigurator;
         }
 
-        if (typeof showToast === 'function') showToast("Calculating cutlist...", "info");
+        if (typeof showToast === 'function') showToast(t('msg_calculating_cutlist'), "info");
 
         // Gather Allowed Stores
         let allowedStores = appState.stores.map(s => s.id);
@@ -1322,7 +1322,7 @@
         if (!container) return;
 
         if (!parts || parts.length === 0) {
-            container.innerHTML = '<div class="alert alert-warning mt-3">No parts found in this sandbox.</div>';
+            container.innerHTML = `<div class="alert alert-warning mt-3">${t('msg_no_parts_in_sandbox')}</div>`;
             return;
         }
 
@@ -1334,51 +1334,51 @@
                         <tr>
                             <th class="col-project text-nowrap px-2">
                                 <span onclick="handleSort('sandbox_parts', 'projectId', 'string')" style="cursor: pointer;">
-                                    <span data-i18n="col_project">Project</span> ⇅
+                                    ${t('col_project')} ⇅
                                 </span>
                                 <span id="flt-icon-sandbox_parts-projectId" onclick="openFilterModal(event, 'sandbox_parts', 'projectId', 'Project')" style="cursor: pointer;" title="Filter">▼</span>
                             </th>
                             <th class="col-group text-nowrap px-2">
                                 <span onclick="handleSort('sandbox_parts', 'groupId', 'string')" style="cursor: pointer;">
-                                    <span data-i18n="col_group">Group</span> ⇅
+                                    ${t('col_group')} ⇅
                                 </span>
                                 <span id="flt-icon-sandbox_parts-groupId" onclick="openFilterModal(event, 'sandbox_parts', 'groupId', 'Group')" style="cursor: pointer;" title="Filter">▼</span>
                             </th>
                             <th class="col-partname px-2">
                                 <span onclick="handleSort('sandbox_parts', 'name', 'string')" style="cursor: pointer;">
-                                    <span data-i18n="col_part_name">Part Name</span> ⇅
+                                    ${t('col_part_name')} ⇅
                                 </span>
                             </th>
                             <th class="col-sponge"></th>
                             <th class="col-category text-center text-nowrap px-1">
                                 <span onclick="handleSort('sandbox_parts', 'category', 'string')" style="cursor: pointer;">
-                                    <span data-i18n="col_category">Category</span> ⇅
+                                    ${t('col_category')} ⇅
                                 </span>
                                 <span id="flt-icon-sandbox_parts-category" onclick="openFilterModal(event, 'sandbox_parts', 'category', 'Category')" style="cursor: pointer;" title="Filter">▼</span>
                             </th>
                             <th class="col-qty text-center px-1" id="th-sandbox_parts-qty">
-                                <span onclick="handleSort('sandbox_parts', 'qty', 'number')" style="cursor: pointer;" data-i18n="col_qty">Qty ⇅</span>
+                                <span onclick="handleSort('sandbox_parts', 'qty', 'number')" style="cursor: pointer;">${t('col_qty')} ⇅</span>
                             </th>
                             <th class="col-profile text-center text-nowrap px-2">
                                 <span onclick="handleSort('sandbox_parts', 'profileId', 'string')" style="cursor: pointer;">
-                                    <span data-i18n="col_profile">Profile</span> ⇅
+                                    ${t('col_profile')} ⇅
                                 </span>
                                 <span id="flt-icon-sandbox_parts-profileId" onclick="openFilterModal(event, 'sandbox_parts', 'profileId', 'Profile')" style="cursor: pointer;" title="Filter">▼</span>
                             </th>
                             <th class="col-size text-center px-2">
                                 <span onclick="handleSort('sandbox_parts', 'dimensions', 'number')" style="cursor: pointer;">
-                                    <span data-i18n="col_size">Size (<span class="display-unit-label">mm</span>)</span> ⇅
+                                    ${t('col_size')} (<span class="display-unit-label">mm</span>) ⇅
                                 </span>
                             </th>
                             <th class="col-material text-center text-nowrap px-2">
                                 <span onclick="handleSort('sandbox_parts', 'materialId', 'string')" style="cursor: pointer;">
-                                    <span data-i18n="col_material">Material</span> ⇅
+                                    ${t('col_material')} ⇅
                                 </span>
                                 <span id="flt-icon-sandbox_parts-materialId" onclick="openFilterModal(event, 'sandbox_parts', 'materialId', 'Material')" style="cursor: pointer;" title="Filter">▼</span>
                             </th>
                             <th class="col-grain text-center text-nowrap px-1">
                                 <span onclick="handleSort('sandbox_parts', 'grain', 'string')" style="cursor: pointer;">
-                                    <span data-i18n="col_grain">Grain</span> ⇅
+                                    ${t('col_grain')} ⇅
                                 </span>
                                 <span id="flt-icon-sandbox_parts-grain" onclick="openFilterModal(event, 'sandbox_parts', 'grain', 'Grain')" style="cursor: pointer;" title="Filter">▼</span>
                             </th>
@@ -1931,22 +1931,22 @@
             `<h6 class="fw-bold text-uppercase text-muted mt-4 mb-2" style="font-size:0.72rem;letter-spacing:0.06em;">${icon} ${title}</h6>`;
 
         const boardKpis = !hasBoardData ? '' : `
-            ${_sectionHeader('🪵', 'Lumber')}
+            ${_sectionHeader('🪵', t('lbl_lumber'))}
             <div class="row g-2">
-                ${_kpiCard('Boards Purchased', boardCount, '', '#6c757d')}
-                ${_kpiCard('Total Cuts', boardCutsTotal, 'cross-cuts', '#6c757d')}
-                ${_kpiCard('Blade Travel', boardWidthKnown ? _fmtLen(boardCutLengthMm) : '—', 'face\u00a0width\u00a0×\u00a0cuts', '#6c757d')}
-                ${boardTransportCuts > 0 ? _kpiCard('Store Pre-cuts', boardTransportCuts, 'transport cuts', '#fd7e14') : ''}
-                ${_kpiCard('Unique Lengths', boardUniqueLengths.size, 'stop-block positions', '#6c757d')}
+                ${_kpiCard(t('kpi_boards_purchased'), boardCount, '', '#6c757d')}
+                ${_kpiCard(t('kpi_total_cuts'), boardCutsTotal, t('sub_cross_cuts'), '#6c757d')}
+                ${_kpiCard(t('kpi_blade_travel'), boardWidthKnown ? _fmtLen(boardCutLengthMm) : '—', t('sub_face_width_cuts'), '#6c757d')}
+                ${boardTransportCuts > 0 ? _kpiCard(t('kpi_store_precuts'), boardTransportCuts, t('sub_transport_cuts'), '#fd7e14') : ''}
+                ${_kpiCard(t('kpi_unique_lengths'), boardUniqueLengths.size, t('sub_stop_block_positions'), '#6c757d')}
             </div>`;
 
         const sheetKpis = !hasSheetData ? '' : `
-            ${_sectionHeader('📐', 'Sheets')}
+            ${_sectionHeader('📐', t('lbl_sheets'))}
             <div class="row g-2">
-                ${_kpiCard('Sheets Purchased', sheetCount, '', '#6c757d')}
-                ${_kpiCard('Total Cuts', sheetCutsTotal, 'rip\u00a0+\u00a0cross-cuts', '#6c757d')}
-                ${_kpiCard('Blade Travel', _fmtLen(sheetCutLengthMm), 'rip\u00a0+\u00a0cross\u00a0travel', '#6c757d')}
-                ${sheetTransportCuts > 0 ? _kpiCard('Store Pre-cuts', sheetTransportCuts, 'transport cuts', '#fd7e14') : ''}
+                ${_kpiCard(t('kpi_sheets_purchased'), sheetCount, '', '#6c757d')}
+                ${_kpiCard(t('kpi_total_cuts'), sheetCutsTotal, t('sub_rip_cross_cuts'), '#6c757d')}
+                ${_kpiCard(t('kpi_blade_travel'), _fmtLen(sheetCutLengthMm), t('sub_rip_cross_travel'), '#6c757d')}
+                ${sheetTransportCuts > 0 ? _kpiCard(t('kpi_store_precuts'), sheetTransportCuts, t('sub_transport_cuts'), '#fd7e14') : ''}
             </div>`;
 
         let html = `
@@ -1954,7 +1954,7 @@
                 <div class="col-md-4">
                     <div class="card bg-success text-white shadow-sm h-100 border-0">
                         <div class="card-body text-center py-3">
-                            <h6 class="text-uppercase mb-1 opacity-75">Yield (Actual Parts)</h6>
+                            <h6 class="text-uppercase mb-1 opacity-75">${t('kpi_yield')}</h6>
                             <h2 class="mb-0 fw-bold">${pctYield.toFixed(1)}%</h2>
                         </div>
                     </div>
@@ -1962,7 +1962,7 @@
                 <div class="col-md-4">
                     <div class="card bg-primary text-white shadow-sm h-100 border-0">
                         <div class="card-body text-center py-3">
-                            <h6 class="text-uppercase mb-1 opacity-75">Usable Offcut</h6>
+                            <h6 class="text-uppercase mb-1 opacity-75">${t('kpi_usable_offcut')}</h6>
                             <h2 class="mb-0 fw-bold">${pctOffcut.toFixed(1)}%</h2>
                         </div>
                     </div>
@@ -1970,7 +1970,7 @@
                 <div class="col-md-4">
                     <div class="card bg-danger text-white shadow-sm h-100 border-0">
                         <div class="card-body text-center py-3">
-                            <h6 class="text-uppercase mb-1 opacity-75">True Waste (Scrap & Sawdust)</h6>
+                            <h6 class="text-uppercase mb-1 opacity-75">${t('kpi_true_waste')}</h6>
                             <h2 class="mb-0 fw-bold">${pctWaste.toFixed(1)}%</h2>
                         </div>
                     </div>
@@ -1980,18 +1980,18 @@
             ${sheetKpis}
             <div class="card mt-4 d-none d-md-block">
                 <div class="card-header py-2">
-                    <h6 class="card-title mb-0 fw-bold">📦 Usable Offcuts Generated</h6>
+                    <h6 class="card-title mb-0 fw-bold">${t('hdr_usable_offcuts')}</h6>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm table-hover table-striped align-middle mb-0">
                         <thead class="table-light" style="position: sticky; top: 0; z-index: 10; background-color: var(--bs-card-bg); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <tr>
-                                <th class="col-category text-center text-nowrap" onclick="sortOffcuts('category')" style="cursor: pointer;">Category ⇅</th>
-                                <th class="col-qty text-center" onclick="sortOffcuts('qty')" style="cursor: pointer;">Qty ⇅</th>
-                                <th class="col-profile text-center text-nowrap" onclick="sortOffcuts('profName')" style="cursor: pointer;">Profile ⇅</th>
-                                <th class="col-size text-center text-nowrap" onclick="sortOffcuts('length')" style="cursor: pointer;">Size ⇅</th>
-                                <th class="col-material text-center text-nowrap" onclick="sortOffcuts('matName')" style="cursor: pointer;">Material ⇅</th>
-                                <th class="col-grain text-center text-nowrap" onclick="sortOffcuts('grain')" style="cursor: pointer;">Grain ⇅</th>
+                                <th class="col-category text-center text-nowrap" onclick="sortOffcuts('category')" style="cursor: pointer;">${t('col_category')} ⇅</th>
+                                <th class="col-qty text-center" onclick="sortOffcuts('qty')" style="cursor: pointer;">${t('col_qty')} ⇅</th>
+                                <th class="col-profile text-center text-nowrap" onclick="sortOffcuts('profName')" style="cursor: pointer;">${t('col_profile')} ⇅</th>
+                                <th class="col-size text-center text-nowrap" onclick="sortOffcuts('length')" style="cursor: pointer;">${t('col_size')} ⇅</th>
+                                <th class="col-material text-center text-nowrap" onclick="sortOffcuts('matName')" style="cursor: pointer;">${t('col_material')} ⇅</th>
+                                <th class="col-grain text-center text-nowrap" onclick="sortOffcuts('grain')" style="cursor: pointer;">${t('col_grain')} ⇅</th>
                             </tr>
                         </thead>
                         <tbody id="table-offcuts-body">
@@ -2031,7 +2031,7 @@
                 const sizeStr = off.width ? `${formatForDisplay(off.width)} x ${formatForDisplay(off.length)}` : formatForDisplay(off.length);
                 
                 const badgeClass = getCategoryBadgeClass(off.category);
-                const grainStr = off.grain === 'none' ? '-' : (off.grain.charAt(0).toUpperCase() + off.grain.slice(1));
+                const grainStr = off.grain === 'none' ? '-' : t('opt_' + off.grain);
 
                 // 🪄 THE UNIFORM CATEGORY BADGE
                 const categoryBadgeHtml = `
@@ -2065,7 +2065,7 @@
     let commitModalInstance = null;
     function openCommitModal() {
         if (!window.currentOffcuts || window.currentOffcuts.length === 0) {
-            showToast('No offcuts available to commit.', true);
+            showToast(t('msg_no_offcuts_to_commit'), true);
             return;
         }
         
@@ -2122,7 +2122,7 @@
     function executeCommitToStock() {
         const checkboxes = document.querySelectorAll('.commit-checkbox:checked:not(:disabled)');
         if (checkboxes.length === 0) {
-            showToast('No items selected.', true);
+            showToast(t('msg_no_items_selected'), true);
             return;
         }
 
@@ -2164,7 +2164,7 @@
         if (typeof renderStockTable === 'function') renderStockTable(); // Update the UI in the background
         
         commitModalInstance.hide();
-        showToast(`Successfully moved ${itemsAdded} scrap(s) to Shop Stock!`);
+        showToast(t('msg_scraps_moved', { count: itemsAdded }));
         
         // Redraw the analytics table to reflect the new remaining quantities
         sortOffcuts(window.currentOffcutSort.field); 
@@ -2321,12 +2321,12 @@
         const price = parseFloat(document.getElementById('edit-mat-price').value);
         const priceUnit = document.getElementById('edit-mat-price-unit').value;
 
-        if (!lengthMm || lengthMm <= 0) { showToast('Invalid length.', 'warning'); return; }
-        if (item.category === 'sheet' && (!widthMm || widthMm <= 0)) { showToast('Invalid width.', 'warning'); return; }
-        if (isNaN(price) || price < 0) { showToast('Invalid price.', 'warning'); return; }
+        if (!lengthMm || lengthMm <= 0) { showToast(t('msg_invalid_length'), 'warning'); return; }
+        if (item.category === 'sheet' && (!widthMm || widthMm <= 0)) { showToast(t('msg_invalid_width'), 'warning'); return; }
+        if (isNaN(price) || price < 0) { showToast(t('msg_invalid_price'), 'warning'); return; }
 
         const catalogItem = job.catalog.find(c => c.id === _editingCatalogId);
-        if (!catalogItem) { showToast('Catalog item not found in job.', 'warning'); return; }
+        if (!catalogItem) { showToast(t('msg_catalog_item_not_found'), 'warning'); return; }
 
         // Pin this as the chosen board for its SKU. Clear any prior choice on same-SKU siblings
         // so the engine doesn't silently switch to another store's entry that still has the old length.

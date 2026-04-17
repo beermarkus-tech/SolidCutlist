@@ -180,10 +180,10 @@
             projSelect.value = finalProjectId;
             newProjInput.value = '';
             
-            if (typeof showToast === 'function') showToast(`Project '${newProjName}' created!`, "success");
+            if (typeof showToast === 'function') showToast(t('msg_import_project_created', { name: newProjName }), "success");
             
         } else if (!finalProjectId) {
-            if (typeof showToast === 'function') showToast("Please select or create a Target Project.", true);
+            if (typeof showToast === 'function') showToast(t('msg_select_target_project'), true);
             return;
         }
 
@@ -191,7 +191,7 @@
 
         // 2. CHECK IF FILE IS LOADED
         if (rawCsvRows.length === 0) {
-            if (typeof showToast === 'function') showToast("Please select a CSV file.", true);
+            if (typeof showToast === 'function') showToast(t('msg_select_csv_file'), true);
             return;
         }
 
@@ -239,7 +239,7 @@
                 const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
                 
                 if (lines.length < 2) {
-                    if (typeof showToast === 'function') showToast("The CSV file is empty or invalid.", true);
+                    if (typeof showToast === 'function') showToast(t('msg_csv_empty_invalid'), true);
                     return;
                 }
 
@@ -754,7 +754,7 @@
         const minL = Math.min(...lengths), maxL = Math.max(...lengths);
         const minT = Math.min(...thicknesses), maxT = Math.max(...thicknesses);
         const unit = ((appState.settings || {}).displayUnit === 'mm') ? 'mm' : 'in';
-        statsEl.textContent = `Lengths ${formatForDisplay(minL)}–${formatForDisplay(maxL)} ${unit} · Thicknesses ${formatForDisplay(minT)}–${formatForDisplay(maxT)} ${unit}`;
+        statsEl.textContent = t('txt_import_scale_stats', { minL: formatForDisplay(minL), maxL: formatForDisplay(maxL), unit, minT: formatForDisplay(minT), maxT: formatForDisplay(maxT) });
     }
 
     function commitImport() {

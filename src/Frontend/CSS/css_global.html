@@ -103,18 +103,21 @@
         padding: 4px;
     }
 
-    /* tab-content inherits the fill */
+    /* tab-content inherits the fill and becomes a flex column so panes can use flex sizing */
     .view-content .tab-content {
         flex: 1 1 0;
         min-height: 0;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
     }
 
-    /* Active tab-pane becomes a flex column — overrides Bootstrap's display:block */
+    /* Active tab-pane fills tab-content via flex (more reliable than height:100% on mobile) */
     .view-content .tab-pane.active.show {
         display: flex !important;
         flex-direction: column;
-        height: 100%;
+        flex: 1 1 0;
+        min-height: 0;
         overflow: hidden;
     }
 
@@ -123,12 +126,14 @@
         flex: 0 0 auto;
     }
 
-    /* Table/card mode wrappers fill remaining space */
+    /* Table/card mode wrappers fill remaining space and act as flex columns for their children */
     .view-content #view-mode-table,
     .view-content #view-mode-cards {
         flex: 1 1 0;
         min-height: 0;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
     }
 
     /* table-viewport in flex context: flex: 1 fills remaining space after the input section.

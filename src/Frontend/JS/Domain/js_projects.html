@@ -48,7 +48,7 @@
         appState.ui.projectCardStatusFilter = status;
         const chips = document.querySelectorAll('#project-card-chips button');
         chips.forEach(chip => {
-            if (chip.innerText === status) {
+            if (chip.dataset.status === status) {
                 chip.classList.remove('btn-outline-secondary');
                 chip.classList.add('btn-dark');
             } else {
@@ -167,11 +167,11 @@
 
             if (imageData) {
                 // Show photo. Clicking it opens the central Manager.
-                avatarHtml = `<img src="${imageData}" class="shadow-sm border d-block mx-auto" style="width: 28px; height: 28px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openIconPicker('${proj.id}')" title="Manage Photo/Icon">`;
+                avatarHtml = `<img src="${imageData}" class="shadow-sm border d-block mx-auto" style="width: 28px; height: 28px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="openIconPicker('${proj.id}')" title="${t('title_manage_photo')}">`;
             } else {
                 // Show Icon. Clicking it opens the central Manager.
                 const icon = proj.icon || '🗂️';
-                avatarHtml = `<div class="d-flex align-items-center justify-content-center mx-auto" style="width: 28px; height: 28px; cursor: pointer; font-size: 1.2rem; user-select: none;" onclick="openIconPicker('${proj.id}')" title="Manage Photo/Icon">${icon}</div>`;
+                avatarHtml = `<div class="d-flex align-items-center justify-content-center mx-auto" style="width: 28px; height: 28px; cursor: pointer; font-size: 1.2rem; user-select: none;" onclick="openIconPicker('${proj.id}')" title="${t('title_manage_photo')}">${icon}</div>`;
             }
 
             // 🪄 PROJECT LINK ENGINE
@@ -194,16 +194,16 @@
             let statusHtml = `
                 <div class="dropdown">
                     <button class="btn btn-sm dropdown-toggle badge shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 15ch; background-color: ${statusColor}; color: ${textColor}; font-size: 0.85rem; padding: 0.35em 0.65em;">
-                        ${safeHTML(currentStatus)}
+                        ${t('status_' + currentStatus.toLowerCase().replace(/ /g, '_'))}
                     </button>
                     <ul class="dropdown-menu shadow-sm" style="min-width: 12rem;">
-                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Design')">🟡 Design</a></li>
-                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Quoting')">🟣 Quoting</a></li>
-                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Ready')">🔵 Ready</a></li>
-                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'In Progress')">🟠 In Progress</a></li>
-                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Completed')">🟢 Completed</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Design')">🟡 ${t('status_design')}</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Quoting')">🟣 ${t('status_quoting')}</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Ready')">🔵 ${t('status_ready')}</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'In Progress')">🟠 ${t('status_in_progress')}</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Completed')">🟢 ${t('status_completed')}</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger fw-bold" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Archive')">🗄️ Archive Project...</a></li>
+                        <li><a class="dropdown-item text-danger fw-bold" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Archive')">🗄️ ${t('status_archive_project')}</a></li>
                     </ul>
                 </div>
             `;
@@ -225,7 +225,7 @@
                               placeholder="${t('ph_add_notes')}">${safeHTML(proj.comment || '')}</textarea>
                 </td>
                 <td class="px-1 py-0 align-middle text-center" style="position: relative;">
-                    <span style="cursor: pointer; font-size: 0.875rem;" title="Edit Date">
+                    <span style="cursor: pointer; font-size: 0.875rem;" title="${t('title_edit_date')}">
                         ${formatDateForInput(proj.date)}
                     </span>
                     <input type="date" 
@@ -249,7 +249,7 @@
                 </td>                   
                 <td class="text-end">
                     <button class="btn btn-sm py-0 px-0" onclick="duplicateProjectWarning('${proj.id}')" title="Duplicate Project">➕</button>
-                    <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteProject('${proj.id}')" title="Delete">🗑️</button>
+                    <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteProject('${proj.id}')" title="${t('title_delete')}">🗑️</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -341,7 +341,7 @@
             proj.link = formattedLink;
             saveState();
             renderProjectsTable();
-            showToast("Project link updated.");
+            showToast(t('msg_project_link_updated'));
         }
     }
     function duplicateProjectWarning(id) {
@@ -498,12 +498,12 @@
         if (newStatus === 'Archive') {
             // 🪄 UNIVERSAL CONFIRM MODAL (Warning Theme)
             requestConfirm(
-                'Archive this project?\n\nIt will be safely moved to cold storage to keep your workspace fast and clean. You can restore it anytime.', 
+                t('confirm_archive_project'),
                 () => {
                     executeDeepFreeze(projectId);
-                }, 
-                'warning', 
-                'Archive'
+                },
+                'warning',
+                t('btn_archive')
             );
             return;
         }
@@ -519,7 +519,7 @@
         if (!archiveModalInstance) archiveModalInstance = new bootstrap.Modal(document.getElementById('modal-archive'));
         
         // 🪄 ADDED: Spinner to the loading text
-        document.getElementById('archive-table-body').innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading cold storage...</td></tr>';
+        document.getElementById('archive-table-body').innerHTML = `<tr><td colspan="4" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>${t('txt_loading_cold_storage')}</td></tr>`;
         archiveModalInstance.show();
 
         google.script.run
@@ -540,7 +540,7 @@
     function renderArchiveTable() {
         const tbody = document.getElementById('archive-table-body');
         if (currentArchiveData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No archived projects found.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">${t('msg_no_archived_projects')}</td></tr>`;
             return;
         }
 
@@ -567,11 +567,11 @@
                 <td class="text-center px-1">${avatarHtml}</td>
                 <td class="fw-bold">${safeHTML(proj.name)}</td>
                 <td style="max-width: 180px;">
-                    <textarea class="archive-note-cell form-control form-control-sm border-0 bg-transparent text-muted w-100" rows="1" readonly title="Click to expand">${safeHTML(proj.notes)}</textarea>
+                    <textarea class="archive-note-cell form-control form-control-sm border-0 bg-transparent text-muted w-100" rows="1" readonly title="${t('title_click_to_expand')}">${safeHTML(proj.notes)}</textarea>
                 </td>
                 <td class="text-end pe-3 text-nowrap">
-                    <button class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="restoreArchivedProject('${proj.id}', this)" title="Restore to Workspace">Load</button>
-                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteArchivedProjectUI('${proj.id}')" title="Permanently Delete">🗑️</button>
+                    <button class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="restoreArchivedProject('${proj.id}', this)" title="${t('title_restore_to_workspace')}">Load</button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteArchivedProjectUI('${proj.id}')" title="${t('title_permanently_delete')}">🗑️</button>
                 </td>
             </tr>
             `;
@@ -624,7 +624,7 @@
                     
                     saveState();
                     renderProjectsTable();
-                    showToast('Project archived safely.');
+                    showToast(t('msg_project_archived'));
                     
                     // 🪄 NOW we safely hide the modal because the data is saved
                     const confirmModalEl = document.getElementById('modal-universal-delete');
@@ -676,7 +676,7 @@
                     currentArchiveData = currentArchiveData.filter(p => p.id !== id);
                     renderArchiveTable();
                     
-                    showToast('Project restored to workspace.');
+                    showToast(t('msg_project_restored'));
                 } else {
                     alert('Error restoring: ' + response.message);
                 }
@@ -690,14 +690,14 @@
     }
     function deleteArchivedProjectUI(id) {
         requestConfirm(
-            '⚠️ Are you sure you want to PERMANENTLY delete this project?\n\nThis will destroy the data forever. This cannot be undone.',
+            t('confirm_delete_forever'),
             () => {
                 // 🪄 1. Setup Spinner & Shield
                 const confirmBtn = document.getElementById('btn-confirm-delete');
-                let originalText = 'Delete Forever';
+                let originalText = t('btn_delete_forever');
                 if (confirmBtn) {
                     originalText = confirmBtn.innerText;
-                    confirmBtn.innerHTML = `<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Deleting...`;
+                    confirmBtn.innerHTML = `<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> ${t('txt_deleting')}`;
                 }
                 freezeUI();
 
@@ -711,7 +711,7 @@
                         if (response.status === 'success') {
                             currentArchiveData = currentArchiveData.filter(p => p.id !== id);
                             renderArchiveTable();
-                            showToast('Project permanently deleted.');
+                            showToast(t('msg_project_perm_deleted'));
                             
                             // Safely hide the confirmation modal
                             const confirmModalEl = document.getElementById('modal-universal-delete');
@@ -772,7 +772,7 @@
                     <button class="btn btn-primary btn-sm px-4" onclick="loadStarterPack()">${t('btn_load_starter_pack')}</button>
                 </div>`;
             } else {
-                grid.innerHTML = `<div class="col-12 text-center text-muted mt-5"><h1>📭</h1><p>No projects yet.</p></div>`;
+                grid.innerHTML = `<div class="col-12 text-center text-muted mt-5"><h1>📭</h1><p>${t('msg_no_projects_yet')}</p></div>`;
             }
             return;
         }
@@ -814,7 +814,7 @@
             // 🪄 Top Right Controls (Link + Kebab Menu)
             const topControlsHtml = `
                 <div class="d-flex align-items-center flex-shrink-0">
-                    ${proj.link ? `<a href="${safeHTML(proj.link)}" target="_blank" class="text-decoration-none me-1 fs-6" title="Open Link">🔗</a>` : `<span class="text-muted me-1 fs-6" style="opacity: 0.3;" title="No Link">🔗</span>`}
+                    ${proj.link ? `<a href="${safeHTML(proj.link)}" target="_blank" class="text-decoration-none me-1 fs-6" title="${t('title_open_link')}">🔗</a>` : `<span class="text-muted me-1 fs-6" style="opacity: 0.3;" title="${t('title_no_link')}">🔗</span>`}
                     <div class="dropdown">
                         <button class="btn btn-sm btn-link text-decoration-none px-2 py-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <b style="font-size: 1.2rem;">⋮</b>
@@ -835,14 +835,14 @@
             const statusHtml = `
                 <div class="dropdown flex-grow-1">
                     <button class="btn btn-sm w-100 dropdown-toggle shadow-sm text-truncate border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="background-color: ${statusColor}; color: ${textColor}; font-weight: 500;">
-                        ${safeHTML(currentStatus)}
+                        ${t('status_' + currentStatus.toLowerCase().replace(/ /g, '_'))}
                     </button>
                     <ul class="dropdown-menu shadow-sm">
-                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Design')">🟡 Design</a></li>
-                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Quoting')">🟣 Quoting</a></li>
-                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Ready')">🔵 Ready</a></li>
-                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'In Progress')">🟠 In Progress</a></li>
-                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Completed')">🟢 Completed</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Design')">🟡 ${t('status_design')}</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Quoting')">🟣 ${t('status_quoting')}</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Ready')">🔵 ${t('status_ready')}</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'In Progress')">🟠 ${t('status_in_progress')}</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Completed')">🟢 ${t('status_completed')}</a></li>
                     </ul>
                 </div>
             `;
@@ -854,11 +854,11 @@
             let heroImageHtml = '';
             if (imageData) {
                 // Display Photo. Clicking opens the master manager.
-                heroImageHtml = `<img src="${imageData}" class="card-img-top rounded-0" style="aspect-ratio: 3/2; width: 100%; object-fit: cover; cursor: pointer; border-bottom: 1px solid var(--bs-border-color-translucent);" onclick="openIconPicker('${proj.id}')" title="Manage Photo/Icon">`;
+                heroImageHtml = `<img src="${imageData}" class="card-img-top rounded-0" style="aspect-ratio: 3/2; width: 100%; object-fit: cover; cursor: pointer; border-bottom: 1px solid var(--bs-border-color-translucent);" onclick="openIconPicker('${proj.id}')" title="${t('title_manage_photo')}">`;
             } else {
                 // Display upscaled Icon. Clicking opens the master manager.
                 heroImageHtml = `
-                    <div class="card-img-top d-flex align-items-center justify-content-center rounded-0 text-muted" style="aspect-ratio: 3/2; width: 100%; cursor: pointer; border-bottom: 1px solid var(--bs-border-color-translucent); font-size: 7rem; user-select: none; transition: opacity 0.2s;" onclick="openIconPicker('${proj.id}')" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" title="Manage Photo/Icon">
+                    <div class="card-img-top d-flex align-items-center justify-content-center rounded-0 text-muted" style="aspect-ratio: 3/2; width: 100%; cursor: pointer; border-bottom: 1px solid var(--bs-border-color-translucent); font-size: 7rem; user-select: none; transition: opacity 0.2s;" onclick="openIconPicker('${proj.id}')" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" title="${t('title_manage_photo')}">
                         ${icon}
                     </div>
                 `;
@@ -878,7 +878,7 @@
                                    onchange="updateProject('${proj.id}', 'name', this.value)"
                                    title="${t('title_tap_to_edit')}">
                             <div style="position: relative; width: fit-content; margin-top: -8px;">
-                                <span class="text-muted" style="display: inline-block; min-width: 75px; font-size: 0.8rem; cursor: pointer; line-height: 1;" title="Edit Date">
+                                <span class="text-muted" style="display: inline-block; min-width: 75px; font-size: 0.8rem; cursor: pointer; line-height: 1;" title="${t('title_edit_date')}">
                                     ${formatDateForInput(proj.date) || '&nbsp;'}
                                 </span>
                                 <input type="date" 
@@ -898,18 +898,18 @@
                                  class="form-control form-control-sm border-0 bg-transparent text-muted small p-0 w-100 card-comment-box"
                                  style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; outline: none; line-height: 1.5; cursor: text; word-break: break-word;"
                                  onblur="updateProject('${proj.id}', 'comment', this.innerText)"
-                                 title="Tap to edit notes"
+                                 title="${t('title_tap_to_edit_notes')}"
                                  data-placeholder="Add notes...">${safeHTML(proj.comment || '')}</div>
                         </div>
                         
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="badge text-dark border shadow-sm" style="cursor: pointer;" onclick="jumpToProjectParts('${proj.id}')" title="View Parts">🧩 ${partCount} Parts</span>
+                            <span class="badge text-dark border shadow-sm" style="cursor: pointer;" onclick="jumpToProjectParts('${proj.id}')" title="${t('title_view_parts')}">🧩 ${partCount} Parts</span>
                             <span class="badge text-success border shadow-sm fw-bold">${currency}${displayCost}</span>
                         </div>
                         
                         <div class="d-flex gap-2 mt-auto">
                             ${statusHtml}
-                            <button class="btn btn-sm border shadow-sm px-3 flex-shrink-0" onclick="openGroupModal('${proj.id}')" title="Manage Groups">⚙️</button>
+                            <button class="btn btn-sm border shadow-sm px-3 flex-shrink-0" onclick="openGroupModal('${proj.id}')" title="${t('tip_manage_groups')}">⚙️</button>
                         </div>
                     </div>
                 </div>
@@ -919,7 +919,7 @@
 
         // Search Fallback UI
         if (visibleCount === 0) {
-            grid.innerHTML = `<div class="col-12 text-center text-muted mt-5"><h5>No projects match your filters.</h5></div>`;
+            grid.innerHTML = `<div class="col-12 text-center text-muted mt-5"><h5>${t('msg_no_projects_match_filter')}</h5></div>`;
         }
     }
 
@@ -995,7 +995,7 @@
         
         // Redraw background UI instantly
         if (typeof renderProjectsTable === 'function') renderProjectsTable();
-        showToast("Photo removed.");
+        showToast(t('msg_photo_removed'));
 
         // 🪄 Re-run the modal logic to wake up the emojis and highlight the current icon!
         openIconPicker(projectId);
@@ -1077,19 +1077,19 @@
                 };
 
                 // Show a temporary saving toast
-                showToast("Uploading thumbnail...");
+                showToast(t('msg_uploading_thumbnail'));
 
                 google.script.run
                     .withSuccessHandler((resStr) => {
                         const res = JSON.parse(resStr);
                         if (res.status === 'success') {
-                            showToast("Thumbnail saved to cloud.");
+                            showToast(t('msg_thumbnail_saved'));
                         } else {
-                            showToast("Cloud save failed: " + res.message, true);
+                            showToast(t('msg_thumbnail_failed'), true);
                         }
                     })
                     .withFailureHandler((err) => {
-                        showToast("Server error saving thumbnail.", true);
+                        showToast(t('msg_thumbnail_failed'), true);
                     })
                     .saveThumbnail(JSON.stringify(payload));
             };

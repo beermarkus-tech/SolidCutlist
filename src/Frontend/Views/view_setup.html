@@ -62,7 +62,7 @@
                                 <select class="form-select form-select-sm" id="stock-material" required disabled></select>
                             </div>
                             <div class="col-sm-1">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets Only" data-i18n="lbl_grain" data-i18n-title="tip_for_sheets_only">Grain <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, 'Sheet panels only. Length = face grain runs along the long edge of the panel. Width = grain runs across. The optimizer will not rotate a sheet part in a way that violates its grain setting. Leave as None if grain direction does not matter.')">ⓘ</button></label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" title="For Sheets Only" data-i18n="lbl_grain" data-i18n-title="tip_for_sheets_only">Grain <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tooltip_grain'))">ⓘ</button></label>
                                 <select class="form-select form-select-sm" id="stock-grain" disabled>
                                     <option value="none" data-i18n="opt_none">None</option>
                                     <option value="length" data-i18n="opt_length">Length</option>
@@ -70,7 +70,7 @@
                                 </select>
                             </div>
                             <div class="col-sm-1 text-center">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1"><span data-i18n="lbl_scrap">Scrap?</span> <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, 'Mark a board as scrap if it is a cutoff from a previous job. When Use Shop Stock is on, the optimizer uses scraps before full boards \u2014 keeping your offcut pile from growing.')">ⓘ</button></label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1"><span data-i18n="lbl_scrap">Scrap?</span> <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tooltip_scrap_stock'))">ⓘ</button></label>
                                 <div class="form-check d-flex justify-content-center">
                                     <input class="form-check-input" type="checkbox" id="stock-is-cutoff">
                                 </div>
@@ -195,9 +195,9 @@
                                             id="cat-price-unit"
                                             style="flex: none; width: 95px;">
                                         <option value="piece" data-i18n="lbl_unit_pc">/ pc</option>
-                                        <option value="linear">/ m</option>
-                                        <option value="area">/ m²</option>
-                                        <option value="volume">/ m³</option>
+                                        <option value="linear" data-i18n="lbl_unit_m">/ m</option>
+                                        <option value="area" data-i18n="lbl_unit_m2">/ m²</option>
+                                        <option value="volume" data-i18n="lbl_unit_m3">/ m³</option>
                                     </select>
                                 </div>
                             </div>
@@ -261,16 +261,16 @@
                                 <div class="d-flex align-items-center justify-content-center gap-1">
                                     <span class="group-icon">🗜️</span> <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center select-inline" id="table-price-view" onchange="if(!appState.settings)appState.settings={};appState.settings.catalogViewUnit=this.value;saveState();renderCatalogTable()">
                                         <option value="piece" data-i18n="opt_cost_piece">Cost/Piece</option>
-                                        <option value="linear">Cost/Length</option>
-                                        <option value="area">Cost/Area</option>
-                                        <option value="volume">Cost/Volume</option>
+                                        <option value="linear" data-i18n="opt_cost_length">Cost/Length</option>
+                                        <option value="area" data-i18n="opt_cost_area">Cost/Area</option>
+                                        <option value="volume" data-i18n="opt_cost_volume">Cost/Volume</option>
                                     </select>
                                     <span onclick="handleSort('catalog', 'calculatedPrice', 'number')" class="sortable" title="Sort by Calculated Price">⇅</span>
                                 </div>
                             </th>
                             <th class="col-freshness text-center">
                                 <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'lastVerified', 'number')" class="cursor-pointer">
-                                    Updated ⇅
+                                    <span data-i18n="col_updated">Updated</span> ⇅
                                 </span>
                             </th>
                             <th class="col-actions text-center" id="th-catalog-links" data-i18n="col_links">Links</th>
@@ -293,7 +293,7 @@
                     <!-- Input Section -->
                     <div id="input-section-profiles">
                         <div class="p-3 mb-2 rounded-3 input-panel">
-                            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, 'A profile is the cross-section of a board \u2014 its thickness and width. It has no length. For lumber, enter both dimensions (e.g. 38\u00d789mm for a 2\u00d74). For sheets, enter thickness only (e.g. 18mm). The lengths you can buy are set separately in Store Prices.')">ⓘ</button>
+                            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, t('tooltip_profile'))">ⓘ</button>
                             <form id="form-add-profile" onsubmit="handleAddProfile(event)">
                                 <div class="row g-2 align-items-end">
                                     <div class="col-sm">
@@ -365,7 +365,7 @@
                     <!-- Input Section -->
                     <div id="input-section-materials">
                         <div class="p-3 mb-2 rounded-3 input-panel">
-                            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, 'A material is the wood species or panel type (e.g. Pine, MDF). It is always paired with a profile to fully describe a board. Density is used for weight estimates in your cut list \u2014 leave it at 0 if you do not need that feature.')">ⓘ</button>
+                            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, t('tooltip_material'))">ⓘ</button>
                             <form id="form-add-material" onsubmit="handleAddMaterial(event)">
                                 <div class="row g-2 align-items-end">
                                     <div class="col-sm">
@@ -435,7 +435,7 @@
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content shadow border-secondary">
                 <div class="modal-header bg-light border-bottom">
-                    <h6 class="modal-title fw-bold text-dark mb-0" id="modal-stock-details-title">📦 Manage Stock Details</h6>
+                    <h6 class="modal-title fw-bold text-dark mb-0" id="modal-stock-details-title" data-i18n="title_stock_details">📦 Manage Stock Details</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body py-4 bg-white">
@@ -444,33 +444,33 @@
                         <form id="form-modal-stock" onsubmit="handleAddModalStock(event); return false;">
                             <div class="row g-2 align-items-end" id="modal-stock-input-row">
                                 <div id="modal-stock-col-width" class="col-sm d-none">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_width">Width</label>
                                     <input type="text" class="form-control form-control-sm" id="modal-stock-input-width" required>
                                 </div>
                                 <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_length">Length</label>
                                     <input type="text" class="form-control form-control-sm" id="modal-stock-input-length" required>
                                 </div>
                                 <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Qty</label>
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_qty">Qty</label>
                                     <input type="number" class="form-control form-control-sm" id="modal-stock-input-qty" value="1" min="1" required>
                                 </div>
                                 <div id="modal-stock-col-grain" class="col-sm d-none">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Grain</label>
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_grain">Grain</label>
                                     <select class="form-select form-select-sm" id="modal-stock-input-grain">
                                         <option value="none">-</option>
-                                        <option value="length">Length</option>
-                                        <option value="width">Width</option>
+                                        <option value="length" data-i18n="opt_length">Length</option>
+                                        <option value="width" data-i18n="opt_width">Width</option>
                                     </select>
                                 </div>
                                 <div class="col-sm text-center">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1"><span data-i18n="lbl_scrap">Scrap?</span> <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, 'Mark a board as scrap if it is a cutoff from a previous job. When Use Shop Stock is on, the optimizer uses scraps before full boards \u2014 keeping your offcut pile from growing.')">ⓘ</button></label>
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1"><span data-i18n="lbl_scrap">Scrap?</span> <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tooltip_scrap_stock'))">ⓘ</button></label>
                                     <div class="form-check d-flex justify-content-center">
                                         <input class="form-check-input" type="checkbox" id="modal-stock-input-type">
                                     </div>
                                 </div>
                                 <div class="col-sm ms-auto">
-                                    <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
+                                    <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
                                 </div>
                             </div>
                         </form>
@@ -479,10 +479,10 @@
                         <table class="table table-sm table-hover align-middle table-striped">
                             <thead class="thead-sticky">
                                 <tr>
-                                    <th class="text-center cursor-pointer" onclick="handleModalSort('stock', 'dimensions')">Size ⇅</th>
-                                    <th class="text-center cursor-pointer" onclick="handleModalSort('stock', 'qty')">Qty ⇅</th>
-                                    <th id="modal-stock-th-grain" class="text-center cursor-pointer" onclick="handleModalSort('stock', 'grain')">Grain ⇅</th>
-                                    <th class="text-center cursor-pointer" onclick="handleModalSort('stock', 'isCutoff')">Type ⇅</th>
+                                    <th class="text-center cursor-pointer" onclick="handleModalSort('stock', 'dimensions')"><span data-i18n="col_size">Size</span> ⇅</th>
+                                    <th class="text-center cursor-pointer" onclick="handleModalSort('stock', 'qty')"><span data-i18n="col_qty">Qty</span> ⇅</th>
+                                    <th id="modal-stock-th-grain" class="text-center cursor-pointer" onclick="handleModalSort('stock', 'grain')"><span data-i18n="col_grain">Grain</span> ⇅</th>
+                                    <th class="text-center cursor-pointer" onclick="handleModalSort('stock', 'isCutoff')"><span data-i18n="col_type">Type</span> ⇅</th>
                                     <th class="text-end"></th>
                                 </tr>
                             </thead>
@@ -499,7 +499,7 @@
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content shadow border-secondary">
                 <div class="modal-header bg-light border-bottom">
-                    <h6 class="modal-title fw-bold text-dark mb-0" id="modal-catalog-details-title">🏷️ Manage Prices</h6>
+                    <h6 class="modal-title fw-bold text-dark mb-0" id="modal-catalog-details-title" data-i18n="title_manage_prices">🏷️ Manage Prices</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body py-4 bg-white">
@@ -508,23 +508,23 @@
                         <form id="form-modal-catalog" onsubmit="handleAddModalCatalog(event); return false;">
                             <div class="row g-2 align-items-end" id="modal-catalog-input-row">
                                 <div id="modal-catalog-col-width" class="col-sm d-none">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_width">Width</label>
                                     <input type="text" class="form-control form-control-sm" id="modal-catalog-input-width" required>
                                 </div>
                                 <div class="col-sm">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_length">Length</label>
                                     <input type="text" class="form-control form-control-sm" id="modal-catalog-input-length" required>
                                 </div>
                                 <div id="modal-catalog-col-grain" class="col-sm d-none">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Grain</label>
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_grain">Grain</label>
                                     <select class="form-select form-select-sm" id="modal-catalog-input-grain">
                                         <option value="none">-</option>
-                                        <option value="length">Length</option>
-                                        <option value="width">Width</option>
+                                        <option value="length" data-i18n="opt_length">Length</option>
+                                        <option value="width" data-i18n="opt_width">Width</option>
                                     </select>
                                 </div>
                                 <div class="col-sm-3">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1">Price</label>
+                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_price">Price</label>
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text currency-label">$</span>
                                         <input type="number" step="0.01" class="form-control form-control-sm" id="modal-catalog-input-price" required>
@@ -532,7 +532,7 @@
                                     </div>
                                 </div>
                                 <div class="col-sm ms-auto">
-                                    <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
+                                    <button type="submit" class="btn btn-primary btn-sm w-100" data-i18n="btn_add">Add</button>
                                 </div>
                             </div>
                         </form>
@@ -541,20 +541,20 @@
                         <table class="table table-sm table-hover align-middle table-striped">
                             <thead class="thead-sticky">
                                 <tr>
-                                    <th class="text-center cursor-pointer" onclick="handleModalSort('catalog', 'dimensions')">Size ⇅</th>
-                                    <th id="modal-catalog-th-grain" class="text-center cursor-pointer" onclick="handleModalSort('catalog', 'grain')">Grain ⇅</th>
-                                    <th class="text-center cursor-pointer" onclick="handleModalSort('catalog', 'price')">Shelf Price ⇅</th>
+                                    <th class="text-center cursor-pointer" onclick="handleModalSort('catalog', 'dimensions')"><span data-i18n="col_size">Size</span> ⇅</th>
+                                    <th id="modal-catalog-th-grain" class="text-center cursor-pointer" onclick="handleModalSort('catalog', 'grain')"><span data-i18n="col_grain">Grain</span> ⇅</th>
+                                    <th class="text-center cursor-pointer" onclick="handleModalSort('catalog', 'price')"><span data-i18n="col_shelf_price">Shelf Price</span> ⇅</th>
                                     <th class="text-center">
                                         <div class="d-flex align-items-center justify-content-center gap-1">
                                             <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center select-inline" id="modal-catalog-view-unit" onchange="renderCatalogModalTable()">
                                                 <option value="piece" data-i18n="opt_cost_piece">Cost/Piece</option>
-                                                <option value="linear">Cost/Length</option>
-                                                <option value="area">Cost/Area</option>
-                                                <option value="volume">Cost/Volume</option>
+                                                <option value="linear" data-i18n="opt_cost_length">Cost/Length</option>
+                                                <option value="area" data-i18n="opt_cost_area">Cost/Area</option>
+                                                <option value="volume" data-i18n="opt_cost_volume">Cost/Volume</option>
                                             </select>
                                         </div>
                                     </th>
-                                    <th class="text-center">Updated</th>
+                                    <th class="text-center" data-i18n="col_updated">Updated</th>
                                     <th class="text-center" data-i18n="col_links">Links</th>
                                     <th class="text-end"></th>
                                 </tr>

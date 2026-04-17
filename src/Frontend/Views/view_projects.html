@@ -5,9 +5,9 @@
         <button class="vtab" id="tab-parts" data-bs-toggle="tab" data-bs-target="#pane-parts" type="button" role="tab" aria-selected="false" onclick="renderPartsView(); syncProjectHeaderButtons('parts')" data-i18n="hdr_current_partlist">🧩 Current Partlist</button>
     </div>
     <div class="view-toolbar-actions">
-        <button id="btn-inline-import" class="btn btn-sm toolbar-btn fw-bold" onclick="navigateTo('view-import')">📥 Import</button>
+        <button id="btn-inline-import" class="btn btn-sm toolbar-btn fw-bold" onclick="navigateTo('view-import')" data-i18n="btn_import">📥 Import</button>
         <button id="btn-print-parts" class="btn btn-sm toolbar-btn d-none" onclick="printPartsTable()" title="Print Visible Parts" data-i18n-title="tip_print_visible_parts">🖨️</button>
-        <button id="btn-toggle-project-view" class="btn btn-sm toolbar-btn" onclick="toggleProjectViewMode()" title="Toggle Card View"><b>🗂️</b></button>
+        <button id="btn-toggle-project-view" class="btn btn-sm toolbar-btn" onclick="toggleProjectViewMode()" data-i18n-title="title_toggle_card_view" title="Toggle Card View"><b>🗂️</b></button>
         <button class="btn btn-sm toolbar-btn global-toggle-btn" onclick="toggleAllInputSections()" title="Toggle Input Form" data-i18n-title="tip_toggle_input_section"><b>▽</b></button>
     </div>
 </div>
@@ -29,7 +29,7 @@
                                 </div>
                                 <div class="col-sm-2 d-flex gap-1">
                                     <button type="submit" class="btn btn-primary btn-sm flex-grow-1 px-2" data-i18n="btn_add">Add</button>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm px-2 text-nowrap" onclick="openArchiveModal()" title="Open Archive Manager">🗄️ Load from Archive</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm px-2 text-nowrap" onclick="openArchiveModal()" title="Open Archive Manager" data-i18n-title="title_open_archive" data-i18n="btn_load_from_archive">🗄️ Load from Archive</button>
                                 </div>
                             </div>
                         </form>
@@ -48,20 +48,20 @@
                                     </span>
                                     <span id="flt-icon-projects-name" onclick="openFilterModal(event, 'projects', 'name', 'Project Name')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
                                 </th>                                
-                                <th class="text-nowrap" style="width: 20%;">Notes</th>
+                                <th class="text-nowrap" style="width: 20%;" data-i18n="col_notes">Notes</th>
                                 <th class="text-nowrap text-center" style="width: 10%;">
-                                    <span onclick="handleSort('projects', 'date', 'string')" class="cursor-pointer" title="Sort by Date">
-                                        Date ⇅
+                                    <span onclick="handleSort('projects', 'date', 'string')" class="cursor-pointer" title="Sort by Date" data-i18n-title="title_sort_by_date">
+                                        <span data-i18n="col_date">Date</span> ⇅
                                     </span>
                                 </th>
                                 <th class="text-center text-nowrap" style="width: 10%;">
                                     <span onclick="handleSort('projects', 'totalParts', 'number')" class="cursor-pointer">
-                                        <span>Parts</span> ⇅
+                                        <span data-i18n="col_parts">Parts</span> ⇅
                                     </span>
                                 </th>
                                 <th class="text-center text-nowrap" style="width: 10%;">
                                     <span onclick="handleSort('projects', 'totalParts', 'number')" class="cursor-pointer">
-                                        <span>Est. Cost</span> ⇅
+                                        <span data-i18n="col_est_cost">Est. Cost</span> ⇅
                                     </span>
                                 </th>
                                 <th class="text-center text-nowrap">
@@ -87,17 +87,17 @@
                     <div id="project-card-toolbar" class="mb-3 d-flex align-items-center gap-2 pe-1 w-100" style="min-width: 0;">
                         
                         <div class="d-flex gap-1 overflow-auto pb-1" id="project-card-chips" style="flex: 1 1 0%; min-width: 0; scrollbar-width: none;">
-                            <button class="btn btn-sm btn-dark rounded-pill px-3 py-0 text-nowrap" onclick="handleProjectCardFilter('All')">All</button>
-                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" onclick="handleProjectCardFilter('Design')">Design</button>
-                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" onclick="handleProjectCardFilter('Quoting')">Quoting</button>
-                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" onclick="handleProjectCardFilter('Ready')">Ready</button>
-                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" onclick="handleProjectCardFilter('In Progress')">In Progress</button>
-                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" onclick="handleProjectCardFilter('Completed')">Completed</button>
+                            <button class="btn btn-sm btn-dark rounded-pill px-3 py-0 text-nowrap" data-status="All" onclick="handleProjectCardFilter('All')" data-i18n="lbl_all">All</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" data-status="Design" onclick="handleProjectCardFilter('Design')" data-i18n="status_design">Design</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" data-status="Quoting" onclick="handleProjectCardFilter('Quoting')" data-i18n="status_quoting">Quoting</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" data-status="Ready" onclick="handleProjectCardFilter('Ready')" data-i18n="status_ready">Ready</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" data-status="In Progress" onclick="handleProjectCardFilter('In Progress')" data-i18n="status_in_progress">In Progress</button>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0 text-nowrap" data-status="Completed" onclick="handleProjectCardFilter('Completed')" data-i18n="status_completed">Completed</button>
                         </div>
                         
                         <div class="input-group input-group-sm" style="flex: 1 1 120px; max-width: 250px; min-width: 80px;">
                             <span class="input-group-text border-end-0 text-muted px-2">🔍</span>
-                            <input type="text" class="form-control border-start-0 ps-0" placeholder="Search..." onkeyup="handleProjectCardSearch(this.value)">
+                            <input type="text" class="form-control border-start-0 ps-0" placeholder="Search..." data-i18n-placeholder="ph_search" onkeyup="handleProjectCardSearch(this.value)">
                         </div>
                         
                         <div class="input-group input-group-sm flex-shrink-0" style="width: auto;">
@@ -108,7 +108,7 @@
                                 <option value="totalCost|number">Sort: Cost</option>
                                 <option value="status|string">Sort: Status</option>
                             </select>
-                            <button class="btn border text-secondary fw-bold px-2" type="button" onclick="toggleProjectCardSortDir()" title="Reverse Sort Order">⇅</button>
+                            <button class="btn border text-secondary fw-bold px-2" type="button" onclick="toggleProjectCardSortDir()" title="Reverse Sort Order" data-i18n-title="title_reverse_sort">⇅</button>
                         </div>
                         
                     </div>
@@ -117,7 +117,7 @@
                         <div id="project-card-grid" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 row-cols-xxl-5 g-4 align-content-start mx-0">
                             <div class="col-12 text-center text-muted mt-5">
                                 <h1>🗂️</h1>
-                                <p>Card View Construction Zone 🚧</p>
+                                <p data-i18n="txt_card_view_wip">Card View Construction Zone 🚧</p>
                             </div>
                         </div>
                     </div>
