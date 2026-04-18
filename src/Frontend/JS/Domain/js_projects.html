@@ -655,8 +655,8 @@
                 const response = typeof responseStr === 'string' ? JSON.parse(responseStr) : responseStr;
                 if (response.status === 'success') {
                     appState.projects.unshift(response.project);
-                    if(response.groups) appState.groups.push(...response.groups);
-                    if(response.parts) appState.parts.push(...response.parts);
+                    if(response.groups) { if (!appState.groups) appState.groups = []; appState.groups.push(...response.groups); }
+                    if(response.parts)  { if (!appState.parts)  appState.parts  = []; appState.parts.push(...response.parts); }
 
                     if (response.image) {
                         if (!window.projectImages) window.projectImages = {};

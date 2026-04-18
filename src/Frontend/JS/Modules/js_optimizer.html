@@ -57,8 +57,8 @@
         const t1D = appState.settings.factoryEdgeTrim !== undefined ? appState.settings.factoryEdgeTrim : 6.35;
         const k2D = appState.settings.sheetBladeKerf !== undefined ? appState.settings.sheetBladeKerf : 3.175;
         const t2D = appState.settings.sheetFactoryTrim !== undefined ? appState.settings.sheetFactoryTrim : 6.35;
-        const pref2D = appState.settings.optimizer.sheetCutPreference || 'auto';
-        const useStock = appState.settings.optimizer.useStock;
+        const pref2D = appState.settings.optimizer?.sheetCutPreference || 'auto';
+        const useStock = appState.settings.optimizer?.useStock;
         const _tr = appState.settings.optimizer?.transport || {};
         const transportEnabled   = !!_tr.enabled;
         const boardTransportLmax = _tr.boardLmax  || 0;
@@ -148,7 +148,7 @@
 
             // 🪄 STAGE 2: THE STORE RUN (Infinite Supply)
             if (currentParts.length > 0) {
-                const allVendorOptions = appState.catalog.filter(c =>
+                const allVendorOptions = (appState.catalog || []).filter(c =>
                     c.profileId === batch.profileId &&
                     c.materialId === batch.materialId &&
                     c.categoryId === batch.category &&

@@ -1,5 +1,5 @@
 # SolidCutlist — Master Test Plan
-**Version 1.0 | Created: 2026-04-12 | Status: Pending — features/fixes in progress before execution**
+**Version 2.0 | Created: 2026-04-12 | Revised: 2026-04-18 | Status: Pending — features/fixes in progress before execution**
 
 ---
 
@@ -13,16 +13,19 @@ Claude will read this file and the memory index at `~/.claude/projects/-home-use
 
 | # | Phase | Owner | Status | Notes |
 |---|-------|-------|--------|-------|
-| 1 | Static Code Analysis | Claude | ⬜ Not started | |
-| 2 | CRUD & Data Integrity | Both | ⬜ Not started | |
-| 3 | Optimizer — 1D Lumber | Both | ⬜ Not started | |
-| 4 | Optimizer — 2D Sheets | Both | ⬜ Not started | |
-| 5 | Domain UI | You | ⬜ Not started | |
-| 6 | Import Wizard | You | ⬜ Not started | |
-| 7 | Canvas & Print | You | ⬜ Not started | |
-| 8 | Cross-Browser & Resolution | You | ⬜ Not started | |
-| 9 | Offline / localStorage | Both | ⬜ Not started | |
-| 10 | End-to-End Integration | Both | ⬜ Not started | |
+| 1  | Static Code Analysis | Claude | ✅ Complete | 3 real fixes (P1-1, P1-2, P1-8). P0-1 intentional design. 5 agent false positives. |
+| 2  | Settings, Persistence & Onboarding | Both | ⬜ Not started | |
+| 3  | CRUD & Data Integrity | Both | ⬜ Not started | |
+| 4  | State & Job Isolation | Claude | ⬜ Not started | |
+| 5  | Optimizer — 1D Lumber | Both | ⬜ Not started | |
+| 6  | Optimizer — 2D Sheets | Both | ⬜ Not started | |
+| 7  | Import Wizard | You | ⬜ Not started | |
+| 8  | Results Views (Shopping List, Analytics, Canvas, Print) | You | ⬜ Not started | |
+| 9  | i18n & Localization | Both | ⬜ Not started | |
+| 10 | Mobile UX | You | ⬜ Not started | |
+| 11 | Error Handling & Edge Cases | Both | ⬜ Not started | |
+| 12 | End-to-End Integration | Both | ⬜ Not started | |
+| 13 | Benchmarking vs. Competing Tools | Both | ⬜ Not started | |
 
 Update status to: ⬜ Not started / 🔄 In progress / ✅ Complete / ❌ Blocked
 
@@ -36,7 +39,8 @@ Update status to: ⬜ Not started / 🔄 In progress / ✅ Complete / ❌ Blocke
 - **2D packing**: Gemini-proposed algorithm, approximate (not mathematically optimal), tested against known problems.
 - **Jobs**: Fully isolated sandboxes. NOTHING writes back to master state. Any link from job → master state is a P0 bug.
 - **Mobile scope**: Only the Cutlist results section (shopping list + cut diagrams) needs to be mobile-friendly.
-- **Offline scenario**: Users inside lumber stores with no wifi. localStorage is the fallback. Offline strategy to be designed in Phase 9.
+- **Offline scenario**: Users inside lumber stores with no wifi. localStorage is the fallback. Offline strategy to be designed in Phase 11.
+- **Languages**: EN, DE, FR, ES, PT-BR, IT. All UI strings must be translated.
 
 ---
 
@@ -54,7 +58,39 @@ Claude reads every JS module and flags:
 
 ---
 
-## Phase 2 — CRUD & Data Integrity *(Both)*
+## Phase 2 — Settings, Persistence & Onboarding *(Both)*
+
+### Settings
+- Switch display units (mm → dec inches → frac inches → back): do all existing values re-render correctly?
+- Switch currency (€ → $ → £ → back): shopping list and catalog prices update everywhere
+- Switch language through all 6 options: full UI re-renders without page reload
+- Toggle dark/light mode: no elements left with hardcoded colors
+- Set kerf = 0, kerf = 5mm, kerf larger than a part dimension
+- Set transport limits, then verify optimizer respects them
+
+### Persistence (localStorage)
+- Change settings → reload page → settings are restored
+- Add data → reload page → all data intact
+- Change language → reload page → language persists
+
+### Welcome Tour
+- First-launch: tour appears automatically
+- Language selector on step 1: switching language immediately re-renders tour in new language
+- Unit and currency selections on step 1: apply correctly when advancing
+- Skip tour: marks complete, shows checklist
+- Complete all steps: lands on Projects view
+- Re-trigger tour from settings: works as session-only (no state saved)
+
+### Getting Started Checklist
+- Appears after tour is completed
+- Each checklist item checks off when action is performed
+- Starter pack load marks the first item done
+- "All done" state shows dismiss button
+- Dismiss hides widget permanently
+
+---
+
+## Phase 3 — CRUD & Data Integrity *(Both)*
 
 Test each entity in dependency order:
 
@@ -72,7 +108,21 @@ Test each entity in dependency order:
 
 ---
 
-## Phase 3 — Optimizer, 1D Lumber *(Both)*
+## Phase 4 — State & Job Isolation *(Claude)*
+
+Claude traces every code path where job data could write back to master state.
+
+- Verify `appState.materials`, `appState.profiles`, `appState.catalog`, `appState.stock`, `appState.projects`, `appState.parts` are **never mutated** during a job run
+- Verify job results object holds its own copies of any master data it needs
+- Change a part in master state while a job is loaded → reload job → job reflects the original data, not the change
+- Delete a catalog item used in a job → reload job → job handles gracefully (no crash, clear error)
+- Multiplier changes affect job quantities only — master part quantities unchanged
+
+**Any writeback found = P0 bug, fixed before proceeding.**
+
+---
+
+## Phase 5 — Optimizer, 1D Lumber *(Both)*
 
 Claude pre-analyzes the algorithm. You create synthetic projects and run each scenario.
 
@@ -93,7 +143,7 @@ Claude pre-analyzes the algorithm. You create synthetic projects and run each sc
 
 ---
 
-## Phase 4 — Optimizer, 2D Sheets *(Both)*
+## Phase 6 — Optimizer, 2D Sheets *(Both)*
 
 | Test ID | Scenario | What to verify |
 |---------|----------|---------------|
@@ -113,45 +163,7 @@ Claude pre-analyzes the algorithm. You create synthetic projects and run each sc
 
 ---
 
-## Phase 5 — Domain UI *(You)*
-
-**Projects view**
-- Create project with no name → expect validation error
-- Duplicate project name
-- Cycle all status transitions (Design → Quoting → Ready → In Progress → Completed → back)
-- Delete project with many parts
-
-**Parts form**
-- Submit empty form
-- Enter qty = 0, qty = negative
-- Enter very small and very large dimensions
-- Switch category mid-entry
-- Assign part to a group, then delete that group
-
-**Setup — Catalog**
-- Add entry with no store selected
-- Delete a profile that has catalog entries
-- Duplicate catalog entries
-
-**Setup — Stock**
-- Zero quantity
-- Very large quantity
-- Scrap flag toggle
-
-**Settings**
-- Switch display units (mm → dec inches → frac inches → back): do all existing values render correctly?
-- Set kerf = 0
-- Set kerf larger than a part dimension
-- Set transport limits, then run optimizer
-
-**Jobs**
-- Create with no projects selected
-- Load a job, set multiplier to 0
-- Load a job, set multiplier to a decimal (e.g. 1.5)
-
----
-
-## Phase 6 — Import Wizard *(You)*
+## Phase 7 — Import Wizard *(You)*
 
 Prepare these test CSV files:
 
@@ -170,33 +182,95 @@ Also test: cancel at step 2, cancel at step 3, import same file twice.
 
 ---
 
-## Phase 7 — Canvas & Print *(You)*
+## Phase 8 — Results Views *(You)*
 
-- Cut diagrams render for lumber boards and sheet panels
+### Shopping List
+- Grand total and subtitle appear in the correct language
+- Per-store groupings correct (My Shop Stock always first, Sourcing Issues always last)
+- Checkboxes mark items purchased and persist across reload
+- Edit material button opens correct item
+- Link icon opens correct URL in new tab
+- Job with only fasteners (no cuttable parts): shopping list handles gracefully
+
+### Analytics & Offcuts
+- Waste percentages are plausible (cross-check with Phase 5/6 results)
+- Offcuts list matches what the optimizer decided was above/below threshold
+- Charts render correctly, no overlapping labels
+
+### Cut Diagrams (Canvas)
+- Diagrams render for lumber boards and sheet panels
 - Color coding matches project assignment in a multi-project job
 - Part labels readable at default zoom
 - Zoom in/out, fullscreen, scroll on large diagrams
-- Print: shopping list, parts table, cut diagrams, labels — check in print preview
-- Edge case: job with only fasteners (no cuttable parts) — what does canvas show?
+- Edge case: job with only fasteners — canvas shows appropriate empty state
+
+### Print
+- Shopping list, parts table, cut diagrams, labels — check in print preview
+- No elements cut off at page edge
+- Dark mode styles don't bleed into print output
 
 ---
 
-## Phase 8 — Cross-Browser & Resolution *(You)*
+## Phase 9 — i18n & Localization *(Both)*
 
-### Browser Priority Matrix
+### Key coverage
+- Claude scans all JS template literals and HTML for any remaining hardcoded strings
+- Verify `t('key')` never returns the key itself (missing translation fallback check) for all 6 languages
+
+### Per-language smoke test (You — spot check each language)
+Switch to each language and verify:
+- Welcome tour renders fully translated
+- All view labels, buttons, column headers translated
+- Settings modal fully translated
+- Toast messages translated
+- Error messages translated
+
+### Unit system rendering
+- mm: dimensions shown as integers or 1 decimal
+- Decimal inches: correct conversion and display
+- Fractional inches: fractions render correctly (e.g. 1⅛")
+- Unit labels update everywhere after switching (table headers, input labels, diagrams)
+
+### Currency rendering
+- Symbol appears in correct position for each currency
+- Shopping list totals update immediately on currency change
+
+### Layout stress test (You)
+- Switch to French and Italian (longest labels) — check for text overflow, broken layouts, truncated buttons
+- Check mobile tab bar in French/Italian — all tabs still reachable by swiping
+
+---
+
+## Phase 10 — Mobile UX *(You)*
+
+Test on your Samsung Galaxy Tab S10 Ultra (Chrome) in both orientations, and in Chrome DevTools phone emulation (390px width) for the phone scenarios.
+
+### Tab navigation
+- All tabs in cutlist view reachable by swiping the tab bar
+- Active tab indicator visible after swipe
+
+### Mobile action bar
+- Load job / Recalculate / Save Changes / Undo buttons appear at correct times
+- Settings offcanvas opens and closes cleanly
+- Offcanvas settings save correctly
+
+### Cutlist results on mobile
+- Shopping list readable and usable on phone width
+- Cut diagrams render and are scrollable
+- Analytics tab renders without overflow
+
+### Cross-browser & resolution matrix
 
 | Browser | Platform | Priority |
 |---------|----------|----------|
 | Chrome | Desktop Windows/Mac | P0 |
-| Chrome | Android tablet (your Tab S10 Ultra) | P0 |
+| Chrome | Android tablet (Tab S10 Ultra) | P0 |
 | Safari | iPad (any model) | P0 |
 | Safari | iPhone | P1 — cutlist section only |
 | Edge | Windows Desktop | P1 |
 | Firefox | Desktop | P2 |
 | Chrome | iPhone | P2 — cutlist section only |
-| Samsung Internet | Android tablet/phone | P3 |
-
-### Resolution Matrix
+| Samsung Internet | Android | P3 |
 
 | Category | Logical Resolution | Example Device |
 |----------|--------------------|----------------|
@@ -209,67 +283,112 @@ Also test: cancel at step 2, cancel at step 3, import same file twice.
 | Phone portrait | 390×844 | iPhone 14 / Pixel 7 |
 | Phone landscape | 844×390 | Same, rotated |
 
-> For phone resolutions: **test cutlist results section only**.
+---
+
+## Phase 11 — Error Handling & Edge Cases *(Both)*
+
+### Data edge cases
+- Project with zero parts → run optimizer → clear message, no crash
+- Job with multiplier = 0 → optimizer result is empty, not an error
+- Part with dimension = 0 → validation blocks or flags it
+- Catalog entry with price = 0 → optimizer picks it (free stock), shopping list shows €0.00
+- All stock is scrap only, no full boards → handled gracefully
+
+### Corrupt / missing state
+- Manually delete a key from localStorage → app recovers without white-screening
+- Corrupt JSON in localStorage → app resets cleanly with user message
+- Import a CSV with 0 data rows → wizard shows clear empty state, no commit allowed
+
+### Offline / localStorage
+- Load app fully with wifi → turn wifi off → reload page: does app load from localStorage?
+- Load app fully with wifi → turn wifi off → run optimizer: completes from local data?
+- Load app fully with wifi → turn wifi off → edit a part: saves to localStorage?
+- Start with wifi OFF → load app fresh: what does user see?
+- Open app → edit data → turn wifi off → close tab → reopen: localStorage restores state?
+
+**Offline strategy options (decide after diagnostic results):**
+
+| Option | Description | Effort |
+|--------|-------------|--------|
+| A | "Prepare for store visit" button: saves full snapshot to localStorage before leaving | Low |
+| B | localStorage-first boot: load local immediately, sync Sheets in background | Medium |
+| C | Service Worker / PWA: full offline-first caching | High |
+
+**Minimum advice to ship (regardless of option chosen):**
+> Open the app before entering the store while you have wifi. Do not close the browser tab while in the store. Changes made offline will sync when wifi is restored.
 
 ---
 
-## Phase 9 — Offline / localStorage *(Both)*
-
-### Diagnostic Tests (run first to understand current behavior)
-
-| Test ID | Steps | What to observe |
-|---------|-------|----------------|
-| O-01 | Load app fully with wifi → turn wifi off → reload page | Does app load? Does data appear? |
-| O-02 | Load app fully with wifi → turn wifi off → navigate views | Does navigation work offline? |
-| O-03 | Load app fully with wifi → turn wifi off → run optimizer | Does it complete? Any errors? |
-| O-04 | Load app fully with wifi → turn wifi off → edit a part | Saves to localStorage? Error shown? |
-| O-05 | Start with wifi OFF → load app fresh | What does user see? Blank? Error? Fallback? |
-| O-06 | Load app → edit data → turn wifi off → close tab → reopen tab | Does localStorage restore state? |
-
-### Strategy Options (decide after diagnostic results)
-
-**Option A — "Store Mode" button** *(simplest, lowest risk)*
-A "Prepare for store visit" button that saves a complete snapshot to localStorage + shows a confirmation. User taps before leaving the shop. No architecture change.
-
-**Option B — localStorage-first boot** *(medium effort)*
-On app start: load localStorage immediately → render → try Sheets in background → update if successful. Works even with slow/no connection after first visit.
-
-**Option C — Service Worker / PWA** *(highest effort)*
-Full offline-first caching. Most robust but most complex; may conflict with GAS serving model.
-
-### Minimum user advice to ship (regardless of option chosen)
-> - Open the app before entering the store, while you still have wifi.
-> - The app will remember your last data session.
-> - Do not close the browser tab while in the store.
-> - Changes made offline will sync when wifi is restored.
-
----
-
-## Phase 10 — End-to-End Integration *(Both)*
+## Phase 12 — End-to-End Integration *(Both)*
 
 Full scenario simulating a real first-time user session:
 
 1. Open fresh app (cleared state)
-2. Add 2 materials, 3 profiles, catalog prices at 2 stores, 5 stock pieces
-3. Create 2 projects with groups and parts (mixed lumber + sheet)
-4. Run optimizer — verify shopping list and cut diagrams
-5. Save as job
-6. Reload page — verify job persists correctly
-7. Load job, change a multiplier, recalculate — verify master state is unchanged
-8. Import a CSV to a new project
-9. Run optimizer including imported parts
-10. Print shopping list
+2. Complete welcome tour, set language to German, units to mm, currency to €
+3. Add 2 materials, 3 profiles, catalog prices at 2 stores, 5 stock pieces
+4. Create 2 projects with groups and parts (mixed lumber + sheet)
+5. Run optimizer — verify shopping list and cut diagrams
+6. Save as job
+7. Reload page — verify job persists correctly
+8. Load job, change a multiplier, recalculate — verify master state is unchanged
+9. Import a CSV to a new project
+10. Run optimizer including imported parts
+11. Mark some shopping list items as purchased
+12. Print shopping list
+13. Switch language to French mid-session — verify all results views update
 
-Repeat once on: desktop Chrome, iPad Safari, and Android phone (cutlist section only).
+Repeat once on: desktop Chrome, iPad Safari, and Chrome DevTools phone emulation (cutlist section only).
+
+---
+
+## Phase 13 — Benchmarking vs. Competing Tools *(Both)*
+
+**Goal:** Verify the optimizer produces reasonable, competitive results across realistic scenarios. Not about being "the best" on every metric — about being credible and defensible to paying customers.
+
+### Reference tools
+
+| Tool | Type | Notes |
+|------|------|-------|
+| CutList Plus | Desktop, paid | Industry standard for lumber + sheet |
+| CutList Optimizer (cutlistoptimizer.com) | Web, freemium | Closest web competitor |
+| Opticutter (opticutter.com) | Web | Strong 2D sheet focus |
+| Manual calculation | Baseline | Sanity check for simple scenarios |
+
+### Benchmark scenarios
+
+| # | Scenario | Type | What to measure |
+|---|----------|------|-----------------|
+| B-01 | 10 parts, 1 lumber profile, 1 board size | 1D | Waste %, boards used |
+| B-02 | 30 parts, mixed lengths, 1 lumber profile | 1D | Waste %, boards used |
+| B-03 | 10 parts, 1 sheet size (plywood) | 2D | Waste %, sheets used |
+| B-04 | 20 parts, mixed sizes, grain direction constraints | 2D | Waste %, sheets used |
+| B-05 | Large job: 60+ parts, 3 profiles, 2 sheet sizes | Mixed | Waste %, total cost |
+| B-06 | Edge case: one part nearly full-board size | 1D+2D | Correct fit, no crash |
+| B-07 | Kerf sensitivity: run B-01 with 0mm, 3.2mm, 5mm kerf | 1D | Board count changes correctly |
+| B-08 | Cut-in-store: transport length = 2400mm, part = 2350mm | 1D | Flagged correctly, competitors can't do this |
+
+### Acceptance criteria
+- Waste % within ~5 percentage points of best-in-class on B-01 through B-04
+- No scenario where SolidCutlist uses significantly more boards/sheets than competitors
+- Results are stable: re-running same input always produces same output
+
+### SolidCutlist differentiators (not benchmarkable — document as selling points)
+- **Cut-in-store / transport length constraint** — boards limited by what fits in a car; no competitor offers this
+- **Multi-store shopping list** with per-item pricing and purchase tracking
+- **Job-based workflow** with project groups, multipliers, and isolated sandboxes
+- **Full i18n** in 6 languages — unique in this market
+- **Web-based, no install** — runs on any device including tablet in the lumber store
 
 ---
 
 ## Recommended Execution Order
 
-1. **Phase 1** — Claude does static analysis; you continue development
-2. **Phase 3 & 4** — highest risk, easiest to build synthetic data for
-3. **Phase 2** — catch cascade bugs before they corrupt test data
-4. **Phase 5, 6, 7** — can run roughly in parallel, UI polish
-5. **Phase 8** — cross-browser after features are stable
-6. **Phase 9** — offline strategy design + decision
-7. **Phase 10** — final gate before ship
+1. **Phase 1** — Claude does static analysis; you continue development in parallel
+2. **Phase 4** — job isolation check (P0 risk, Claude-only, fast to run)
+3. **Phase 5 & 6** — optimizer correctness, highest commercial risk
+4. **Phase 13** — benchmarking, run alongside Phase 5 & 6 to compare results directly
+5. **Phase 3** — CRUD cascade bugs before they corrupt test data
+6. **Phase 2** — settings, persistence, onboarding polish
+7. **Phase 7, 8, 9, 10** — UI/UX phases, can run roughly in parallel
+8. **Phase 11** — error handling and offline strategy decision
+9. **Phase 12** — final gate before ship
