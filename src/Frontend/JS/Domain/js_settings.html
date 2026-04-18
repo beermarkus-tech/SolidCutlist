@@ -49,6 +49,8 @@
         const transportPanel = document.getElementById('transport-settings-panel');
         if (transportToggle) transportToggle.checked = !!transport.enabled;
         if (transportPanel) transportPanel.style.display = transport.enabled ? '' : 'none';
+        const useStockInput = document.getElementById('opt-use-stock');
+        if (useStockInput) useStockInput.checked = !!appState.settings.optimizer?.useStock;
 
         const langDropdown = document.getElementById('setting-language');
         if (langDropdown) langDropdown.value = appState.settings.language;

@@ -546,7 +546,7 @@
                                     <th class="text-center cursor-pointer" onclick="handleModalSort('catalog', 'price')"><span data-i18n="col_shelf_price">Shelf Price</span> ⇅</th>
                                     <th class="text-center">
                                         <div class="d-flex align-items-center justify-content-center gap-1">
-                                            <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center select-inline" id="modal-catalog-view-unit" onchange="renderCatalogModalTable()">
+                                            <select class="form-select form-select-sm border-0 bg-transparent fw-bold p-0 text-center select-inline" id="modal-catalog-view-unit" onchange="if(!appState.settings)appState.settings={};appState.settings.catalogViewUnit=this.value;saveState();renderCatalogModalTable()">
                                                 <option value="piece" data-i18n="opt_cost_piece">Cost/Piece</option>
                                                 <option value="linear" data-i18n="opt_cost_length">Cost/Length</option>
                                                 <option value="area" data-i18n="opt_cost_area">Cost/Area</option>
