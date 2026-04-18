@@ -4,8 +4,10 @@
     // ==========================================
     let pendingDeleteAction = null;
 
-    function requestConfirm(message, actionCallback, theme = 'danger', btnText = 'Delete') {
+    function requestConfirm(message, actionCallback, theme = 'danger', btnText = 'Delete', subMessage = '') {
         document.getElementById('modal-delete-message').innerText = message;
+        const subEl = document.getElementById('modal-delete-submessage');
+        if (subEl) { subEl.innerText = subMessage; subEl.style.display = subMessage ? '' : 'none'; }
         pendingDeleteAction = actionCallback; 
         
         const modalContent = document.getElementById('modal-confirm-content');

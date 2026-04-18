@@ -315,6 +315,7 @@
         
         saveState();
         renderProjectsTable();
+        if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
 
         // 5. The Alarm
         if (deletedPartsCount > 0) {

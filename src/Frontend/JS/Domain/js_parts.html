@@ -345,9 +345,9 @@
             <td class="p-0 px-1"><small class="fw-bold">${safeHTML(part.name)}</small></td>
             <td><div class="d-flex justify-content-center px-1"><span class="badge ${badgeClass} py-1 d-inline-block" style="width:85px;text-align:center;font-size:0.75rem;text-transform:uppercase;">${t('opt_' + part.category)}</span></div></td>
             <td class="text-center text-primary fw-bold"><small>${part.qty}</small></td>
-            <td class="p-0 px-1 text-center"><small class="${isReady ? '' : 'text-warning fw-bold'}">${safeHTML(prof?.name || '⚠️')}</small></td>
+            <td class="p-0 px-1 text-center"><small class="${prof ? '' : 'text-warning fw-bold'}">${safeHTML(prof?.name || '⚠️')}</small></td>
             <td class="text-center p-0 px-1" style="width:130px"><small>${dimText}</small></td>
-            <td class="p-0 px-1 text-center"><small class="${isReady ? '' : 'text-warning fw-bold'}">${safeHTML(mat?.name || '⚠️')}</small></td>
+            <td class="p-0 px-1 text-center"><small class="${mat ? '' : 'text-warning fw-bold'}">${safeHTML(mat?.name || '⚠️')}</small></td>
             <td class="p-0 px-1 align-middle text-center"><small>${grainText}</small></td>
             <td class="p-0 px-1 text-center">${_computePartMetric(part, prof, mat)}</td>
             <td class="text-end">
@@ -424,7 +424,8 @@
             part.width = 0; 
             
             saveState();
-            renderPartsTable(); 
+            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
+            renderPartsTable();
             showToast(t('msg_category_changed'));
         }
     }
@@ -443,6 +444,7 @@
                 part[field] = newValue;
             }
             saveState();
+            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
             // If this row is active in edit mode: refresh it in place, skip full rebuild
             if (_activeEditRow['parts'] === partId) {
                 const prof = appState.profiles?.find(p => p.id === part.profileId);
@@ -468,6 +470,7 @@
 
         appState.parts = appState.parts.filter(p => p.id !== id);
         saveState();
+        if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
         renderPartsTable();
         showToast(t('msg_part_removed'), true);
     }

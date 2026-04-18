@@ -210,6 +210,7 @@
         if (arrayName === 'catalog' && typeof renderCatalogTable === 'function') renderCatalogTable();
         if (arrayName === 'stock' && typeof renderStockTable === 'function') renderStockTable();
         if (arrayName === 'projects' && typeof renderProjectsTable === 'function') renderProjectsTable();
+        if (arrayName !== 'projects' && typeof notifyConfigChanged === 'function') notifyConfigChanged();
 
         showToast(t('msg_row_duplicated'));
 
@@ -385,6 +386,7 @@
         appState[arrayKey] = appState[arrayKey].filter(item => item.id !== id);
         saveState();
         renderFn();
+        if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
         showToast(t(toastKey));
     }
 </script>

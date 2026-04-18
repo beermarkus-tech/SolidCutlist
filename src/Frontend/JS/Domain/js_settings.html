@@ -1,14 +1,18 @@
 <script>
     function renderDictionaries() {
-        renderProjectsTable(); 
+        renderProjectsTable();
         renderStockTable();
         renderCatalogTable();
         renderMaterialsTable();
         renderProfilesTable();
         renderPartsTable();
-        
+
         // 🪄 Tell the Parts view to instantly update its dropdowns
         if (typeof refreshPartsDropdowns === 'function') refreshPartsDropdowns();
+        // Keep the optimizer project tree in sync
+        if (typeof renderOptimizerConfig === 'function') renderOptimizerConfig();
+        // Switch "Restart" → "Recalculate" when data changes on an unsaved job
+        if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
     }
 
     function renderSettings() {

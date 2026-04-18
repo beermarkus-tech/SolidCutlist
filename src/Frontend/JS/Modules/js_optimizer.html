@@ -832,15 +832,28 @@
     // PHASE C: OPTIMIZER UI & CONFIG STATE
     // ==========================================
     function renderOptimizerConfig() {
-        // Abort if the configurator is currently locked by an active calculation or loaded job.
-        // Redrawing the tree now would destroy unsaved multipliers and accidentally unlock the inputs!
         const activeActions = document.getElementById('job-config-actions-active');
-        if (activeActions && !activeActions.classList.contains('d-none')) {
-            return; 
-        }
+        const isPostCalculate = activeActions && !activeActions.classList.contains('d-none');
 
-        // 2. Build the Selection Tree
+        // For saved jobs: never rebuild — would destroy job state
+        if (isPostCalculate && window.activeJobId) return;
+
         const treeContainer = document.getElementById('job-configurator-tree');
+
+        // For unsaved post-calculate state: snapshot checkboxes, multipliers, collapse state
+        const snapshot = {};
+        if (isPostCalculate) {
+            treeContainer.querySelectorAll('input[type="checkbox"]').forEach(el => {
+                snapshot[el.id] = { checked: el.checked };
+            });
+            treeContainer.querySelectorAll('input[type="number"]').forEach(el => {
+                if (!snapshot[el.id]) snapshot[el.id] = {};
+                snapshot[el.id].value = el.value;
+            });
+            treeContainer.querySelectorAll('.collapse.show').forEach(el => {
+                snapshot[el.id] = { ...(snapshot[el.id] || {}), expanded: true };
+            });
+        }
         treeContainer.innerHTML = '';
 
         if (!appState.projects || appState.projects.length === 0) {
@@ -912,6 +925,17 @@
         });
 
         treeContainer.innerHTML = html;
+
+        // Restore snapshot state for existing items (unsaved post-calculate)
+        if (isPostCalculate) {
+            Object.entries(snapshot).forEach(([id, state]) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (state.checked !== undefined) el.checked = state.checked;
+                if (state.value !== undefined) el.value = state.value;
+                if (state.expanded) el.classList.add('show');
+            });
+        }
 
         // 🪄 Initialize the cut preference dropdown
         const cutPref = document.getElementById('opt-sheet-cut');
@@ -1279,7 +1303,7 @@
             _btnA1.onclick = resetConfigurator;
         }
 
-        if (typeof showToast === 'function') showToast(t('msg_calculating_cutlist'), "info");
+        if (typeof showToast === 'function') showToast(t('msg_calculating_cutlist'));
 
         // Gather Allowed Stores
         let allowedStores = appState.stores.map(s => s.id);
@@ -1634,9 +1658,6 @@
                 const sizeDisplay = item.category === 'sheet'
                     ? `${formatForDisplay(item.length)} x ${formatForDisplay(item.width)}`
                     : formatForDisplay(item.length);
-                const pencilBtn = isEditable
-                    ? `<button class="btn btn-sm btn-link p-0 ms-2 text-muted" onclick="openEditMaterialModal('${item.catalogId}')" title="Edit raw material">✏️</button>`
-                    : '';
 
                 const isPartial = item.oversizedParts && item.oversizedParts.length > 0;
                 const rowClass = (item.isError || isPartial) ? 'list-group-item-danger border-danger' : '';
@@ -1646,6 +1667,9 @@
 
                 const isStoreItem = storeName !== '🏪 My Shop Stock' && !item.isError;
                 const isPurchased = isStoreItem && !!(activeJob?.purchasedItems?.[item.catalogId]);
+                const pencilBtn = (isEditable && !isPurchased)
+                    ? `<button class="btn btn-sm btn-link p-0 ms-2 text-muted" onclick="openEditMaterialModal('${item.catalogId}')" title="Edit raw material">✏️</button>`
+                    : '';
                 const checkboxHtml = isStoreItem
                     ? `<input type="checkbox" class="form-check-input flex-shrink-0" style="width:1.2em;height:1.2em;cursor:pointer;" ${isPurchased ? 'checked' : ''} onchange="toggleShoppingItemPurchased('${item.catalogId}', this.checked)" title="Mark as purchased">`
                     : '';
@@ -2012,15 +2036,22 @@
             window.currentOffcutSort.field = field;
             window.currentOffcutSort.asc = true;
         }
+        const _asc = window.currentOffcutSort.asc ? 1 : -1;
         window.currentOffcuts.sort((a, b) => {
-            let valA = a[field];
-            let valB = b[field];
-            if (field === 'length') { 
-                valA = a.length * (a.width || 1);
-                valB = b.length * (b.width || 1);
+            if (field === 'length') {
+                const valA = a.length * (a.width || 1);
+                const valB = b.length * (b.width || 1);
+                return (valA - valB) * _asc;
             }
-            if (valA < valB) return window.currentOffcutSort.asc ? -1 : 1;
-            if (valA > valB) return window.currentOffcutSort.asc ? 1 : -1;
+            if (field === 'profName') {
+                const catA = String(a.category || '').toLowerCase();
+                const catB = String(b.category || '').toLowerCase();
+                if (catA !== catB) return catA.localeCompare(catB) * _asc;
+            }
+            let valA = a[field] ?? '';
+            let valB = b[field] ?? '';
+            if (valA < valB) return -1 * _asc;
+            if (valA > valB) return 1 * _asc;
             return 0;
         });
         
@@ -2189,7 +2220,12 @@
     function toggleShoppingItemPurchased(catalogId, checked) {
         // Update visual state immediately
         const li = document.getElementById(`shop-item-${catalogId}`);
-        if (li) li.classList.toggle('shop-item-purchased', checked);
+        if (li) {
+            li.classList.toggle('shop-item-purchased', checked);
+            li.querySelectorAll('button[onclick^="openEditMaterialModal"]').forEach(btn => {
+                btn.style.display = checked ? 'none' : '';
+            });
+        }
 
         // Persist to active job
         const activeJob = window.activeJobId ? appState.jobs?.find(j => j.id === window.activeJobId) : null;

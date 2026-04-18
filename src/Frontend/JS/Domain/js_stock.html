@@ -86,6 +86,8 @@
             if (typeof rowPassesFilters === 'function' && !rowPassesFilters(mockItem, 'stock')) return;
 
             const tr = document.createElement('tr');
+            tr.style.cursor = 'pointer';
+            tr.addEventListener('click', (e) => { if (!e.target.closest('button')) showToast(t('msg_switch_to_full_view'), true); });
             const badgeClass = getCategoryBadgeClass(group.categoryId);
 
             // Safe Profile/Material lookups
@@ -157,10 +159,10 @@
                         </span>
                     </div>
                 </td>
-                <td class="text-center align-middle px-1"><small>${group.totalQty}</small></td>
-                <td class="px-1 py-0 align-middle text-center"><small>${safeHTML(profName)}</small></td>
+                <td class="text-center align-middle px-1"><small class="text-primary fw-bold">${group.totalQty}</small></td>
+                <td class="px-1 py-0 align-middle text-center"><small class="${profile ? '' : 'text-warning fw-bold'}">${safeHTML(profName)}</small></td>
                 <td class="px-1 py-0 align-middle text-center text-nowrap">${sizeHtml}</td>
-                <td class="px-1 py-0 align-middle text-center"><small>${safeHTML(matName)}</small></td>
+                <td class="px-1 py-0 align-middle text-center"><small class="${material ? '' : 'text-warning fw-bold'}">${safeHTML(matName)}</small></td>
                 <td class="text-center text-capitalize px-1 py-0 align-middle">${grainHtml}</td>
                 <td class="text-center px-1 py-0 align-middle">${typeHtml}</td>
                 <td class="text-end align-middle pe-2">
@@ -442,9 +444,9 @@
         return `
             <td><div class="d-flex justify-content-center px-1"><span class="badge ${badgeClass} py-1 d-inline-block" style="width:85px;text-align:center;font-size:0.75rem;text-transform:uppercase;">${t('opt_' + item.categoryId)}</span></div></td>
             <td class="text-center px-1 py-0 align-middle"><small class="text-primary fw-bold">${item.qty}</small></td>
-            <td class="px-1 py-0 align-middle text-center"><small class="${isReady ? '' : 'text-warning fw-bold'}">${safeHTML(prof?.name || '⚠️')}</small></td>
+            <td class="px-1 py-0 align-middle text-center"><small class="${prof ? '' : 'text-warning fw-bold'}">${safeHTML(prof?.name || '⚠️')}</small></td>
             <td class="text-center px-1 py-0 align-middle" style="width:130px"><small>${dimText}</small></td>
-            <td class="px-1 py-0 align-middle text-center"><small class="${isReady ? '' : 'text-warning fw-bold'}">${safeHTML(mat?.name || '⚠️')}</small></td>
+            <td class="px-1 py-0 align-middle text-center"><small class="${mat ? '' : 'text-warning fw-bold'}">${safeHTML(mat?.name || '⚠️')}</small></td>
             <td class="text-center px-1 py-0 align-middle"><small>${grainText}</small></td>
             <td class="text-center px-1 py-0 align-middle"><small class="${typeClass}">${typeText}</small></td>
             <td class="text-end">
@@ -527,6 +529,7 @@
         
         saveState();
         renderStockTable();
+        if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
         showToast(t('msg_item_added_stock'));
         
         // Reset form but keep category to allow rapid entry
@@ -539,14 +542,18 @@
     function updateStock(id, field, newValue) {
         const item = appState.stock.find(s => s.id === id);
         if (item) {
+            let parsed;
             if (field === 'qty') {
-                item[field] = parseInt(newValue, 10) || 1;
+                parsed = parseInt(newValue, 10) || 1;
             } else if (field === 'length' || field === 'width') {
-                item[field] = parseToBaseUnit(newValue) || 0;
+                parsed = parseToBaseUnit(newValue) || 0;
             } else {
-                item[field] = newValue; // Handles grain strings and boolean drop-downs
+                parsed = newValue;
             }
+            if (parsed === item[field]) return;
+            item[field] = parsed;
             saveState();
+            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
             // If this row is active in edit mode: refresh it in place, skip full rebuild
             if (_activeEditRow['stock'] === id) {
                 const prof = appState.profiles?.find(p => p.id === item.profileId);

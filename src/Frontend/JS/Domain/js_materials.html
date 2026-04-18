@@ -201,17 +201,19 @@
     function deleteMaterial(id, isConfirmed = false) {
         // 1. The Safety Shield
         if (!isConfirmed) {
-            requestConfirm(t('confirm_delete_material'), () => deleteMaterial(id, true));
-            return; 
+            const preCount = (appState.parts || []).filter(p => p.materialId === id).length;
+            const sub = preCount > 0 ? t('confirm_delete_material_in_use', { count: preCount }) : '';
+            requestConfirm(t('confirm_delete_material'), () => deleteMaterial(id, true), 'danger', 'Delete', sub);
+            return;
         }
-        
+
         // 2. The Cascade Nullify
         let inUseCount = 0;
         if (appState.parts) {
             appState.parts.forEach(part => {
                 if (part.materialId === id) {
-                    part.materialId = ''; 
-                    part.status = 'needs_mapping'; 
+                    part.materialId = '';
+                    part.status = 'needs_mapping';
                     inUseCount++;
                 }
             });
@@ -235,11 +237,20 @@
         appState.settings.currency = document.getElementById('setting-currency').value;
         
         saveState();
-        
+
         // 2. Redraw the ENTIRE UI so tables instantly reflect the new symbols
-        renderSettings(); 
+        renderSettings();
         renderDictionaries();
         if (typeof renderLabelModal === 'function') renderLabelModal();
+
+        // 3. Re-render cutlist result tabs if results exist (display-only, no recalculation)
+        if (appState.latestResults && appState.latestResults.length > 0) {
+            if (typeof renderShoppingListTab === 'function') renderShoppingListTab(appState.latestResults);
+            if (typeof renderDiagramsTab === 'function') renderDiagramsTab(appState.latestResults);
+            if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(appState.latestResults);
+            if (typeof renderSandboxPartlistTab === 'function' && window.currentSandboxParts) renderSandboxPartlistTab(window.currentSandboxParts);
+        }
+
         showToast(t('msg_display_prefs_updated'));
     }
     function handleProfileCategoryChange() {
@@ -384,8 +395,10 @@
     function deleteProfile(id, isConfirmed = false) {
         // 1. The Safety Shield
         if (!isConfirmed) {
-            requestConfirm(t('confirm_delete_profile'), () => deleteProfile(id, true));
-            return; 
+            const preCount = (appState.parts || []).filter(p => p.profileId === id).length;
+            const sub = preCount > 0 ? t('confirm_delete_profile_in_use', { count: preCount }) : '';
+            requestConfirm(t('confirm_delete_profile'), () => deleteProfile(id, true), 'danger', 'Delete', sub);
+            return;
         }
         
         // 2. The Cascade Nullify

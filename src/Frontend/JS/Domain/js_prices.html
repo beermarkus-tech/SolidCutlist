@@ -86,6 +86,8 @@
             if (typeof rowPassesFilters === 'function' && !rowPassesFilters(mockItem, 'catalog')) return;
 
             const tr = document.createElement('tr');
+            tr.style.cursor = 'pointer';
+            tr.addEventListener('click', (e) => { if (!e.target.closest('button')) showToast(t('msg_switch_to_full_view'), true); });
             const badgeClass = getCategoryBadgeClass(group.categoryId);
 
             // Safe Lookups
@@ -401,6 +403,7 @@
         requestConfirm(t('confirm_delete_catalog_item') || "Delete this price?", () => {
             appState.catalog = appState.catalog.filter(c => c.id !== id);
             saveState();
+            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
             renderCatalogModalTable(); 
         });
     }
@@ -424,10 +427,11 @@
         });
         
         saveState();
-        
+        if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
+
         // 🪄 Clear active sorting so the new price lands exactly at the top!
         modalSortStates.catalog.key = '';
-        
+
         renderCatalogModalTable();
         
         document.getElementById('modal-catalog-input-length').value = '';
@@ -505,14 +509,13 @@
         const linkHtml = item.link
             ? `<a href="${safeHTML(item.link)}" target="_blank" class="text-decoration-none" onclick="event.stopPropagation()" title="${t('title_open_link')}">🔗</a>`
             : `<span class="text-muted" style="opacity:0.3;">🔗</span>`;
-        const warnClass = isReady ? '' : 'text-warning fw-bold';
         return `
             <td><div class="d-flex justify-content-center px-1"><span class="badge ${badgeClass} py-1 d-inline-block" style="width:85px;text-align:center;font-size:0.75rem;text-transform:uppercase;">${t('opt_' + item.categoryId)}</span></div></td>
-            <td class="px-1 py-0 align-middle text-center"><small class="${warnClass}">${safeHTML(prof?.name || '⚠️')}</small></td>
+            <td class="px-1 py-0 align-middle text-center"><small class="${prof ? '' : 'text-warning fw-bold'}">${safeHTML(prof?.name || '⚠️')}</small></td>
             <td class="text-center px-1 py-0 align-middle" style="width:130px"><small>${dimText}</small></td>
-            <td class="px-1 py-0 align-middle text-center"><small class="${warnClass}">${safeHTML(mat?.name || '⚠️')}</small></td>
+            <td class="px-1 py-0 align-middle text-center"><small class="${mat ? '' : 'text-warning fw-bold'}">${safeHTML(mat?.name || '⚠️')}</small></td>
             <td class="text-center px-1 py-0 align-middle"><small>${grainText}</small></td>
-            <td class="px-1 py-0 align-middle text-center"><small class="${warnClass}">${safeHTML(store?.name || '⚠️')}</small></td>
+            <td class="px-1 py-0 align-middle text-center"><small class="${store ? '' : 'text-warning fw-bold'}">${safeHTML(store?.name || '⚠️')}</small></td>
             <td class="text-center px-1 py-0 align-middle"><small class="text-muted">${currency}${parseFloat(item.price || 0).toFixed(2)} /${{'piece': t('opt_pc'), 'linear': isMetric ? 'm' : 'ft', 'area': isMetric ? 'm²' : 'sqft', 'volume': isMetric ? 'm³' : 'BF'}[item.priceUnit] || item.priceUnit}</small></td>
             <td class="text-center fw-bold text-success align-middle"><small>${currency}${displayPrice}</small></td>
             <td class="text-center align-middle">${freshnessHtml}</td>
@@ -655,6 +658,7 @@
         
         saveState();
         renderCatalogTable();
+        if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
         showToast(t('msg_item_added_catalog'));
 
         // Reset form but keep category to allow rapid entry
@@ -671,15 +675,19 @@
     function updateCatalogItem(id, field, newValue) {
         const item = appState.catalog.find(c => c.id === id);
         if (item) {
+            let parsed;
             if (field === 'length' || field === 'width') {
-                item[field] = parseToBaseUnit(newValue) || 0;
+                parsed = parseToBaseUnit(newValue) || 0;
             } else if (field === 'price') {
-                item[field] = parseFloat(newValue) || 0;
-                item.lastVerified = Date.now(); // 🪄 AUTO-TAGGING: Instantly reset freshness
+                parsed = parseFloat(newValue) || 0;
             } else {
-                item[field] = newValue;
+                parsed = newValue;
             }
+            if (parsed === item[field]) return;
+            item[field] = parsed;
+            if (field === 'price') item.lastVerified = Date.now();
             saveState();
+            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
             // If this row is active in edit mode: refresh it in place, skip full rebuild
             if (_activeEditRow['catalog'] === id) {
                 const prof = appState.profiles?.find(p => p.id === item.profileId);

@@ -46,8 +46,13 @@
                     valA = appState.groups?.find(g => g.id === a.groupId)?.name || '';
                     valB = appState.groups?.find(g => g.id === b.groupId)?.name || '';
                 } else if (key === 'profileId') {
-                    valA = appState.profiles?.find(p => p.id === a.profileId)?.name || '';
-                    valB = appState.profiles?.find(p => p.id === b.profileId)?.name || '';
+                    const profA = appState.profiles?.find(p => p.id === a.profileId);
+                    const profB = appState.profiles?.find(p => p.id === b.profileId);
+                    const catA = String(a.category || a.categoryId || profA?.type || '').toLowerCase();
+                    const catB = String(b.category || b.categoryId || profB?.type || '').toLowerCase();
+                    if (catA !== catB) return catA.localeCompare(catB) * dir;
+                    valA = profA?.name || '';
+                    valB = profB?.name || '';
                 } else if (key === 'materialId') {
                     valA = appState.materials?.find(m => m.id === a.materialId)?.name || '';
                     valB = appState.materials?.find(m => m.id === b.materialId)?.name || '';
@@ -419,6 +424,8 @@
         const builders = _editRowBuilders[tableId];
         const tr = document.querySelector(`tr[data-table="${tableId}"][data-row-id="${rowId}"]`);
         if (tr && builders) {
+            const focused = document.activeElement;
+            if (focused && tr.contains(focused)) focused.dispatchEvent(new Event('change', { bubbles: true }));
             tr.innerHTML = builders.read(rowId);
             tr.classList.remove('edit-row-active');
         }
