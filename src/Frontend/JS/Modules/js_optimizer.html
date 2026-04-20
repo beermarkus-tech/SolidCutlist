@@ -862,7 +862,7 @@
         treeContainer.innerHTML = '';
 
         if (!appState.projects || appState.projects.length === 0) {
-            treeContainer.innerHTML = '<div class="text-muted small">No projects available.</div>';
+            treeContainer.innerHTML = `<div class="text-muted small">${t('lbl_no_projects_avail')}</div>`;
             return;
         }
 
@@ -904,7 +904,7 @@
             <div class="d-flex align-items-start mb-1">
                 <input class="form-check-input me-2 grp-check grp-of-${proj.id} flex-shrink-0" type="checkbox" id="chk-nogroup-${proj.id}" onchange="toggleGroupTree('${proj.id}', this.checked)" style="margin-top:3px;">
                 <label class="form-check-label flex-grow-1 text-muted" for="chk-nogroup-${proj.id}" style="font-size: 0.85rem; cursor: pointer; min-width:0;">
-                    <span class="d-block text-truncate"><em>Ungrouped Parts</em></span>
+                    <span class="d-block text-truncate"><em>${t('lbl_ungrouped_parts')}</em></span>
                     <span style="font-size:0.75rem;">(${ungroupedCount} parts)</span>
                 </label>
                 <input type="number" class="form-control form-control-sm text-center grp-multi flex-shrink-0" id="multi-nogroup-${proj.id}" value="1" min="1" onchange="notifyConfigChanged()" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
@@ -951,7 +951,7 @@
         treeContainer.innerHTML = '';
 
         if (!job || !job.selections || job.selections.length === 0) {
-            treeContainer.innerHTML = '<div class="text-muted small">No items in this job.</div>';
+            treeContainer.innerHTML = `<div class="text-muted small">${t('lbl_no_items_in_job')}</div>`;
             return;
         }
 
@@ -961,7 +961,7 @@
         job.selections.forEach(sel => {
             if (sel.type === 'project') {
                 const projId = sel.id;
-                const proj = appState.projects.find(p => p.id === projId) || { id: projId, name: 'Saved Project' };
+                const proj = appState.projects.find(p => p.id === projId) || { id: projId, name: t('lbl_saved_project') };
                 const projMulti = sel.multiplier || 1;
 
                 const partsInProject = jobParts.filter(p => p.projectId === projId);
@@ -990,7 +990,7 @@
                             <div class="d-flex align-items-start mb-1">
                                 <input class="form-check-input me-2 flex-shrink-0" type="checkbox" checked tabindex="-1" onclick="return false;" style="margin-top:3px;">
                                 <label class="form-check-label flex-grow-1 text-muted" style="font-size: 0.85rem; min-width:0;">
-                                    <span class="d-block text-truncate"><em>Ungrouped Parts</em></span>
+                                    <span class="d-block text-truncate"><em>${t('lbl_ungrouped_parts')}</em></span>
                                     <span style="font-size:0.75rem;">(${ungroupedCount} parts)</span>
                                 </label>
                                 <input type="number" class="form-control form-control-sm text-center bg-white flex-shrink-0" value="1" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
@@ -1000,7 +1000,7 @@
                     } else {
                         const grpParts = partsInProject.filter(p => p.groupId === grpId);
                         if (grpParts.length > 0) {
-                            const grp = appState.groups.find(g => g.id === grpId) || { name: 'Saved Group' };
+                            const grp = appState.groups.find(g => g.id === grpId) || { name: t('lbl_saved_group') };
                             html += `
                             <div class="d-flex align-items-start mb-1">
                                 <input class="form-check-input me-2 flex-shrink-0" type="checkbox" checked tabindex="-1" onclick="return false;" style="margin-top:3px;">
@@ -1069,8 +1069,9 @@
         const activeActions = document.getElementById('job-config-actions-active');
         if (!activeActions || activeActions.classList.contains('d-none')) return;
         const btnAction1 = document.getElementById('btn-active-action1');
-        if (!btnAction1 || btnAction1.innerText === 'Recalculate') return;
-        btnAction1.innerText = 'Recalculate';
+        if (!btnAction1 || btnAction1.dataset.state === 'recalculate') return;
+        btnAction1.dataset.state = 'recalculate';
+        btnAction1.innerText = t('btn_recalculate');
         btnAction1.className = 'btn btn-info flex-grow-1 shadow-sm';
         btnAction1.onclick = runOptimization;
     }
@@ -1174,12 +1175,13 @@
         const btnSave = document.getElementById('btn-active-save');
         
         if (btnAction1) {
-            btnAction1.innerText = '↻ Restart';
+            btnAction1.innerText = t('btn_restart');
+            btnAction1.dataset.state = 'restart';
             btnAction1.className = 'btn btn-primary flex-grow-1';
             btnAction1.onclick = resetConfigurator;
         }
         if (btnSave) {
-            btnSave.innerText = 'Save Job';
+            btnSave.innerText = t('btn_save_job');
             btnSave.className = 'btn btn-success flex-grow-1 fw-bold';
             btnSave.onclick = openSaveJobModal;
         }
@@ -1228,13 +1230,13 @@
         const optState = appState.settings.optimizer;
         if (optState.selectedProjects.length === 0) {
             btn.disabled = true;
-            btn.innerText = "Select a Project";
+            btn.innerText = t('lbl_select_project');
         } else if (optState.selectedStores.length === 0 && !optState.useStock) {
             btn.disabled = true;
-            btn.innerText = "Select a Store or Stock";
+            btn.innerText = t('lbl_select_store_stock');
         } else {
             btn.disabled = false;
-            btn.innerText = "Calculate Cutlist";
+            btn.innerText = t('btn_calculate_cutlist');
         }
     }
 
@@ -1304,7 +1306,8 @@
         // Reset action button to Restart (handles the Recalculate→Restart transition too)
         const _btnA1 = document.getElementById('btn-active-action1');
         if (_btnA1) {
-            _btnA1.innerText = '↻ Restart';
+            _btnA1.innerText = t('btn_restart');
+            _btnA1.dataset.state = 'restart';
             _btnA1.className = 'btn btn-primary flex-grow-1 shadow-sm';
             _btnA1.onclick = resetConfigurator;
         }

@@ -191,7 +191,7 @@
         const parts = fingerprint.split('_');
         const profile = appState.profiles?.find(p => p.id === parts[1]);
         const material = appState.materials?.find(m => m.id === parts[2]);
-        document.getElementById('modal-stock-details-title').innerHTML = `📦 Manage: <span class="text-primary">${profile?.name || ''} — ${material?.name || ''}</span>`;
+        document.getElementById('modal-stock-details-title').innerHTML = `📦 ${t('ttl_manage')}: <span class="text-primary">${profile?.name || ''} — ${material?.name || ''}</span>`;
 
         // UI Setup - Dynamically hide Width and Grain columns for lumber
         const isSheet = parts[0] === 'sheet';

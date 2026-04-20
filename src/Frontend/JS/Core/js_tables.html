@@ -191,8 +191,7 @@
         document.getElementById('filter-column-key').value = columnKey;
         
         const titleEl = document.getElementById('filterModalTitle');
-        if (titleEl && typeof t === 'function') titleEl.innerText = `${t('hdr_filter')}: ${displayTitle}`;
-        else if (titleEl) titleEl.innerText = `Filter: ${displayTitle}`;
+        if (titleEl) titleEl.innerText = `${typeof t === 'function' ? t('hdr_filter') : 'Filter'}: ${displayTitle}`;
 
         const uniqueValues = new Map(); 
 

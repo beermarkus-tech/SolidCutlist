@@ -207,7 +207,7 @@
         const material = appState.materials?.find(m => m.id === parts[2]);
         const store = appState.stores?.find(s => s.id === parts[3]);
         
-        document.getElementById('modal-catalog-details-title').innerHTML = `🏷️ Manage Prices: <span class="text-primary">${profile?.name || ''} — ${material?.name || ''}</span> @ <span class="text-dark">${store?.name || ''}</span>`;
+        document.getElementById('modal-catalog-details-title').innerHTML = `🏷️ ${t('ttl_manage_prices')}: <span class="text-primary">${profile?.name || ''} — ${material?.name || ''}</span> @ <span class="text-dark">${store?.name || ''}</span>`;
 
         const isMetric = appState.settings.displayUnit === 'mm';
         const isSheet = parts[0] === 'sheet';

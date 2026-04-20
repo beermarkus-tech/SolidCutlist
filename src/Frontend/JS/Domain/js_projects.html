@@ -589,7 +589,7 @@
         let originalText = 'Archive';
         if (confirmBtn) {
             originalText = confirmBtn.innerText;
-            confirmBtn.innerHTML = `<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Working...`;
+            confirmBtn.innerHTML = `<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> ${t('lbl_working')}`;
         }
         freezeUI();
 
@@ -821,8 +821,8 @@
                             <b style="font-size: 1.2rem;">⋮</b>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                            <li><a class="dropdown-item" href="#" onclick="openLinkModal('${proj.id}', '${safeHTML(proj.link || '')}'); return false;">✏️ Edit Link</a></li>
-                            ${proj.link ? `<li><a class="dropdown-item" href="${safeHTML(proj.link)}" target="_blank">🔗 Open Link</a></li>` : ''}
+                            <li><a class="dropdown-item" href="#" onclick="openLinkModal('${proj.id}', '${safeHTML(proj.link || '')}'); return false;">✏️ ${t('title_edit_link')}</a></li>
+                            ${proj.link ? `<li><a class="dropdown-item" href="${safeHTML(proj.link)}" target="_blank">🔗 ${t('title_open_link')}</a></li>` : ''}
                             <li><a class="dropdown-item" href="#" onclick="duplicateProjectWarning('${proj.id}'); return false;">➕ Clone Project</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="changeProjectStatus('${proj.id}', 'Archive'); return false;">🗄️ Archive Project</a></li>

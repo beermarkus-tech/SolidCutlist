@@ -111,7 +111,7 @@
                         <small class="text-muted">Created: ${dateStr} &nbsp;•&nbsp; ${partsCount} Parts</small>
                     </div>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-danger" title="Delete Job" onclick="deleteJobSandbox('${job.id}')">🗑️</button>
+                        <button class="btn btn-sm btn-outline-danger" title="${t('title_delete_job')}" onclick="deleteJobSandbox('${job.id}')">🗑️</button>
                         <button class="btn btn-sm btn-primary fw-bold" onclick="executeLoadJob('${job.id}')">Load</button>
                     </div>
                 </div>
@@ -144,7 +144,7 @@
     function executeLoadJob(jobId) {
         const job = appState.jobs.find(j => j.id === jobId);
         if (!job) {
-            if (typeof showToast === 'function') showToast("Error: Job not found.", true);
+            if (typeof showToast === 'function') showToast(t('msg_error_job_not_found'), true);
             return;
         }
 
@@ -546,17 +546,18 @@
         if (!btnAction1 || !btnSave || !btnLoad) return;
 
         if (state === 'clean') {
-            btnAction1.innerText = '↻ Restart';
+            btnAction1.innerText = t('btn_restart');
+            btnAction1.dataset.state = 'restart';
             btnAction1.className = 'btn btn-primary flex-grow-1';
             btnAction1.onclick = resetConfigurator;
 
             // Explicitly repair the Save button back to defaults before hiding
-            btnSave.innerText = 'Save Job';
+            btnSave.innerText = t('btn_save_job');
             btnSave.className = 'btn btn-success flex-grow-1 fw-bold';
             btnSave.onclick = openSaveJobModal;
             btnSave.classList.add('d-none'); // Hide Save
 
-            btnLoad.innerText = 'Load Job';
+            btnLoad.innerText = t('btn_load_job');
             btnLoad.className = 'btn btn-outline-secondary flex-grow-1';
             btnLoad.onclick = openLoadJobModal;
             btnLoad.classList.remove('d-none'); // Show Load
@@ -564,13 +565,14 @@
             setMobileBarState(window.activeJobId ? 'clean' : 'load');
         }
         else if (state === 'dirty_input') {
-            btnAction1.innerText = 'Recalculate';
+            btnAction1.innerText = t('btn_recalculate');
+            btnAction1.dataset.state = 'recalculate';
             btnAction1.className = 'btn btn-info flex-grow-1';
             btnAction1.onclick = executeRecalculate;
 
             btnSave.classList.add('d-none'); // Hide Save
 
-            btnLoad.innerText = 'Load Job';
+            btnLoad.innerText = t('btn_load_job');
             btnLoad.className = 'btn btn-outline-secondary flex-grow-1';
             btnLoad.onclick = openLoadJobModal;
             btnLoad.classList.remove('d-none'); // Show Load
@@ -578,11 +580,12 @@
             setMobileBarState('recalculate');
         }
         else if (state === 'dirty_recalculated') {
-            btnAction1.innerText = 'Undo Changes';
+            btnAction1.innerText = t('btn_undo_changes');
+            btnAction1.dataset.state = 'undo';
             btnAction1.className = 'btn btn-danger flex-grow-1';
             btnAction1.onclick = executeUndoChanges;
 
-            btnSave.innerText = 'Save Changes';
+            btnSave.innerText = t('btn_save_changes');
             btnSave.className = 'btn btn-success flex-grow-1';
             btnSave.onclick = executeSaveChanges;
             btnSave.classList.remove('d-none'); // Show Save Changes
