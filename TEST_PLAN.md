@@ -17,7 +17,7 @@ Claude will read this file and the memory index at `~/.claude/projects/-home-use
 | 2  | Settings, Persistence & Onboarding | Both | ✅ Complete | 2 bugs fixed: catalog modal view unit not saving, opt-use-stock checkbox not restored on boot. |
 | 3  | CRUD & Data Integrity | Both | ✅ Complete | Cascade deletes, per-field warnings, click-away save, sort fixes, recalc button wiring, offcut sort, support contact added. Transport limits to re-verify in Phase 5/6. |
 | 4  | State & Job Isolation | Claude | ✅ Complete | 2 P1 bugs fixed: handleSettingsValueChange + handleMobileSettingsValueChange leaked into appState.settings when job was active. All master arrays (parts/catalog/stock/materials/profiles/projects) fully isolated. |
-| 5  | Optimizer — 1D Lumber | Both | ⬜ Not started | |
+| 5  | Optimizer — 1D Lumber | Both | ✅ Complete | All 12 scenarios passed. 2 fixes: sourcing error "size: 0mm" hidden, unit label added to failed-parts list. Stock pill added to cutlist cards. |
 | 6  | Optimizer — 2D Sheets | Both | ⬜ Not started | |
 | 7  | Import Wizard | You | ⬜ Not started | |
 | 8  | Results Views (Shopping List, Analytics, Canvas, Print) | You | ⬜ Not started | |

@@ -1677,10 +1677,11 @@
                 // Helper to build a collapsed part list from an array of part objects
                 function buildPartList(parts) {
                     const counts = {};
+                    const unitLabel = isMetric ? 'mm' : 'in';
                     parts.forEach(p => {
                         const sizeStr = item.category === 'sheet'
-                            ? `${formatForDisplay(p.width)} x ${formatForDisplay(p.length)}`
-                            : formatForDisplay(p.length);
+                            ? `${formatForDisplay(p.width)} x ${formatForDisplay(p.length)} ${unitLabel}`
+                            : `${formatForDisplay(p.length)} ${unitLabel}`;
                         const key = `${safeHTML(p.name)} (${sizeStr})`;
                         counts[key] = (counts[key] || 0) + 1;
                     });
@@ -1719,7 +1720,7 @@
                             <div class="flex-grow-1" style="min-width:0;">
                                 <div><span class="fw-bold ${item.isError ? 'text-danger' : ''}">${safeHTML(item.profName)}</span><span class="text-muted"> - ${safeHTML(item.matName)}</span></div>
                                 <div class="d-flex justify-content-between align-items-center mt-1">${weightMobile}<span class="fw-bold text-success" style="font-size:0.85rem;">${costDisplay}</span></div>
-                                <div class="d-flex align-items-center mt-1 text-muted" style="font-size:0.8rem;">Size: ${sizeDisplay}<span class="display-unit-label ms-1"></span>${pencilBtn}</div>
+                                ${(item.isError && item.length === 0) ? '' : `<div class="d-flex align-items-center mt-1 text-muted" style="font-size:0.8rem;">Size: ${sizeDisplay}<span class="display-unit-label ms-1"></span>${pencilBtn}</div>`}
                                 ${errorText}
                             </div>
                             ${checkboxHtml}
@@ -1732,7 +1733,7 @@
                                 <span class="fw-bold ${item.isError ? 'text-danger' : ''}">${safeHTML(item.profName)}</span>
                                 <span class="text-muted"> - ${safeHTML(item.matName)}</span>
                                 ${linkIcon}<br>
-                                <small class="text-muted ms-5 d-flex align-items-center mt-1">Size: ${sizeDisplay} <span class="display-unit-label ms-1"></span>${pencilBtn}</small>
+                                ${(item.isError && item.length === 0) ? '' : `<small class="text-muted ms-5 d-flex align-items-center mt-1">Size: ${sizeDisplay} <span class="display-unit-label ms-1"></span>${pencilBtn}</small>`}
                                 ${errorText}
                             </div>
                             <div class="text-end flex-shrink-0">

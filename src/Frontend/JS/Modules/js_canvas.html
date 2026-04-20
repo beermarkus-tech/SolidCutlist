@@ -53,8 +53,12 @@
                     length: rawLength, // Keep original for exact display
                     width: rawWidth,
                     grain: grain,
+                    isStock: false,
                     layouts: []
                 };
+            }
+            if (purchase.catalogItem.storeId === 'shop_stock') {
+                mergedDiagrams[boardKey].isStock = true;
             }
             mergedDiagrams[boardKey].layouts.push(...purchase.layout);
         });
@@ -109,7 +113,10 @@
             <details class="sku-group mb-4" open>
                 <summary class="mt-2 mb-2 border-bottom border-2 border-dark pb-1 d-flex justify-content-between align-items-end" style="cursor: pointer; outline: none; list-style-position: inside;">
                     <h5 class="mb-0 fw-bold d-inline-block">${safeHTML(prof?.name)} - ${safeHTML(mat?.name)}</h5>
-                    <span class="badge bg-secondary">${t('lbl_raw_size')}: ${sizeString} <span class="display-unit-label"></span></span>
+                    <span class="d-flex align-items-center gap-2">
+                        ${group.isStock ? `<span class="badge bg-success">${t('lbl_stock')}</span>` : ''}
+                        <span class="badge bg-secondary">${t('lbl_raw_size')}: ${sizeString} <span class="display-unit-label"></span></span>
+                    </span>
                 </summary>
                 <div class="pt-2"> 
             `;
