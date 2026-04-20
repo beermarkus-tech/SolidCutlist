@@ -599,18 +599,23 @@
         // Effective transport-direction length of a part, accounting for grain-forced rotation.
         // When grains are set and mismatched the part MUST be rotated, so its width becomes the
         // transport-direction dimension.  When one grain is 'none' the optimizer can choose the
-        // shorter dimension, so we use Math.min as the best-case classification.
+        // shorter dimension — but only if the other dimension fits within the usable sheet width.
         function effectiveTransportL(p) {
             if (p.grain !== 'none' && sheetGrain !== 'none') {
                 return p.grain === sheetGrain ? p.length : p.width;
             }
-            return Math.min(p.length, p.width);
+            const minDim = Math.min(p.length, p.width);
+            const maxDim = Math.max(p.length, p.width);
+            // Rotation is only feasible when the longer dimension fits within the sheet width.
+            return maxDim <= sheetWidth - trim ? minDim : maxDim;
         }
 
-        // Split parts: oversized (effective transport-L > segMax) sorted largest-first, then normal.
-        const ozParts = parts.filter(p => effectiveTransportL(p) > segMax)
+        // Split parts: oversized (effective transport-L >= segMax) sorted largest-first, then normal.
+        // >= segMax because a part exactly equal to the limit can't fit in the trimmed first strip
+        // and must use the oversized-strip path to get its full usable length.
+        const ozParts = parts.filter(p => effectiveTransportL(p) >= segMax)
                              .sort((a, b) => effectiveTransportL(b) - effectiveTransportL(a));
-        const nmParts = parts.filter(p => effectiveTransportL(p) <= segMax);
+        const nmParts = parts.filter(p => effectiveTransportL(p) < segMax);
 
         // === PHASE A: Pack all oversized parts ===
         // Each oversized part first tries to share an existing oz strip (width-wise), then tries

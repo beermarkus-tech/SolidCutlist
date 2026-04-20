@@ -475,9 +475,16 @@
                 
                 // 🪄 Only push 2D Sheets to the canvas drawer. 1D is already drawn via HTML!
                 if (isSheet) {
-                    canvasDrawQueue.push({ 
+                    // Enrich each cut with its part's grain for per-part grain line rendering
+                    board.cuts.forEach(cut => {
+                        if (cut.partGrain === undefined) {
+                            const pd = resolvePartData(cut.partId);
+                            cut.partGrain = (pd && pd.grain && pd.grain !== 'none') ? pd.grain : 'none';
+                        }
+                    });
+                    canvasDrawQueue.push({
                         id: canvasId, board: board, isSheet: isSheet,
-                        length: group.length, width: group.width, grain: group.grain, 
+                        length: group.length, width: group.width, grain: group.grain,
                         kerf: k2D, trim: t2D,
                         threshold: threshold, minW: minW, minL: minL
                     });
@@ -597,10 +604,24 @@
             ctx.setLineDash([]); 
         });
 
+        // Sheet-level grain direction for background lines and default part lines
         let isVisualHorizontal = false;
         if (sheetGrain !== 'none') {
             isVisualHorizontal = (sheetGrain === 'length');
             if (flipDisplay) isVisualHorizontal = !isVisualHorizontal;
+        }
+
+        // Draw grain lines on the full raw-material background when sheet grain is set
+        if (sheetGrain !== 'none') {
+            ctx.strokeStyle = 'rgba(139, 69, 19, 0.1)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            if (isVisualHorizontal) {
+                for (let y = 15; y < h; y += 15) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+            } else {
+                for (let x = 15; x < w; x += 15) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+            }
+            ctx.stroke();
         }
 
         board.cuts.forEach((cut, index) => {
@@ -609,22 +630,25 @@
             ctx.fillStyle = '#DEB887';
             ctx.fillRect(mapped.cx, mapped.cy, mapped.cw, mapped.ch);
 
-            if (sheetGrain !== 'none') {
+            // Draw grain lines on part only when the part itself has a grain direction set
+            if (cut.partGrain && cut.partGrain !== 'none') {
+                // Direction: grain='length' means grain runs along part's length dimension.
+                // If part was rotated during placement, length↔width are swapped on the canvas.
+                // Non-flipped display: cut.l → canvas width (horizontal), cut.w → canvas height.
+                let lineHoriz = (cut.partGrain === 'length') !== !!cut.rotated;
+                if (flipDisplay) lineHoriz = !lineHoriz;
                 ctx.strokeStyle = 'rgba(139, 69, 19, 0.25)';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
-
-                if (isVisualHorizontal) {
+                if (lineHoriz) {
                     const stepY = mapped.ch < 45 ? mapped.ch / 4 : 15;
                     for (let y = mapped.cy + stepY; y < mapped.cy + mapped.ch - 1; y += stepY) {
-                        ctx.moveTo(mapped.cx, y);
-                        ctx.lineTo(mapped.cx + mapped.cw, y);
+                        ctx.moveTo(mapped.cx, y); ctx.lineTo(mapped.cx + mapped.cw, y);
                     }
                 } else {
                     const stepX = mapped.cw < 45 ? mapped.cw / 4 : 15;
                     for (let x = mapped.cx + stepX; x < mapped.cx + mapped.cw - 1; x += stepX) {
-                        ctx.moveTo(x, mapped.cy);
-                        ctx.lineTo(x, mapped.cy + mapped.ch);
+                        ctx.moveTo(x, mapped.cy); ctx.lineTo(x, mapped.cy + mapped.ch);
                     }
                 }
                 ctx.stroke();

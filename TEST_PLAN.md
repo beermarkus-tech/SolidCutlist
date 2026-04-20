@@ -18,7 +18,7 @@ Claude will read this file and the memory index at `~/.claude/projects/-home-use
 | 3  | CRUD & Data Integrity | Both | ✅ Complete | Cascade deletes, per-field warnings, click-away save, sort fixes, recalc button wiring, offcut sort, support contact added. Transport limits to re-verify in Phase 5/6. |
 | 4  | State & Job Isolation | Claude | ✅ Complete | 2 P1 bugs fixed: handleSettingsValueChange + handleMobileSettingsValueChange leaked into appState.settings when job was active. All master arrays (parts/catalog/stock/materials/profiles/projects) fully isolated. |
 | 5  | Optimizer — 1D Lumber | Both | ✅ Complete | All 12 scenarios passed. 2 fixes: sourcing error "size: 0mm" hidden, unit label added to failed-parts list. Stock pill added to cutlist cards. |
-| 6  | Optimizer — 2D Sheets | Both | ⬜ Not started | |
+| 6  | Optimizer — 2D Sheets | Both | ✅ Complete | All 10 scenarios passed. Fixes: effectiveTransportL rotation feasibility check, >= segMax threshold for exact-limit parts, grain lines per-element (not global), Stock pill on cutlist cards, red size label suppressed on no-catalog errors. |
 | 7  | Import Wizard | You | ⬜ Not started | |
 | 8  | Results Views (Shopping List, Analytics, Canvas, Print) | You | ⬜ Not started | |
 | 9  | i18n & Localization | Both | ⬜ Not started | |
