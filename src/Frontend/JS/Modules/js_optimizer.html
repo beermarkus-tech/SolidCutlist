@@ -1188,10 +1188,11 @@
     }
 
     function clearOptimizerState() {
-        window.hasCalculated       = false;
-        window.activeJobId         = null;
-        window.currentSandboxParts = null;
-        window.currentOffcuts      = null;
+        window.hasCalculated              = false;
+        window.activeJobId                = null;
+        window.currentSandboxParts        = null;
+        window.currentOffcuts             = null;
+        window._transientPurchasedItems   = {};
         _shoppingItemRegistry.clear();
         localStorage.removeItem('activeJobId');
         localStorage.removeItem('activeJobBackup');
@@ -1314,6 +1315,7 @@
         let allowedStores = appState.stores.map(s => s.id);
 
         // FEED THE ENGINE
+        if (!isRecalculate) window._transientPurchasedItems = {}; // fresh run: forget transient checkboxes
         const results = runPackingEngine(partsToOptimize, allowedStores);
 
         // Render the UI
@@ -1497,6 +1499,7 @@
         let html = '';
         const _effectiveJobId = window.activeJobId || appState.ui?.activeJobId;
         const activeJob = _effectiveJobId ? appState.jobs?.find(j => j.id === _effectiveJobId) : null;
+        const _purchasedMap = activeJob ? (activeJob.purchasedItems || {}) : (window._transientPurchasedItems || {});
         const isMetric = (activeJob?.settings?.displayUnit || appState.settings.displayUnit) === 'mm';
         const weightUnit = isMetric ? 'kg' : 'lbs';
         const currency = activeJob?.settings?.currency || appState.settings.currency || '$';
@@ -1672,7 +1675,7 @@
                 const weightDisplay = item.isError ? '' : `<small class="text-muted">⚖️ ${wDisplay.toFixed(2)} ${weightUnit}</small>`;
 
                 const isStoreItem = storeName !== '🏪 My Shop Stock' && !item.isError;
-                const isPurchased = isStoreItem && !!(activeJob?.purchasedItems?.[item.catalogId]);
+                const isPurchased = isStoreItem && !!_purchasedMap[item.catalogId];
                 const pencilBtn = (isEditable && !isPurchased)
                     ? `<button class="btn btn-sm btn-link p-0 ms-2 text-muted" onclick="openEditMaterialModal('${item.catalogId}')" title="Edit raw material">✏️</button>`
                     : '';
@@ -2234,14 +2237,18 @@
             });
         }
 
-        // Persist to active job (fall back to appState.ui on reload when window.activeJobId isn't restored yet)
-        const _jobId = window.activeJobId || appState.ui?.activeJobId;
-        const activeJob = _jobId ? appState.jobs?.find(j => j.id === _jobId) : null;
-        if (activeJob) {
-            if (!activeJob.purchasedItems) activeJob.purchasedItems = {};
-            if (checked) activeJob.purchasedItems[catalogId] = true;
-            else delete activeJob.purchasedItems[catalogId];
+        const _savedJob = window.activeJobId ? appState.jobs?.find(j => j.id === window.activeJobId) : null;
+        if (_savedJob) {
+            // Saved job active: persist to job state
+            if (!_savedJob.purchasedItems) _savedJob.purchasedItems = {};
+            if (checked) _savedJob.purchasedItems[catalogId] = true;
+            else delete _savedJob.purchasedItems[catalogId];
             saveState();
+        } else {
+            // No saved job: keep in RAM only — forgotten on reload
+            if (!window._transientPurchasedItems) window._transientPurchasedItems = {};
+            if (checked) window._transientPurchasedItems[catalogId] = true;
+            else delete window._transientPurchasedItems[catalogId];
         }
     }
 

@@ -382,10 +382,14 @@
             catalog: JSON.parse(JSON.stringify([..._catalogMap.values()])),
             stock: JSON.parse(JSON.stringify(_stockItems)),
             settings: JSON.parse(JSON.stringify(appState.settings)),
-            selections: selections
+            selections: selections,
+            purchasedItems: Object.keys(window._transientPurchasedItems || {}).length
+                ? { ...window._transientPurchasedItems }
+                : undefined
         };
 
         // 4. PUSH TO STATE & CLEANUP
+        window._transientPurchasedItems = {}; // consumed — clear transient
         appState.jobs.push(newJob);
         saveState();
 
