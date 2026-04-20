@@ -1495,7 +1495,8 @@
         let totalCost = 0;
         let totalWeightKg = 0;
         let html = '';
-        const activeJob = window.activeJobId ? appState.jobs.find(j => j.id === window.activeJobId) : null;
+        const _effectiveJobId = window.activeJobId || appState.ui?.activeJobId;
+        const activeJob = _effectiveJobId ? appState.jobs?.find(j => j.id === _effectiveJobId) : null;
         const isMetric = (activeJob?.settings?.displayUnit || appState.settings.displayUnit) === 'mm';
         const weightUnit = isMetric ? 'kg' : 'lbs';
         const currency = activeJob?.settings?.currency || appState.settings.currency || '$';
@@ -2233,8 +2234,9 @@
             });
         }
 
-        // Persist to active job
-        const activeJob = window.activeJobId ? appState.jobs?.find(j => j.id === window.activeJobId) : null;
+        // Persist to active job (fall back to appState.ui on reload when window.activeJobId isn't restored yet)
+        const _jobId = window.activeJobId || appState.ui?.activeJobId;
+        const activeJob = _jobId ? appState.jobs?.find(j => j.id === _jobId) : null;
         if (activeJob) {
             if (!activeJob.purchasedItems) activeJob.purchasedItems = {};
             if (checked) activeJob.purchasedItems[catalogId] = true;
