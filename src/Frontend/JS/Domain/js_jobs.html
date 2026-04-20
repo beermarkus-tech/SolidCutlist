@@ -499,34 +499,23 @@
         const getVal = id => { const el = document.getElementById(id); return el ? parseToBaseUnit(el.value) : 0; };
         const getChk = id => { const el = document.getElementById(id); return el ? el.checked : false; };
         const getSel = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-        // Write to appState.settings
-        appState.settings.bladeKerf           = getVal('mob-kerf');
-        appState.settings.sheetBladeKerf      = getVal('mob-sheet-kerf');
-        appState.settings.cutoffThreshold     = getVal('mob-cutoff');
-        appState.settings.sheetScrapMinWidth  = getVal('mob-sheet-scrap-width');
-        appState.settings.sheetScrapMinLength = getVal('mob-sheet-scrap-length');
-        appState.settings.factoryEdgeTrim     = getVal('mob-factory-trim');
-        appState.settings.sheetFactoryTrim    = getVal('mob-sheet-trim');
-        if (!appState.settings.optimizer) appState.settings.optimizer = {};
-        if (!appState.settings.optimizer.transport) appState.settings.optimizer.transport = {};
-        appState.settings.optimizer.transport.enabled     = getChk('mob-transport-enable');
-        appState.settings.optimizer.transport.boardLmax   = getVal('mob-transport-board-lmax');
-        appState.settings.optimizer.transport.boardMargin = getVal('mob-transport-board-margin');
-        appState.settings.optimizer.transport.sheetLmax   = getVal('mob-transport-sheet-lmax');
-        appState.settings.optimizer.transport.sheetMargin = getVal('mob-transport-sheet-margin');
-        appState.settings.optimizer.sheetCutPreference    = getSel('mob-sheet-cut');
-        // Sync to job.settings so executeRecalculate picks up the changes
+        // Write directly to job.settings — never touch master appState.settings
         if (!activeJob.settings) activeJob.settings = {};
-        activeJob.settings.bladeKerf           = appState.settings.bladeKerf;
-        activeJob.settings.sheetBladeKerf      = appState.settings.sheetBladeKerf;
-        activeJob.settings.cutoffThreshold     = appState.settings.cutoffThreshold;
-        activeJob.settings.sheetScrapMinWidth  = appState.settings.sheetScrapMinWidth;
-        activeJob.settings.sheetScrapMinLength = appState.settings.sheetScrapMinLength;
-        activeJob.settings.factoryEdgeTrim     = appState.settings.factoryEdgeTrim;
-        activeJob.settings.sheetFactoryTrim    = appState.settings.sheetFactoryTrim;
+        activeJob.settings.bladeKerf           = getVal('mob-kerf');
+        activeJob.settings.sheetBladeKerf      = getVal('mob-sheet-kerf');
+        activeJob.settings.cutoffThreshold     = getVal('mob-cutoff');
+        activeJob.settings.sheetScrapMinWidth  = getVal('mob-sheet-scrap-width');
+        activeJob.settings.sheetScrapMinLength = getVal('mob-sheet-scrap-length');
+        activeJob.settings.factoryEdgeTrim     = getVal('mob-factory-trim');
+        activeJob.settings.sheetFactoryTrim    = getVal('mob-sheet-trim');
         if (!activeJob.settings.optimizer) activeJob.settings.optimizer = {};
-        activeJob.settings.optimizer.transport = Object.assign({}, appState.settings.optimizer.transport);
-        activeJob.settings.optimizer.sheetCutPreference = appState.settings.optimizer.sheetCutPreference;
+        if (!activeJob.settings.optimizer.transport) activeJob.settings.optimizer.transport = {};
+        activeJob.settings.optimizer.transport.enabled     = getChk('mob-transport-enable');
+        activeJob.settings.optimizer.transport.boardLmax   = getVal('mob-transport-board-lmax');
+        activeJob.settings.optimizer.transport.boardMargin = getVal('mob-transport-board-margin');
+        activeJob.settings.optimizer.transport.sheetLmax   = getVal('mob-transport-sheet-lmax');
+        activeJob.settings.optimizer.transport.sheetMargin = getVal('mob-transport-sheet-margin');
+        activeJob.settings.optimizer.sheetCutPreference    = getSel('mob-sheet-cut');
         // Mark dirty — requires manual Recalculate
         if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
     }

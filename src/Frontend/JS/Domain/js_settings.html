@@ -62,42 +62,43 @@
         updateUnitLabels();
     }
     function handleSettingsValueChange() {
-        appState.settings.bladeKerf = parseToBaseUnit(document.getElementById('setting-kerf').value);
-        appState.settings.sheetBladeKerf = parseToBaseUnit(document.getElementById('setting-sheet-kerf').value); // 🪄 NEW
-        appState.settings.cutoffThreshold = parseToBaseUnit(document.getElementById('setting-cutoff').value);
-        appState.settings.sheetScrapMinWidth = parseToBaseUnit(document.getElementById('setting-sheet-scrap-width').value); // 🪄 NEW
-        appState.settings.sheetScrapMinLength = parseToBaseUnit(document.getElementById('setting-sheet-scrap-length').value); // 🪄 NEW
-        appState.settings.factoryEdgeTrim = parseToBaseUnit(document.getElementById('setting-factory-trim').value);
-        appState.settings.sheetFactoryTrim = parseToBaseUnit(document.getElementById('setting-sheet-trim').value); // 🪄 NEW
-
-        if (!appState.settings.optimizer) appState.settings.optimizer = {};
-        if (!appState.settings.optimizer.transport) appState.settings.optimizer.transport = {};
-        appState.settings.optimizer.transport.boardLmax = parseToBaseUnit(document.getElementById('setting-transport-board-lmax').value) || 0;
-        appState.settings.optimizer.transport.boardMargin = parseToBaseUnit(document.getElementById('setting-transport-board-margin').value) || 20;
-        appState.settings.optimizer.transport.sheetLmax = parseToBaseUnit(document.getElementById('setting-transport-sheet-lmax').value) || 0;
-        const _smRaw = document.getElementById('setting-transport-sheet-margin').value.trim();
-        appState.settings.optimizer.transport.sheetMargin = _smRaw === '' ? 10 : (parseToBaseUnit(_smRaw) || 0);
-
-        // When a saved job is active, sync the changed settings into job.settings so
-        // executeRecalculate uses the new values. Don't auto-save — user must click Save Changes.
         const _activeJob = window.activeJobId && appState.jobs
             ? appState.jobs.find(j => j.id === window.activeJobId)
             : null;
+
         if (_activeJob) {
+            // Job active: write ONLY to job.settings — never contaminate master appState.settings
             if (!_activeJob.settings) _activeJob.settings = {};
-            _activeJob.settings.bladeKerf          = appState.settings.bladeKerf;
-            _activeJob.settings.sheetBladeKerf      = appState.settings.sheetBladeKerf;
-            _activeJob.settings.cutoffThreshold     = appState.settings.cutoffThreshold;
-            _activeJob.settings.sheetScrapMinWidth  = appState.settings.sheetScrapMinWidth;
-            _activeJob.settings.sheetScrapMinLength = appState.settings.sheetScrapMinLength;
-            _activeJob.settings.factoryEdgeTrim     = appState.settings.factoryEdgeTrim;
-            _activeJob.settings.sheetFactoryTrim    = appState.settings.sheetFactoryTrim;
-            if (appState.settings.optimizer) {
-                if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
-                _activeJob.settings.optimizer.transport = Object.assign({}, appState.settings.optimizer.transport);
-            }
+            _activeJob.settings.bladeKerf          = parseToBaseUnit(document.getElementById('setting-kerf').value);
+            _activeJob.settings.sheetBladeKerf      = parseToBaseUnit(document.getElementById('setting-sheet-kerf').value);
+            _activeJob.settings.cutoffThreshold     = parseToBaseUnit(document.getElementById('setting-cutoff').value);
+            _activeJob.settings.sheetScrapMinWidth  = parseToBaseUnit(document.getElementById('setting-sheet-scrap-width').value);
+            _activeJob.settings.sheetScrapMinLength = parseToBaseUnit(document.getElementById('setting-sheet-scrap-length').value);
+            _activeJob.settings.factoryEdgeTrim     = parseToBaseUnit(document.getElementById('setting-factory-trim').value);
+            _activeJob.settings.sheetFactoryTrim    = parseToBaseUnit(document.getElementById('setting-sheet-trim').value);
+            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
+            if (!_activeJob.settings.optimizer.transport) _activeJob.settings.optimizer.transport = {};
+            _activeJob.settings.optimizer.transport.boardLmax   = parseToBaseUnit(document.getElementById('setting-transport-board-lmax').value) || 0;
+            _activeJob.settings.optimizer.transport.boardMargin = parseToBaseUnit(document.getElementById('setting-transport-board-margin').value) || 20;
+            _activeJob.settings.optimizer.transport.sheetLmax   = parseToBaseUnit(document.getElementById('setting-transport-sheet-lmax').value) || 0;
+            const _smRaw = document.getElementById('setting-transport-sheet-margin').value.trim();
+            _activeJob.settings.optimizer.transport.sheetMargin = _smRaw === '' ? 10 : (parseToBaseUnit(_smRaw) || 0);
             if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
         } else {
+            appState.settings.bladeKerf          = parseToBaseUnit(document.getElementById('setting-kerf').value);
+            appState.settings.sheetBladeKerf      = parseToBaseUnit(document.getElementById('setting-sheet-kerf').value);
+            appState.settings.cutoffThreshold     = parseToBaseUnit(document.getElementById('setting-cutoff').value);
+            appState.settings.sheetScrapMinWidth  = parseToBaseUnit(document.getElementById('setting-sheet-scrap-width').value);
+            appState.settings.sheetScrapMinLength = parseToBaseUnit(document.getElementById('setting-sheet-scrap-length').value);
+            appState.settings.factoryEdgeTrim     = parseToBaseUnit(document.getElementById('setting-factory-trim').value);
+            appState.settings.sheetFactoryTrim    = parseToBaseUnit(document.getElementById('setting-sheet-trim').value);
+            if (!appState.settings.optimizer) appState.settings.optimizer = {};
+            if (!appState.settings.optimizer.transport) appState.settings.optimizer.transport = {};
+            appState.settings.optimizer.transport.boardLmax   = parseToBaseUnit(document.getElementById('setting-transport-board-lmax').value) || 0;
+            appState.settings.optimizer.transport.boardMargin = parseToBaseUnit(document.getElementById('setting-transport-board-margin').value) || 20;
+            appState.settings.optimizer.transport.sheetLmax   = parseToBaseUnit(document.getElementById('setting-transport-sheet-lmax').value) || 0;
+            const _smRaw = document.getElementById('setting-transport-sheet-margin').value.trim();
+            appState.settings.optimizer.transport.sheetMargin = _smRaw === '' ? 10 : (parseToBaseUnit(_smRaw) || 0);
             saveState();
             renderSettings();
             showToast(t('msg_settings_saved'));

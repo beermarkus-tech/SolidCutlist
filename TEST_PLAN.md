@@ -16,7 +16,7 @@ Claude will read this file and the memory index at `~/.claude/projects/-home-use
 | 1  | Static Code Analysis | Claude | ✅ Complete | 3 real fixes (P1-1, P1-2, P1-8). P0-1 intentional design. 5 agent false positives. |
 | 2  | Settings, Persistence & Onboarding | Both | ✅ Complete | 2 bugs fixed: catalog modal view unit not saving, opt-use-stock checkbox not restored on boot. |
 | 3  | CRUD & Data Integrity | Both | ✅ Complete | Cascade deletes, per-field warnings, click-away save, sort fixes, recalc button wiring, offcut sort, support contact added. Transport limits to re-verify in Phase 5/6. |
-| 4  | State & Job Isolation | Claude | ⬜ Not started | |
+| 4  | State & Job Isolation | Claude | ✅ Complete | 2 P1 bugs fixed: handleSettingsValueChange + handleMobileSettingsValueChange leaked into appState.settings when job was active. All master arrays (parts/catalog/stock/materials/profiles/projects) fully isolated. |
 | 5  | Optimizer — 1D Lumber | Both | ⬜ Not started | |
 | 6  | Optimizer — 2D Sheets | Both | ⬜ Not started | |
 | 7  | Import Wizard | You | ⬜ Not started | |
