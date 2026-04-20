@@ -50,7 +50,7 @@
                     const profB = appState.profiles?.find(p => p.id === b.profileId);
                     const catA = String(a.category || a.categoryId || profA?.type || '').toLowerCase();
                     const catB = String(b.category || b.categoryId || profB?.type || '').toLowerCase();
-                    if (catA !== catB) return catA.localeCompare(catB) * dir;
+                    if (catA !== catB) return catA.localeCompare(catB); // category grouping fixed ascending regardless of dir
                     valA = profA?.name || '';
                     valB = profB?.name || '';
                 } else if (key === 'materialId') {
@@ -72,7 +72,7 @@
                 } else if (key === 'name' && arrayName === 'profiles') {
                     let catA = String(a.category || a.categoryId || (a.width > 0 ? 'lumber' : 'sheet')).toLowerCase();
                     let catB = String(b.category || b.categoryId || (b.width > 0 ? 'lumber' : 'sheet')).toLowerCase();
-                    if (catA !== catB) return catA.localeCompare(catB) * dir;
+                    if (catA !== catB) return catA.localeCompare(catB); // fixed ascending grouping
                     let nameA = String(a.name || '').toLowerCase();
                     let nameB = String(b.name || '').toLowerCase();
                     return nameA.localeCompare(nameB) * dir;
