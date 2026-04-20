@@ -380,7 +380,7 @@
         // Construct the data object
         const cfg = appState.settings.currentLabelConfig; // Pull directly from AppState
         const newTemplate = {
-            id: 'LBL-' + Date.now(),
+            id: 'LBL-' + Date.now() + Math.floor(Math.random() * 1000),
             name: nameStr,
             type: type,
             rollW: cfg.rollW || 0, rollH: cfg.rollH || 0,

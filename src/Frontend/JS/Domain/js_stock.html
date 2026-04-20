@@ -318,7 +318,7 @@
         const parts = currentStockModalFingerprint.split('_');
         
         appState.stock.unshift({
-            id: 'STK-' + Date.now(),
+            id: 'STK-' + Date.now() + Math.floor(Math.random() * 1000),
             categoryId: parts[0],
             profileId: parts[1],
             materialId: parts[2],
@@ -516,7 +516,7 @@
         if (!appState.stock) appState.stock = [];
 
         appState.stock.unshift({
-            id: 'STK-' + Date.now(),
+            id: 'STK-' + Date.now() + Math.floor(Math.random() * 1000),
             categoryId: category,
             profileId: document.getElementById('stock-profile').value,
             materialId: document.getElementById('stock-material').value,

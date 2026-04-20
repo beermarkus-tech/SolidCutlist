@@ -108,6 +108,7 @@
                                 <span class="group-icon">🗜️</span> <span onclick="handleSort('stock', 'dimensions', 'number')" class="cursor-pointer">
                                     <span data-i18n="col_size">Size (<span class="display-unit-label">mm</span>)</span> ⇅
                                 </span>
+                                <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tip_size_wl'))">ⓘ</button>
                             </th>
                             <th class="col-material text-center text-nowrap">
                                 <span onclick="handleSort('stock', 'materialId', 'string')" class="cursor-pointer">
@@ -233,6 +234,7 @@
                                 <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'dimensions', 'number')" class="cursor-pointer">
                                     <span data-i18n="col_size">Size (<span class="display-unit-label">mm</span>)</span> ⇅
                                 </span>
+                                <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tip_size_wl'))">ⓘ</button>
                             </th>
                             <th class="col-material text-center text-nowrap">
                                 <span onclick="handleSort('catalog', 'materialId', 'string')" class="cursor-pointer">
@@ -349,6 +351,7 @@
                                         <span onclick="handleSort('profiles', 'dimensions', 'number')" class="cursor-pointer">
                                             <span data-i18n="col_size">Size (<span class="display-unit-label">mm</span>)</span> ⇅
                                         </span>
+                                        <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tip_size_profiles'))">ⓘ</button>
                                     </th>
                                     <th class="col-actions text-end">
                                         <span id="flt-clear-profiles" onclick="clearAllFiltersForTable('profiles')" class="text-secondary opacity-25 px-2 cursor-pointer" title="Clear all filters">▼⨯</span>

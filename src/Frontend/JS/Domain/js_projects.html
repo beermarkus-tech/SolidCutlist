@@ -264,7 +264,7 @@
         
         const nameInput = document.getElementById('proj-name');
         const dateInput = document.getElementById('proj-date');
-        const newId = 'PROJ-' + Date.now(); // Generates unique ID
+        const newId = 'PROJ-' + Date.now() + Math.floor(Math.random() * 1000);
         
         const newProject = {
             id: newId,
@@ -444,7 +444,7 @@
         if (!appState.groups) appState.groups = [];
         
         appState.groups.unshift({
-            id: 'GRP-' + Date.now(),
+            id: 'GRP-' + Date.now() + Math.floor(Math.random() * 1000),
             projectId: activeProjectId,
             name: nameInput.value
         });

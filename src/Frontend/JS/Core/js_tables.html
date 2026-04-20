@@ -23,6 +23,23 @@
 
         if (!targetArray) return;
 
+        // Compressed stock view: sort by group totalQty instead of individual qty
+        if (arrayName === 'stock' && key === 'qty' && appState.settings?.compactStockView) {
+            const groupQty = {};
+            appState.stock.forEach(item => {
+                const fp = [item.categoryId, item.profileId, item.materialId].join('_');
+                groupQty[fp] = (groupQty[fp] || 0) + (item.qty || 1);
+            });
+            appState.stock.sort((a, b) => {
+                const fpA = [a.categoryId, a.profileId, a.materialId].join('_');
+                const fpB = [b.categoryId, b.profileId, b.materialId].join('_');
+                return ((groupQty[fpA] || 0) - (groupQty[fpB] || 0)) * dir;
+            });
+            if (typeof saveState === 'function') saveState();
+            if (typeof renderStockTable === 'function') renderStockTable();
+            return;
+        }
+
         targetArray.sort((a, b) => {
             let valA = a[key];
             let valB = b[key];
@@ -90,7 +107,7 @@
                     } else {
                         let catA = String(a.category || a.categoryId || '').toLowerCase();
                         let catB = String(b.category || b.categoryId || '').toLowerCase();
-                        if (catA !== catB) return catA.localeCompare(catB) * dir;
+                        if (catA !== catB) return catA.localeCompare(catB); // category always ascending
 
                         let lenA = a.length || 0;
                         let lenB = b.length || 0;
@@ -119,7 +136,7 @@
                 } else if (key === 'extracted_dimensions') {
                     let catA = String(a.category || '').toLowerCase();
                     let catB = String(b.category || '').toLowerCase();
-                    if (catA !== catB) return catA.localeCompare(catB) * dir;
+                    if (catA !== catB) return catA.localeCompare(catB); // category always ascending
                     let rawA = String(a.extracted_dimensions || '').toLowerCase().trim();
                     let rawB = String(b.extracted_dimensions || '').toLowerCase().trim();
                     return rawA.localeCompare(rawB, undefined, { numeric: true }) * dir;

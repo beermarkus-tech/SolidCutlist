@@ -170,7 +170,7 @@
 
         // 1. PROJECT CREATION ENGINE
         if (newProjName !== '') {
-            finalProjectId = 'PROJ-' + Date.now();
+            finalProjectId = 'PROJ-' + Date.now() + Math.floor(Math.random() * 1000);
             
             if (!appState.projects) appState.projects = [];
             appState.projects.unshift({ id: finalProjectId, name: newProjName, status: 'Design' });
@@ -683,7 +683,7 @@
             
             // 🪄 THE QUICK-CREATE INTERCEPTOR
             if (field === 'groupId' && value === 'CREATE_GROUP') {
-                const newGroupId = 'GRP-' + Date.now();
+                const newGroupId = 'GRP-' + Date.now() + Math.floor(Math.random() * 1000);
                 if (!appState.groups) appState.groups = [];
                 
                 // Inject the new group into the global database

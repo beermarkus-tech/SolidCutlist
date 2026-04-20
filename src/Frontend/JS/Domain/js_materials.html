@@ -173,7 +173,7 @@
         const densityInput = document.getElementById('mat-density').value;
         
         const newMaterial = {
-            id: 'M-' + Date.now(),
+            id: 'M-' + Date.now() + Math.floor(Math.random() * 1000),
             name: name,
             category: category, // 🪄 Now saving the category
             density: parseDensityToBase(densityInput) 
@@ -300,10 +300,10 @@
                 // Lumber shows Thickness x Width
                 dimHtml = `
                     <div class="d-flex align-items-baseline justify-content-center gap-1">
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0 py-0" style="width: 45px;"
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-end px-0 py-0" style="width: 65px;"
                             value="${displayThick}" onchange="updateProfile('${prof.id}', 'thickness', this.value)" title="${t('title_tap_to_edit_thickness')}">
                         <span class="text-muted text-sm">x</span>
-                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-left px-0 py-0" style="width: 45px;"
+                        <input type="text" class="form-control form-control-sm border-0 bg-transparent text-left px-0 py-0" style="width: 65px;"
                             value="${displayWidth}" onchange="updateProfile('${prof.id}', 'width', this.value)" title="${t('title_tap_to_edit_width')}">
                     </div>
                 `;
@@ -353,7 +353,7 @@
         const thicknessBase = parseToBaseUnit(thicknessInput);
         const widthBase = parseToBaseUnit(widthInput);
         
-        const newId = 'PR-' + Date.now();
+        const newId = 'PR-' + Date.now() + Math.floor(Math.random() * 1000);
         
         const newProfile = {
             id: newId,

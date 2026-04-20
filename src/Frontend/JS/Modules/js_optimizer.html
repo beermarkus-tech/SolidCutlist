@@ -1403,6 +1403,7 @@
                                 <span onclick="handleSort('sandbox_parts', 'dimensions', 'number')" style="cursor: pointer;">
                                     ${t('col_size')} (<span class="display-unit-label">mm</span>) ⇅
                                 </span>
+                                <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tip_size_wl'))">ⓘ</button>
                             </th>
                             <th class="col-material text-center text-nowrap px-2">
                                 <span onclick="handleSort('sandbox_parts', 'materialId', 'string')" style="cursor: pointer;">
@@ -2026,7 +2027,7 @@
                                 <th class="col-category text-center text-nowrap" onclick="sortOffcuts('category')" style="cursor: pointer;">${t('col_category')} ⇅</th>
                                 <th class="col-qty text-center" onclick="sortOffcuts('qty')" style="cursor: pointer;">${t('col_qty')} ⇅</th>
                                 <th class="col-profile text-center text-nowrap" onclick="sortOffcuts('profName')" style="cursor: pointer;">${t('col_profile')} ⇅</th>
-                                <th class="col-size text-center text-nowrap" onclick="sortOffcuts('length')" style="cursor: pointer;">${t('col_size')} ⇅</th>
+                                <th class="col-size text-center text-nowrap" onclick="sortOffcuts('length')" style="cursor: pointer;">${t('col_size')} (<span class="display-unit-label">mm</span>) ⇅ <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="event.stopPropagation(); showInfoTooltip(event, t('tip_size_wl'))">ⓘ</button></th>
                                 <th class="col-material text-center text-nowrap" onclick="sortOffcuts('matName')" style="cursor: pointer;">${t('col_material')} ⇅</th>
                                 <th class="col-grain text-center text-nowrap" onclick="sortOffcuts('grain')" style="cursor: pointer;">${t('col_grain')} ⇅</th>
                             </tr>
@@ -2091,7 +2092,7 @@
                             <td class="text-center align-middle">${categoryBadgeHtml}</td>
                             <td class="text-center align-middle"><small>${off.qty}</small></td>
                             <td class="text-center align-middle"><small>${safeHTML(off.profName)}</small></td>
-                            <td class="text-center align-middle fw-bold text-primary"><small>${sizeStr} <span class="display-unit-label"></span></small></td>
+                            <td class="text-center align-middle fw-bold text-primary"><small>${sizeStr}</small></td>
                             <td class="text-center align-middle"><small>${safeHTML(off.matName)}</small></td>
                             <td class="text-center align-middle"><small>${grainStr}</small></td>
                          </tr>`;

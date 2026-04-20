@@ -412,7 +412,7 @@
         const parts = currentCatalogModalFingerprint.split('_');
         
         appState.catalog.unshift({
-            id: 'CAT-' + Date.now(),
+            id: 'CAT-' + Date.now() + Math.floor(Math.random() * 1000),
             categoryId: parts[0],
             profileId: parts[1],
             materialId: parts[2],
@@ -642,7 +642,7 @@
         if (!appState.catalog) appState.catalog = [];
 
         appState.catalog.unshift({
-            id: 'CAT-' + Date.now(),
+            id: 'CAT-' + Date.now() + Math.floor(Math.random() * 1000),
             categoryId: category,
             profileId: document.getElementById('cat-profile').value,
             materialId: document.getElementById('cat-material').value,
@@ -760,7 +760,7 @@
         event.preventDefault();
         const nameInput = document.getElementById('modal-new-store-name');
         if (!appState.stores) appState.stores = [];
-        appState.stores.unshift({ id: 'STR-' + Date.now(), name: nameInput.value });
+        appState.stores.unshift({ id: 'STR-' + Date.now() + Math.floor(Math.random() * 1000), name: nameInput.value });
         saveState();
         renderStoreModalTable();
         nameInput.value = ''; 

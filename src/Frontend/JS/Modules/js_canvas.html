@@ -395,7 +395,7 @@
                                     <th class="d-none d-md-table-cell" style="width: ${isSheet ? '20%' : '23%'};">${t('header_project')}</th>
                                     <th class="d-none d-md-table-cell" style="width: ${isSheet ? '20%' : '23%'};">${t('header_group')}</th>
                                     ${isSheet ? `<th class="text-center d-none d-md-table-cell" style="width: 10%;">${t('col_grain')}</th>` : ''}
-                                    <th class="text-end pe-3" style="width: 17%;">${t('col_cut_size')}</th>
+                                    <th class="text-end pe-3" style="width: 17%;">${t('col_cut_size')} (<span class="display-unit-label">mm</span>)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -452,7 +452,7 @@
                                     <td class="text-muted d-none d-md-table-cell">${projCell}</td>
                                     <td class="text-muted d-none d-md-table-cell">${groupCell}</td>
                                     ${grainCell}
-                                    <td class="text-end pe-3 fw-bold">${cutSizeStr} <span class="display-unit-label"></span></td>
+                                    <td class="text-end pe-3 fw-bold">${cutSizeStr}</td>
                                 </tr>
                     `;
                 });

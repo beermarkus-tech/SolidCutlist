@@ -194,7 +194,7 @@
         // 4. Generate the new ID
         const idParts = original.id.split('-');
         const prefix = idParts.length > 1 ? idParts[0] + '-' : 'ID-';
-        clone.id = prefix + Date.now();
+        clone.id = prefix + Date.now() + Math.floor(Math.random() * 1000);
 
         if (clone.name !== undefined) {
             clone.name = clone.name + ` (${t('lbl_copy')})`;

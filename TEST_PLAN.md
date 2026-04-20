@@ -21,7 +21,7 @@ Claude will read this file and the memory index at `~/.claude/projects/-home-use
 | 6  | Optimizer — 2D Sheets | Both | ✅ Complete | All 10 scenarios passed. Fixes: effectiveTransportL rotation feasibility check, >= segMax threshold for exact-limit parts, grain lines per-element (not global), Stock pill on cutlist cards, red size label suppressed on no-catalog errors. |
 | 7  | Import Wizard | You | ✅ Complete | All scenarios passed. wrong_delimiter.csv shows "not a CSV file" error — acceptable behavior. |
 | 8  | Results Views (Shopping List, Analytics, Canvas, Print) | You | ✅ Complete | All views passing. Shopping list checkbox persistence fixed (transient vs saved-job). |
-| 9  | i18n & Localization | Both | ⬜ Not started | |
+| 9  | i18n & Localization | Both | ✅ Complete | All 6 languages passing. Minor PT/IT/FR text wraps on some labels — clean breaks, acceptable. |
 | 10 | Mobile UX | You | ⬜ Not started | |
 | 11 | Error Handling & Edge Cases | Both | ⬜ Not started | |
 | 12 | End-to-End Integration | Both | ⬜ Not started | |
