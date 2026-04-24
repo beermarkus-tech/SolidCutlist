@@ -8,8 +8,10 @@
         const k2D = appState.settings.sheetBladeKerf !== undefined ? appState.settings.sheetBladeKerf : 3.175;
         const t2D = appState.settings.sheetFactoryTrim !== undefined ? appState.settings.sheetFactoryTrim : 6.35;
         const threshold = appState.settings.cutoffThreshold !== undefined ? appState.settings.cutoffThreshold : 200.0;
-        const minW = appState.settings.sheetScrapMinWidth !== undefined ? appState.settings.sheetScrapMinWidth : 50.0;
-        const minL = appState.settings.sheetScrapMinLength !== undefined ? appState.settings.sheetScrapMinLength : 400.0;
+        const _rawScrapW = appState.settings.sheetScrapMinWidth  !== undefined ? appState.settings.sheetScrapMinWidth  : 50.0;
+        const _rawScrapL = appState.settings.sheetScrapMinLength !== undefined ? appState.settings.sheetScrapMinLength : 400.0;
+        const minW = Math.min(_rawScrapW, _rawScrapL);
+        const minL = Math.max(_rawScrapW, _rawScrapL);
         const _tr = appState.settings.optimizer?.transport || {};
         const boardTransportLmax = _tr.boardLmax  || 0;
         const boardTransportMargin = _tr.boardMargin !== undefined ? _tr.boardMargin : 20;
@@ -164,6 +166,7 @@
                 let diagramHtml = '';
                 if (isSheet) {
                     // Keep the canvas strictly for 2D Sheets
+                    // Default canvas (no transport zones or vertical-strip case)
                     diagramHtml = `<canvas id="${canvasId}" width="${canvasWidth}" height="${canvasHeight}" style="width: ${canvasWidth}px !important; max-width: 100% !important; height: auto !important; border-radius: 4px; border: 1px solid #ced4da; margin: 0 auto; display: block;"></canvas>`;
                     // Piece-length label strip for 2D transport sheets
                     if (board.transportZones && board.transportZones.length > 0) {
@@ -205,7 +208,12 @@
                                 _si += `<div style="flex:0 0 calc(${_lPct(_displayLen)}% - ${_lAdj(_displayLen)}px);min-width:0;background:#f8f9fa;${_sBorder}border-radius:${_r};display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:12px;font-weight:bold;color:${_sColor};white-space:nowrap;padding:0 2px;">${_sLabel}</div>`;
                                 if (!_last) _si += _sCutLine;
                             }
-                            labelStripHtml = `<div style="width:${canvasWidth}px;max-width:100%;display:flex;height:26px;margin-bottom:4px;box-sizing:border-box;">${_si}</div>`;
+                            // Override canvas for inside-wrapper use.
+                            // A border-box wrapper div gives us a clean 1px border without relying on
+                            // box-sizing:border-box on <canvas> (unreliable for height:auto in mobile Chrome).
+                            diagramHtml = `<div style="width:100%;box-sizing:border-box;border:1px solid #ced4da;border-radius:4px;overflow:hidden;"><canvas id="${canvasId}" width="${canvasWidth}" height="${canvasHeight}" style="width:100%;height:auto;display:block;"></canvas></div>`;
+                            // Label strip uses absolute positioning — left/right:1px aligns with canvas content inside the 1px border
+                            labelStripHtml = `<div style="position:absolute;top:4px;left:1px;right:1px;height:26px;display:flex;">${_si}</div>`;
                         } else {
                             // Vertical strip beside the canvas — height:auto + align-self:stretch so
                             // the strip matches the canvas height at any screen width.
@@ -310,7 +318,7 @@
                         innerCuts += remainDiv(board.remaining);
                     }
 
-                    diagramHtml = `<div style="width: ${canvasWidth}px !important; max-width: 100% !important; height: 40px !important; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; display: flex; margin: 0 auto; overflow: hidden; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact;">${innerCuts}</div>`;
+                    diagramHtml = `<div style="width:100%;height:40px;background:#e9ecef;border:1px solid #ced4da;border-radius:4px;display:flex;overflow:hidden;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${innerCuts}</div>`;
                     // Piece-length label strip for 1D transport boards
                     const _isSingleSegTransport = board.segments && board.segments.length === 1 && boardTransportLmax > 0 && boardTransportLmax < fullLen && !board.segments[0]?.oversized;
                     const _hasOversizedSeg = board.segments && board.segments.some(s => s.oversized);
@@ -330,14 +338,17 @@
                         if (_isSingleSegTransport) {
                             // Pencil mark = centre of margin; each label absorbs half the margin
                             const _seg0 = board.segments[0];
+                            const _trimLen  = _seg0.segAbsStart || 0;
                             const _partLen  = _seg0.partsEnd - _seg0.segAbsStart;
                             const _tailLen  = fullLen - _seg0.partsEnd - boardTransportMargin;
                             const _leftDim  = _partLen + boardTransportMargin / 2;
                             const _rightDim = _tailLen + boardTransportMargin / 2;
-                            // 1 cut line × 2px shared across labels
+                            // 1 cut line × 2px shared across labels + trim spacer
                             const _lPct  = v => (v / fullLen * 100).toFixed(3);
                             const _lAdj  = v => (v / fullLen * 2).toFixed(3);
-                            _si  = `<div style="${_lStyle(_lPct(_leftDim),  _lAdj(_leftDim),  '3px 0 0 3px', '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_leftDim)}</div>`;
+                            // Trim spacer: aligns cut line with canvas which has a grey trim block at start
+                            if (_trimLen > 0) _si += `<div style="flex:0 0 calc(${_lPct(_trimLen)}% - ${_lAdj(_trimLen)}px);min-width:0;flex-shrink:0;"></div>`;
+                            _si += `<div style="${_lStyle(_lPct(_leftDim),  _lAdj(_leftDim),  '3px 0 0 3px', '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_leftDim)}</div>`;
                             _si += _cutLine;
                             if (_tailLen > 0) {
                                 _si += `<div style="${_lStyle(_lPct(_rightDim), _lAdj(_rightDim), '0 3px 3px 0', '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_rightDim)}</div>`;
@@ -349,6 +360,9 @@
                             const _nCuts = (_nP - 1) + (_lastSeg.oversized ? 1 : 0);
                             const _lPct  = v => (v / fullLen * 100).toFixed(3);
                             const _lAdj  = v => (v / fullLen * _nCuts * 2).toFixed(3);
+                            // Trim spacer: aligns cut lines with canvas
+                            const _trimLen = board.segments[0].segAbsStart || 0;
+                            if (_trimLen > 0) _si += `<div style="flex:0 0 calc(${_lPct(_trimLen)}% - ${_lAdj(_trimLen)}px);min-width:0;flex-shrink:0;"></div>`;
 
                             for (let _i = 0; _i < _nP; _i++) {
                                 const _last        = _i === _nP - 1;
@@ -385,9 +399,9 @@
                                 }
                             }
                         }
-                        // padding: 0 1px offsets the 1px border on each side of the parts canvas,
-                        // keeping the cut lines visually centred over the red margin blocks.
-                        labelStripHtml = `<div style="width:${canvasWidth}px;max-width:100%;display:flex;height:26px;margin-bottom:4px;padding:0 1px;box-sizing:border-box;">${_si}</div>`;
+                        // Absolute positioning: strip inherits its width from the wrapper (= canvas width),
+                        // left/right:1px aligns with canvas content inside its 1px border-box border.
+                        labelStripHtml = `<div style="position:absolute;top:4px;left:1px;right:1px;height:26px;display:flex;">${_si}</div>`;
                     }
                 }
 
@@ -399,7 +413,7 @@
                     </div>
 
                     <div class="card-body p-3 text-center overflow-auto d-flex ${cardBodyFlex}">
-                        ${verticalStripHtml}${labelStripHtml}${diagramHtml}
+                        ${verticalStripHtml ? `${verticalStripHtml}${diagramHtml}` : `<div style="position:relative;${labelStripHtml ? 'padding-top:30px;' : ''}width:${canvasWidth}px;max-width:100%;margin:0 auto;">${labelStripHtml}${diagramHtml}</div>`}
                     </div>
 
                     <div id="cuts-table-${boardCounter}">
@@ -576,9 +590,15 @@
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const w = canvas.width;  
-        const h = canvas.height; 
-        
+        const w = canvas.width;
+        const h = canvas.height;
+
+        // Scale-aware font size: canvas is drawn at w px but displayed narrower on mobile.
+        // Use offsetWidth when visible, else estimate from viewport (canvas may be in a hidden tab).
+        const _cssW = canvas.offsetWidth > 0 ? canvas.offsetWidth : Math.min(w, window.innerWidth - 80);
+        const _scale = _cssW / w;
+        const _drawFont = Math.max(12, Math.min(40, Math.round(16 / _scale)));
+
         const flipDisplay = (sheetWidth > sheetLength);
         const displayLong = flipDisplay ? sheetWidth : sheetLength;
         const pxPerMm = w / displayLong;
@@ -677,7 +697,7 @@
 
             if (mapped.cw > 25 && mapped.ch > 25) {
                 ctx.fillStyle = '#000';
-                ctx.font = 'bold 16px Arial';
+                ctx.font = `bold ${_drawFont}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(index + 1, mapped.cx + (mapped.cw / 2), mapped.cy + (mapped.ch / 2));

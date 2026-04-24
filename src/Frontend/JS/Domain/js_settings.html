@@ -84,6 +84,7 @@
             const _smRaw = document.getElementById('setting-transport-sheet-margin').value.trim();
             _activeJob.settings.optimizer.transport.sheetMargin = Math.max(_smRaw === '' ? 10 : (parseToBaseUnit(_smRaw) || 5), 5);
             if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
+            if (typeof syncJobSettingsToMobileUI === 'function') syncJobSettingsToMobileUI();
         } else {
             appState.settings.bladeKerf          = parseToBaseUnit(document.getElementById('setting-kerf').value);
             appState.settings.sheetBladeKerf      = parseToBaseUnit(document.getElementById('setting-sheet-kerf').value);

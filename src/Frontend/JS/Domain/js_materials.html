@@ -97,6 +97,18 @@
             appState.settings.starterPackLoaded  = true;
             saveState();
             renderDictionaries();
+
+            // Apply thumbnails to RAM immediately so project cards show images right away
+            window.projectImages = d.thumbnails || {};
+
+            // Persist thumbnails to the Thumbnails sheet in the background
+            if (typeof google !== 'undefined' && google.script && google.script.run && Object.keys(window.projectImages).length > 0) {
+                google.script.run
+                    .withSuccessHandler(() => {})
+                    .withFailureHandler((e) => console.error('Thumbnail import failed:', e))
+                    .bulkImportThumbnails(JSON.stringify(window.projectImages));
+            }
+
             if (typeof renderProjectsTable === 'function') renderProjectsTable();
             navigateTo('view-projects');
             showToast(t('msg_starter_pack_loaded'));

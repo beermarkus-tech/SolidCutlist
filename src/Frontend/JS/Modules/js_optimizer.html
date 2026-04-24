@@ -112,7 +112,7 @@
                             let crossPacked = currentParts.length - resCross.unmapped.length;
                             if (ripPacked > crossPacked) packRes = resRip;
                             else if (crossPacked > ripPacked) packRes = resCross;
-                            else packRes = (resRip.totalWaste <= resCross.totalWaste) ? resRip : resCross;
+                            else packRes = (_sheetTrueWaste([resRip.board], stockPiece.length, stockPiece.width) <= _sheetTrueWaste([resCross.board], stockPiece.length, stockPiece.width)) ? resRip : resCross;
                         } else {
                             packRes = (pref2D === 'rip') ? resRip : resCross;
                         }
@@ -188,9 +188,12 @@
                                 resRip   = pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, 'rip');
                                 resCross = pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, 'cross');
                             }
-                            // Pick the orientation with fewer unmapped parts; tiebreak on waste
+                            // Pick the orientation with fewer unmapped parts; tiebreak on true-waste rate
+                            // (true waste = only the scraps too small to reuse, matching the analytics view)
                             if (resRip.unmapped.length <= resCross.unmapped.length) {
-                                packResult = (resRip.unmapped.length === resCross.unmapped.length && resCross.totalWaste < resRip.totalWaste) ? resCross : resRip;
+                                const _twRip   = _sheetTrueWaste(resRip.boards,   option.length, option.width);
+                                const _twCross = _sheetTrueWaste(resCross.boards, option.length, option.width);
+                                packResult = (resRip.unmapped.length === resCross.unmapped.length && _twCross < _twRip) ? resCross : resRip;
                             } else {
                                 packResult = resCross;
                             }
@@ -334,6 +337,26 @@
         if (rect1.w > 0 && rect1.l > 0) board.freeRects.push(rect1);
         if (rect2.w > 0 && rect2.l > 0) board.freeRects.push(rect2);
     }
+    // Returns the true-waste rate for a set of pack2D boards: only scraps too small to reuse.
+    // This matches the analytics tab metric (board − parts − usable offcuts) / total board area.
+    function _sheetTrueWaste(boards, brdL, brdW) {
+        if (!boards || boards.length === 0) return 1;
+        const _rawScrapW = appState.settings?.sheetScrapMinWidth  ?? 50;
+        const _rawScrapL = appState.settings?.sheetScrapMinLength ?? 400;
+        const minW = Math.min(_rawScrapW, _rawScrapL);
+        const minL = Math.max(_rawScrapW, _rawScrapL);
+        let tw = 0;
+        boards.forEach(b => {
+            // non-transport boards have top-level freeRects;
+            // transport boards spread them across strips
+            const rects = b.freeRects || (b.strips || []).flatMap(s => s.freeRects || []);
+            rects.forEach(r => {
+                if (Math.min(r.w, r.l) < minW || Math.max(r.w, r.l) < minL) tw += r.w * r.l;
+            });
+        });
+        return tw / (boards.length * brdL * brdW);
+    }
+
     // --- INFINITE SUPPLY ENGINES (Store Loop) ---
     function pack1D(parts, boardLength, kerf, trim) {
         let boards = [];
@@ -878,7 +901,7 @@
                 .filter(g => g.projectId === proj.id)
                 .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-            const projTotalCount = allParts.filter(p => p.projectId === proj.id).length;
+            const projTotalCount = allParts.filter(p => p.projectId === proj.id).reduce((s, p) => s + (parseInt(p.qty) || 1), 0);
 
             // Project Row
             html += `
@@ -898,7 +921,7 @@
             html += `<div class="collapse ms-3 mb-2 border-start border-2 ps-2" id="collapse-${proj.id}">`;
 
             // "Ungrouped Parts" pseudo-group
-            const ungroupedCount = allParts.filter(p => p.projectId === proj.id && (!p.groupId || p.groupId.trim() === '')).length;
+            const ungroupedCount = allParts.filter(p => p.projectId === proj.id && (!p.groupId || p.groupId.trim() === '')).reduce((s, p) => s + (parseInt(p.qty) || 1), 0);
 
             html += `
             <div class="d-flex align-items-start mb-1">
@@ -913,7 +936,7 @@
 
             // Render actual groups
             projGroups.forEach(grp => {
-                const grpCount = allParts.filter(p => p.groupId === grp.id).length;
+                const grpCount = allParts.filter(p => p.groupId === grp.id).reduce((s, p) => s + (parseInt(p.qty) || 1), 0);
 
                 html += `
                 <div class="d-flex align-items-start mb-1">
@@ -972,7 +995,7 @@
                     <input class="form-check-input me-2 flex-shrink-0" type="checkbox" checked tabindex="-1" onclick="return false;" style="margin-top:3px;">
                     <label class="form-check-label flex-grow-1 project-fold-icon collapsed" style="font-size:0.9rem;cursor:pointer;min-width:0;display:flex;flex-wrap:wrap;align-items:center;" data-bs-toggle="collapse" data-bs-target="#collapse-${proj.id}">
                         <span class="fw-bold text-truncate" style="flex:1;min-width:0;">${safeHTML(proj.name)}</span>
-                        <span class="fw-normal text-muted w-100" style="font-size:0.75rem;">(${partsInProject.length} parts)</span>
+                        <span class="fw-normal text-muted w-100" style="font-size:0.75rem;">(${partsInProject.reduce((s, p) => s + (parseInt(p.qty) || 1), 0)} parts)</span>
                     </label>
                     <input type="number" class="form-control form-control-sm text-center bg-white flex-shrink-0" value="${projMulti}" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
                 </div>
@@ -984,7 +1007,8 @@
 
                 activeGroupIds.forEach(grpId => {
                     if (grpId === 'nogroup') {
-                        const ungroupedCount = partsInProject.filter(p => !p.groupId || p.groupId.trim() === '').length;
+                        const ungroupedParts = partsInProject.filter(p => !p.groupId || p.groupId.trim() === '');
+                        const ungroupedCount = ungroupedParts.reduce((s, p) => s + (parseInt(p.qty) || 1), 0);
                         if (ungroupedCount > 0) {
                             html += `
                             <div class="d-flex align-items-start mb-1">
@@ -1006,7 +1030,7 @@
                                 <input class="form-check-input me-2 flex-shrink-0" type="checkbox" checked tabindex="-1" onclick="return false;" style="margin-top:3px;">
                                 <label class="form-check-label flex-grow-1" style="font-size: 0.85rem; min-width:0;">
                                     <span class="d-block text-truncate">${safeHTML(grp.name)}</span>
-                                    <span class="text-muted" style="font-size:0.75rem;">(${grpParts.length} parts)</span>
+                                    <span class="text-muted" style="font-size:0.75rem;">(${grpParts.reduce((s, p) => s + (parseInt(p.qty) || 1), 0)} parts)</span>
                                 </label>
                                 <input type="number" class="form-control form-control-sm text-center bg-white flex-shrink-0" value="1" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
                             </div>
@@ -1043,8 +1067,18 @@
     function toggleUseStock(isChecked) {
         if (!appState.settings.optimizer) appState.settings.optimizer = {};
         appState.settings.optimizer.useStock = isChecked;
-        saveState();
-        notifyConfigChanged();
+        const _activeJob = window.activeJobId && appState.jobs
+            ? appState.jobs.find(j => j.id === window.activeJobId)
+            : null;
+        if (_activeJob) {
+            if (!_activeJob.settings) _activeJob.settings = {};
+            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
+            _activeJob.settings.optimizer.useStock = isChecked;
+            if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
+        } else {
+            saveState();
+            notifyConfigChanged();
+        }
     }
     function updateSheetCutPreference(val) {
         if (!appState.settings.optimizer) appState.settings.optimizer = {};
@@ -1058,6 +1092,7 @@
             if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
             _activeJob.settings.optimizer.sheetCutPreference = val;
             if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
+            if (typeof syncJobSettingsToMobileUI === 'function') syncJobSettingsToMobileUI();
         } else {
             saveState();
             notifyConfigChanged();
@@ -1091,6 +1126,7 @@
             if (!_activeJob.settings.optimizer.transport) _activeJob.settings.optimizer.transport = {};
             _activeJob.settings.optimizer.transport.enabled = isChecked;
             if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
+            if (typeof syncJobSettingsToMobileUI === 'function') syncJobSettingsToMobileUI();
         } else {
             saveState();
             if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
@@ -1772,8 +1808,10 @@
     function renderAnalyticsTab(results) {
         const container = document.getElementById('pane-analytics');
         const threshold = appState.settings.cutoffThreshold !== undefined ? appState.settings.cutoffThreshold : 200.0; 
-        const minW = appState.settings.sheetScrapMinWidth !== undefined ? appState.settings.sheetScrapMinWidth : 50.0;   
-        const minL = appState.settings.sheetScrapMinLength !== undefined ? appState.settings.sheetScrapMinLength : 400.0;
+        const _rawScrapW = appState.settings.sheetScrapMinWidth  !== undefined ? appState.settings.sheetScrapMinWidth  : 50.0;
+        const _rawScrapL = appState.settings.sheetScrapMinLength !== undefined ? appState.settings.sheetScrapMinLength : 400.0;
+        const minW = Math.min(_rawScrapW, _rawScrapL);
+        const minL = Math.max(_rawScrapW, _rawScrapL);
         const isMetric = appState.settings.displayUnit === 'mm';
         
         let totalRawVolume = 0;

@@ -444,13 +444,16 @@ function getStarterPack(profileRegion) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const profileSheetName = (profileRegion === 'US') ? 'pck_profiles_US' : 'pck_profiles_EU';
 
-    const catalogSheetName = (profileRegion === 'US') ? 'pck_catalog_US' : 'pck_catalog_EU';
+    const catalogSheetName   = (profileRegion === 'US') ? 'pck_catalog_US'   : 'pck_catalog_EU';
+    const partsSheetName     = (profileRegion === 'US') ? 'pck_parts_US'     : 'pck_parts_EU';
+    const projectsSheetName  = (profileRegion === 'US') ? 'pck_projects_US'  : 'pck_projects_EU';
+    const groupsSheetName    = (profileRegion === 'US') ? 'pck_groups_US'    : 'pck_groups_EU';
     const sheets = {
       materials: ss.getSheetByName('pck_materials'),
       profiles:  ss.getSheetByName(profileSheetName),
-      projects:  ss.getSheetByName('pck_projects'),
-      groups:    ss.getSheetByName('pck_groups'),
-      parts:     ss.getSheetByName('pck_parts'),
+      projects:  ss.getSheetByName(projectsSheetName) || ss.getSheetByName('pck_projects'),
+      groups:    ss.getSheetByName(groupsSheetName)   || ss.getSheetByName('pck_groups'),
+      parts:     ss.getSheetByName(partsSheetName) || ss.getSheetByName('pck_parts'),
       catalog:   ss.getSheetByName(catalogSheetName) || ss.getSheetByName('pck_catalog'),
       stores:    ss.getSheetByName('pck_stores')
     };
@@ -460,7 +463,44 @@ function getStarterPack(profileRegion) {
       data[key] = sheet ? readArrayFromSheet(sheet) : [];
     }
 
+    // Read pck_thumbnails as a { projectId: base64 } dict (same structure as Thumbnails sheet)
+    const thumbSheetName = (profileRegion === 'US') ? 'pck_thumbnails_US' : 'pck_thumbnails_EU';
+    const thumbSheet = ss.getSheetByName(thumbSheetName) || ss.getSheetByName('pck_thumbnails');
+    data.thumbnails = {};
+    if (thumbSheet) {
+      const rows = thumbSheet.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (rows[i][0] && rows[i][1]) data.thumbnails[String(rows[i][0])] = rows[i][1];
+      }
+    }
+
     return JSON.stringify({ status: 'success', data });
+  } catch(e) {
+    return JSON.stringify({ status: 'error', message: e.toString() });
+  }
+}
+
+function bulkImportThumbnails(jsonPayload) {
+  try {
+    const thumbnails = JSON.parse(jsonPayload); // { projectId: base64 }
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('Thumbnails');
+    if (!sheet) {
+      sheet = ss.insertSheet('Thumbnails');
+      sheet.getRange('A1:B1').setValues([['Project ID', 'Base64 Image']]).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+    }
+
+    // Clear existing rows (keep header)
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1) sheet.deleteRows(2, lastRow - 1);
+
+    const entries = Object.entries(thumbnails);
+    if (entries.length > 0) {
+      sheet.getRange(2, 1, entries.length, 2).setValues(entries);
+    }
+
+    return JSON.stringify({ status: 'success' });
   } catch(e) {
     return JSON.stringify({ status: 'error', message: e.toString() });
   }

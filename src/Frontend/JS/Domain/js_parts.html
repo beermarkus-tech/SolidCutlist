@@ -437,6 +437,7 @@
             } else if (field === 'qty') {
                 part[field] = parseInt(newValue) || 1;
             } else if (field === 'projectId') {
+                if (part.projectId === newValue) return;
                 part.projectId = newValue;
                 part.groupId = '';
                 showToast(t('msg_project_changed'));

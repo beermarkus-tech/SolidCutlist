@@ -223,42 +223,43 @@
         let results;
         try {
             results = runPackingEngine(job.parts, allowedStores);
+
+            // 7. Track active job before rendering (renderers check window.activeJobId)
+            if (!appState.ui) appState.ui = {};
+            appState.ui.activeJobId = job.id;
+            window.activeJobId = job.id;
+            appState.latestResults = results;
+
+            // 8. Render while job settings are still active — renderDiagramsTab reads
+            //    appState.settings for transport margin/lmax/kerf; must see job.settings
+            //    not master settings, otherwise the strip is drawn with stale values.
+            document.getElementById('optimizer-empty-state').classList.add('d-none');
+            document.getElementById('optimizer-tab-content').classList.remove('d-none');
+
+            const shopCtrl = document.getElementById('shopping-controls');
+            const diagCtrl = document.getElementById('diagram-controls');
+            if (shopCtrl) shopCtrl.classList.remove('d-none');
+            if (diagCtrl) diagCtrl.classList.add('d-none');
+
+            const defaultTabBtn = document.getElementById('tab-shopping');
+            if (defaultTabBtn) {
+                const tabInstance = new bootstrap.Tab(defaultTabBtn);
+                tabInstance.show();
+            }
+
+            if (typeof renderShoppingListTab === 'function') renderShoppingListTab(results);
+            if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
+            if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
+            if (typeof renderSandboxPartlistTab === 'function') renderSandboxPartlistTab(job.parts);
         } finally {
-            // 6. Instantly restore master data to protect the database!
-            // try-finally guarantees restore even if the engine throws an exception.
+            // 6. Restore master data — always runs even if engine or render throws
             appState.catalog = masterCatalog;
             appState.settings = masterSettings;
             appState.stock = masterStock;
         }
 
-        // 7. Track the active job in AppState (Single Source of Truth) + RAM cache + Mobile backup
-        if (!appState.ui) appState.ui = {};
-        appState.ui.activeJobId = job.id;
-        window.activeJobId = job.id; // RAM cache for synchronous checks
         localStorage.setItem('activeJobBackup', JSON.stringify(job));
-
-        // 8. Render the UI exactly like a normal calculation
-        document.getElementById('optimizer-empty-state').classList.add('d-none');
-        document.getElementById('optimizer-tab-content').classList.remove('d-none');
-        appState.latestResults = results;
-
-        const shopCtrl = document.getElementById('shopping-controls');
-        const diagCtrl = document.getElementById('diagram-controls');
-        if (shopCtrl) shopCtrl.classList.remove('d-none');
-        if (diagCtrl) diagCtrl.classList.add('d-none');
-
-        const defaultTabBtn = document.getElementById('tab-shopping');
-        if (defaultTabBtn) {
-            const tabInstance = new bootstrap.Tab(defaultTabBtn);
-            tabInstance.show();
-        }
-
-        if (typeof renderShoppingListTab === 'function') renderShoppingListTab(results);
-        if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
-        if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
-        if (typeof renderSandboxPartlistTab === 'function') renderSandboxPartlistTab(job.parts); // 🪄 Render 4th Tab
-        
-        if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('clean'); // 🪄 FORCE CLEAN STATE
+        if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('clean');
     }
 
     // ==========================================
@@ -452,42 +453,70 @@
         setMobileBarState(dirty ? 'dirty' : (window.activeJobId ? 'clean' : 'load'));
     }
 
-    function openMobileSettings() {
+    // Sync activeJob.settings → mobile offcanvas inputs (safe to call any time)
+    function syncJobSettingsToMobileUI() {
         const activeJob = window.activeJobId && appState.jobs
             ? appState.jobs.find(j => j.id === window.activeJobId)
             : null;
         if (!activeJob || !activeJob.settings) return;
         const s = activeJob.settings;
         const tr = s.optimizer && s.optimizer.transport;
-        const setMobVal = (id, val, fallback) => {
-            const el = document.getElementById(id);
-            if (el) el.value = formatForDisplay(val !== undefined ? val : fallback);
-        };
-        // Transport toggle + panel
+        const setV = (id, val, fb) => { const el = document.getElementById(id); if (el) el.value = formatForDisplay(val !== undefined ? val : fb); };
         const trToggle = document.getElementById('mob-transport-enable');
         const trPanel  = document.getElementById('mob-transport-settings-panel');
         const trEnabled = tr && tr.enabled;
         if (trToggle) trToggle.checked = !!trEnabled;
         if (trPanel)  trPanel.style.display = trEnabled ? '' : 'none';
         if (tr) {
-            setMobVal('mob-transport-board-lmax',   tr.boardLmax,   0);
-            setMobVal('mob-transport-board-margin', tr.boardMargin, 20);
-            setMobVal('mob-transport-sheet-lmax',   tr.sheetLmax,   0);
-            setMobVal('mob-transport-sheet-margin', tr.sheetMargin, 10);
+            setV('mob-transport-board-lmax',   tr.boardLmax,   0);
+            setV('mob-transport-board-margin', tr.boardMargin, 20);
+            setV('mob-transport-sheet-lmax',   tr.sheetLmax,   0);
+            setV('mob-transport-sheet-margin', tr.sheetMargin, 10);
         }
-        // Sheet cut preference
         const sheetCutEl = document.getElementById('mob-sheet-cut');
         if (sheetCutEl) sheetCutEl.value = (s.optimizer && s.optimizer.sheetCutPreference) || 'auto';
-        // Kerf
-        setMobVal('mob-kerf',         s.bladeKerf,        3.175);
-        setMobVal('mob-sheet-kerf',   s.sheetBladeKerf,   3.175);
-        // Trim
-        setMobVal('mob-factory-trim', s.factoryEdgeTrim,  6.35);
-        setMobVal('mob-sheet-trim',   s.sheetFactoryTrim, 6.35);
-        // Scrap
-        setMobVal('mob-cutoff',              s.cutoffThreshold,    200.0);
-        setMobVal('mob-sheet-scrap-width',   s.sheetScrapMinWidth,  50.0);
-        setMobVal('mob-sheet-scrap-length',  s.sheetScrapMinLength, 400.0);
+        setV('mob-kerf',               s.bladeKerf,          3.175);
+        setV('mob-sheet-kerf',         s.sheetBladeKerf,     3.175);
+        setV('mob-factory-trim',       s.factoryEdgeTrim,    6.35);
+        setV('mob-sheet-trim',         s.sheetFactoryTrim,   6.35);
+        setV('mob-cutoff',             s.cutoffThreshold,    200.0);
+        setV('mob-sheet-scrap-width',  s.sheetScrapMinWidth,  50.0);
+        setV('mob-sheet-scrap-length', s.sheetScrapMinLength, 400.0);
+    }
+
+    // Sync activeJob.settings → desktop settings sidebar inputs (safe to call any time)
+    function syncJobSettingsToDesktopUI() {
+        const activeJob = window.activeJobId && appState.jobs
+            ? appState.jobs.find(j => j.id === window.activeJobId)
+            : null;
+        if (!activeJob || !activeJob.settings) return;
+        const s = activeJob.settings;
+        const tr = s.optimizer && s.optimizer.transport;
+        const setV = (id, val, fb) => { const el = document.getElementById(id); if (el) el.value = formatForDisplay(val !== undefined ? val : fb); };
+        setV('setting-kerf',                s.bladeKerf,          3.175);
+        setV('setting-sheet-kerf',          s.sheetBladeKerf,     3.175);
+        setV('setting-factory-trim',        s.factoryEdgeTrim,    6.35);
+        setV('setting-sheet-trim',          s.sheetFactoryTrim,   6.35);
+        setV('setting-cutoff',              s.cutoffThreshold,    200.0);
+        setV('setting-sheet-scrap-width',   s.sheetScrapMinWidth,  50.0);
+        setV('setting-sheet-scrap-length',  s.sheetScrapMinLength, 400.0);
+        const trToggle = document.getElementById('opt-transport-enable');
+        const trPanel  = document.getElementById('transport-settings-panel');
+        const trEnabled = tr && tr.enabled;
+        if (trToggle) trToggle.checked = !!trEnabled;
+        if (trPanel)  trPanel.style.display = trEnabled ? '' : 'none';
+        if (tr) {
+            setV('setting-transport-board-lmax',   tr.boardLmax,   0);
+            setV('setting-transport-board-margin', tr.boardMargin, 20);
+            setV('setting-transport-sheet-lmax',   tr.sheetLmax,   0);
+            setV('setting-transport-sheet-margin', tr.sheetMargin, 10);
+        }
+        const sheetCutEl = document.getElementById('opt-sheet-cut');
+        if (sheetCutEl) sheetCutEl.value = (s.optimizer && s.optimizer.sheetCutPreference) || 'auto';
+    }
+
+    function openMobileSettings() {
+        syncJobSettingsToMobileUI();
     }
 
     function handleMobileSettingsValueChange() {
@@ -516,10 +545,19 @@
         if (!activeJob.settings.optimizer.transport) activeJob.settings.optimizer.transport = {};
         activeJob.settings.optimizer.transport.enabled     = getChk('mob-transport-enable');
         activeJob.settings.optimizer.transport.boardLmax   = getVal('mob-transport-board-lmax');
-        activeJob.settings.optimizer.transport.boardMargin = Math.max(getVal('mob-transport-board-margin') || 20, 5);
+        const _bm = Math.max(getVal('mob-transport-board-margin') || 20, 5);
+        const _sm = Math.max(getVal('mob-transport-sheet-margin') || 10, 5);
+        activeJob.settings.optimizer.transport.boardMargin = _bm;
         activeJob.settings.optimizer.transport.sheetLmax   = getVal('mob-transport-sheet-lmax');
-        activeJob.settings.optimizer.transport.sheetMargin = Math.max(getVal('mob-transport-sheet-margin') || 10, 5);
+        activeJob.settings.optimizer.transport.sheetMargin = _sm;
+        // Reflect clamped values immediately without requiring modal reopen
+        const _bmEl = document.getElementById('mob-transport-board-margin');
+        const _smEl = document.getElementById('mob-transport-sheet-margin');
+        if (_bmEl) _bmEl.value = formatForDisplay(_bm);
+        if (_smEl) _smEl.value = formatForDisplay(_sm);
         activeJob.settings.optimizer.sheetCutPreference    = getSel('mob-sheet-cut');
+        // Sync changes back to desktop form so both views stay in sync
+        syncJobSettingsToDesktopUI();
         // Mark dirty — requires manual Recalculate
         if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
     }
@@ -635,20 +673,19 @@
         let results;
         try {
             results = runPackingEngine(job.parts, allowedStores);
+
+            // Render while job settings are active — same fix as executeLoadJob
+            appState.latestResults = results;
+            if (typeof renderShoppingListTab === 'function') renderShoppingListTab(results);
+            if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
+            if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
+            if (typeof renderSandboxPartlistTab === 'function') renderSandboxPartlistTab(job.parts);
         } finally {
-            // Instantly restore master data to protect the database!
-            // try-finally guarantees restore even if the engine throws an exception.
+            // Restore master data — always runs even if engine or render throws
             appState.catalog = masterCatalog;
             appState.settings = masterSettings;
             appState.stock = masterStock;
         }
-
-        // Render the UI
-        appState.latestResults = results;
-        if (typeof renderShoppingListTab === 'function') renderShoppingListTab(results);
-        if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
-        if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
-        if (typeof renderSandboxPartlistTab === 'function') renderSandboxPartlistTab(job.parts); // 🪄 Render 4th Tab
 
         // Shift UI state to allow saving
         setUnsavedChangesState('dirty_recalculated');
