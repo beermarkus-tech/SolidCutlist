@@ -317,6 +317,22 @@
         if (typeof updateUnitLabels === 'function') updateUnitLabels();
 
         renderLabelModal();
+
+        // Evaluate store labels availability
+        const hasResults = !!(appState.latestResults && appState.latestResults.length > 0);
+        const transportEnabled = !!(appState.settings?.optimizer?.transport?.enabled);
+        const storeChk = document.getElementById('chk-store-labels');
+        const storeWrap = document.getElementById('chk-store-labels-wrap');
+        if (storeChk && storeWrap) {
+            const storeDisabled = !hasResults || !transportEnabled;
+            storeChk.disabled = storeDisabled;
+            storeChk.checked = false;
+            const reason = !hasResults ? t('tip_store_labels_no_result') : t('tip_store_labels_no_transport');
+            storeWrap.setAttribute('title', storeDisabled ? reason : '');
+            storeWrap.style.opacity = storeDisabled ? '0.45' : '';
+            storeWrap.style.cursor = storeDisabled ? 'not-allowed' : '';
+        }
+
         labelModalInstance.show();
     }
     function refreshLabelTemplateDropdown() {
@@ -432,6 +448,13 @@
             return;
         }
 
+        const printPartLabels = !!(document.getElementById('chk-part-labels')?.checked);
+        const printStoreLabels = !!(document.getElementById('chk-store-labels')?.checked && !document.getElementById('chk-store-labels')?.disabled);
+        if (!printPartLabels && !printStoreLabels) {
+            showToast(t('msg_select_label_type'), true);
+            return;
+        }
+
         // 1. Gather Configuration directly from the Single Source of Truth
         const type = document.getElementById('label-printer-type').value;
         const cfg = appState.settings.currentLabelConfig;
@@ -448,56 +471,156 @@
         const rollW = cfg.rollW || 62;
         const rollH = cfg.rollH || 29;
 
-        // 2. Extract strictly the parts that were successfully mapped to a board
-        const labelsToPrint = [];
+        // Compute physical label height for proportional font scaling
+        const _pageHmm = paperSize === 'A4' ? 297 : 279.4;
+        const _lblHmm = type === 'sheet'
+            ? (_pageHmm - mt - mb - gy * Math.max(rows - 1, 0)) / Math.max(rows, 1)
+            : rollH;
+        const _hc = Math.min(Math.max(_lblHmm, 15), 80);
+        const _fsLg = (_hc * 0.162).toFixed(2) + 'mm';
+        const _fsMd = (_hc * 0.133).toFixed(2) + 'mm';
+        const _fsSm = (_hc * 0.103).toFixed(2) + 'mm';
+        const _fsXs = (_hc * 0.089).toFixed(2) + 'mm';
+
+        // Build groups in the same order as the cutlist canvas (lumber first, then sheets, longest first)
+        const _activeJobRef = appState.ui?.activeJobId ? appState.jobs?.find(j => j.id === appState.ui.activeJobId) : null;
+        function _resolvePart(partId) {
+            return appState.parts.find(p => p.id === partId) || _activeJobRef?.parts?.find(p => p.id === partId) || null;
+        }
+        const _mergedGroups = {};
         appState.latestResults.forEach(res => {
-            const materialName = appState.materials.find(m => m.id === res.sku.materialId)?.name || 'Unknown Material';
-            const profileName = appState.profiles.find(p => p.id === res.sku.profileId)?.name || '';
-            const matString = `${profileName} ${materialName}`.trim();
-
-            // Check both Stock and Purchase boards
+            if (res.error) return;
+            const mat = appState.materials.find(m => m.id === res.sku.materialId);
+            const prof = appState.profiles.find(p => p.id === res.sku.profileId);
+            const matString = [prof?.name, mat?.name].filter(Boolean).join(' ');
+            const isSheet = res.sku.category === 'sheet';
+            const fullLen = res.purchase?.catalogItem?.length || 0;
+            const fullW   = res.purchase?.catalogItem?.width  || 0;
+            const groupKey = `${res.sku.category}|${res.sku.profileId}|${res.sku.materialId}|${Math.round(fullLen)}|${Math.round(fullW)}`;
+            if (!_mergedGroups[groupKey]) {
+                _mergedGroups[groupKey] = { isSheet, fullLen, fullW, matString, boards: [] };
+            }
             const allBoards = [...(res.stock?.layout || []), ...(res.purchase?.layout || [])];
-            
-            allBoards.forEach((board, bIndex) => {
+            allBoards.forEach(b => _mergedGroups[groupKey].boards.push(b));
+        });
+        const _sortedGroups = Object.values(_mergedGroups).sort((a, b) => {
+            if (!a.isSheet && b.isSheet) return -1;
+            if (a.isSheet && !b.isSheet) return 1;
+            return b.fullLen - a.fullLen;
+        });
+
+        // Transport settings — same source as canvas renderer
+        const _tr = appState.settings.optimizer?.transport || {};
+        const _boardMargin = _tr.boardMargin !== undefined ? _tr.boardMargin : 20;
+        const _boardLmax   = _tr.boardLmax  || 0;
+        const _sheetMargin = _tr.sheetMargin !== undefined ? _tr.sheetMargin : 10;
+
+        // 2a. Part labels — one per cut, in cutlist display order
+        const labelsToPrint = [];
+        _sortedGroups.forEach(grp => {
+            grp.boards.forEach((board, bIndex) => {
+                const boardRef = grp.isSheet ? `Sheet #${bIndex + 1}` : `Board #${bIndex + 1}`;
                 board.cuts.forEach(cut => {
-                    let part = appState.parts.find(p => p.id === cut.partId);
-                    if (!part && appState.ui?.activeJobId) {
-                        const activeJob = appState.jobs?.find(j => j.id === appState.ui.activeJobId);
-                        part = activeJob?.parts?.find(p => p.id === cut.partId);
+                    const part = _resolvePart(cut.partId);
+                    if (!part) return;
+                    const project = appState.projects.find(p => p.id === part.projectId);
+                    let groupName = '';
+                    if (part.groupId && appState.groups) {
+                        const fg = appState.groups.find(g => g.id === part.groupId);
+                        if (fg) groupName = fg.name;
                     }
-                    if (part) {
-                        const project = appState.projects.find(p => p.id === part.projectId);
-                        
-                        // 🪄 FETCH THE ACTUAL GROUP NAME
-                        let groupName = '';
-                        if (part.groupId && appState.groups) {
-                            const foundGroup = appState.groups.find(g => g.id === part.groupId);
-                            if (foundGroup) groupName = foundGroup.name;
-                        }
-
-                        // 🪄 FIX: Route the dimension data based on 1D vs 2D structures
-                        const isSheet = res.sku.category === 'sheet';
-                        const dimString = isSheet
-                            ? `${cut.w} x ${cut.l}`
-                            : `${cut.length}`;
-
-                        const projName = project ? project.name : t('lbl_unknown_project');
-                        const projectGroup = groupName ? `${projName} | ${groupName}` : projName;
-                        const boardRef = isSheet ? `Sheet #${bIndex + 1}` : `Board #${bIndex + 1}`;
-
-                        labelsToPrint.push({
-                            partName: part.name,
-                            projectGroup: projectGroup,
-                            dimensions: `${dimString} mm`,
-                            material: matString,
-                            boardRef: boardRef
-                        });
-                    }
+                    const dimString = grp.isSheet ? `${cut.w} x ${cut.l}` : `${cut.length}`;
+                    const projName = project ? project.name : t('lbl_unknown_project');
+                    const projectGroup = groupName ? `${projName} | ${groupName}` : projName;
+                    labelsToPrint.push({ partName: part.name, projectGroup, dimensions: `${dimString} mm`, material: grp.matString, boardRef });
                 });
             });
         });
 
-        if (labelsToPrint.length === 0) {
+        // 2b. Store labels — one per transport segment, in cutlist display order
+        // Dimensions match exactly what is shown on the cutlist canvas strip (same formula as canvas renderer)
+        const storeLabels = [];
+        if (printStoreLabels) {
+            _sortedGroups.forEach(grp => {
+                grp.boards.forEach((board, bIndex) => {
+                    const fullLen = grp.fullLen;
+                    const boardRef = grp.isSheet ? `Sheet #${bIndex + 1}` : `Board #${bIndex + 1}`;
+
+                    if (!grp.isSheet) {
+                        // Lumber: segments define the store cuts
+                        const segs = board.segments;
+                        if (!segs || segs.length === 0) return;
+                        const _isSingle = segs.length === 1 && _boardLmax > 0 && _boardLmax < fullLen && !segs[0]?.oversized;
+                        if (_isSingle) {
+                            const s0 = segs[0];
+                            const rawSegLengthMm = (s0.partsEnd - s0.segAbsStart) + _boardMargin / 2;
+                            const partNames = (s0.cuts || []).map(c => c.name).join(', ') || '—';
+                            storeLabels.push({ boardRef: `${boardRef} / A`, rawSegLengthMm, partNames, material: grp.matString });
+                            // Trailing offcut after the store cut — empty but still needs a label
+                            const _tailLen = (fullLen - s0.partsEnd - _boardMargin) + _boardMargin / 2;
+                            if (_tailLen > 1) storeLabels.push({ boardRef: `${boardRef} / B`, rawSegLengthMm: _tailLen, partNames: '—', material: grp.matString });
+                        } else {
+                            const _nP = segs.length;
+                            segs.forEach((seg, si) => {
+                                const _last = si === _nP - 1;
+                                const _isOz = !!seg.oversized;
+                                const _hasCutR = !_last || _isOz;
+                                const _coreLen = _last && !_isOz ? fullLen - seg.segAbsStart : seg.partsEnd - seg.segAbsStart;
+                                const rawSegLengthMm = _coreLen + (si > 0 ? _boardMargin / 2 : 0) + (_hasCutR ? _boardMargin / 2 : 0);
+                                const segRef = `${boardRef} / ${String.fromCharCode(65 + si)}`;
+                                const partNames = (seg.cuts || []).map(c => c.name).join(', ') || '—';
+                                storeLabels.push({ boardRef: segRef, rawSegLengthMm, partNames, material: grp.matString });
+                            });
+                            // If the last segment was oversized, its right cut produces a trailing empty offcut
+                            const _lastSeg = segs[_nP - 1];
+                            if (_lastSeg?.oversized) {
+                                const _tailLen = (fullLen - _lastSeg.partsEnd - _boardMargin) + _boardMargin / 2;
+                                if (_tailLen > 1) storeLabels.push({ boardRef: `${boardRef} / ${String.fromCharCode(65 + _nP)}`, rawSegLengthMm: _tailLen, partNames: '—', material: grp.matString });
+                            }
+                        }
+                    } else {
+                        // Sheet: transport zones define the store cuts
+                        if (!board.transportZones || board.transportZones.length === 0) return;
+                        const _sa   = board.transportZones[0]?.axis || 'length';
+                        const _fal  = _sa === 'width' ? grp.fullW : grp.fullLen;
+                        const _perp = _sa === 'width' ? grp.fullLen : grp.fullW;
+
+                        // Build segment boundary ranges along the split axis
+                        const _segRanges = [];
+                        let _prevEnd = 0;
+                        board.transportZones.forEach(tz => {
+                            _segRanges.push({ start: _prevEnd, end: tz.start });
+                            _prevEnd = tz.start + tz.size;
+                        });
+                        _segRanges.push({ start: _prevEnd, end: _fal });
+
+                        // Assign each cut to the segment containing its center along the split axis
+                        const _segNames = _segRanges.map(() => []);
+                        (board.cuts || []).forEach(cut => {
+                            const _center = _sa === 'width' ? (cut.x + cut.w / 2) : (cut.y + cut.l / 2);
+                            const _si = _segRanges.findIndex(r => _center >= r.start && _center <= r.end);
+                            if (_si >= 0 && cut.name) _segNames[_si].push(cut.name);
+                        });
+
+                        const _nP = _segRanges.length;
+                        _segRanges.forEach((r, _i) => {
+                            const _last = _i === _nP - 1;
+                            const _pLen = r.end - r.start;
+                            const rawSegLengthMm = _pLen + (_i > 0 ? _sheetMargin / 2 : 0) + (!_last ? _sheetMargin / 2 : 0);
+                            const segRef = _nP > 1 ? `${boardRef} / ${String.fromCharCode(65 + _i)}` : boardRef;
+                            const partNames = _segNames[_i].join(', ') || '—';
+                            storeLabels.push({ boardRef: segRef, rawSegLengthMm, partNames, material: grp.matString, perpDimMm: _perp });
+                        });
+                    }
+                });
+            });
+        }
+
+        if (labelsToPrint.length === 0 && storeLabels.length === 0) {
+            showToast(t('msg_no_mapped_parts'), true);
+            return;
+        }
+        if (printPartLabels && labelsToPrint.length === 0) {
             showToast(t('msg_no_mapped_parts'), true);
             return;
         }
@@ -534,7 +657,7 @@
                     display: flex;
                     flex-direction: column;
                     justify-content: center;
-                    padding: 4px 8px;
+                    padding: 2mm 4mm;
                 }
             `;
         } else {
@@ -557,59 +680,84 @@
             `;
         }
 
-        // 4. Generate the HTML Elements
-        let labelsHtml = '';
-        
-        if (type === 'sheet') {
-            const stickersPerPage = cols * rows;
-            let currentStickerCount = 0;
-            let inPage = false;
+        pageCss += `\n:root { --fs-lg: ${_fsLg}; --fs-md: ${_fsMd}; --fs-sm: ${_fsSm}; --fs-xs: ${_fsXs}; }`;
 
-            // Apply "Skip Labels" padding
-            if (skipCount > 0) {
-                labelsHtml += `<div class="label-page">`;
-                inPage = true;
-                for (let i = 0; i < skipCount; i++) {
-                    labelsHtml += `<div class="label-sticker empty"></div>`;
-                    currentStickerCount++;
-                }
-            }
-
-            labelsToPrint.forEach(lbl => {
-                if (currentStickerCount % stickersPerPage === 0) {
-                    if (inPage) labelsHtml += `</div>`; // Close previous page
-                    labelsHtml += `<div class="label-page">`; // Open new page
-                    inPage = true;
-                }
-                
-                labelsHtml += generateStickerHTML(lbl);
-                currentStickerCount++;
-            });
-            
-            if (inPage) labelsHtml += `</div>`; // Close final page
-            
-        } else {
-            // Roll: Every sticker is its own page natively
-            labelsHtml += `<div class="label-page">`;
-            labelsToPrint.forEach(lbl => {
-                labelsHtml += generateStickerHTML(lbl);
-            });
-            labelsHtml += `</div>`;
-        }
-
+        // 4. Sticker renderers
         function generateStickerHTML(lbl) {
             return `
                 <div class="label-sticker">
-                    <div style="font-size: 11px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${safeHTML(lbl.partName)}</div>
-                    <div style="font-size: 9px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px;">${safeHTML(lbl.projectGroup)}</div>
-                    <div style="font-size: 12px; font-weight: 900; margin-bottom: 2px;">${safeHTML(lbl.dimensions)}</div>
-                    <div style="font-size: 9px; color: #333; display: flex; justify-content: space-between;">
+                    <div style="font-size: var(--fs-md); font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${safeHTML(lbl.partName)}</div>
+                    <div style="font-size: var(--fs-xs); color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px;">${safeHTML(lbl.projectGroup)}</div>
+                    <div style="font-size: var(--fs-lg); font-weight: 900; margin-bottom: 2px;">${safeHTML(lbl.dimensions)}</div>
+                    <div style="font-size: var(--fs-xs); color: #333; display: flex; justify-content: space-between;">
                         <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%;">${safeHTML(lbl.material)}</span>
                         <span style="font-weight: bold;">${safeHTML(lbl.boardRef)}</span>
                     </div>
                 </div>
             `;
         }
+
+        function generateStoreStickerHTML(lbl) {
+            var displayUnit = (appState.settings || {}).displayUnit || 'mm';
+            var isMetric = displayUnit === 'mm';
+            var sixteenthMm = 25.4 / 16;
+            function _fmtStoreMm(mm) {
+                var v = parseFloat(mm) || 0;
+                if (isMetric) return Math.round(v).toString();
+                var rounded = Math.round(v / sixteenthMm) * sixteenthMm;
+                return typeof formatForDisplay === 'function' ? formatForDisplay(rounded) : (rounded / 25.4).toFixed(2);
+            }
+            var unitLbl = isMetric ? 'mm' : 'in';
+            var rawMm = parseFloat(lbl.rawSegLengthMm) || 0;
+            var dimFormatted = lbl.perpDimMm
+                ? `${_fmtStoreMm(rawMm)} × ${_fmtStoreMm(lbl.perpDimMm)} ${unitLbl}`
+                : `${_fmtStoreMm(rawMm)} ${unitLbl}`;
+            return `
+                <div class="label-sticker">
+                    <div style="font-size: var(--fs-md); font-weight: 900; letter-spacing: 0.5px; margin-bottom: 1px;">${safeHTML(lbl.boardRef)}</div>
+                    <div style="font-size: var(--fs-xs); color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px;">${safeHTML(lbl.material)}</div>
+                    <div style="font-size: var(--fs-lg); font-weight: 900; margin-bottom: 2px;">${safeHTML(dimFormatted)}</div>
+                    <div style="font-size: var(--fs-sm); font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${safeHTML(lbl.partNames)}</div>
+                </div>
+            `;
+        }
+
+        // 5. Generate the HTML Elements (shared pager for both types)
+        function generatePagedHTML(labelList, stickerFn, applySkip) {
+            let html = '';
+            if (type === 'sheet') {
+                const stickersPerPage = cols * rows;
+                let count = 0;
+                let inPage = false;
+                if (applySkip && skipCount > 0) {
+                    html += `<div class="label-page">`;
+                    inPage = true;
+                    for (let i = 0; i < skipCount; i++) {
+                        html += `<div class="label-sticker empty"></div>`;
+                        count++;
+                    }
+                }
+                labelList.forEach(lbl => {
+                    if (count % stickersPerPage === 0) {
+                        if (inPage) html += `</div>`;
+                        html += `<div class="label-page">`;
+                        inPage = true;
+                    }
+                    html += stickerFn(lbl);
+                    count++;
+                });
+                if (inPage) html += `</div>`;
+            } else {
+                html += `<div class="label-page">`;
+                labelList.forEach(lbl => { html += stickerFn(lbl); });
+                html += `</div>`;
+            }
+            return html;
+        }
+
+        let labelsHtml = '';
+        if (printPartLabels) labelsHtml += generatePagedHTML(labelsToPrint, generateStickerHTML, true);
+        if (printStoreLabels && storeLabels.length > 0) labelsHtml += generatePagedHTML(storeLabels, generateStoreStickerHTML, !printPartLabels);
 
         // 5. Assemble final document
         const finalHtml = `
@@ -626,10 +774,6 @@
                     @media screen {
                         body { background: #525659; padding: 20px 0; display: flex; flex-direction: column; align-items: center; }
                         .label-page { background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 20px; }
-                        .label-sticker { outline: 1px dashed #ccc; }
-                    }
-                    @media print {
-                        .label-sticker { outline: none; }
                     }
                 </style>
             </head>

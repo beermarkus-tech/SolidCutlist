@@ -265,7 +265,9 @@
         const modal = bootstrap.Modal.getInstance(document.getElementById('resetConfirmModal'));
         if (modal) modal.hide();
 
-        // 2. Build a clean state with hardcoded defaults
+        // 2. Build a clean state with hardcoded defaults (preserve printer config)
+        const _savedLabelTemplates   = appState.settings?.labelTemplates    || [];
+        const _savedLabelConfig      = appState.settings?.currentLabelConfig || null;
         appState = {
             projects: [], groups: [], parts: [],
             stock: [], catalog: [], materials: [],
@@ -284,7 +286,9 @@
                 checklistDismissed:   false,
                 isProjectCardView:    false,
                 compactStockView:     false,
-                compactCatalogView:   false
+                compactCatalogView:   false,
+                labelTemplates:       _savedLabelTemplates,
+                ...(_savedLabelConfig && { currentLabelConfig: _savedLabelConfig })
             }
         };
 

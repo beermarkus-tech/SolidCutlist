@@ -77,6 +77,23 @@
                 || null;
         }
 
+        // Format store-cut label text: rounds to nearest whole mm, 2dp decimal inches, or 1/16" fractional.
+        // Applied only to label text — CSS percentage math always uses the raw mm value.
+        function formatStoreDisplay(mmValue) {
+            var displayUnit = (appState.settings || {}).displayUnit || 'mm';
+            if (displayUnit === 'mm') {
+                return Math.round(mmValue).toString();
+            }
+            var inches = mmValue / 25.4;
+            if (displayUnit === 'dec_in') {
+                return (Math.round(inches * 100) / 100).toFixed(2);
+            }
+            // frac_in: nearest 1/16" — reuse global formatForDisplay on rounded mm value
+            var sixteenthMm = 25.4 / 16;
+            var roundedMm = Math.round(mmValue / sixteenthMm) * sixteenthMm;
+            return typeof formatForDisplay === 'function' ? formatForDisplay(roundedMm) : (roundedMm / 25.4).toFixed(4);
+        }
+
         // 🪄 Compute isMultiProject from actual cuts (works for both normal runs and loaded jobs)
         const seenProjectIds = new Set();
         results.forEach(res => {
@@ -184,7 +201,7 @@
                                 const _r = _i === 0 ? '3px 0 0 3px' : (_last ? '0 3px 3px 0' : '0');
                                 const _sColor  = _isOz ? '#dc3545' : '#495057';
                                 const _sBorder = _isOz ? 'border:1px solid #dc3545;' : 'border:1px solid #adb5bd;';
-                                const _sLabel  = _isOz ? `⚠️ ${formatForDisplay(_displayLen)}` : formatForDisplay(_displayLen);
+                                const _sLabel  = _isOz ? `⚠️ ${formatStoreDisplay(_displayLen)}` : formatStoreDisplay(_displayLen);
                                 _si += `<div style="flex:0 0 calc(${_lPct(_displayLen)}% - ${_lAdj(_displayLen)}px);min-width:0;background:#f8f9fa;${_sBorder}border-radius:${_r};display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:12px;font-weight:bold;color:${_sColor};white-space:nowrap;padding:0 2px;">${_sLabel}</div>`;
                                 if (!_last) _si += _sCutLine;
                             }
@@ -204,7 +221,7 @@
                                 const _r = _i === 0 ? '3px 3px 0 0' : (_last ? '0 0 3px 3px' : '0');
                                 const _sColor  = _isOz ? '#dc3545' : '#495057';
                                 const _sBorder = _isOz ? 'border:1px solid #dc3545;' : 'border:1px solid #adb5bd;';
-                                const _sLabel  = _isOz ? `⚠️ ${formatForDisplay(_displayLen)}` : formatForDisplay(_displayLen);
+                                const _sLabel  = _isOz ? `⚠️ ${formatStoreDisplay(_displayLen)}` : formatStoreDisplay(_displayLen);
                                 _vsi += `<div style="flex:0 0 calc(${_lPct(_displayLen)}% - ${_lAdj(_displayLen)}px);min-height:0;background:#f8f9fa;${_sBorder}border-radius:${_r};display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:12px;font-weight:bold;color:${_sColor};writing-mode:vertical-rl;text-orientation:mixed;white-space:nowrap;padding:2px 0;">${_sLabel}</div>`;
                                 if (!_last) _vsi += _vCutLine;
                             }
@@ -320,10 +337,10 @@
                             // 1 cut line × 2px shared across labels
                             const _lPct  = v => (v / fullLen * 100).toFixed(3);
                             const _lAdj  = v => (v / fullLen * 2).toFixed(3);
-                            _si  = `<div style="${_lStyle(_lPct(_leftDim),  _lAdj(_leftDim),  '3px 0 0 3px', '#495057', 'border:1px solid #adb5bd;')}">${formatForDisplay(_leftDim)}</div>`;
+                            _si  = `<div style="${_lStyle(_lPct(_leftDim),  _lAdj(_leftDim),  '3px 0 0 3px', '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_leftDim)}</div>`;
                             _si += _cutLine;
                             if (_tailLen > 0) {
-                                _si += `<div style="${_lStyle(_lPct(_rightDim), _lAdj(_rightDim), '0 3px 3px 0', '#495057', 'border:1px solid #adb5bd;')}">${formatForDisplay(_rightDim)}</div>`;
+                                _si += `<div style="${_lStyle(_lPct(_rightDim), _lAdj(_rightDim), '0 3px 3px 0', '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_rightDim)}</div>`;
                             }
                         } else {
                             const _nP = board.segments.length;
@@ -352,7 +369,7 @@
                                 const _r      = _i === 0 ? '3px 0 0 3px' : (_last && !_isOversized ? '0 3px 3px 0' : '0');
                                 const _color  = _isOversized ? '#dc3545' : '#495057';
                                 const _border = _isOversized ? 'border:1px solid #dc3545;' : 'border:1px solid #adb5bd;';
-                                const _label  = _isOversized ? `⚠️ ${formatForDisplay(_displayLen)}` : formatForDisplay(_displayLen);
+                                const _label  = _isOversized ? `⚠️ ${formatStoreDisplay(_displayLen)}` : formatStoreDisplay(_displayLen);
 
                                 _si += `<div style="${_lStyle(_lPct(_displayLen), _lAdj(_displayLen), _r, _color, _border)}">${_label}</div>`;
 
@@ -363,7 +380,7 @@
                                     const _tailLen = fullLen - _seg.partsEnd - boardTransportMargin;
                                     if (_tailLen > 0) {
                                         const _tailDim = _tailLen + boardTransportMargin / 2;
-                                        _si += `<div style="${_lStyle(_lPct(_tailDim), _lAdj(_tailDim), '0 3px 3px 0', '#495057', 'border:1px solid #adb5bd;')}">${formatForDisplay(_tailDim)}</div>`;
+                                        _si += `<div style="${_lStyle(_lPct(_tailDim), _lAdj(_tailDim), '0 3px 3px 0', '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_tailDim)}</div>`;
                                     }
                                 }
                             }

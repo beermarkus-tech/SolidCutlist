@@ -79,10 +79,10 @@
             if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
             if (!_activeJob.settings.optimizer.transport) _activeJob.settings.optimizer.transport = {};
             _activeJob.settings.optimizer.transport.boardLmax   = parseToBaseUnit(document.getElementById('setting-transport-board-lmax').value) || 0;
-            _activeJob.settings.optimizer.transport.boardMargin = parseToBaseUnit(document.getElementById('setting-transport-board-margin').value) || 20;
+            _activeJob.settings.optimizer.transport.boardMargin = Math.max(parseToBaseUnit(document.getElementById('setting-transport-board-margin').value) || 20, 5);
             _activeJob.settings.optimizer.transport.sheetLmax   = parseToBaseUnit(document.getElementById('setting-transport-sheet-lmax').value) || 0;
             const _smRaw = document.getElementById('setting-transport-sheet-margin').value.trim();
-            _activeJob.settings.optimizer.transport.sheetMargin = _smRaw === '' ? 10 : (parseToBaseUnit(_smRaw) || 0);
+            _activeJob.settings.optimizer.transport.sheetMargin = Math.max(_smRaw === '' ? 10 : (parseToBaseUnit(_smRaw) || 5), 5);
             if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
         } else {
             appState.settings.bladeKerf          = parseToBaseUnit(document.getElementById('setting-kerf').value);
@@ -95,10 +95,10 @@
             if (!appState.settings.optimizer) appState.settings.optimizer = {};
             if (!appState.settings.optimizer.transport) appState.settings.optimizer.transport = {};
             appState.settings.optimizer.transport.boardLmax   = parseToBaseUnit(document.getElementById('setting-transport-board-lmax').value) || 0;
-            appState.settings.optimizer.transport.boardMargin = parseToBaseUnit(document.getElementById('setting-transport-board-margin').value) || 20;
+            appState.settings.optimizer.transport.boardMargin = Math.max(parseToBaseUnit(document.getElementById('setting-transport-board-margin').value) || 20, 5);
             appState.settings.optimizer.transport.sheetLmax   = parseToBaseUnit(document.getElementById('setting-transport-sheet-lmax').value) || 0;
             const _smRaw = document.getElementById('setting-transport-sheet-margin').value.trim();
-            appState.settings.optimizer.transport.sheetMargin = _smRaw === '' ? 10 : (parseToBaseUnit(_smRaw) || 0);
+            appState.settings.optimizer.transport.sheetMargin = Math.max(_smRaw === '' ? 10 : (parseToBaseUnit(_smRaw) || 5), 5);
             saveState();
             renderSettings();
             showToast(t('msg_settings_saved'));

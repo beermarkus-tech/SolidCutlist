@@ -516,9 +516,9 @@
         if (!activeJob.settings.optimizer.transport) activeJob.settings.optimizer.transport = {};
         activeJob.settings.optimizer.transport.enabled     = getChk('mob-transport-enable');
         activeJob.settings.optimizer.transport.boardLmax   = getVal('mob-transport-board-lmax');
-        activeJob.settings.optimizer.transport.boardMargin = getVal('mob-transport-board-margin');
+        activeJob.settings.optimizer.transport.boardMargin = Math.max(getVal('mob-transport-board-margin') || 20, 5);
         activeJob.settings.optimizer.transport.sheetLmax   = getVal('mob-transport-sheet-lmax');
-        activeJob.settings.optimizer.transport.sheetMargin = getVal('mob-transport-sheet-margin');
+        activeJob.settings.optimizer.transport.sheetMargin = Math.max(getVal('mob-transport-sheet-margin') || 10, 5);
         activeJob.settings.optimizer.sheetCutPreference    = getSel('mob-sheet-cut');
         // Mark dirty — requires manual Recalculate
         if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
