@@ -529,10 +529,13 @@
                         const fg = appState.groups.find(g => g.id === part.groupId);
                         if (fg) groupName = fg.name;
                     }
-                    const dimString = grp.isSheet ? `${cut.w} x ${cut.l}` : `${cut.length}`;
+                    const _unitLbl = appState.settings.displayUnit === 'mm' ? 'mm' : 'in';
+                    const dimString = grp.isSheet
+                        ? `${formatForDisplay(cut.w)} × ${formatForDisplay(cut.l)} ${_unitLbl}`
+                        : `${formatForDisplay(cut.length)} ${_unitLbl}`;
                     const projName = project ? project.name : t('lbl_unknown_project');
                     const projectGroup = groupName ? `${projName} | ${groupName}` : projName;
-                    labelsToPrint.push({ partName: part.name, projectGroup, dimensions: `${dimString} mm`, material: grp.matString, boardRef });
+                    labelsToPrint.push({ partName: part.name, projectGroup, dimensions: dimString, material: grp.matString, boardRef });
                 });
             });
         });
@@ -688,7 +691,7 @@
                 <div class="label-sticker">
                     <div style="font-size: var(--fs-md); font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${safeHTML(lbl.partName)}</div>
                     <div style="font-size: var(--fs-xs); color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px;">${safeHTML(lbl.projectGroup)}</div>
-                    <div style="font-size: var(--fs-lg); font-weight: 900; margin-bottom: 2px;">${safeHTML(lbl.dimensions)}</div>
+                    <div class="dim-text" style="font-size: var(--fs-lg); font-weight: 900; margin-bottom: 2px; white-space: nowrap;">${safeHTML(lbl.dimensions)}</div>
                     <div style="font-size: var(--fs-xs); color: #333; display: flex; justify-content: space-between;">
                         <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%;">${safeHTML(lbl.material)}</span>
                         <span style="font-weight: bold;">${safeHTML(lbl.boardRef)}</span>
@@ -716,7 +719,7 @@
                 <div class="label-sticker">
                     <div style="font-size: var(--fs-md); font-weight: 900; letter-spacing: 0.5px; margin-bottom: 1px;">${safeHTML(lbl.boardRef)}</div>
                     <div style="font-size: var(--fs-xs); color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px;">${safeHTML(lbl.material)}</div>
-                    <div style="font-size: var(--fs-lg); font-weight: 900; margin-bottom: 2px;">${safeHTML(dimFormatted)}</div>
+                    <div class="dim-text" style="font-size: var(--fs-lg); font-weight: 900; margin-bottom: 2px; white-space: nowrap;">${safeHTML(dimFormatted)}</div>
                     <div style="font-size: var(--fs-sm); font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${safeHTML(lbl.partNames)}</div>
                 </div>
             `;
@@ -779,6 +782,18 @@
             </head>
             <body>
                 ${labelsHtml}
+                ${'<scr' + 'ipt>'}
+                    document.addEventListener('DOMContentLoaded', function() {
+                        document.querySelectorAll('.dim-text').forEach(function(el) {
+                            if (el.clientWidth === 0) return;
+                            while (el.scrollWidth > el.clientWidth) {
+                                var fs = parseFloat(window.getComputedStyle(el).fontSize);
+                                if (fs <= 5) break;
+                                el.style.fontSize = (fs * 0.88).toFixed(2) + 'px';
+                            }
+                        });
+                    });
+                ${'</scr' + 'ipt>'}
             </body>
             </html>
         `;

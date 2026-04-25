@@ -408,7 +408,7 @@
             if (!placed) {
                 let wUsable = Math.max(0, sheetWidth - trim);
                 let lUsable = Math.max(0, sheetLength - trim);
-                let newBoard = { cuts: [], freeRects: [{ x: trim, y: trim, w: wUsable, l: lUsable }] };
+                let newBoard = { cuts: [], freeRects: [{ x: trim, y: trim, w: wUsable, l: lUsable }], cutPref: pref };
                 let fit = checkFit(part, newBoard.freeRects[0], sheetGrain);
                 if (fit.fits) {
                     place2DPart(newBoard, 0, part, fit.rotated, kerf, pref);
@@ -438,7 +438,7 @@
     function packSingle2D(parts, sheetLength, sheetWidth, sheetGrain, kerf, trim, pref) {
         let wUsable = Math.max(0, sheetWidth - trim);
         let lUsable = Math.max(0, sheetLength - trim);
-        let board = { cuts: [], freeRects: [{ x: trim, y: trim, w: wUsable, l: lUsable }] };
+        let board = { cuts: [], freeRects: [{ x: trim, y: trim, w: wUsable, l: lUsable }], cutPref: pref };
         let unmapped = [];
         let totalWaste = 0;
         parts.forEach(part => {
@@ -1935,18 +1935,42 @@
                 if (isSheet) {
                     hasSheetData = true;
                     sheetCount++;
-                    // Active strips = strips that have at least one placed part
-                    const _activeStrips = (board.strips || []).filter(s => s.cuts && s.cuts.length > 0);
-                    const _nActive = _activeStrips.length;
-                    const _ripCuts   = Math.max(0, _nActive - 1);
-                    const _crossCuts = board.cuts.length; // one cross-cut per part placed
-                    sheetCutsTotal += _ripCuts + _crossCuts;
-                    // Blade travel: rip cuts run along the longer sheet dimension,
-                    // cross cuts run across the average strip width (perp ÷ strips)
+                    let _ripCuts, _crossCuts, _nActive;
+                    if (board.strips) {
+                        // Transport board: strips are explicit; N strips = N-1 rip cuts
+                        const _activeStrips = board.strips.filter(s => s.cuts && s.cuts.length > 0);
+                        _nActive   = _activeStrips.length;
+                        _ripCuts   = Math.max(0, _nActive - 1);
+                        _crossCuts = board.cuts.length;
+                    } else if (board.cuts.length > 0) {
+                        // Non-transport: count rip cuts from distinct right-edge positions (cut.x + cut.w).
+                        // Each unique right-edge boundary is one physical rip cut, including cases where
+                        // a narrower part sits within a wider column (user-confirmed behaviour).
+                        // Cross-first pref flips the axes: cross cuts = distinct bottom edges, rip cuts = parts.
+                        if (board.cutPref === 'cross') {
+                            const _botEdges = new Set(board.cuts.map(c => Math.round(c.y + c.l)));
+                            _nActive   = _botEdges.size;
+                            _crossCuts = _nActive;
+                            _ripCuts   = board.cuts.length;
+                        } else {
+                            const _rightEdges = new Set(board.cuts.map(c => Math.round(c.x + c.w)));
+                            _nActive   = _rightEdges.size;
+                            _ripCuts   = _nActive;
+                            _crossCuts = board.cuts.length;
+                        }
+                    } else {
+                        _nActive = 0; _ripCuts = 0; _crossCuts = 0;
+                    }
+                    // Edge trim: sheetFactoryTrim > 0 means two adjacent edges are squared up
+                    // before any layout cuts (one rip cut + one cross cut per sheet).
+                    const _trimCuts = (appState.settings.sheetFactoryTrim || 0) > 0 ? 2 : 0;
+                    sheetCutsTotal += _ripCuts + _crossCuts + _trimCuts;
+                    // Blade travel: rip cuts run the long dimension, cross cuts run the strip width
                     const _longDim  = Math.max(sheetL, sheetW);
                     const _shortDim = Math.min(sheetL, sheetW);
                     const _avgStrip = _nActive > 0 ? _shortDim / _nActive : _shortDim;
-                    sheetCutLengthMm += _ripCuts * _longDim + _crossCuts * _avgStrip;
+                    sheetCutLengthMm += _ripCuts * _longDim + _crossCuts * _avgStrip
+                                      + (_trimCuts > 0 ? _longDim + _shortDim : 0);
                     // Transport pre-cuts
                     sheetTransportCuts += (board.transportZones || []).length;
                 } else {
@@ -2081,6 +2105,18 @@
         window.currentOffcutSort = { field: 'length', asc: false };
         sortOffcuts('length'); 
     }
+    function formatOffcutDim(mmValue) {
+        const val = parseFloat(mmValue) || 0;
+        const unit = appState.settings.displayUnit;
+        if (unit === 'mm') return Math.floor(val).toString();
+        const sixteenths = Math.floor(val / 25.4 * 16);
+        if (unit === 'dec_in') return (sixteenths / 16).toString();
+        const whole = Math.floor(sixteenths / 16);
+        let n = sixteenths % 16, d = 16;
+        if (n === 0) return whole > 0 ? whole.toString() : '0';
+        while (n % 2 === 0 && d % 2 === 0) { n /= 2; d /= 2; }
+        return whole > 0 ? `${whole} ${n}/${d}` : `${n}/${d}`;
+    }
     function sortOffcuts(field) {
         if (window.currentOffcutSort.field === field) {
             window.currentOffcutSort.asc = !window.currentOffcutSort.asc;
@@ -2111,8 +2147,8 @@
         let html = '';
         if (window.currentOffcuts.length > 0) {
             window.currentOffcuts.forEach(off => {
-                const sizeStr = off.width ? `${formatForDisplay(off.width)} x ${formatForDisplay(off.length)}` : formatForDisplay(off.length);
-                
+                const sizeStr = off.width ? `${formatOffcutDim(off.width)} x ${formatOffcutDim(off.length)}` : formatOffcutDim(off.length);
+
                 const badgeClass = getCategoryBadgeClass(off.category);
                 const grainStr = off.grain === 'none' ? '-' : t('opt_' + off.grain);
 
@@ -2166,7 +2202,7 @@
             const disableAttr = isCommitted ? 'disabled' : '';
             
             const badgeClass = getCategoryBadgeClass(off.category);
-            const sizeStr = off.width ? `${formatForDisplay(off.width)} x ${formatForDisplay(off.length)}` : formatForDisplay(off.length);
+            const sizeStr = off.width ? `${formatOffcutDim(off.width)} x ${formatOffcutDim(off.length)}` : formatOffcutDim(off.length);
             const catStr = off.category === 'sheet' ? 'Sheet' : 'Lumber';
 
             html += `

@@ -275,6 +275,11 @@
                                 </div>`;
                                 globalCutIndex++;
                             });
+                            // Kerf after the last part in this segment (packer already subtracted it from remaining)
+                            if (seg.cuts.length > 0 && k1D > 0) {
+                                const kerfPct = (k1D / fullLen) * 100;
+                                innerCuts += `<div style="width: ${kerfPct}%; height: 100%; background: #e9ecef;"></div>`;
+                            }
                             // Remaining space after the last part in this segment
                             if (isLastSeg && (seg.oversized || (board.segments.length === 1 && boardTransportLmax > 0 && boardTransportLmax < fullLen))) {
                                 // Cut right after parts end — show gap then green offcut tail.
@@ -314,6 +319,11 @@
                                 <span style="color: #fff; font-weight: bold; font-size: 16px; position: relative; z-index: 1;">${index + 1}</span>
                             </div>`;
                         });
+                        // Kerf after the last part (packer already subtracted it from board.remaining)
+                        if (board.cuts.length > 0 && k1D > 0) {
+                            const kerfPct = (k1D / fullLen) * 100;
+                            innerCuts += `<div style="width: ${kerfPct}%; height: 100%; background: #e9ecef;"></div>`;
+                        }
                         // Remaining: green if usable offcut, red if waste
                         innerCuts += remainDiv(board.remaining);
                     }
