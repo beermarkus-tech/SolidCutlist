@@ -144,15 +144,7 @@
 
             // 🪄 THE FAILSAFE: Local is more than 10 seconds newer than the Cloud
             if (localTime > cloudTime + 10000) {
-                // We use a native browser confirm here because it physically halts the Javascript thread 
-                // and prevents the app from rendering bad data while the user decides.
-                const useLocal = confirm(t('msg_unsaved_local_changes'));
-
-                if (useLocal) {
-                    finalizeBoot(localData);
-                } else {
-                    finalizeBoot(cloudData);
-                }
+                showConflictModal(localData, cloudData, localTime, cloudTime);
             } else {
                 // Cloud is newer, or perfectly equal. Proceed normally.
                 finalizeBoot(cloudData);
@@ -163,6 +155,39 @@
             finalizeBoot(localData ? localData : initialAppState);
         }
     }
+    let _conflictLocalData = null;
+    let _conflictCloudData = null;
+
+    function showConflictModal(localData, cloudData, localTime, cloudTime) {
+        _conflictLocalData = localData;
+        _conflictCloudData = cloudData;
+
+        const loader = document.getElementById('boot-loader');
+        if (loader) loader.classList.add('d-none');
+
+        const diffSec = Math.round((localTime - cloudTime) / 1000);
+        const diffText = diffSec < 60 ? `${diffSec}s` : `${Math.round(diffSec / 60)}m`;
+
+        document.getElementById('conflict-modal-title').innerText = `☁️ ${t('hdr_data_conflict')}`;
+        document.getElementById('conflict-main-msg').innerText    = t('msg_conflict_main');
+        document.getElementById('conflict-diff-msg').innerText    = `(${diffText} newer)`;
+        document.getElementById('conflict-sub-msg').innerText     = t('msg_conflict_sub');
+        document.getElementById('btn-conflict-cloud').innerText   = `☁️ ${t('btn_use_cloud')}`;
+        document.getElementById('btn-conflict-local').innerText   = `💾 ${t('btn_use_local')}`;
+
+        new bootstrap.Modal(document.getElementById('modal-data-conflict')).show();
+    }
+
+    function resolveConflict(useLocal) {
+        const modalEl = document.getElementById('modal-data-conflict');
+        const instance = bootstrap.Modal.getInstance(modalEl);
+        if (instance) instance.hide();
+        finalizeBoot(useLocal ? _conflictLocalData : _conflictCloudData);
+        _conflictLocalData = null;
+        _conflictCloudData = null;
+        if (useLocal) triggerCloudSync();
+    }
+
     /** Executes the final render sequence and hides the loading screen */
     function finalizeBoot(dataToLoad) {
         // 1. Assign the Master State safely
@@ -265,13 +290,14 @@
         const modal = bootstrap.Modal.getInstance(document.getElementById('resetConfirmModal'));
         if (modal) modal.hide();
 
-        // 2. Build a clean state with hardcoded defaults (preserve printer config)
+        // 2. Build a clean state with hardcoded defaults (preserve saved jobs and printer config)
+        const _savedJobs             = appState.jobs     || [];
         const _savedLabelTemplates   = appState.settings?.labelTemplates    || [];
         const _savedLabelConfig      = appState.settings?.currentLabelConfig || null;
         appState = {
             projects: [], groups: [], parts: [],
             stock: [], catalog: [], materials: [],
-            profiles: [], stores: [], jobs: [],
+            profiles: [], stores: [], jobs: _savedJobs,
             ui: {},
             settings: {
                 baseUnit:           'mm',
@@ -355,20 +381,21 @@
         const text = document.getElementById('sync-text');
         if (!icon || !text) return;
 
-        // Combine both local and cloud saving into one seamless state
-        if (status === 'local' || status === 'syncing') {
-            // Injects a tiny, animated Bootstrap spinner
-            icon.innerHTML = '<span class="spinner-border spinner-border-sm text-warning" role="status" style="width: 0.8rem; height: 0.8rem; border-width: 0.15em;"></span>'; 
+        const spinner = '<span class="spinner-border spinner-border-sm text-warning" role="status" style="width: 0.8rem; height: 0.8rem; border-width: 0.15em;"></span>';
+        if (status === 'local') {
+            icon.innerHTML = '<span style="color: #9ca3af;">✓</span>';
+            text.innerText = t('msg_saved_locally');
+        }
+        else if (status === 'syncing') {
+            icon.innerHTML = spinner;
             text.innerText = t('msg_saving');
-        } 
+        }
         else if (status === 'success') {
-            // The Cloud + Checkmark combo
-            icon.innerHTML = '<span style="color: #00ff00;">✔</span>'; 
-            text.innerText = t('msg_saved'); 
-            // Note: If you want NO text at all, just change 'Saved' to ''
-        } 
+            icon.innerHTML = '<span style="color: #22c55e; font-weight: bold;">✓</span>';
+            text.innerText = t('msg_saved');
+        }
         else if (status === 'error') {
-            icon.innerHTML = '⚠️'; 
+            icon.innerHTML = '⚠️';
             text.innerText = t('msg_sync_failed');
         }
     }

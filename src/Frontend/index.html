@@ -236,6 +236,27 @@
         </div>
     </div>
     
+    <!-- Data Conflict Modal -->
+    <div class="modal" id="modal-data-conflict" tabindex="-1" aria-hidden="true"
+         data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content border-primary shadow-lg">
+                <div class="modal-header bg-primary text-white py-2">
+                    <h6 class="modal-title mb-0" id="conflict-modal-title">☁️ Data Conflict</h6>
+                </div>
+                <div class="modal-body text-center py-3">
+                    <p class="fw-bold mb-1" id="conflict-main-msg"></p>
+                    <p class="text-muted small mb-2" id="conflict-diff-msg"></p>
+                    <p class="text-muted small mb-0" id="conflict-sub-msg"></p>
+                </div>
+                <div class="modal-footer p-2 d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-primary flex-fill fw-bold" id="btn-conflict-cloud" onclick="resolveConflict(false)"></button>
+                    <button type="button" class="btn btn-sm btn-primary flex-fill fw-bold" id="btn-conflict-local" onclick="resolveConflict(true)"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Commit to Stock Modal -->
     <div class="modal" id="modal-commit-offcuts" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -594,6 +615,7 @@
                     <button type="button" class="btn btn-outline-secondary w-100 btn-sm" onclick="showWelcomeTour(true); bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();" data-i18n="tour_btn_show_again">Show Welcome Tour</button>
                     <hr class="w-100 my-0">
                     <button type="button" class="btn btn-outline-danger w-100 btn-sm" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#resetConfirmModal" data-i18n="btn_reset_app">Reset App &amp; All Data</button>
+                    <p class="text-center text-muted mb-0" style="font-size: 0.7rem; letter-spacing: 0.03em;">SolidCutlist v1.0 &nbsp;·&nbsp; Solid Homestead Plans</p>
                 </div>
             </div>
         </div>

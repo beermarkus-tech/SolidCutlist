@@ -59,10 +59,9 @@
                     layouts: []
                 };
             }
-            if (purchase.catalogItem.storeId === 'shop_stock') {
-                mergedDiagrams[boardKey].isStock = true;
-            }
-            mergedDiagrams[boardKey].layouts.push(...purchase.layout);
+            const _isStockBatch = purchase.catalogItem.storeId === 'shop_stock';
+            const _taggedLayouts = purchase.layout.map(b => ({ ...b, isStock: _isStockBatch }));
+            mergedDiagrams[boardKey].layouts.push(..._taggedLayouts);
         });
 
         const sortedGroups = Object.values(mergedDiagrams).sort((a, b) => {
@@ -133,7 +132,6 @@
                 <summary class="mt-2 mb-2 border-bottom border-2 border-dark pb-1 d-flex justify-content-between align-items-end" style="cursor: pointer; outline: none; list-style-position: inside;">
                     <h5 class="mb-0 fw-bold d-inline-block">${safeHTML(prof?.name)} - ${safeHTML(mat?.name)}</h5>
                     <span class="d-flex align-items-center gap-2">
-                        ${group.isStock ? `<span class="badge bg-success">${t('lbl_stock')}</span>` : ''}
                         <span class="badge bg-secondary">${t('lbl_raw_size')}: ${sizeString} <span class="display-unit-label"></span></span>
                     </span>
                 </summary>
@@ -281,17 +279,20 @@
                                 innerCuts += `<div style="width: ${kerfPct}%; height: 100%; background: #e9ecef;"></div>`;
                             }
                             // Remaining space after the last part in this segment
-                            if (isLastSeg && (seg.oversized || (board.segments.length === 1 && boardTransportLmax > 0 && boardTransportLmax < fullLen))) {
-                                // Cut right after parts end — show gap then green offcut tail.
-                                // (oversized: cut is mandatory; single-seg transport: cut at partsEnd maximises offcut)
-                                const _tail = fullLen - seg.partsEnd - boardTransportMargin;
-                                const _gapPct = (boardTransportMargin / fullLen) * 100;
-                                innerCuts += `<div style="width: ${_gapPct}%; height: 100%; background: #dc3545; flex-shrink: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact;"></div>`;
-                                if (_tail > 0) {
-                                    // Always show as usable green — this is a guaranteed separated piece, not waste
-                                    const _tailPct = (_tail / fullLen) * 100;
-                                    innerCuts += `<div style="width: ${_tailPct}%; height: 100%; background: rgba(40,167,69,0.15); border-left: 1px dashed #28a745; box-sizing: border-box; flex-shrink: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact;"></div>`;
+                            const _needsTailSplit = isLastSeg && boardTransportLmax > 0 && boardTransportLmax < fullLen;
+                            const _tailExceedsLimit = (fullLen - seg.segAbsStart) > boardTransportLmax - boardTransportMargin;
+                            if (_needsTailSplit && (seg.oversized || board.segments.length === 1 || _tailExceedsLimit)) {
+                                const _gapDiv = `<div style="width: ${(boardTransportMargin / fullLen) * 100}%; height: 100%; background: #dc3545; flex-shrink: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact;"></div>`;
+                                const _greenDiv = pct => `<div style="width: ${pct}%; height: 100%; background: rgba(40,167,69,0.15); border-left: 1px dashed #28a745; box-sizing: border-box; flex-shrink: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact;"></div>`;
+                                const _pieceLen = boardTransportLmax - boardTransportMargin;
+                                innerCuts += _gapDiv;
+                                let _tailRemain = fullLen - seg.partsEnd - boardTransportMargin;
+                                while (_tailRemain > _pieceLen) {
+                                    innerCuts += _greenDiv((_pieceLen / fullLen) * 100);
+                                    innerCuts += _gapDiv;
+                                    _tailRemain -= boardTransportLmax;
                                 }
+                                if (_tailRemain > 0) innerCuts += _greenDiv((_tailRemain / fullLen) * 100);
                             } else {
                                 innerCuts += remainDiv(seg.remaining);
                             }
@@ -346,31 +347,64 @@
                             `flex:0 0 calc(${pct}% - ${adj}px);min-width:0;background:#f8f9fa;${border}border-radius:${radius};display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:12px;font-weight:bold;color:${color};white-space:nowrap;padding:0 2px;`;
 
                         if (_isSingleSegTransport) {
-                            // Pencil mark = centre of margin; each label absorbs half the margin
-                            const _seg0 = board.segments[0];
-                            const _trimLen  = _seg0.segAbsStart || 0;
-                            const _partLen  = _seg0.partsEnd - _seg0.segAbsStart;
-                            const _tailLen  = fullLen - _seg0.partsEnd - boardTransportMargin;
-                            const _leftDim  = _partLen + boardTransportMargin / 2;
-                            const _rightDim = _tailLen + boardTransportMargin / 2;
-                            // 1 cut line × 2px shared across labels + trim spacer
-                            const _lPct  = v => (v / fullLen * 100).toFixed(3);
-                            const _lAdj  = v => (v / fullLen * 2).toFixed(3);
-                            // Trim spacer: aligns cut line with canvas which has a grey trim block at start
+                            const _seg0    = board.segments[0];
+                            const _trimLen = _seg0.segAbsStart || 0;
+                            const _partLen = _seg0.partsEnd - _seg0.segAbsStart;
+
+                            // Count how many extra tail cuts are needed
+                            // Each physical piece = (transportLmax - margin) green + margin gap = transportLmax interval
+                            const _pieceLen = boardTransportLmax - boardTransportMargin;
+                            let _tempTail = fullLen - _seg0.partsEnd - boardTransportMargin;
+                            let _nExtraCuts = 0;
+                            { let _t = _tempTail; while (_t > _pieceLen) { _nExtraCuts++; _t -= boardTransportLmax; } }
+                            const _totalCuts = 1 + _nExtraCuts;
+
+                            const _lPct = v => (v / fullLen * 100).toFixed(3);
+                            const _lAdj = v => (v / fullLen * _totalCuts * 2).toFixed(3);
+
                             if (_trimLen > 0) _si += `<div style="flex:0 0 calc(${_lPct(_trimLen)}% - ${_lAdj(_trimLen)}px);min-width:0;flex-shrink:0;"></div>`;
-                            _si += `<div style="${_lStyle(_lPct(_leftDim),  _lAdj(_leftDim),  '3px 0 0 3px', '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_leftDim)}</div>`;
+
+                            // First piece: parts + half of first margin
+                            const _leftDim = _partLen + boardTransportMargin / 2;
+                            _si += `<div style="${_lStyle(_lPct(_leftDim), _lAdj(_leftDim), '3px 0 0 3px', '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_leftDim)}</div>`;
                             _si += _cutLine;
-                            if (_tailLen > 0) {
+
+                            // Tail pieces — physical piece = transportLmax (pencil-mark to pencil-mark)
+                            let _tailRemain = _tempTail;
+                            while (_tailRemain > _pieceLen) {
+                                const _midDim = boardTransportLmax;
+                                _si += `<div style="${_lStyle(_lPct(_midDim), _lAdj(_midDim), '0', '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_midDim)}</div>`;
+                                _si += _cutLine;
+                                _tailRemain -= boardTransportLmax;
+                            }
+                            if (_tailRemain > 0) {
+                                const _rightDim = _tailRemain + boardTransportMargin / 2;
                                 _si += `<div style="${_lStyle(_lPct(_rightDim), _lAdj(_rightDim), '0 3px 3px 0', '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_rightDim)}</div>`;
                             }
                         } else {
-                            const _nP = board.segments.length;
+                            const _nP      = board.segments.length;
                             const _lastSeg = board.segments[_nP - 1];
-                            // Total cut lines = (nP-1) inter-segment cuts + 1 if last seg is oversized
-                            const _nCuts = (_nP - 1) + (_lastSeg.oversized ? 1 : 0);
-                            const _lPct  = v => (v / fullLen * 100).toFixed(3);
-                            const _lAdj  = v => (v / fullLen * _nCuts * 2).toFixed(3);
-                            // Trim spacer: aligns cut lines with canvas
+                            const _pLen    = boardTransportLmax - boardTransportMargin;
+
+                            // Tail length after the mandatory cut on the last segment
+                            const _lastTailLen = fullLen - _lastSeg.partsEnd - boardTransportMargin;
+
+                            // Mandatory cut needed when the full segment (parts + remaining) exceeds the limit
+                            const _needsMandatoryCut = boardTransportLmax > 0 &&
+                                (fullLen - _lastSeg.segAbsStart) > boardTransportLmax - boardTransportMargin;
+
+                            // Count extra cuts needed within the tail
+                            let _extraTailCuts = 0;
+                            if (boardTransportLmax > 0) {
+                                let _t = _lastTailLen;
+                                while (_t > _pLen) { _extraTailCuts++; _t -= boardTransportLmax; }
+                            }
+                            const _hasTailCut = _needsMandatoryCut || _extraTailCuts > 0;
+                            const _nCuts = (_nP - 1) + (_hasTailCut ? 1 : 0) + _extraTailCuts;
+
+                            const _lPct = v => (v / fullLen * 100).toFixed(3);
+                            const _lAdj = v => (v / fullLen * _nCuts * 2).toFixed(3);
+
                             const _trimLen = board.segments[0].segAbsStart || 0;
                             if (_trimLen > 0) _si += `<div style="flex:0 0 calc(${_lPct(_trimLen)}% - ${_lAdj(_trimLen)}px);min-width:0;flex-shrink:0;"></div>`;
 
@@ -378,34 +412,40 @@
                                 const _last        = _i === _nP - 1;
                                 const _seg         = board.segments[_i];
                                 const _isOversized = !!_seg.oversized;
-                                const _hasCutRight = !_last || _isOversized;
 
-                                // Core length: last normal segment stretches to board end
-                                const _coreLen = _last && !_isOversized
-                                    ? fullLen - _seg.segAbsStart
-                                    : _seg.partsEnd - _seg.segAbsStart;
-
-                                // Each cut absorbs half the margin on each side → measurement to pencil mark
-                                const _leftHalf  = _i > 0       ? boardTransportMargin / 2 : 0;
-                                const _rightHalf = _hasCutRight  ? boardTransportMargin / 2 : 0;
-                                const _displayLen = _coreLen + _leftHalf + _rightHalf;
-
-                                const _r      = _i === 0 ? '3px 0 0 3px' : (_last && !_isOversized ? '0 3px 3px 0' : '0');
-                                const _color  = _isOversized ? '#dc3545' : '#495057';
-                                const _border = _isOversized ? 'border:1px solid #dc3545;' : 'border:1px solid #adb5bd;';
-                                const _label  = _isOversized ? `⚠️ ${formatStoreDisplay(_displayLen)}` : formatStoreDisplay(_displayLen);
-
-                                _si += `<div style="${_lStyle(_lPct(_displayLen), _lAdj(_displayLen), _r, _color, _border)}">${_label}</div>`;
-
-                                if (_hasCutRight) _si += _cutLine;
-
-                                // Oversized last segment: tail offcut piece after the cut
-                                if (_last && _isOversized) {
-                                    const _tailLen = fullLen - _seg.partsEnd - boardTransportMargin;
-                                    if (_tailLen > 0) {
-                                        const _tailDim = _tailLen + boardTransportMargin / 2;
-                                        _si += `<div style="${_lStyle(_lPct(_tailDim), _lAdj(_tailDim), '0 3px 3px 0', '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_tailDim)}</div>`;
+                                if (_last && _hasTailCut) {
+                                    // Last segment with mandatory tail cut: show segment piece, cut, then tail pieces
+                                    const _leftHalf  = _i > 0 ? boardTransportMargin / 2 : 0;
+                                    const _segLen    = _seg.partsEnd - _seg.segAbsStart;
+                                    const _displayLen = _segLen + _leftHalf + boardTransportMargin / 2;
+                                    const _r      = _i === 0 ? '3px 0 0 3px' : '0';
+                                    const _color  = _isOversized ? '#dc3545' : '#495057';
+                                    const _border = _isOversized ? 'border:1px solid #dc3545;' : 'border:1px solid #adb5bd;';
+                                    const _label  = _isOversized ? `⚠️ ${formatStoreDisplay(_displayLen)}` : formatStoreDisplay(_displayLen);
+                                    _si += `<div style="${_lStyle(_lPct(_displayLen), _lAdj(_displayLen), _r, _color, _border)}">${_label}</div>`;
+                                    _si += _cutLine;
+                                    // Tail pieces
+                                    let _tailRemain = _lastTailLen;
+                                    while (_tailRemain > _pLen) {
+                                        const _midDim = boardTransportLmax;
+                                        _si += `<div style="${_lStyle(_lPct(_midDim), _lAdj(_midDim), '0', '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_midDim)}</div>`;
+                                        _si += _cutLine;
+                                        _tailRemain -= boardTransportLmax;
                                     }
+                                    if (_tailRemain > 0) {
+                                        const _rightDim = _tailRemain + boardTransportMargin / 2;
+                                        _si += `<div style="${_lStyle(_lPct(_rightDim), _lAdj(_rightDim), '0 3px 3px 0', '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_rightDim)}</div>`;
+                                    }
+                                } else {
+                                    // Normal segment: existing logic
+                                    const _hasCutRight = !_last;
+                                    const _coreLen    = _last ? fullLen - _seg.segAbsStart : _seg.partsEnd - _seg.segAbsStart;
+                                    const _leftHalf   = _i > 0    ? boardTransportMargin / 2 : 0;
+                                    const _rightHalf  = _hasCutRight ? boardTransportMargin / 2 : 0;
+                                    const _displayLen = _coreLen + _leftHalf + _rightHalf;
+                                    const _r      = _i === 0 ? '3px 0 0 3px' : '0 3px 3px 0';
+                                    _si += `<div style="${_lStyle(_lPct(_displayLen), _lAdj(_displayLen), _r, '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_displayLen)}</div>`;
+                                    if (_hasCutRight) _si += _cutLine;
                                 }
                             }
                         }
@@ -418,7 +458,10 @@
                 html += `
                 <div class="card shadow-sm mb-4 border-secondary" style="page-break-inside: avoid;">
                     <div class="card-header py-1 d-flex justify-content-between align-items-center">
-                        <small class="fw-bold text-muted">${t(isSheet ? 'lbl_sheet_num' : 'lbl_board_num', { current: bIndex + 1, total: group.layouts.length })}</small>
+                        <small class="fw-bold text-muted">
+                            ${t(isSheet ? 'lbl_sheet_num' : 'lbl_board_num', { current: bIndex + 1, total: group.layouts.length })}
+                            ${board.isStock ? `<span class="badge bg-success ms-1">${t('lbl_stock')}</span>` : ''}
+                        </small>
                         <small class="text-muted">${wasteLabel}: ${wasteDisplay} ${isSheet ? '' : '<span class="display-unit-label"></span>'}</small>
                     </div>
 

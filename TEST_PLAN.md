@@ -22,8 +22,8 @@ Claude will read this file and the memory index at `~/.claude/projects/-home-use
 | 7  | Import Wizard | You | ✅ Complete | All scenarios passed. wrong_delimiter.csv shows "not a CSV file" error — acceptable behavior. |
 | 8  | Results Views (Shopping List, Analytics, Canvas, Print) | You | ✅ Complete | All views passing. Shopping list checkbox persistence fixed (transient vs saved-job). |
 | 9  | i18n & Localization | Both | ✅ Complete | All 6 languages passing. Minor PT/IT/FR text wraps on some labels — clean breaks, acceptable. |
-| 10 | Mobile UX | You | ⬜ Not started | |
-| 11 | Error Handling & Edge Cases | Both | ⬜ Not started | |
+| 10 | Mobile UX | You | ✅ Complete | All results views mobile-friendly. Sticky action bar, offline localStorage fallback. |
+| 11 | Error Handling & Edge Cases | Both | ✅ Complete | Multiplier=0 fixed (skips project/group, resets field to 1). localStorage corruption N/A (not user-reachable). Offline: load-before-store advice. Conflict modal replaced native confirm(). Sync indicator now shows "Saved locally" vs checkmark. |
 | 12 | End-to-End Integration | Both | ⬜ Not started | |
 | 13 | Benchmarking vs. Competing Tools | Both | ⬜ Not started | |
 

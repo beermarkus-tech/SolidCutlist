@@ -477,7 +477,7 @@
         function fitInSeg(seg, part, boardCuts) {
             if (seg.sealed) return false;                        // segment is frozen — no more parts
             const k         = seg.cuts.length === 0 ? 0 : kerf; // no kerf before first part
-            const available = Math.min(seg.segAbsStart + transportLmax, boardLength) - seg.partsEnd;
+            const available = Math.min(seg.segAbsStart + transportLmax - margin, boardLength) - seg.partsEnd;
             if (available >= part.length + k) {
                 seg.cuts.push(part);
                 boardCuts.push(part);
@@ -1100,6 +1100,7 @@
     }
     // --- DIRTY-STATE SIGNAL (pre-save) ---
     function notifyConfigChanged() {
+        if (window.activeJobId) return;
         if (!window.hasCalculated) return;
         const activeActions = document.getElementById('job-config-actions-active');
         if (!activeActions || activeActions.classList.contains('d-none')) return;
@@ -1292,30 +1293,42 @@
             const projCheckbox = document.getElementById('chk-' + originalPart.projectId);
             if (!projCheckbox || !projCheckbox.checked) return; 
             
-            const projMulti = parseInt(document.getElementById('multi-' + originalPart.projectId).value) || 1;
+            const _projMultiEl = document.getElementById('multi-' + originalPart.projectId);
+            const _rawProjMulti = parseInt(_projMultiEl.value);
+            const projMulti = isNaN(_rawProjMulti) ? 1 : _rawProjMulti;
+            if (isNaN(_rawProjMulti)) _projMultiEl.value = 1;
+            if (projMulti === 0) return;
             let finalMulti = projMulti;
 
             // Check: Does it have a Group?
             if (!originalPart.groupId || originalPart.groupId.trim() === '') {
                 // 🪄 IT HAS NO GROUP -> Explicitly check the artificial 'Ungrouped Parts' checkbox
                 const noGroupCheckbox = document.getElementById('chk-nogroup-' + originalPart.projectId);
-                
+
                 // Is the 'Ungrouped Parts' group selected?
                 if (!noGroupCheckbox || !noGroupCheckbox.checked) return;
-                
+
                 // Stack the multipliers
-                const grpMulti = parseInt(document.getElementById('multi-nogroup-' + originalPart.projectId).value) || 1;
+                const _noGrpMultiEl = document.getElementById('multi-nogroup-' + originalPart.projectId);
+                const _rawGrpMulti = parseInt(_noGrpMultiEl.value);
+                const grpMulti = isNaN(_rawGrpMulti) ? 1 : _rawGrpMulti;
+                if (isNaN(_rawGrpMulti)) _noGrpMultiEl.value = 1;
+                if (grpMulti === 0) return;
                 finalMulti = projMulti * grpMulti;
 
             } else {
                 // IT HAS A REAL GROUP -> Check the real group checkbox
                 const grpCheckbox = document.getElementById('chk-' + originalPart.groupId);
-                
+
                 // Is the Group selected?
                 if (!grpCheckbox || !grpCheckbox.checked) return;
-                
+
                 // Stack the multipliers
-                const grpMulti = parseInt(document.getElementById('multi-' + originalPart.groupId).value) || 1;
+                const _grpMultiEl = document.getElementById('multi-' + originalPart.groupId);
+                const _rawGrpMulti = parseInt(_grpMultiEl.value);
+                const grpMulti = isNaN(_rawGrpMulti) ? 1 : _rawGrpMulti;
+                if (isNaN(_rawGrpMulti)) _grpMultiEl.value = 1;
+                if (grpMulti === 0) return;
                 finalMulti = projMulti * grpMulti;
             }
 
@@ -1769,7 +1782,7 @@
                             <div class="flex-grow-1" style="min-width:0;">
                                 <div><span class="fw-bold ${item.isError ? 'text-danger' : ''}">${safeHTML(item.profName)}</span><span class="text-muted"> - ${safeHTML(item.matName)}</span></div>
                                 <div class="d-flex justify-content-between align-items-center mt-1">${weightMobile}<span class="fw-bold text-success" style="font-size:0.85rem;">${costDisplay}</span></div>
-                                ${(item.isError && item.length === 0) ? '' : `<div class="d-flex align-items-center mt-1 text-muted" style="font-size:0.8rem;">Size: ${sizeDisplay}<span class="display-unit-label ms-1"></span>${pencilBtn}</div>`}
+                                ${(item.isError && item.length === 0) ? '' : `<div class="d-flex align-items-center mt-1 text-muted" style="font-size:0.8rem;">${t('lbl_raw_size')}: ${sizeDisplay}<span class="display-unit-label ms-1"></span>${pencilBtn}</div>`}
                                 ${errorText}
                             </div>
                             ${checkboxHtml}
@@ -1782,7 +1795,7 @@
                                 <span class="fw-bold ${item.isError ? 'text-danger' : ''}">${safeHTML(item.profName)}</span>
                                 <span class="text-muted"> - ${safeHTML(item.matName)}</span>
                                 ${linkIcon}<br>
-                                ${(item.isError && item.length === 0) ? '' : `<small class="text-muted ms-5 d-flex align-items-center mt-1">Size: ${sizeDisplay} <span class="display-unit-label ms-1"></span>${pencilBtn}</small>`}
+                                ${(item.isError && item.length === 0) ? '' : `<small class="text-muted ms-5 d-flex align-items-center mt-1">${t('lbl_raw_size')}: ${sizeDisplay} <span class="display-unit-label ms-1"></span>${pencilBtn}</small>`}
                                 ${errorText}
                             </div>
                             <div class="text-end flex-shrink-0">
