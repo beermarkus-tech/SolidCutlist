@@ -179,29 +179,7 @@
                     const use2DTransport = transportEnabled && sheetTransportLmax > 0;
 
                     if (isSheet) {
-                        if (pref2D === 'auto') {
-                            let resRip, resCross;
-                            if (use2DTransport) {
-                                resRip   = pack2DTransport(currentParts, option.length, option.width, option.grain, k2D, t2D, sheetTransportLmax, sheetMargin, 'rip');
-                                resCross = pack2DTransport(currentParts, option.length, option.width, option.grain, k2D, t2D, sheetTransportLmax, sheetMargin, 'cross');
-                            } else {
-                                resRip   = pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, 'rip');
-                                resCross = pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, 'cross');
-                            }
-                            // Pick the orientation with fewer unmapped parts; tiebreak on true-waste rate
-                            // (true waste = only the scraps too small to reuse, matching the analytics view)
-                            if (resRip.unmapped.length <= resCross.unmapped.length) {
-                                const _twRip   = _sheetTrueWaste(resRip.boards,   option.length, option.width);
-                                const _twCross = _sheetTrueWaste(resCross.boards, option.length, option.width);
-                                packResult = (resRip.unmapped.length === resCross.unmapped.length && _twCross < _twRip) ? resCross : resRip;
-                            } else {
-                                packResult = resCross;
-                            }
-                        } else {
-                            packResult = use2DTransport
-                                ? pack2DTransport(currentParts, option.length, option.width, option.grain, k2D, t2D, sheetTransportLmax, sheetMargin, pref2D)
-                                : pack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, pref2D);
-                        }
+                        packResult = _bestPack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, use2DTransport, sheetTransportLmax, sheetMargin, pref2D);
                     } else {
                         packResult = use1DTransport
                             ? pack1DTransport(currentParts, option.length, k1D, t1D, boardTransportLmax, boardMargin)
@@ -387,6 +365,103 @@
         boards.forEach(b => totalWaste += b.remaining);
         return { boards, unmapped, totalWaste };
     }
+    // Best-fit greedy packer: at each step scans ALL remaining parts × ALL free rects and picks the
+    // (part, rect) pair with minimum wasted area. Opens a new board only when nothing fits anywhere.
+    // Does not rely on a pre-sorted order — the dynamic scan self-orders placement.
+    function pack2DV2(parts, sheetLength, sheetWidth, sheetGrain, kerf, trim, pref) {
+        const wUsable = Math.max(0, sheetWidth  - trim);
+        const lUsable = Math.max(0, sheetLength - trim);
+        let boards    = [];
+        let unmapped  = [];
+        let remaining = [...parts];
+        let totalWaste = 0;
+
+        while (remaining.length > 0) {
+            let bestWaste = Infinity, bestPi = -1, bestBi = -1, bestRi = -1, bestRot = false;
+
+            for (let pi = 0; pi < remaining.length; pi++) {
+                for (let bi = 0; bi < boards.length; bi++) {
+                    const frects = boards[bi].freeRects;
+                    for (let ri = 0; ri < frects.length; ri++) {
+                        const fit = checkFit(remaining[pi], frects[ri], sheetGrain);
+                        if (!fit.fits) continue;
+                        const pw = fit.rotated ? remaining[pi].length : remaining[pi].width;
+                        const pl = fit.rotated ? remaining[pi].width  : remaining[pi].length;
+                        const waste = frects[ri].w * frects[ri].l - pw * pl;
+                        if (waste < bestWaste) {
+                            bestWaste = waste; bestPi = pi; bestBi = bi; bestRi = ri; bestRot = fit.rotated;
+                        }
+                    }
+                }
+            }
+
+            if (bestPi >= 0) {
+                place2DPart(boards[bestBi], bestRi, remaining[bestPi], bestRot, kerf, pref);
+                remaining.splice(bestPi, 1);
+            } else {
+                // Nothing fits on existing boards — open a new board with the largest remaining part.
+                const li = remaining.reduce((best, p, i) =>
+                    (p.length * p.width) > (remaining[best].length * remaining[best].width) ? i : best, 0);
+                const newBoard = { cuts: [], freeRects: [{ x: trim, y: trim, w: wUsable, l: lUsable }], cutPref: pref };
+                const fit = checkFit(remaining[li], newBoard.freeRects[0], sheetGrain);
+                if (fit.fits) {
+                    place2DPart(newBoard, 0, remaining[li], fit.rotated, kerf, pref);
+                    boards.push(newBoard);
+                } else {
+                    unmapped.push(remaining[li]);
+                }
+                remaining.splice(li, 1);
+            }
+        }
+
+        boards.forEach(b => b.freeRects.forEach(r => totalWaste += r.w * r.l));
+        return { boards, unmapped, totalWaste };
+    }
+
+    // Tries 6 sort orders × rip/cross (V1) plus rip/cross with best-fit V2 and returns the
+    // pack with fewest boards, then least true waste.
+    function _bestPack2D(parts, sheetL, sheetW, sheetGrain, kerf, trim, useTransport, transportLmax, margin, pref) {
+        const _lMax = p => Math.max(p.length, p.width);
+        const _lMin = p => Math.min(p.length, p.width);
+        const _sorters = [
+            (a, b) => (b.length * b.width) - (a.length * a.width),          // area desc
+            (a, b) => _lMax(b) - _lMax(a),                                   // longest edge desc (no tiebreak)
+            (a, b) => { const d = _lMax(b) - _lMax(a); return d !== 0 ? d : _lMin(a) - _lMin(b); }, // longest edge desc, shortest edge asc
+            (a, b) => b.length - a.length,                                   // length desc
+            (a, b) => b.width  - a.width,                                    // width desc
+            (a, b) => (a.length * a.width) - (b.length * b.width),          // area asc
+        ];
+        const _prefs = pref === 'auto' ? ['rip', 'cross'] : [pref];
+        const _isBetter = (res, best) =>
+            !best
+            || res.unmapped.length < best.unmapped.length
+            || (res.unmapped.length === best.unmapped.length && res.boards.length < best.boards.length)
+            || (res.unmapped.length === best.unmapped.length && res.boards.length === best.boards.length
+                && _sheetTrueWaste(res.boards, sheetL, sheetW) < _sheetTrueWaste(best.boards, sheetL, sheetW));
+        let best = null;
+
+        // V1: sort-order candidates (transport-aware)
+        _sorters.forEach(sorter => {
+            const sorted = [...parts].sort(sorter);
+            _prefs.forEach(p => {
+                const res = useTransport
+                    ? pack2DTransport(sorted, sheetL, sheetW, sheetGrain, kerf, trim, transportLmax, margin, p)
+                    : pack2D(sorted, sheetL, sheetW, sheetGrain, kerf, trim, p);
+                if (res && _isBetter(res, best)) best = res;
+            });
+        });
+
+        // V2: best-fit scan (non-transport only — transport packing has its own strip logic)
+        if (!useTransport) {
+            _prefs.forEach(p => {
+                const res = pack2DV2(parts, sheetL, sheetW, sheetGrain, kerf, trim, p);
+                if (res && _isBetter(res, best)) best = res;
+            });
+        }
+
+        return best;
+    }
+
     function pack2D(parts, sheetLength, sheetWidth, sheetGrain, kerf, trim, pref) {
         let boards = [];
         let unmapped = [];
@@ -559,7 +634,7 @@
             return pack2D(parts, sheetLength, sheetWidth, sheetGrain, kerf, trim, pref);
         }
 
-        const segMax   = transportLmax;
+        const segMax   = transportLmax - margin;
         const totalDim = sheetLength;
 
         // Build strip specifications and transport zone specs (length axis only)
@@ -603,7 +678,8 @@
             const strips  = [{
                 freeRects: [{ x: trim, y: trim, w: Math.max(0, sheetWidth - trim), l: oversizedDim }],
                 cuts: [],
-                oversized: true
+                oversized: true,
+                specL: trim + oversizedDim
             }];
             return {
                 cuts: [],
@@ -678,7 +754,8 @@
                             freeRects: [{ x: trim, y: 0, w: Math.max(0, sheetWidth - trim), l: ozL }],
                             cuts: [],
                             oversized: true,
-                            absStart: newStripStart
+                            absStart: newStripStart,
+                            specL: ozL
                         };
                         const fit = checkFit(part, newStrip.freeRects[0], sheetGrain);
                         if (fit.fits) {
@@ -724,7 +801,8 @@
                 b.strips.push({
                     freeRects: [{ x: trim, y: 0, w: Math.max(0, sheetWidth - trim), l: segSize }],
                     cuts: [],
-                    absStart: tailPos
+                    absStart: tailPos,
+                    specL: segSize
                 });
                 if (segEnd < totalDim) {
                     b.transportZones.push({ axis: 'length', start: segEnd, size: Math.min(margin, totalDim - segEnd) });
@@ -800,6 +878,10 @@
                             return { ...r, l: Math.min(r.l, actualSize - r.y) };
                         }).filter(r => r && r.w > 0 && r.l > 0)
                           .forEach(r => b.freeRects.push({ ...r, y: r.y + yOff }));
+                        // Cover the strip tail after the last part (grey area without this)
+                        if (strip.specL > actualSize) {
+                            b.freeRects.push({ x: 0, y: yOff + actualSize, w: sheetWidth, l: strip.specL - actualSize });
+                        }
                     } else {
                         // Empty strip (no parts placed): include its full free area for waste accounting
                         strip.freeRects.filter(r => r.w > 0 && r.l > 0)

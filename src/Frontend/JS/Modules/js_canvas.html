@@ -195,7 +195,7 @@
                             let _si = '';
                             for (let _i = 0; _i < _nP; _i++) {
                                 const _last = _i === _nP - 1;
-                                const _isOz  = _segMax > 0 && _pl[_i] > _segMax;
+                                const _isOz  = _segMax > 0 && _pl[_i] > _segMax - sheetTransportMargin;
                                 const _leftHalf  = _i > 0   ? sheetTransportMargin / 2 : 0;
                                 const _rightHalf = !_last   ? sheetTransportMargin / 2 : 0;
                                 const _displayLen = _pl[_i] + _leftHalf + _rightHalf;
@@ -220,7 +220,7 @@
                             let _vsi = '';
                             for (let _i = 0; _i < _nP; _i++) {
                                 const _last = _i === _nP - 1;
-                                const _isOz  = _segMax > 0 && _pl[_i] > _segMax;
+                                const _isOz  = _segMax > 0 && _pl[_i] > _segMax - sheetTransportMargin;
                                 const _leftHalf  = _i > 0   ? sheetTransportMargin / 2 : 0;
                                 const _rightHalf = !_last   ? sheetTransportMargin / 2 : 0;
                                 const _displayLen = _pl[_i] + _leftHalf + _rightHalf;
@@ -749,11 +749,36 @@
             ctx.strokeRect(mapped.cx, mapped.cy, mapped.cw, mapped.ch);
 
             if (mapped.cw > 25 && mapped.ch > 25) {
+                const _showDims = mapped.cw > 70 && mapped.ch > 50;
+                const _dimFont  = Math.max(10, _drawFont - 2);
+
+                // Part number: bold, centered
                 ctx.fillStyle = '#000';
                 ctx.font = `bold ${_drawFont}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(index + 1, mapped.cx + (mapped.cw / 2), mapped.cy + (mapped.ch / 2));
+                ctx.fillText(index + 1, mapped.cx + mapped.cw / 2, mapped.cy + mapped.ch / 2);
+
+                if (_showDims) {
+                    const _dimH = mapped.cw / pxPerMm;
+                    const _dimV = mapped.ch / pxPerMm;
+                    ctx.fillStyle = '#444';
+                    ctx.font = `${_dimFont}px Arial`;
+
+                    // Horizontal dimension just inside top edge
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'top';
+                    ctx.fillText(formatForDisplay(_dimH), mapped.cx + mapped.cw / 2, mapped.cy + 4);
+
+                    // Vertical dimension just inside left edge, rotated 90° counterclockwise
+                    ctx.save();
+                    ctx.translate(mapped.cx + 4 + _dimFont / 2, mapped.cy + mapped.ch / 2);
+                    ctx.rotate(-Math.PI / 2);
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(formatForDisplay(_dimV), 0, 0);
+                    ctx.restore();
+                }
             }
         });
 
