@@ -96,6 +96,7 @@
             appState.settings.isProjectCardView  = true;
             appState.settings.starterPackLoaded  = true;
             saveState();
+            if (typeof clearAllFiltersForTable === 'function') clearAllFiltersForTable('parts');
             renderDictionaries();
 
             // Apply thumbnails to RAM immediately so project cards show images right away
@@ -111,6 +112,7 @@
 
             if (typeof renderProjectsTable === 'function') renderProjectsTable();
             navigateTo('view-projects');
+            document.getElementById('tab-projects')?.click();
             showToast(t('msg_starter_pack_loaded'));
         } catch(e) {
             console.error('Starter pack parse error:', e);

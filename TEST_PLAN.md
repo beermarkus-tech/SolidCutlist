@@ -25,7 +25,7 @@ Claude will read this file and the memory index at `~/.claude/projects/-home-use
 | 10 | Mobile UX | You | ✅ Complete | All results views mobile-friendly. Sticky action bar, offline localStorage fallback. |
 | 11 | Error Handling & Edge Cases | Both | ✅ Complete | Multiplier=0 fixed (skips project/group, resets field to 1). localStorage corruption N/A (not user-reachable). Offline: load-before-store advice. Conflict modal replaced native confirm(). Sync indicator now shows "Saved locally" vs checkmark. |
 | 12 | End-to-End Integration | Both | ✅ Complete | All 13 steps passed. Bugs found and fixed: multiplier=0, sandbox notifyConfigChanged, shopping list Size: translation, transport piece sizing. |
-| 13 | Benchmarking vs. Competing Tools | Both | 🔄 In progress | B-03 ✅ matched. B-04 ⚠️ known delta (see below). |
+| 13 | Benchmarking vs. Competing Tools | Both | ✅ Complete | All scenarios run. B-04 known delta documented. Tail substitution added. |
 
 Update status to: ⬜ Not started / 🔄 In progress / ✅ Complete / ❌ Blocked
 
@@ -362,11 +362,11 @@ Repeat once on: desktop Chrome, iPad Safari, and Chrome DevTools phone emulation
 | B-02 | 30 parts, mixed lengths, 1 lumber profile | 1D | ✅ | 9-10 boards, correct and stable |
 | B-03 | 10 parts, 1 sheet size (plywood) | 2D | ✅ | 1 sheet, 79% yield — matches CutList Optimizer |
 | B-04 | 20 parts, mixed sizes, grain direction constraints | 2D | ⚠️ | SolidCutlist: 3 sheets. CutList Optimizer: 2 sheets. **Known delta — documented limitation.** |
-| B-04b | Wardrobe carcass — same structural trap as B-04, different geometry | 2D | ⬜ | |
-| B-05 | Large job: 60+ parts, 3 profiles, 2 sheet sizes | Mixed | ⬜ | |
-| B-06 | Edge case: one part nearly full-board size | 1D+2D | ⬜ | |
+| B-04b | Wardrobe carcass — same structural trap as B-04, different geometry | 2D | ✅ | Same board count as competitor, layout quality delta only — consistent with B-04 |
+| B-05 | Large job: 60+ parts, 3 profiles, 2 sheet sizes | Mixed | ✅ | Tail substitution added: optimizer now picks cheaper half-sheets for small-parts tail |
+| B-06 | Edge case: one part nearly full-board size | 1D+2D | ✅ | All 3 sub-scenarios (exact fit, too large, near-full 2D) handled cleanly, no crash |
 | B-07 | Kerf sensitivity: run B-01 with 0mm, 3.2mm, 5mm kerf | 1D | ✅ | Board count stable at 3, waste changes correctly, gaps render |
-| B-08 | Cut-in-store: transport length = 2400mm, part = 2350mm | 1D | ⬜ | |
+| B-08 | Cut-in-store: transport length = 2400mm, part = 2350mm | 1D | ✅ | Verified in prior session — flagged correctly, no competitor offers this |
 
 ### B-04 Known Limitation — Greedy Packer Delta
 

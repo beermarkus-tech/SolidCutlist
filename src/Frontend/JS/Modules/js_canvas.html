@@ -749,7 +749,7 @@
             ctx.strokeRect(mapped.cx, mapped.cy, mapped.cw, mapped.ch);
 
             if (mapped.cw > 25 && mapped.ch > 25) {
-                const _showDims = mapped.cw > 70 && mapped.ch > 50;
+                const _showDims = mapped.cw > 70 && mapped.ch > 50 && window.innerWidth >= 768;
                 const _dimFont  = Math.max(10, _drawFont - 2);
 
                 // Part number: bold, centered

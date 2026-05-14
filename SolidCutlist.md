@@ -150,7 +150,7 @@ SolidCutlist is sold as a **Google Sheet** with a bound Google Apps Script. The 
 
 **Platform:** Etsy (primary launch). Gumroad may follow.
 
-**Price:** [TBD — one-time purchase]
+**Price:** 49€ - one time purchase
 
 **What the buyer gets:**
 - Their own private copy of the Google Sheet

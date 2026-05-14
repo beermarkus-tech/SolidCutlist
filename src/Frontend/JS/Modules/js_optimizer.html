@@ -219,8 +219,106 @@
                     }
                 });
 
+                // TAIL SUBSTITUTION: walk backwards through bestOption's boards until we hit
+                // one whose parts won't fit on an alternative catalog option. Everything after
+                // that split point is repacked on the cheaper alternative (e.g. half-sheets).
+                if (bestOption && bestOption.boardsNeeded >= 2 && chosenOptions.length === 0) {
+                    const _origN      = bestOption.boardsNeeded;
+                    const _origLayout = bestOption.layout;
+                    const _origCost   = bestOption.totalCost;
+                    const _origWaste  = bestOption.waste;
+                    const _primCost   = (typeof calculateCostPerPiece === 'function')
+                                        ? calculateCostPerPiece(bestOption.catalogItem)
+                                        : bestOption.catalogItem.price;
+                    const _tsUse1D    = transportEnabled && boardTransportLmax > 0;
+                    const _tsUse2D    = transportEnabled && sheetTransportLmax > 0;
+                    let   _bestHybrid = _origCost; // only update bestOption when strictly cheaper
+
+                    vendorOptions.forEach(altOpt => {
+                        // Skip same catalog entry
+                        if (altOpt.storeId    === bestOption.catalogItem.storeId  &&
+                            altOpt.length     === bestOption.catalogItem.length    &&
+                            (altOpt.width||0) === (bestOption.catalogItem.width||0)) return;
+
+                        // Walk backwards: find how many tail boards have parts that fit on altOpt
+                        let splitIdx = _origN;
+                        for (let i = _origN - 1; i >= 0; i--) {
+                            const allFit = _origLayout[i].cuts.every(c => {
+                                if (isSheet) {
+                                    const cw = c.w, cl = c.l, aw = altOpt.width, al = altOpt.length;
+                                    return (cw <= aw && cl <= al) || (cl <= aw && cw <= al);
+                                }
+                                return (c.length || c.l || 0) <= altOpt.length;
+                            });
+                            if (allFit) splitIdx = i; else break;
+                        }
+                        // splitIdx === 0  → existing loop already evaluated alt for all parts
+                        // splitIdx === _origN → no moveable tail
+                        if (splitIdx === 0 || splitIdx >= _origN) return;
+
+                        // Map tail cuts back to original part objects by partId count
+                        const _idCounts = {};
+                        for (let i = splitIdx; i < _origN; i++)
+                            _origLayout[i].cuts.forEach(c => _idCounts[c.partId] = (_idCounts[c.partId]||0) + 1);
+                        const _taken = {};
+                        const _tailParts = currentParts.filter(p => {
+                            const need = _idCounts[p.partId] || 0;
+                            const have = _taken[p.partId]   || 0;
+                            if (have < need) { _taken[p.partId] = have + 1; return true; }
+                            return false;
+                        });
+                        const expectedCuts = _origLayout.slice(splitIdx).reduce((s, b) => s + b.cuts.length, 0);
+                        if (_tailParts.length !== expectedCuts) return; // partId mapping failed — skip safely
+
+                        // Repack tail parts on the alternative option
+                        const _altCostPer = (typeof calculateCostPerPiece === 'function')
+                                            ? calculateCostPerPiece(altOpt) : altOpt.price;
+                        const _altRes = isSheet
+                            ? _bestPack2D(_tailParts, altOpt.length, altOpt.width, altOpt.grain,
+                                          k2D, t2D, _tsUse2D, sheetTransportLmax, sheetMargin, pref2D)
+                            : (_tsUse1D
+                                ? pack1DTransport(_tailParts, altOpt.length, k1D, t1D, boardTransportLmax, boardMargin)
+                                : pack1D(_tailParts, altOpt.length, k1D, t1D));
+                        if (!_altRes || _altRes.unmapped.length > 0) return;
+
+                        const _hybridCost = splitIdx * _primCost + _altRes.boards.length * _altCostPer;
+                        if (_hybridCost >= _bestHybrid) return; // not better than current best hybrid
+                        _bestHybrid = _hybridCost;
+
+                        const _tailWaste = _origLayout.slice(splitIdx).reduce((s, b) =>
+                            s + (isSheet
+                                ? (b.freeRects||[]).reduce((ws, r) => ws + r.w * r.l, 0)
+                                : (b.remaining||0)), 0);
+
+                        bestOption = {
+                            ...bestOption,
+                            boardsNeeded: splitIdx,
+                            layout:       _origLayout.slice(0, splitIdx),
+                            totalCost:    splitIdx * _primCost,
+                            waste:        _origWaste - _tailWaste,
+                            _tailAlt: {
+                                catalogItem:  altOpt,
+                                boardsNeeded: _altRes.boards.length,
+                                layout:       _altRes.boards,
+                                totalCost:    _altRes.boards.length * _altCostPer,
+                                waste:        _altRes.totalWaste
+                            }
+                        };
+                    });
+                }
+
                 if (bestOption) {
-                    finalCutlist.push({ sku: batch, success: true, purchase: bestOption });
+                    const { _tailAlt, ...primaryPurchase } = bestOption;
+                    finalCutlist.push({ sku: batch, success: true, purchase: primaryPurchase });
+                    if (_tailAlt) {
+                        finalCutlist.push({ sku: batch, success: true, purchase: {
+                            catalogItem:  _tailAlt.catalogItem,
+                            boardsNeeded: _tailAlt.boardsNeeded,
+                            layout:       _tailAlt.layout,
+                            totalCost:    _tailAlt.totalCost,
+                            waste:        _tailAlt.waste
+                        }});
+                    }
                 } else if (bestPartialOption) {
                     // Some parts fit, some are oversized — show partial result with warning
                     finalCutlist.push({
@@ -2431,6 +2529,7 @@
     const _shoppingItemRegistry = new Map(); // catalogId → enriched bucket item
     let editMaterialModalInstance = null;
     let _editingCatalogId = null;
+    let _editingDisplayUnit = null; // effective unit at modal-open time (may differ from global after job restore)
 
     function calcNormalizedPrice(price, priceUnit, lengthMm, widthMm, thicknessMm, profileWidthMm, category, isMetric) {
         if (!price || price <= 0 || !lengthMm || lengthMm <= 0) return null;
@@ -2473,13 +2572,18 @@
 
         const job = appState.jobs.find(j => j.id === window.activeJobId);
         if (!job) return;
-        const isMetric = (job.settings?.displayUnit || appState.settings.displayUnit) === 'mm';
+        // Capture the unit that was active when this job rendered (job settings are
+        // temporarily swapped into appState during rendering, then restored to global).
+        _editingDisplayUnit = job.settings?.displayUnit || appState.settings.displayUnit;
+        const isMetric = _editingDisplayUnit === 'mm';
         const currency = job.settings?.currency || appState.settings.currency || '$';
 
         // Subtitle
         document.getElementById('edit-material-subtitle').textContent = `${item.profName} — ${item.matName}`;
 
-        // Dimensions — show/hide width group for sheets
+        // Dimensions — convert using the job's effective unit, not the restored global unit
+        const _savedUnit = appState.settings.displayUnit;
+        appState.settings.displayUnit = _editingDisplayUnit;
         document.getElementById('edit-mat-length').value = formatForDisplay(item.length);
         const widthGroup = document.getElementById('edit-mat-width-group');
         if (item.category === 'sheet') {
@@ -2488,6 +2592,11 @@
         } else {
             widthGroup.classList.add('d-none');
         }
+        appState.settings.displayUnit = _savedUnit;
+
+        // Sync the modal's unit labels to the job's effective unit
+        const unitText = isMetric ? 'mm' : 'in';
+        document.querySelectorAll('#modal-edit-material .display-unit-label').forEach(el => el.textContent = unitText);
 
         // Price
         document.getElementById('edit-mat-price').value = item.price || '';
@@ -2521,11 +2630,14 @@
         if (!item) return;
         const job = appState.jobs.find(j => j.id === window.activeJobId);
         if (!job) return;
-        const isMetric = (job.settings?.displayUnit || appState.settings.displayUnit) === 'mm';
+        const isMetric = (_editingDisplayUnit || appState.settings.displayUnit) === 'mm';
         const currency = job.settings?.currency || appState.settings.currency || '$';
 
+        const _savedUnit = appState.settings.displayUnit;
+        appState.settings.displayUnit = _editingDisplayUnit || appState.settings.displayUnit;
         const lengthMm = parseToBaseUnit(document.getElementById('edit-mat-length').value);
         const widthMm = item.category === 'sheet' ? parseToBaseUnit(document.getElementById('edit-mat-width').value) : item.width;
+        appState.settings.displayUnit = _savedUnit;
         const price = parseFloat(document.getElementById('edit-mat-price').value) || 0;
         const priceUnit = document.getElementById('edit-mat-price-unit').value;
 
@@ -2540,8 +2652,11 @@
         const job = appState.jobs.find(j => j.id === window.activeJobId);
         if (!job || !job.catalog) return;
 
+        const _savedUnit = appState.settings.displayUnit;
+        appState.settings.displayUnit = _editingDisplayUnit || appState.settings.displayUnit;
         const lengthMm = parseToBaseUnit(document.getElementById('edit-mat-length').value);
         const widthMm = item.category === 'sheet' ? parseToBaseUnit(document.getElementById('edit-mat-width').value) : item.width;
+        appState.settings.displayUnit = _savedUnit;
         const price = parseFloat(document.getElementById('edit-mat-price').value);
         const priceUnit = document.getElementById('edit-mat-price-unit').value;
 
