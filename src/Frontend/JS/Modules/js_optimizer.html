@@ -413,6 +413,28 @@
         if (rect1.w > 0 && rect1.l > 0) board.freeRects.push(rect1);
         if (rect2.w > 0 && rect2.l > 0) board.freeRects.push(rect2);
     }
+    // Returns the area of the single largest free rect across all boards.
+    // Used as the primary tournament tiebreaker: one big offcut beats many small ones.
+    function _largestOffcut(boards) {
+        let max = 0;
+        boards.forEach(b => {
+            const rects = b.freeRects || (b.strips || []).flatMap(s => s.freeRects || []);
+            rects.forEach(r => { const a = r.w * r.l; if (a > max) max = a; });
+        });
+        return max;
+    }
+    // Enforces a canonical orientation for grain-unconstrained identical parts within one packing run.
+    // The first placement of a given dimension pair sets the preference; later identical parts use
+    // the same orientation when it fits, and fall back to checkFit's choice only when it doesn't.
+    function _resolveRot(part, rect, sheetGrain, fit, canonRot) {
+        if (part.grain !== 'none' && sheetGrain !== 'none') return fit.rotated; // grain decides
+        const key = Math.max(part.length, part.width) + '|' + Math.min(part.length, part.width);
+        if (canonRot[key] === undefined) { canonRot[key] = fit.rotated; return fit.rotated; }
+        if (canonRot[key] === fit.rotated) return fit.rotated;
+        const pw = canonRot[key] ? part.length : part.width;
+        const pl = canonRot[key] ? part.width  : part.length;
+        return (pw <= rect.w && pl <= rect.l) ? canonRot[key] : fit.rotated;
+    }
     // Returns the true-waste rate for a set of pack2D boards: only scraps too small to reuse.
     // This matches the analytics tab metric (board − parts − usable offcuts) / total board area.
     function _sheetTrueWaste(boards, brdL, brdW) {
@@ -473,6 +495,7 @@
         let unmapped  = [];
         let remaining = [...parts];
         let totalWaste = 0;
+        const canonRot = {};
 
         while (remaining.length > 0) {
             let bestWaste = Infinity, bestPi = -1, bestBi = -1, bestRi = -1, bestRot = false;
@@ -494,7 +517,8 @@
             }
 
             if (bestPi >= 0) {
-                place2DPart(boards[bestBi], bestRi, remaining[bestPi], bestRot, kerf, pref);
+                const rot = _resolveRot(remaining[bestPi], boards[bestBi].freeRects[bestRi], sheetGrain, { fits: true, rotated: bestRot }, canonRot);
+                place2DPart(boards[bestBi], bestRi, remaining[bestPi], rot, kerf, pref);
                 remaining.splice(bestPi, 1);
             } else {
                 // Nothing fits on existing boards — open a new board with the largest remaining part.
@@ -503,7 +527,8 @@
                 const newBoard = { cuts: [], freeRects: [{ x: trim, y: trim, w: wUsable, l: lUsable }], cutPref: pref };
                 const fit = checkFit(remaining[li], newBoard.freeRects[0], sheetGrain);
                 if (fit.fits) {
-                    place2DPart(newBoard, 0, remaining[li], fit.rotated, kerf, pref);
+                    const rot = _resolveRot(remaining[li], newBoard.freeRects[0], sheetGrain, fit, canonRot);
+                    place2DPart(newBoard, 0, remaining[li], rot, kerf, pref);
                     boards.push(newBoard);
                 } else {
                     unmapped.push(remaining[li]);
@@ -530,12 +555,14 @@
             (a, b) => (a.length * a.width) - (b.length * b.width),          // area asc
         ];
         const _prefs = pref === 'auto' ? ['rip', 'cross'] : [pref];
-        const _isBetter = (res, best) =>
-            !best
-            || res.unmapped.length < best.unmapped.length
-            || (res.unmapped.length === best.unmapped.length && res.boards.length < best.boards.length)
-            || (res.unmapped.length === best.unmapped.length && res.boards.length === best.boards.length
-                && _sheetTrueWaste(res.boards, sheetL, sheetW) < _sheetTrueWaste(best.boards, sheetL, sheetW));
+        const _isBetter = (res, best) => {
+            if (!best) return true;
+            if (res.unmapped.length !== best.unmapped.length) return res.unmapped.length < best.unmapped.length;
+            if (res.boards.length   !== best.boards.length)   return res.boards.length   < best.boards.length;
+            const ro = _largestOffcut(res.boards), bo = _largestOffcut(best.boards);
+            if (ro !== bo) return ro > bo;
+            return _sheetTrueWaste(res.boards, sheetL, sheetW) < _sheetTrueWaste(best.boards, sheetL, sheetW);
+        };
         let best = null;
 
         // V1: sort-order candidates (transport-aware)
@@ -564,6 +591,7 @@
         let boards = [];
         let unmapped = [];
         let totalWaste = 0;
+        const canonRot = {};
         parts.forEach(part => {
             let placed = false;
             for (let b of boards) {
@@ -571,7 +599,7 @@
                 for (let i = 0; i < b.freeRects.length; i++) {
                     let fit = checkFit(part, b.freeRects[i], sheetGrain);
                     if (fit.fits) {
-                        place2DPart(b, i, part, fit.rotated, kerf, pref);
+                        place2DPart(b, i, part, _resolveRot(part, b.freeRects[i], sheetGrain, fit, canonRot), kerf, pref);
                         placed = true;
                         break;
                     }
@@ -584,9 +612,9 @@
                 let newBoard = { cuts: [], freeRects: [{ x: trim, y: trim, w: wUsable, l: lUsable }], cutPref: pref };
                 let fit = checkFit(part, newBoard.freeRects[0], sheetGrain);
                 if (fit.fits) {
-                    place2DPart(newBoard, 0, part, fit.rotated, kerf, pref);
+                    place2DPart(newBoard, 0, part, _resolveRot(part, newBoard.freeRects[0], sheetGrain, fit, canonRot), kerf, pref);
                     boards.push(newBoard);
-                } else unmapped.push(part); 
+                } else unmapped.push(part);
             }
         });
         boards.forEach(b => b.freeRects.forEach(r => totalWaste += (r.w * r.l)));
