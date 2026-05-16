@@ -282,8 +282,9 @@
                 <!-- Job Setup pane -->
                 <div class="tab-pane show active" id="pane-job-setup" role="tabpanel" tabindex="0">
                     <div class="d-flex flex-column h-100">
-                        <div class="px-3 pt-3 pb-1">
+                        <div class="px-3 pt-3 pb-1 d-flex align-items-center gap-1">
                             <h6 class="mb-0 fw-bold text-uppercase text-muted" style="font-size: 0.8rem;" data-i18n="lbl_select_to_build">Select to Build</h6>
+                            <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tooltip_select_to_build'))">ⓘ</button>
                         </div>
                         <div id="job-configurator-tree" class="flex-grow-1 px-3 pb-2" style="min-height: 150px;">
                             <div class="text-center text-muted small">Loading...</div>
@@ -350,6 +351,7 @@
                     <button class="btn btn-sm toolbar-btn" onclick="printPartsTable('sandbox_parts')">🖨️</button>
                 </div>
                 <div id="diagram-controls" class="d-none">
+                    <button type="button" class="btn btn-sm toolbar-btn" onclick="showInfoTooltip(event, t('tooltip_optimizer_how'))">ⓘ</button>
                     <button class="btn btn-sm toolbar-btn" onclick="printOptimizer('diagrams')">🖨️</button>
                     <button class="btn btn-sm toolbar-btn" onclick="openLabelModal()">🏷️</button>
                     <button id="btn-toggle-all-cuts" class="btn btn-sm toolbar-btn" onclick="toggleAllCutsTables()" title="Hide all cut lists" data-i18n-title="title_hide_cut_lists">⊟</button>

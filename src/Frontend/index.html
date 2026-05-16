@@ -263,6 +263,7 @@
             <div class="modal-content">
                 <div class="modal-header bg-dark text-white py-2">
                     <h6 class="modal-title fw-bold" data-i18n="hdr_commit_offcuts">📥 Commit Offcuts to Shop Stock</h6>
+                    <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;color:#ffffff;margin-left:0.4em;" onclick="showInfoTooltip(event, t('tooltip_commit_offcuts'))">ⓘ</button>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -527,28 +528,25 @@
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content shadow">
                 <div class="modal-header text-white" style="background-color: #343a40;">
-                    <h5 class="modal-title">🗄️ Archive Manager</h5>
+                    <h5 class="modal-title" data-i18n="hdr_archive_manager">🗄️ Archive Manager</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0">
-                    <div class="table-responsive" style="max-height: 50vh; overflow-y: auto;">
+                    <div class="table-responsive" style="max-height: 65vh; overflow-y: auto;">
                         <table class="table table-hover table-sm mb-0 align-middle">
                             <thead class="table-light sticky-top shadow-sm">
                                 <tr>
-                                    <th class="ps-3" style="width: 20%; cursor: pointer;" onclick="sortArchive('date')" title="Sort by Date">Date ⇅</th>
+                                    <th class="ps-3" style="width: 20%; cursor: pointer;" onclick="sortArchive('date')" data-i18n-title="title_sort_by_date" title="Sort by Date"><span data-i18n="col_archive_date">Date</span> ⇅</th>
                                     <th style="width: 40px;"></th>
-                                    <th style="width: 30%; cursor: pointer;" onclick="sortArchive('name')" title="Sort by Name">Project Name ⇅</th>
-                                    <th style="width: 25%;">Notes</th>
-                                    <th class="text-end pe-3" style="width: 15%;">Actions</th>
+                                    <th style="width: 30%; cursor: pointer;" onclick="sortArchive('name')" data-i18n-title="title_sort_by_name" title="Sort by Name"><span data-i18n="col_archive_project_name">Project Name</span> ⇅</th>
+                                    <th style="width: 25%;" data-i18n="col_archive_notes">Notes</th>
+                                    <th class="text-end pe-3" style="width: 15%;" data-i18n="col_archive_actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="archive-table-body">
                                 </tbody>
                         </table>
                     </div>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>

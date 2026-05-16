@@ -92,6 +92,7 @@
             <div class="p-3 rounded-3 input-panel mb-2">
                 <div class="d-flex align-items-center gap-3 flex-wrap">
                     <label class="form-label form-label-sm fw-bold text-secondary mb-0 text-nowrap" data-i18n="lbl_imported_unit">Imported unit</label>
+                    <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tooltip_imported_unit'))">ⓘ</button>
                     <select class="form-select form-select-sm" id="import-unit-select" onchange="applyImportScale(this.value)" style="max-width:180px;">
                         <option value="1" data-i18n="opt_unit_mm">mm (no scaling)</option>
                         <option value="10" data-i18n="opt_unit_cm">cm (×10)</option>

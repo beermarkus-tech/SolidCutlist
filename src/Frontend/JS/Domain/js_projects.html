@@ -571,7 +571,7 @@
                     <textarea class="archive-note-cell form-control form-control-sm border-0 bg-transparent text-muted w-100" rows="1" readonly title="${t('title_click_to_expand')}">${safeHTML(proj.notes)}</textarea>
                 </td>
                 <td class="text-end pe-3 text-nowrap">
-                    <button class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="restoreArchivedProject('${proj.id}', this)" title="${t('title_restore_to_workspace')}">Load</button>
+                    <button class="btn btn-sm btn-outline-primary py-0 px-2 me-1" onclick="requestConfirm(t('confirm_restore_project'), () => restoreArchivedProject('${proj.id}'), 'primary', t('btn_restore'))" title="${t('title_restore_to_workspace')}">${t('btn_restore')}</button>
                     <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteArchivedProjectUI('${proj.id}')" title="${t('title_permanently_delete')}">🗑️</button>
                 </td>
             </tr>
@@ -641,17 +641,21 @@
             })
             .archiveProjectToSheet(JSON.stringify(payload));
     }
-    function restoreArchivedProject(id, btnElement) {
-        // 🪄 1. Setup Spinner & Shield
-        const originalText = btnElement.innerHTML;
-        btnElement.innerHTML = `<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>`;
+    function restoreArchivedProject(id) {
+        // 🪄 1. Setup Spinner & Shield — spinner goes on the confirm modal button, same as archive
+        const confirmBtn = document.getElementById('btn-confirm-delete');
+        let originalText = '';
+        if (confirmBtn) {
+            originalText = confirmBtn.innerText;
+            confirmBtn.innerHTML = `<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> ${t('lbl_working')}`;
+        }
         freezeUI();
 
         google.script.run
             .withSuccessHandler((responseStr) => {
                 // 🪄 2. Remove Shield & Restore UI
                 unfreezeUI();
-                btnElement.innerHTML = originalText;
+                if (confirmBtn) confirmBtn.innerHTML = originalText;
 
                 const response = typeof responseStr === 'string' ? JSON.parse(responseStr) : responseStr;
                 if (response.status === 'success') {
@@ -676,15 +680,17 @@
                     // 🪄 FIXED: Remove the project from the list and redraw, leaving the modal open
                     currentArchiveData = currentArchiveData.filter(p => p.id !== id);
                     renderArchiveTable();
-                    
+
                     showToast(t('msg_project_restored'));
+                    bootstrap.Modal.getInstance(document.getElementById('modal-universal-delete'))?.hide();
+                    archiveModalInstance?.hide();
                 } else {
                     alert('Error restoring: ' + response.message);
                 }
             })
             .withFailureHandler((err) => {
                 unfreezeUI();
-                btnElement.innerHTML = originalText;
+                if (confirmBtn) confirmBtn.innerHTML = originalText;
                 alert('Server Error: ' + err);
             })
             .loadProjectFromArchive(id);

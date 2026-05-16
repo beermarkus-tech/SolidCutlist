@@ -270,10 +270,11 @@
                                     <span onclick="handleSort('catalog', 'calculatedPrice', 'number')" class="sortable" title="Sort by Calculated Price">⇅</span>
                                 </div>
                             </th>
-                            <th class="col-freshness text-center">
+                            <th class="col-freshness text-center text-nowrap">
                                 <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'lastVerified', 'number')" class="cursor-pointer">
                                     <span data-i18n="col_updated">Updated</span> ⇅
                                 </span>
+                                <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tooltip_price_freshness'))">ⓘ</button>
                             </th>
                             <th class="col-actions text-center" id="th-catalog-links" data-i18n="col_links">Links</th>
                             <th class="col-actions text-end">

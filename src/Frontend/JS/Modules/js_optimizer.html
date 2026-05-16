@@ -2403,6 +2403,12 @@
     // PHASE F: COMMIT TO STOCK ENGINE
     // ==========================================
     let commitModalInstance = null;
+    function clampCommitQty(el) {
+        const v  = parseInt(el.value);
+        const mx = parseInt(el.max) || 1;
+        if (isNaN(v) || v < 0) el.value = 0;
+        else if (v > mx)        el.value = mx;
+    }
     function openCommitModal() {
         if (!window.currentOffcuts || window.currentOffcuts.length === 0) {
             showToast(t('msg_no_offcuts_to_commit'), true);
@@ -2440,7 +2446,7 @@
                     <td class="text-center align-middle">${safeHTML(off.matName)}</td>
                     <td class="text-center align-middle fw-bold text-primary">${sizeStr} <span class="display-unit-label"></span></td>
                     <td class="text-center align-middle">
-                        <input type="number" id="commit-qty-${index}" class="form-control form-control-sm text-center fw-bold" value="${off.qty}" min="1" max="${off.qty}" ${disableAttr}>
+                        <input type="number" id="commit-qty-${index}" class="form-control form-control-sm text-center fw-bold" value="${off.qty}" min="0" max="${off.qty}" oninput="clampCommitQty(this)" ${disableAttr}>
                     </td>
                     <td class="ps-3 align-middle text-center">
                         <input class="form-check-input commit-checkbox" type="checkbox" value="${index}" ${disableAttr} onchange="toggleCommitQty(${index}, this.checked)">
