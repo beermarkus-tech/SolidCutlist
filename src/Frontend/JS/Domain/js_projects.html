@@ -607,6 +607,10 @@
             parts: (appState.parts || []).filter(p => p.projectId === projectId),
             image: (window.projectImages && window.projectImages[projectId]) || null
         };
+        const _partProfileIds  = new Set(payload.parts.map(p => p.profileId).filter(Boolean));
+        const _partMaterialIds = new Set(payload.parts.map(p => p.materialId).filter(Boolean));
+        payload.usedProfiles  = (appState.profiles  || []).filter(p => _partProfileIds.has(p.id));
+        payload.usedMaterials = (appState.materials || []).filter(m => _partMaterialIds.has(m.id));
 
         google.script.run
             .withSuccessHandler((response) => {
@@ -661,6 +665,33 @@
                 if (response.status === 'success') {
                     appState.projects.unshift(response.project);
                     if(response.groups) { if (!appState.groups) appState.groups = []; appState.groups.push(...response.groups); }
+
+                    // --- Catalog resolution (Option D) ---
+                    // Heal broken profileId/materialId references before parts land in appState.
+                    // Step 1: exact ID match → keep as-is.
+                    // Step 2: name match in current catalog → remap to existing entry's ID.
+                    // Step 3: no match → restore full object from snapshot with original ID.
+                    if (!appState.profiles)  appState.profiles  = [];
+                    if (!appState.materials) appState.materials = [];
+                    const _snapProfs = response.usedProfiles  || [];
+                    const _snapMats  = response.usedMaterials || [];
+                    let _catalogAdditions = 0;
+                    function _resolveRef(archivedId, archivedName, currentItems, snapItems) {
+                        if (currentItems.some(x => x.id === archivedId)) return archivedId;
+                        const byName = currentItems.find(x => x.name === archivedName);
+                        if (byName) return byName.id;
+                        const snap = snapItems.find(x => x.id === archivedId);
+                        if (snap) { currentItems.unshift(snap); _catalogAdditions++; }
+                        return archivedId;
+                    }
+                    (response.parts || []).forEach(part => {
+                        const sProf = _snapProfs.find(p => p.id === part.profileId);
+                        const sMat  = _snapMats.find(m => m.id === part.materialId);
+                        if (sProf) part.profileId  = _resolveRef(part.profileId,  sProf.name, appState.profiles,  _snapProfs);
+                        if (sMat)  part.materialId = _resolveRef(part.materialId, sMat.name,  appState.materials, _snapMats);
+                    });
+                    // --- End catalog resolution ---
+
                     if(response.parts)  { if (!appState.parts)  appState.parts  = []; appState.parts.push(...response.parts); }
 
                     if (response.image) {
@@ -681,7 +712,12 @@
                     currentArchiveData = currentArchiveData.filter(p => p.id !== id);
                     renderArchiveTable();
 
+                    if (_catalogAdditions > 0) {
+                        if (typeof renderMaterialsTable === 'function') renderMaterialsTable();
+                        if (typeof renderProfilesTable  === 'function') renderProfilesTable();
+                    }
                     showToast(t('msg_project_restored'));
+                    if (_catalogAdditions > 0) showToast(t('msg_catalog_restored', { count: _catalogAdditions }));
                     bootstrap.Modal.getInstance(document.getElementById('modal-universal-delete'))?.hide();
                     archiveModalInstance?.hide();
                 } else {

@@ -245,8 +245,8 @@ function archiveProjectToSheet(payloadString) {
     
     if (!archiveSheet) {
       archiveSheet = ss.insertSheet('Archive');
-      archiveSheet.appendRow(['Project ID', 'Archive Date', 'Project JSON', 'Groups JSON', 'Parts JSON', 'Image Base64']);
-      archiveSheet.getRange('A1:F1').setFontWeight('bold').setBackground('#f8f9fa');
+      archiveSheet.appendRow(['Project ID', 'Archive Date', 'Project JSON', 'Groups JSON', 'Parts JSON', 'Image Base64', 'Used Profiles JSON', 'Used Materials JSON']);
+      archiveSheet.getRange('A1:H1').setFontWeight('bold').setBackground('#f8f9fa');
       archiveSheet.setFrozenRows(1);
     }
 
@@ -257,7 +257,9 @@ function archiveProjectToSheet(payloadString) {
       JSON.stringify(payload.project),
       JSON.stringify(payload.groups),
       JSON.stringify(payload.parts),
-      payload.image || ''
+      payload.image || '',
+      JSON.stringify(payload.usedProfiles  || []),
+      JSON.stringify(payload.usedMaterials || [])
     ]);
 
     return { status: 'success' };
@@ -305,12 +307,17 @@ function loadProjectFromArchive(projectId) {
     const data = archiveSheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === projectId) {
+        let usedProfiles = [], usedMaterials = [];
+        try { usedProfiles  = JSON.parse(data[i][6]); } catch(e) {}
+        try { usedMaterials = JSON.parse(data[i][7]); } catch(e) {}
         return JSON.stringify({
           status: 'success',
           project: JSON.parse(data[i][2]),
           groups: JSON.parse(data[i][3]),
           parts: JSON.parse(data[i][4]),
-          image: data[i][5] || null
+          image: data[i][5] || null,
+          usedProfiles,
+          usedMaterials
         });
       }
     }
