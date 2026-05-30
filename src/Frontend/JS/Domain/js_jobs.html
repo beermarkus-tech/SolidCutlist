@@ -475,6 +475,16 @@
         }
         const sheetCutEl = document.getElementById('mob-sheet-cut');
         if (sheetCutEl) sheetCutEl.value = (s.optimizer && s.optimizer.sheetCutPreference) || 'auto';
+        const _mkEnabled  = s.optimizer?.kerfEnabled  !== false;
+        const _msEnabled  = s.optimizer?.scrapEnabled !== false;
+        const _mkToggle   = document.getElementById('mob-kerf-enable');
+        const _mkPanel    = document.getElementById('mob-kerf-trim-settings-panel');
+        const _msToggle   = document.getElementById('mob-scrap-enable');
+        const _msPanel    = document.getElementById('mob-scrap-settings-panel');
+        if (_mkToggle) _mkToggle.checked          = _mkEnabled;
+        if (_mkPanel)  _mkPanel.style.display      = _mkEnabled ? '' : 'none';
+        if (_msToggle) _msToggle.checked           = _msEnabled;
+        if (_msPanel)  _msPanel.style.display      = _msEnabled ? '' : 'none';
         setV('mob-kerf',               s.bladeKerf,          3.175);
         setV('mob-sheet-kerf',         s.sheetBladeKerf,     3.175);
         setV('mob-factory-trim',       s.factoryEdgeTrim,    6.35);
@@ -513,6 +523,16 @@
         }
         const sheetCutEl = document.getElementById('opt-sheet-cut');
         if (sheetCutEl) sheetCutEl.value = (s.optimizer && s.optimizer.sheetCutPreference) || 'auto';
+        const _kerfEnabled  = s.optimizer?.kerfEnabled  !== false;
+        const _scrapEnabled = s.optimizer?.scrapEnabled !== false;
+        const _kerfToggle   = document.getElementById('opt-kerf-enable');
+        const _kerfPanel    = document.getElementById('kerf-trim-settings-panel');
+        const _scrapToggle  = document.getElementById('opt-scrap-enable');
+        const _scrapPanel   = document.getElementById('scrap-settings-panel');
+        if (_kerfToggle)  _kerfToggle.checked           = _kerfEnabled;
+        if (_kerfPanel)   _kerfPanel.style.display       = _kerfEnabled  ? '' : 'none';
+        if (_scrapToggle) _scrapToggle.checked           = _scrapEnabled;
+        if (_scrapPanel)  _scrapPanel.style.display      = _scrapEnabled ? '' : 'none';
     }
 
     function openMobileSettings() {
@@ -528,6 +548,13 @@
         const trToggle = document.getElementById('mob-transport-enable');
         const trPanel  = document.getElementById('mob-transport-settings-panel');
         if (trToggle && trPanel) trPanel.style.display = trToggle.checked ? '' : 'none';
+        // Show/hide mob kerf & scrap panels
+        const _mkTog = document.getElementById('mob-kerf-enable');
+        const _mkPan = document.getElementById('mob-kerf-trim-settings-panel');
+        const _msTog = document.getElementById('mob-scrap-enable');
+        const _msPan = document.getElementById('mob-scrap-settings-panel');
+        if (_mkTog && _mkPan) _mkPan.style.display = _mkTog.checked ? '' : 'none';
+        if (_msTog && _msPan) _msPan.style.display = _msTog.checked ? '' : 'none';
         // Read helpers
         const getVal = id => { const el = document.getElementById(id); return el ? parseToBaseUnit(el.value) : 0; };
         const getChk = id => { const el = document.getElementById(id); return el ? el.checked : false; };
@@ -544,6 +571,8 @@
         if (!activeJob.settings.optimizer) activeJob.settings.optimizer = {};
         if (!activeJob.settings.optimizer.transport) activeJob.settings.optimizer.transport = {};
         activeJob.settings.optimizer.transport.enabled     = getChk('mob-transport-enable');
+        activeJob.settings.optimizer.kerfEnabled           = getChk('mob-kerf-enable');
+        activeJob.settings.optimizer.scrapEnabled          = getChk('mob-scrap-enable');
         activeJob.settings.optimizer.transport.boardLmax   = getVal('mob-transport-board-lmax');
         const _bm = Math.max(getVal('mob-transport-board-margin') || 20, 5);
         const _sm = Math.max(getVal('mob-transport-sheet-margin') || 10, 5);

@@ -53,6 +53,16 @@
         const transportPanel = document.getElementById('transport-settings-panel');
         if (transportToggle) transportToggle.checked = !!transport.enabled;
         if (transportPanel) transportPanel.style.display = transport.enabled ? '' : 'none';
+        const kerfEnabled  = appState.settings.optimizer?.kerfEnabled  !== false;
+        const scrapEnabled = appState.settings.optimizer?.scrapEnabled !== false;
+        const _kerfToggle  = document.getElementById('opt-kerf-enable');
+        const _kerfPanel   = document.getElementById('kerf-trim-settings-panel');
+        const _scrapToggle = document.getElementById('opt-scrap-enable');
+        const _scrapPanel  = document.getElementById('scrap-settings-panel');
+        if (_kerfToggle)  _kerfToggle.checked           = kerfEnabled;
+        if (_kerfPanel)   _kerfPanel.style.display       = kerfEnabled  ? '' : 'none';
+        if (_scrapToggle) _scrapToggle.checked           = scrapEnabled;
+        if (_scrapPanel)  _scrapPanel.style.display      = scrapEnabled ? '' : 'none';
         const useStockInput = document.getElementById('opt-use-stock');
         if (useStockInput) useStockInput.checked = !!appState.settings.optimizer?.useStock;
 

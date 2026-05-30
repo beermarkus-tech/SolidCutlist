@@ -3,13 +3,15 @@
         const container = document.getElementById('pane-diagrams');
         let html = '';
         
-        const k1D = appState.settings.bladeKerf !== undefined ? appState.settings.bladeKerf : 3.175;
-        const t1D = appState.settings.factoryEdgeTrim !== undefined ? appState.settings.factoryEdgeTrim : 6.35;
-        const k2D = appState.settings.sheetBladeKerf !== undefined ? appState.settings.sheetBladeKerf : 3.175;
-        const t2D = appState.settings.sheetFactoryTrim !== undefined ? appState.settings.sheetFactoryTrim : 6.35;
-        const threshold = appState.settings.cutoffThreshold !== undefined ? appState.settings.cutoffThreshold : 200.0;
-        const _rawScrapW = appState.settings.sheetScrapMinWidth  !== undefined ? appState.settings.sheetScrapMinWidth  : 50.0;
-        const _rawScrapL = appState.settings.sheetScrapMinLength !== undefined ? appState.settings.sheetScrapMinLength : 400.0;
+        const _kerfEnabled  = appState.settings.optimizer?.kerfEnabled  !== false;
+        const _scrapEnabled = appState.settings.optimizer?.scrapEnabled !== false;
+        const k1D = _kerfEnabled  ? (appState.settings.bladeKerf          ?? 3.175) : 0;
+        const t1D = _kerfEnabled  ? (appState.settings.factoryEdgeTrim    ?? 6.35)  : 0;
+        const k2D = _kerfEnabled  ? (appState.settings.sheetBladeKerf     ?? 3.175) : 0;
+        const t2D = _kerfEnabled  ? (appState.settings.sheetFactoryTrim   ?? 6.35)  : 0;
+        const threshold  = _scrapEnabled ? (appState.settings.cutoffThreshold      ?? 200.0) : 0;
+        const _rawScrapW = _scrapEnabled ? (appState.settings.sheetScrapMinWidth   ??  50.0) : 0;
+        const _rawScrapL = _scrapEnabled ? (appState.settings.sheetScrapMinLength  ?? 400.0) : 0;
         const minW = Math.min(_rawScrapW, _rawScrapL);
         const minL = Math.max(_rawScrapW, _rawScrapL);
         const _tr = appState.settings.optimizer?.transport || {};
@@ -437,14 +439,17 @@
                                         _si += `<div style="${_lStyle(_lPct(_rightDim), _lAdj(_rightDim), '0 3px 3px 0', '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_rightDim)}</div>`;
                                     }
                                 } else {
-                                    // Normal segment: existing logic
+                                    // Normal segment
                                     const _hasCutRight = !_last;
                                     const _coreLen    = _last ? fullLen - _seg.segAbsStart : _seg.partsEnd - _seg.segAbsStart;
                                     const _leftHalf   = _i > 0    ? boardTransportMargin / 2 : 0;
                                     const _rightHalf  = _hasCutRight ? boardTransportMargin / 2 : 0;
                                     const _displayLen = _coreLen + _leftHalf + _rightHalf;
                                     const _r      = _i === 0 ? '3px 0 0 3px' : '0 3px 3px 0';
-                                    _si += `<div style="${_lStyle(_lPct(_displayLen), _lAdj(_displayLen), _r, '#495057', 'border:1px solid #adb5bd;')}">${formatStoreDisplay(_displayLen)}</div>`;
+                                    const _color  = _isOversized ? '#dc3545' : '#495057';
+                                    const _border = _isOversized ? 'border:1px solid #dc3545;' : 'border:1px solid #adb5bd;';
+                                    const _label  = _isOversized ? `⚠️ ${formatStoreDisplay(_displayLen)}` : formatStoreDisplay(_displayLen);
+                                    _si += `<div style="${_lStyle(_lPct(_displayLen), _lAdj(_displayLen), _r, _color, _border)}">${_label}</div>`;
                                     if (_hasCutRight) _si += _cutLine;
                                 }
                             }

@@ -57,6 +57,11 @@
         const t1D = appState.settings.factoryEdgeTrim !== undefined ? appState.settings.factoryEdgeTrim : 6.35;
         const k2D = appState.settings.sheetBladeKerf !== undefined ? appState.settings.sheetBladeKerf : 3.175;
         const t2D = appState.settings.sheetFactoryTrim !== undefined ? appState.settings.sheetFactoryTrim : 6.35;
+        const kerfEnabled = appState.settings.optimizer?.kerfEnabled !== false;
+        const ek1D = kerfEnabled ? k1D : 0;
+        const et1D = kerfEnabled ? t1D : 0;
+        const ek2D = kerfEnabled ? k2D : 0;
+        const et2D = kerfEnabled ? t2D : 0;
         const pref2D = appState.settings.optimizer?.sheetCutPreference || 'auto';
         const useStock = appState.settings.optimizer?.useStock;
         const _tr = appState.settings.optimizer?.transport || {};
@@ -104,8 +109,8 @@
                     let packRes;
                     
                     if (isSheet) {
-                        let resRip = packSingle2D(currentParts, stockPiece.length, stockPiece.width, stockPiece.grain, k2D, t2D, 'rip');
-                        let resCross = packSingle2D(currentParts, stockPiece.length, stockPiece.width, stockPiece.grain, k2D, t2D, 'cross');
+                        let resRip = packSingle2D(currentParts, stockPiece.length, stockPiece.width, stockPiece.grain, ek2D, et2D, 'rip');
+                        let resCross = packSingle2D(currentParts, stockPiece.length, stockPiece.width, stockPiece.grain, ek2D, et2D, 'cross');
                         
                         if (pref2D === 'auto') {
                             let ripPacked = currentParts.length - resRip.unmapped.length;
@@ -117,7 +122,7 @@
                             packRes = (pref2D === 'rip') ? resRip : resCross;
                         }
                     } else {
-                        packRes = packSingle1D(currentParts, stockPiece.length, k1D, t1D);
+                        packRes = packSingle1D(currentParts, stockPiece.length, ek1D, et1D);
                     }
                     
                     // If we successfully placed at least one part on this stock piece
@@ -179,11 +184,11 @@
                     const use2DTransport = transportEnabled && sheetTransportLmax > 0;
 
                     if (isSheet) {
-                        packResult = _bestPack2D(currentParts, option.length, option.width, option.grain, k2D, t2D, use2DTransport, sheetTransportLmax, sheetMargin, pref2D);
+                        packResult = _bestPack2D(currentParts, option.length, option.width, option.grain, ek2D, et2D, use2DTransport, sheetTransportLmax, sheetMargin, pref2D);
                     } else {
                         packResult = use1DTransport
-                            ? pack1DTransport(currentParts, option.length, k1D, t1D, boardTransportLmax, boardMargin)
-                            : pack1D(currentParts, option.length, k1D, t1D);
+                            ? pack1DTransport(currentParts, option.length, ek1D, et1D, boardTransportLmax, boardMargin)
+                            : pack1D(currentParts, option.length, ek1D, et1D);
                     }
 
                     if (!packResult) return;
@@ -275,10 +280,10 @@
                                             ? calculateCostPerPiece(altOpt) : altOpt.price;
                         const _altRes = isSheet
                             ? _bestPack2D(_tailParts, altOpt.length, altOpt.width, altOpt.grain,
-                                          k2D, t2D, _tsUse2D, sheetTransportLmax, sheetMargin, pref2D)
+                                          ek2D, et2D, _tsUse2D, sheetTransportLmax, sheetMargin, pref2D)
                             : (_tsUse1D
-                                ? pack1DTransport(_tailParts, altOpt.length, k1D, t1D, boardTransportLmax, boardMargin)
-                                : pack1D(_tailParts, altOpt.length, k1D, t1D));
+                                ? pack1DTransport(_tailParts, altOpt.length, ek1D, et1D, boardTransportLmax, boardMargin)
+                                : pack1D(_tailParts, altOpt.length, ek1D, et1D));
                         if (!_altRes || _altRes.unmapped.length > 0) return;
 
                         const _hybridCost = splitIdx * _primCost + _altRes.boards.length * _altCostPer;
@@ -439,8 +444,9 @@
     // This matches the analytics tab metric (board − parts − usable offcuts) / total board area.
     function _sheetTrueWaste(boards, brdL, brdW) {
         if (!boards || boards.length === 0) return 1;
-        const _rawScrapW = appState.settings?.sheetScrapMinWidth  ?? 50;
-        const _rawScrapL = appState.settings?.sheetScrapMinLength ?? 400;
+        const _scrapEnabled = appState.settings?.optimizer?.scrapEnabled !== false;
+        const _rawScrapW = _scrapEnabled ? (appState.settings?.sheetScrapMinWidth  ?? 50)  : 0;
+        const _rawScrapL = _scrapEnabled ? (appState.settings?.sheetScrapMinLength ?? 400) : 0;
         const minW = Math.min(_rawScrapW, _rawScrapL);
         const minL = Math.max(_rawScrapW, _rawScrapL);
         let tw = 0;
@@ -1341,6 +1347,48 @@
             if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
         }
     }
+    function toggleKerfMode(isChecked) {
+        if (!appState.settings.optimizer) appState.settings.optimizer = {};
+        appState.settings.optimizer.kerfEnabled = isChecked;
+        ['kerf-trim-settings-panel', 'mob-kerf-trim-settings-panel'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = isChecked ? '' : 'none';
+        });
+        const _activeJob = window.activeJobId && appState.jobs
+            ? appState.jobs.find(j => j.id === window.activeJobId)
+            : null;
+        if (_activeJob) {
+            if (!_activeJob.settings) _activeJob.settings = {};
+            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
+            _activeJob.settings.optimizer.kerfEnabled = isChecked;
+            if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
+            if (typeof syncJobSettingsToMobileUI === 'function') syncJobSettingsToMobileUI();
+        } else {
+            saveState();
+            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
+        }
+    }
+    function toggleScrapMode(isChecked) {
+        if (!appState.settings.optimizer) appState.settings.optimizer = {};
+        appState.settings.optimizer.scrapEnabled = isChecked;
+        ['scrap-settings-panel', 'mob-scrap-settings-panel'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = isChecked ? '' : 'none';
+        });
+        const _activeJob = window.activeJobId && appState.jobs
+            ? appState.jobs.find(j => j.id === window.activeJobId)
+            : null;
+        if (_activeJob) {
+            if (!_activeJob.settings) _activeJob.settings = {};
+            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
+            _activeJob.settings.optimizer.scrapEnabled = isChecked;
+            if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
+            if (typeof syncJobSettingsToMobileUI === 'function') syncJobSettingsToMobileUI();
+        } else {
+            saveState();
+            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
+        }
+    }
     // --- UI LOCK STATES ---
     function toggleConfiguratorState(isLocked, isSaved = false, lockInputs = true) {
         const settingsDiv = document.getElementById('job-config-settings');
@@ -2028,9 +2076,10 @@
     // ==========================================
     function renderAnalyticsTab(results) {
         const container = document.getElementById('pane-analytics');
-        const threshold = appState.settings.cutoffThreshold !== undefined ? appState.settings.cutoffThreshold : 200.0; 
-        const _rawScrapW = appState.settings.sheetScrapMinWidth  !== undefined ? appState.settings.sheetScrapMinWidth  : 50.0;
-        const _rawScrapL = appState.settings.sheetScrapMinLength !== undefined ? appState.settings.sheetScrapMinLength : 400.0;
+        const _scrapEnabled = appState.settings.optimizer?.scrapEnabled !== false;
+        const threshold  = _scrapEnabled ? (appState.settings.cutoffThreshold      ?? 200.0) : 0;
+        const _rawScrapW = _scrapEnabled ? (appState.settings.sheetScrapMinWidth   ??  50.0) : 0;
+        const _rawScrapL = _scrapEnabled ? (appState.settings.sheetScrapMinLength  ?? 400.0) : 0;
         const minW = Math.min(_rawScrapW, _rawScrapL);
         const minL = Math.max(_rawScrapW, _rawScrapL);
         const isMetric = appState.settings.displayUnit === 'mm';

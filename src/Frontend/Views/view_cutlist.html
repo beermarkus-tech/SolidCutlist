@@ -207,72 +207,86 @@
                             </select>
                             <div class="form-text mt-1 form-text-xs" data-i18n="txt_sheet_cut_strategy">Determines the primary direction of the first cuts on sheet materials.</div>
                         </div>
-                        <!-- Kerf Settings -->
-                        <label class="fw-bold pt-3 pb-2" data-i18n="lbl_kerf_trim_scrap">Kerf, Trim & Scrap Settings</label>
-                        <div class="p-3 mb-3 rounded-3 input-panel">
-                            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, t('tooltip_kerf'))">ⓘ</button>
-                            <div class="row g-3">
-                                <div class="col-6">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_kerf">Lumber Kerf</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control form-control-sm" id="setting-kerf" onchange="handleSettingsValueChange()">
-                                        <span class="input-group-text display-unit-label">mm</span>
+                        <!-- Kerf & Trim Toggle -->
+                        <div class="pt-3 pb-3 border-bottom">
+                            <div class="form-check form-switch pt-2 pb-1">
+                                <input class="form-check-input" type="checkbox" id="opt-kerf-enable" onchange="toggleKerfMode(this.checked)">
+                                <label class="form-check-label fw-bold" for="opt-kerf-enable" data-i18n="lbl_kerf_trim">Kerf &amp; Trim</label><button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;margin-left:4px;" onclick="showInfoTooltip(event, t('tooltip_kerf'))">ⓘ</button>
+                            </div>
+                            <div class="form-text mt-0 mb-2 form-text-xs" data-i18n="txt_kerf_form_text">Deduct blade width and factory-end trim from every board.</div>
+                            <div id="kerf-trim-settings-panel" style="display:none;">
+                                <div class="p-3 mb-3 rounded-3 input-panel">
+                                    <div class="row g-3">
+                                        <div class="col-6">
+                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_kerf">Lumber Kerf</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control form-control-sm" id="setting-kerf" onchange="handleSettingsValueChange()">
+                                                <span class="input-group-text display-unit-label">mm</span>
+                                            </div>
+                                            <div class="form-text mt-1 form-text-xs" data-i18n="txt_lumber_kerf">Thickness of your lumber blade.</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_kerf">Sheet Kerf</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control form-control-sm" id="setting-sheet-kerf" onchange="handleSettingsValueChange()">
+                                                <span class="input-group-text display-unit-label">mm</span>
+                                            </div>
+                                            <div class="form-text mt-1 form-text-xs" data-i18n="txt_sheet_kerf">Thickness of your sheet blade.</div>
+                                        </div>
                                     </div>
-                                    <div class="form-text mt-1 form-text-xs" data-i18n="txt_lumber_kerf">Thickness of your lumber blade.</div>
                                 </div>
-                                <div class="col-6">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_kerf">Sheet Kerf</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control form-control-sm" id="setting-sheet-kerf" onchange="handleSettingsValueChange()">
-                                        <span class="input-group-text display-unit-label">mm</span>
+                                <div class="p-3 mb-3 rounded-3 input-panel">
+                                    <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, t('tooltip_trim'))">ⓘ</button>
+                                    <div class="row g-3">
+                                        <div class="col-6">
+                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_trim">Lumber Trim</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control form-control-sm" id="setting-factory-trim" onchange="handleSettingsValueChange()">
+                                                <span class="input-group-text display-unit-label">mm</span>
+                                            </div>
+                                            <div class="form-text mt-1 form-text-xs" data-i18n="txt_lumber_trim">One end will be trimmed.</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_trim">Sheet Trim</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control form-control-sm" id="setting-sheet-trim" onchange="handleSettingsValueChange()">
+                                                <span class="input-group-text display-unit-label">mm</span>
+                                            </div>
+                                            <div class="form-text mt-1 form-text-xs" data-i18n="txt_sheet_trim">Two adjacent edges will be trimmed.</div>
+                                        </div>
                                     </div>
-                                    <div class="form-text mt-1 form-text-xs" data-i18n="txt_sheet_kerf">Thickness of your sheet blade.</div>
                                 </div>
                             </div>
                         </div>
-                        <!-- Trim Settings -->
-                        <div class="p-3 mb-3 rounded-3 input-panel">
-                            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, t('tooltip_trim'))">ⓘ</button>
-                            <div class="row g-3">
-                                <div class="col-6">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_trim">Lumber Trim</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control form-control-sm" id="setting-factory-trim" onchange="handleSettingsValueChange()">
-                                        <span class="input-group-text display-unit-label">mm</span>
-                                    </div>
-                                    <div class="form-text mt-1 form-text-xs" data-i18n="txt_lumber_trim">One end will be trimmed.</div>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_trim">Sheet Trim</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control form-control-sm" id="setting-sheet-trim" onchange="handleSettingsValueChange()">
-                                        <span class="input-group-text display-unit-label">mm</span>
-                                    </div>
-                                    <div class="form-text mt-1 form-text-xs" data-i18n="txt_sheet_trim">Two adjacent edges will be trimmed.</div>
-                                </div>
+                        <!-- Scrap Toggle -->
+                        <div class="pt-3 pb-3 border-bottom">
+                            <div class="form-check form-switch pt-2 pb-1">
+                                <input class="form-check-input" type="checkbox" id="opt-scrap-enable" onchange="toggleScrapMode(this.checked)">
+                                <label class="form-check-label fw-bold" for="opt-scrap-enable" data-i18n="lbl_scrap_settings">Scrap Thresholds</label><button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;margin-left:4px;" onclick="showInfoTooltip(event, t('tooltip_scrap_threshold'))">ⓘ</button>
                             </div>
-                        </div>
-                        <!-- Scrap Settings -->
-                        <div class="p-3 mb-3 rounded-3 input-panel">
-                            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, t('tooltip_scrap_threshold'))">ⓘ</button>
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_scrap_min_length">Lumber Scrap (Min Length)</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control form-control-sm" id="setting-cutoff" onchange="handleSettingsValueChange()">
-                                        <span class="input-group-text display-unit-label">mm</span>
+                            <div class="form-text mt-0 mb-2 form-text-xs" data-i18n="txt_scrap_form_text">Minimum offcut size to keep as useful stock.</div>
+                            <div id="scrap-settings-panel" style="display:none;">
+                                <div class="p-3 mb-3 rounded-3 input-panel">
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_scrap_min_length">Lumber Scrap (Min Length)</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control form-control-sm" id="setting-cutoff" onchange="handleSettingsValueChange()">
+                                                <span class="input-group-text display-unit-label">mm</span>
+                                            </div>
+                                            <div class="form-text mt-1 form-text-xs" data-i18n="txt_lumber_scrap">Lumber shorter than this is trash.</div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_scrap_min_size">Sheet Scrap (Min Size)</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control form-control-sm text-end" id="setting-sheet-scrap-width" onchange="handleSettingsValueChange()" title="Min Width" data-i18n-title="title_min_width">
+                                                <span class="input-group-text px-1 border-start-0 border-end-0">x</span>
+                                                <input type="text" class="form-control form-control-sm" id="setting-sheet-scrap-length" onchange="handleSettingsValueChange()" title="Min Length" data-i18n-title="title_min_length">
+                                                <span class="input-group-text display-unit-label">mm</span>
+                                            </div>
+                                            <div class="form-text mt-1 form-text-xs" data-i18n="txt_sheet_scrap_length">Offcuts smaller than this are trash.</div>
+                                        </div>
                                     </div>
-                                    <div class="form-text mt-1 form-text-xs" data-i18n="txt_lumber_scrap">Lumber shorter than this is trash.</div>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_scrap_min_size">Sheet Scrap (Min Size)</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control form-control-sm text-end" id="setting-sheet-scrap-width" onchange="handleSettingsValueChange()" title="Min Width" data-i18n-title="title_min_width">
-                                        <span class="input-group-text px-1 border-start-0 border-end-0">x</span>
-                                        <input type="text" class="form-control form-control-sm" id="setting-sheet-scrap-length" onchange="handleSettingsValueChange()" title="Min Length" data-i18n-title="title_min_length">
-                                        <span class="input-group-text display-unit-label">mm</span>
-                                    </div>
-                                    <div class="form-text mt-1 form-text-xs" data-i18n="txt_sheet_scrap_length">Offcuts smaller than this are trash.</div>
                                 </div>
                             </div>
                         </div>
@@ -513,67 +527,80 @@
             </select>
         </div>
 
-        <!-- Kerf -->
-        <label class="fw-bold pt-3 pb-2 d-block" data-i18n="lbl_kerf_trim_scrap">Kerf, Trim &amp; Scrap Settings</label>
-        <div class="p-3 mb-3 rounded-3 input-panel">
-            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, 'The kerf is the width of wood removed by your saw blade with each cut. A standard blade removes about 3.2mm (\u215b\u201d). The optimizer deducts this amount for every cut on a board \u2014 so if you make 5 cuts, you lose 5 \u00d7 kerf in material. Measure a test cut or check your blade spec sheet to dial this in accurately.')">ⓘ</button>
-            <div class="row g-3">
-                <div class="col-6">
-                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_kerf">Lumber Kerf</label>
-                    <div class="input-group input-group-sm">
-                        <input type="text" class="form-control form-control-sm" id="mob-kerf" onchange="handleMobileSettingsValueChange()">
-                        <span class="input-group-text display-unit-label">mm</span>
+        <!-- Kerf & Trim Toggle (mobile) -->
+        <div class="pt-3 pb-3 border-bottom">
+            <div class="form-check form-switch pt-2 pb-1">
+                <input class="form-check-input" type="checkbox" id="mob-kerf-enable" onchange="handleMobileSettingsValueChange()">
+                <label class="form-check-label fw-bold" for="mob-kerf-enable" data-i18n="lbl_kerf_trim">Kerf &amp; Trim</label><button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;margin-left:4px;" onclick="showInfoTooltip(event, t('tooltip_kerf'))">ⓘ</button>
+            </div>
+            <div class="form-text mt-0 mb-2 form-text-xs" data-i18n="txt_kerf_form_text">Deduct blade width and factory-end trim from every board.</div>
+            <div id="mob-kerf-trim-settings-panel" style="display:none;">
+                <div class="p-3 mb-3 rounded-3 input-panel">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_kerf">Lumber Kerf</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control form-control-sm" id="mob-kerf" onchange="handleMobileSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_kerf">Sheet Kerf</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control form-control-sm" id="mob-sheet-kerf" onchange="handleMobileSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="col-6">
-                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_kerf">Sheet Kerf</label>
-                    <div class="input-group input-group-sm">
-                        <input type="text" class="form-control form-control-sm" id="mob-sheet-kerf" onchange="handleMobileSettingsValueChange()">
-                        <span class="input-group-text display-unit-label">mm</span>
+                <div class="p-3 mb-3 rounded-3 input-panel">
+                    <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, t('tooltip_trim'))">ⓘ</button>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_trim">Lumber Trim</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control form-control-sm" id="mob-factory-trim" onchange="handleMobileSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_trim">Sheet Trim</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control form-control-sm" id="mob-sheet-trim" onchange="handleMobileSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Trim -->
-        <div class="p-3 mb-3 rounded-3 input-panel">
-            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, t('tooltip_trim'))">ⓘ</button>
-            <div class="row g-3">
-                <div class="col-6">
-                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_trim">Lumber Trim</label>
-                    <div class="input-group input-group-sm">
-                        <input type="text" class="form-control form-control-sm" id="mob-factory-trim" onchange="handleMobileSettingsValueChange()">
-                        <span class="input-group-text display-unit-label">mm</span>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_trim">Sheet Trim</label>
-                    <div class="input-group input-group-sm">
-                        <input type="text" class="form-control form-control-sm" id="mob-sheet-trim" onchange="handleMobileSettingsValueChange()">
-                        <span class="input-group-text display-unit-label">mm</span>
-                    </div>
-                </div>
+        <!-- Scrap Toggle (mobile) -->
+        <div class="pt-3 pb-3 border-bottom">
+            <div class="form-check form-switch pt-2 pb-1">
+                <input class="form-check-input" type="checkbox" id="mob-scrap-enable" onchange="handleMobileSettingsValueChange()">
+                <label class="form-check-label fw-bold" for="mob-scrap-enable" data-i18n="lbl_scrap_settings">Scrap Thresholds</label><button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;margin-left:4px;" onclick="showInfoTooltip(event, t('tooltip_scrap_threshold'))">ⓘ</button>
             </div>
-        </div>
-
-        <!-- Scrap -->
-        <div class="p-3 mb-3 rounded-3 input-panel">
-            <button type="button" class="info-icon-btn" onclick="showInfoTooltip(event, t('tooltip_scrap_threshold'))">ⓘ</button>
-            <div class="row g-3">
-                <div class="col-12">
-                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_scrap_min_length">Lumber Scrap (Min Length)</label>
-                    <div class="input-group input-group-sm">
-                        <input type="text" class="form-control form-control-sm" id="mob-cutoff" onchange="handleMobileSettingsValueChange()">
-                        <span class="input-group-text display-unit-label">mm</span>
-                    </div>
-                </div>
-                <div class="col-12">
-                    <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_scrap_min_size">Sheet Scrap (Min Size)</label>
-                    <div class="input-group input-group-sm">
-                        <input type="text" class="form-control form-control-sm text-end" id="mob-sheet-scrap-width" onchange="handleMobileSettingsValueChange()">
-                        <span class="input-group-text px-1 border-start-0 border-end-0">x</span>
-                        <input type="text" class="form-control form-control-sm" id="mob-sheet-scrap-length" onchange="handleMobileSettingsValueChange()">
-                        <span class="input-group-text display-unit-label">mm</span>
+            <div class="form-text mt-0 mb-2 form-text-xs" data-i18n="txt_scrap_form_text">Minimum offcut size to keep as useful stock.</div>
+            <div id="mob-scrap-settings-panel" style="display:none;">
+                <div class="p-3 mb-3 rounded-3 input-panel">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_lumber_scrap_min_length">Lumber Scrap (Min Length)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control form-control-sm" id="mob-cutoff" onchange="handleMobileSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_sheet_scrap_min_size">Sheet Scrap (Min Size)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control form-control-sm text-end" id="mob-sheet-scrap-width" onchange="handleMobileSettingsValueChange()">
+                                <span class="input-group-text px-1 border-start-0 border-end-0">x</span>
+                                <input type="text" class="form-control form-control-sm" id="mob-sheet-scrap-length" onchange="handleMobileSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
