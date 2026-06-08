@@ -3,6 +3,7 @@
 // ==========================================
 
 const TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores', 'jobs'];
+const CELL_LIMIT = 45000; // safe margin below Google Sheets' 50k per-cell limit
 
 /**
  * ==========================================
@@ -52,41 +53,74 @@ function saveAppStateToSheet(payloadString) {
 
 /**
  * HELPER: Converts an array of objects into a 2D spreadsheet grid (SMART DYNAMIC COLUMNS)
+ * Large object/array fields that exceed CELL_LIMIT are automatically split across
+ * multiple columns named field__1, field__2, … and stitched back together on read.
  */
 function writeArrayToSheet(ss, sheetName, dataArray) {
   let sheet = ss.getSheetByName(sheetName);
-  if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
-  }
-  
-  sheet.clear(); 
+  if (!sheet) sheet = ss.insertSheet(sheetName);
+  sheet.clear();
 
   if (!dataArray || dataArray.length === 0) {
     sheet.getRange('A1').setValue('No data currently in this category.');
     return;
   }
 
-  // 🪄 THE UPGRADE: Scan ALL objects to find every possible column header
+  // Scan ALL objects to find every possible column header
   let headerSet = new Set();
   dataArray.forEach(obj => Object.keys(obj).forEach(key => headerSet.add(key)));
-  let headers = Array.from(headerSet);
+  const headers = Array.from(headerSet);
 
-  let rows = [headers];
-
+  // Pre-pass: find the max chunk count needed per object/array field across all rows
+  const chunkCounts = {}; // fieldName -> max chunks needed (only set when > CELL_LIMIT)
   dataArray.forEach(obj => {
-    let row = headers.map(header => {
-      let val = obj[header];
-      if (typeof val === 'object' && val !== null) return JSON.stringify(val);
-      if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
-      // If the property doesn't exist on this specific object, leave the cell blank
-      return val !== undefined ? val : '';
+    headers.forEach(h => {
+      const val = obj[h];
+      if (typeof val === 'object' && val !== null) {
+        const len = JSON.stringify(val).length;
+        if (len > CELL_LIMIT) {
+          const needed = Math.ceil(len / CELL_LIMIT);
+          if (!chunkCounts[h] || needed > chunkCounts[h]) chunkCounts[h] = needed;
+        }
+      }
     });
-    rows.push(row);
   });
 
-  sheet.getRange(1, 1, rows.length, headers.length).setValues(rows);
+  // Expand headers: chunked fields become field__1, field__2, …; others unchanged
+  const expandedHeaders = [];
+  headers.forEach(h => {
+    if (chunkCounts[h]) {
+      for (let i = 1; i <= chunkCounts[h]; i++) expandedHeaders.push(`${h}__${i}`);
+    } else {
+      expandedHeaders.push(h);
+    }
+  });
+
+  // Build rows
+  const rows = [expandedHeaders];
+  dataArray.forEach(obj => {
+    const cells = {};
+    headers.forEach(h => {
+      const val = obj[h];
+      if (chunkCounts[h]) {
+        const jsonStr = JSON.stringify(val);
+        for (let i = 1; i <= chunkCounts[h]; i++) {
+          cells[`${h}__${i}`] = jsonStr.slice((i - 1) * CELL_LIMIT, i * CELL_LIMIT);
+        }
+      } else if (typeof val === 'object' && val !== null) {
+        cells[h] = JSON.stringify(val);
+      } else if (typeof val === 'boolean') {
+        cells[h] = val ? 'TRUE' : 'FALSE';
+      } else {
+        cells[h] = val !== undefined ? val : '';
+      }
+    });
+    rows.push(expandedHeaders.map(eh => cells[eh] !== undefined ? cells[eh] : ''));
+  });
+
+  sheet.getRange(1, 1, rows.length, expandedHeaders.length).setValues(rows);
   sheet.setFrozenRows(1);
-  sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#f8f9fa');
+  sheet.getRange(1, 1, 1, expandedHeaders.length).setFontWeight('bold').setBackground('#f8f9fa');
 }
 
 /**
@@ -177,15 +211,31 @@ function readArrayFromSheet(sheet) {
   if (data.length < 2) return []; 
 
   const headers = data[0];
+
+  // Identify chunked columns (field__N pattern) and build a stitching map
+  const chunkMap = {};          // baseName -> [{n, i}, ...]
+  const chunkColSet = new Set(); // column indices that are chunk pieces (skip in main loop)
+  headers.forEach((h, i) => {
+    const m = typeof h === 'string' && h.match(/^(.+)__(\d+)$/);
+    if (m) {
+      const base = m[1], n = parseInt(m[2]);
+      if (!chunkMap[base]) chunkMap[base] = [];
+      chunkMap[base].push({ n, i });
+      chunkColSet.add(i);
+    }
+  });
+  Object.values(chunkMap).forEach(arr => arr.sort((a, b) => a.n - b.n));
+
   const rows = [];
 
   for (let i = 1; i < data.length; i++) {
     let obj = {};
     let rowData = data[i];
-    
+
     if (rowData.join('').trim() === '') continue;
 
     for (let j = 0; j < headers.length; j++) {
+      if (chunkColSet.has(j)) continue; // handled by chunk-stitching below
       let key = headers[j];
       let val = rowData[j];
       
@@ -227,6 +277,14 @@ function readArrayFromSheet(sheet) {
         obj[key] = val;
       }
     }
+    // Reassemble any chunked fields into their original arrays/objects
+    Object.entries(chunkMap).forEach(([base, chunks]) => {
+      const combined = chunks.map(c => String(rowData[c.i] || '')).join('');
+      if (combined) {
+        try { obj[base] = JSON.parse(combined); }
+        catch(e) { obj[base] = combined; }
+      }
+    });
     rows.push(obj);
   }
   return rows;
