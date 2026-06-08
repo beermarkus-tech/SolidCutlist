@@ -42,34 +42,37 @@
                 globalMaxLumberDim = Math.max(globalMaxLumberDim, rawLength);
             }
             
-            // 🪄 THE MERGE SANITIZER: Eliminates Float Errors but respects user orientation
-            const cleanL = Math.round(rawLength);
-            const cleanW = Math.round(rawWidth);
-
-            // Grouping key is strictly bound to exactly what the user entered
-            const boardKey = `${res.sku.profileId}|${res.sku.materialId}|${cleanL}|${cleanW}|${grain}`;
+            // Grouping key is the SKU identity only — raw length/width/grain now travel with each board
+            const boardKey = `${res.sku.profileId}|${res.sku.materialId}`;
 
             if (!mergedDiagrams[boardKey]) {
                 mergedDiagrams[boardKey] = {
                     profileId: res.sku.profileId,
                     materialId: res.sku.materialId,
                     category: res.sku.category,
-                    length: rawLength, // Keep original for exact display
-                    width: rawWidth,
-                    grain: grain,
-                    isStock: false,
                     layouts: []
                 };
             }
             const _isStockBatch = purchase.catalogItem.storeId === 'shop_stock';
-            const _taggedLayouts = purchase.layout.map(b => ({ ...b, isStock: _isStockBatch }));
+            const _taggedLayouts = purchase.layout.map(b => ({ ...b, isStock: _isStockBatch, rawLength, rawWidth, grain }));
             mergedDiagrams[boardKey].layouts.push(..._taggedLayouts);
         });
 
+        // Sort boards within each SKU group, longest raw stock first (lumber and sheets alike)
+        Object.values(mergedDiagrams).forEach(group => {
+            group.layouts.sort((a, b) => b.rawLength - a.rawLength);
+        });
+
+        // Sections: lumber before sheets, then naturally by SKU title (so "45x.." groups before "70x..")
+        const skuTitle = (g) => {
+            const p = appState.profiles.find(x => x.id === g.profileId);
+            const m = appState.materials.find(x => x.id === g.materialId);
+            return `${p?.name || ''} - ${m?.name || ''}`;
+        };
         const sortedGroups = Object.values(mergedDiagrams).sort((a, b) => {
             if (a.category === 'lumber' && b.category === 'sheet') return -1;
             if (a.category === 'sheet' && b.category === 'lumber') return 1;
-            return b.length - a.length;
+            return skuTitle(a).localeCompare(skuTitle(b), undefined, { numeric: true, sensitivity: 'base' });
         });
 
         // 🪄 Resolve active job parts for loaded-job fallback (mirrors label printing fix)
@@ -112,43 +115,40 @@
             const isSheet = group.category === 'sheet';
             const prof = appState.profiles.find(p => p.id === group.profileId);
             const mat = appState.materials.find(m => m.id === group.materialId);
-            
-            // 🪄 STRICT W x L FORMAT
-            const sizeString = isSheet 
-                ? `${formatForDisplay(group.width)} x ${formatForDisplay(group.length)}`
-                : `${formatForDisplay(group.length)}`;
-
-            const localMax = isSheet ? Math.max(group.length, group.width) : group.length;
-            const globalMax = isSheet ? globalMaxSheetDim : globalMaxLumberDim;
-            const canvasWidth = globalMax > 0 ? Math.max(50, Math.floor((localMax / globalMax) * 1000)) : 1000;
-            
-            let canvasHeight = 40; 
-            if (isSheet && group.length > 0) {
-                const displayLong = Math.max(group.length, group.width);
-                const displayShort = Math.min(group.length, group.width);
-                canvasHeight = Math.floor(canvasWidth * (displayShort / displayLong)); 
-            }
 
             html += `
             <details class="sku-group mb-4" open>
                 <summary class="mt-2 mb-2 border-bottom border-2 border-dark pb-1 d-flex justify-content-between align-items-end" style="cursor: pointer; outline: none; list-style-position: inside;">
                     <h5 class="mb-0 fw-bold d-inline-block">${safeHTML(prof?.name)} - ${safeHTML(mat?.name)}</h5>
-                    <span class="d-flex align-items-center gap-2">
-                        <span class="badge bg-secondary">${t('lbl_raw_size')}: ${sizeString} <span class="display-unit-label"></span></span>
-                    </span>
                 </summary>
-                <div class="pt-2"> 
+                <div class="pt-2">
             `;
 
             group.layouts.forEach((board, bIndex) => {
                 const canvasId = `canvas-board-${boardCounter}`;
+
+                // 🪄 STRICT W x L FORMAT — per board, since raw stock can now differ within a SKU group
+                const sizeString = isSheet
+                    ? `${formatForDisplay(board.rawWidth)} x ${formatForDisplay(board.rawLength)}`
+                    : `${formatForDisplay(board.rawLength)}`;
+
+                const localMax = isSheet ? Math.max(board.rawLength, board.rawWidth) : board.rawLength;
+                const globalMax = isSheet ? globalMaxSheetDim : globalMaxLumberDim;
+                const canvasWidth = globalMax > 0 ? Math.max(50, Math.floor((localMax / globalMax) * 1000)) : 1000;
+
+                let canvasHeight = 40;
+                if (isSheet && board.rawLength > 0) {
+                    const displayLong = Math.max(board.rawLength, board.rawWidth);
+                    const displayShort = Math.min(board.rawLength, board.rawWidth);
+                    canvasHeight = Math.floor(canvasWidth * (displayShort / displayLong));
+                }
 
                 let wasteVal = 0;
                 if (isSheet) {
                     board.freeRects.forEach(r => wasteVal += (r.w * r.l));
                     // Add transport zone area to waste display (physical offcuts, not usable space)
                     if (board.transportZones && board.transportZones.length > 0) {
-                        const perpDim = board.splitAxis === 'width' ? group.length : group.width;
+                        const perpDim = board.splitAxis === 'width' ? board.rawLength : board.rawWidth;
                         board.transportZones.forEach(tz => wasteVal += tz.size * perpDim);
                     }
                 } else {
@@ -172,8 +172,8 @@
                     if (board.transportZones && board.transportZones.length > 0) {
                         const _nP = board.transportZones.length + 1;
                         const _sa = board.splitAxis;
-                        const _fal = _sa === 'width' ? group.width : group.length;
-                        const _flip = group.width > group.length;
+                        const _fal = _sa === 'width' ? board.rawWidth : board.rawLength;
+                        const _flip = board.rawWidth > board.rawLength;
                         const _aligns = (!_flip && _sa === 'length') || (_flip && _sa === 'width');
                         // Piece lengths from actual transport zone positions (dynamic, not fixed segMax)
                         const _pl = [];
@@ -239,7 +239,7 @@
                     }
                 } else {
                     // Generate 1D Lumber as pure Flexbox HTML using percentages
-                    const fullLen = group.length;
+                    const fullLen = board.rawLength;
                     let innerCuts = '';
 
                     if (t1D > 0 && board.cuts.length > 0) {
@@ -465,6 +465,7 @@
                     <div class="card-header py-1 d-flex justify-content-between align-items-center">
                         <small class="fw-bold text-muted">
                             ${t(isSheet ? 'lbl_sheet_num' : 'lbl_board_num', { current: bIndex + 1, total: group.layouts.length })}
+                            <span class="badge bg-secondary ms-1">${t('lbl_raw_size')}: ${sizeString} <span class="display-unit-label"></span></span>
                             ${board.isStock ? `<span class="badge bg-success ms-1">${t('lbl_stock')}</span>` : ''}
                         </small>
                         <small class="text-muted">${wasteLabel}: ${wasteDisplay} ${isSheet ? '' : '<span class="display-unit-label"></span>'}</small>
@@ -513,7 +514,7 @@
                         const hasGrain = partData && partData.grain && partData.grain !== 'none';
                         const grainStr = hasGrain ? t('opt_' + partData.grain) : '-';
                         let grainWarningBadge = '';
-                        if (hasGrain && group.grain === 'none') {
+                        if (hasGrain && board.grain === 'none') {
                             grainWarningBadge = ` ⚠️`;
                             showBoardGrainWarning = true;
                         }
@@ -573,7 +574,7 @@
                     });
                     canvasDrawQueue.push({
                         id: canvasId, board: board, isSheet: isSheet,
-                        length: group.length, width: group.width, grain: group.grain,
+                        length: board.rawLength, width: board.rawWidth, grain: board.grain,
                         kerf: k2D, trim: t2D,
                         threshold: threshold, minW: minW, minL: minL
                     });

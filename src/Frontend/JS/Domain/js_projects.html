@@ -947,7 +947,10 @@
                         
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <span class="badge text-dark border shadow-sm" style="cursor: pointer;" onclick="jumpToProjectParts('${proj.id}')" title="${t('title_view_parts')}">🧩 ${partCount} Parts</span>
-                            <span class="badge text-success border shadow-sm fw-bold">${currency}${displayCost}</span>
+                            <span>
+                                <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tooltip_est_cost'))">ⓘ</button>
+                                <span class="badge text-success border shadow-sm fw-bold">${currency}${displayCost}</span>
+                            </span>
                         </div>
                         
                         <div class="d-flex gap-2 mt-auto">

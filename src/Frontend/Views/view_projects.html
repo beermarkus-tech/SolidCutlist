@@ -60,9 +60,10 @@
                                     </span>
                                 </th>
                                 <th class="text-center text-nowrap" style="width: 10%;">
-                                    <span onclick="handleSort('projects', 'totalParts', 'number')" class="cursor-pointer">
+                                    <span onclick="handleSort('projects', 'totalCost', 'number')" class="cursor-pointer">
                                         <span data-i18n="col_est_cost">Est. Cost</span> ⇅
                                     </span>
+                                    <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tooltip_est_cost'))">ⓘ</button>
                                 </th>
                                 <th class="text-center text-nowrap">
                                     <span onclick="handleSort('projects', 'status', 'string')" class="cursor-pointer">
