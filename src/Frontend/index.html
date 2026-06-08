@@ -120,7 +120,7 @@
                         <table class="table table-sm table-hover align-middle mb-0">
                             <thead>
                                 <tr>
-                                    <th onclick="handleSort('groups', 'name', 'string')" class="cursor-pointer" data-i18n="col_group_name_sortable">Group Name ⇅</th>
+                                    <th onclick="handleSort('groups', 'name', 'string')" class="cursor-pointer" data-i18n="col_group_name_sortable" title="Sort by Group Name" data-i18n-title="title_sort_by_group_name">Group Name ⇅</th>
                                     <th class="text-end"></th>
                                 </tr>
                             </thead>
@@ -158,7 +158,7 @@
                         <table class="table table-sm table-hover align-middle mb-0">
                             <thead>
                                 <tr>
-                                    <th onclick="handleSort('stores', 'name', 'string')" class="cursor-pointer" data-i18n="col_store_name_sortable">Store Name ⇅</th>
+                                    <th onclick="handleSort('stores', 'name', 'string')" class="cursor-pointer" data-i18n="col_store_name_sortable" title="Sort by Store Name" data-i18n-title="title_sort_by_store_name">Store Name ⇅</th>
                                     <th class="text-end"></th>
                                 </tr>
                             </thead>
@@ -608,7 +608,7 @@
                     </form>
                 </div>
                 <div class="modal-footer border-top-0 pt-0 flex-column gap-2">
-                    <p class="text-center text-muted small mb-0 px-2" data-i18n="msg_support_contact">Questions, bugs, or feature ideas? Email me at <a href="mailto:support@solidcutlist.com">support@solidcutlist.com</a> — I read every message.</p>
+                    <p class="text-center text-muted small mb-0 px-2" data-i18n="msg_support_contact">Questions, bugs, or feature ideas? Email me at <a href="mailto:contact@solidhomesteadplans.com">contact@solidhomesteadplans.com</a> — I read every message.</p>
                     <button type="button" class="btn btn-outline-secondary w-100 btn-sm" onclick="showWelcomeTour(true); bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();" data-i18n="tour_btn_show_again">Show Welcome Tour</button>
                     <hr class="w-100 my-0">
                     <button type="button" class="btn btn-outline-danger w-100 btn-sm" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#resetConfirmModal" data-i18n="btn_reset_app">Reset App &amp; All Data</button>

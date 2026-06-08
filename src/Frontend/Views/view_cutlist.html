@@ -356,19 +356,19 @@
             </div>
             <div class="view-toolbar-actions">
 <div id="shopping-controls" class="d-none">
-                    <button class="btn btn-sm toolbar-btn" onclick="printOptimizer('shopping')" data-i18n="btn_print_shopping_list">🖨️</button>
+                    <button class="btn btn-sm toolbar-btn" onclick="printOptimizer('shopping')" title="Print Shopping List" data-i18n-title="title_print_shopping_list" data-i18n="btn_print_shopping_list">🖨️</button>
                 </div>
                 <div id="analytics-controls" class="d-none">
-                    <button type="button" class="btn btn-sm toolbar-btn" onclick="showInfoTooltip(event, t('tooltip_commit_offcuts'))">ⓘ</button>
-                    <button class="btn btn-sm toolbar-btn" onclick="openCommitModal()">📦</button>
+                    <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tooltip_commit_offcuts'))">ⓘ</button>
+                    <button class="btn btn-sm toolbar-btn" onclick="openCommitModal()" title="Commit Offcuts to Stock" data-i18n-title="title_commit_offcuts">📦</button>
                 </div>
                 <div id="sandbox-partlist-controls" class="d-none">
-                    <button class="btn btn-sm toolbar-btn" onclick="printPartsTable('sandbox_parts')">🖨️</button>
+                    <button class="btn btn-sm toolbar-btn" onclick="printPartsTable('sandbox_parts')" title="Print Partlist" data-i18n-title="title_print_partlist">🖨️</button>
                 </div>
                 <div id="diagram-controls" class="d-none">
-                    <button type="button" class="btn btn-sm toolbar-btn" onclick="showInfoTooltip(event, t('tooltip_optimizer_how'))">ⓘ</button>
-                    <button class="btn btn-sm toolbar-btn" onclick="printOptimizer('diagrams')">🖨️</button>
-                    <button class="btn btn-sm toolbar-btn" onclick="openLabelModal()">🏷️</button>
+                    <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tooltip_optimizer_how'))">ⓘ</button>
+                    <button class="btn btn-sm toolbar-btn" onclick="printOptimizer('diagrams')" title="Print Cut Diagrams" data-i18n-title="title_print_cut_diagrams">🖨️</button>
+                    <button class="btn btn-sm toolbar-btn" onclick="openLabelModal()" title="Print Labels" data-i18n-title="title_print_labels">🏷️</button>
                     <button id="btn-toggle-all-cuts" class="btn btn-sm toolbar-btn" onclick="toggleAllCutsTables()" title="Hide all cut lists" data-i18n-title="title_hide_cut_lists">⊟</button>
                     <button id="btn-toggle-diagrams-view" class="btn btn-sm toolbar-btn" onclick="toggleDiagramsExpandCollapse()" title="Toggle Expand/Collapse" data-i18n-title="title_toggle_expand">
                         <span id="diagram-toggle-icon">🗜️</span>
@@ -423,7 +423,7 @@
         <button id="mob-settings-btn-load" class="btn btn-outline-secondary shadow-sm d-none"
                 style="height:48px;min-width:48px;font-size:1.2rem;"
                 data-bs-toggle="offcanvas" data-bs-target="#mobileSettingsOffcanvas"
-                onclick="openMobileSettings()">⚙️</button>
+                onclick="openMobileSettings()" title="Optimizer Settings" data-i18n-title="title_optimizer_settings">⚙️</button>
     </div>
 
     <!-- State B: settings changed, recalculate needed -->
@@ -436,7 +436,7 @@
         <button class="btn btn-outline-secondary shadow-sm"
                 style="height:48px;min-width:48px;font-size:1.2rem;"
                 data-bs-toggle="offcanvas" data-bs-target="#mobileSettingsOffcanvas"
-                onclick="openMobileSettings()">⚙️</button>
+                onclick="openMobileSettings()" title="Optimizer Settings" data-i18n-title="title_optimizer_settings">⚙️</button>
     </div>
 
     <!-- State C: recalculated, save pending -->
@@ -454,7 +454,7 @@
         <button class="btn btn-outline-secondary shadow-sm"
                 style="height:48px;min-width:48px;font-size:1.2rem;"
                 data-bs-toggle="offcanvas" data-bs-target="#mobileSettingsOffcanvas"
-                onclick="openMobileSettings()">⚙️</button>
+                onclick="openMobileSettings()" title="Optimizer Settings" data-i18n-title="title_optimizer_settings">⚙️</button>
     </div>
 
 </div>

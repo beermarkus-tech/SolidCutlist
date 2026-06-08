@@ -1120,9 +1120,9 @@
             // Project Row
             html += `
             <div class="d-flex align-items-start mb-1">
-                <input class="form-check-input me-2 proj-check flex-shrink-0" type="checkbox" id="chk-${proj.id}" onchange="toggleProjectTree('${proj.id}', this.checked)" style="margin-top:3px;">
+                <input class="form-check-input me-2 proj-check flex-shrink-0" type="checkbox" id="chk-${proj.id}" onchange="toggleProjectTree('${proj.id}', this.checked)" style="margin-top:3px;" title="${t('title_select_project_parts')}">
 
-                <label class="form-check-label flex-grow-1 project-fold-icon collapsed" style="font-size:0.9rem;cursor:pointer;min-width:0;display:flex;flex-wrap:wrap;align-items:center;" data-bs-toggle="collapse" data-bs-target="#collapse-${proj.id}" aria-expanded="false">
+                <label class="form-check-label flex-grow-1 project-fold-icon collapsed" style="font-size:0.9rem;cursor:pointer;min-width:0;display:flex;flex-wrap:wrap;align-items:center;" data-bs-toggle="collapse" data-bs-target="#collapse-${proj.id}" aria-expanded="false" title="${t('title_expand_groups')}">
                     <span class="fw-bold text-truncate" style="flex:1;min-width:0;">${safeHTML(proj.name)}</span>
                     <span class="fw-normal text-muted w-100" style="font-size:0.75rem;">(${projTotalCount} parts)</span>
                 </label>
@@ -1139,7 +1139,7 @@
 
             html += `
             <div class="d-flex align-items-start mb-1">
-                <input class="form-check-input me-2 grp-check grp-of-${proj.id} flex-shrink-0" type="checkbox" id="chk-nogroup-${proj.id}" onchange="toggleGroupTree('${proj.id}', this.checked)" style="margin-top:3px;">
+                <input class="form-check-input me-2 grp-check grp-of-${proj.id} flex-shrink-0" type="checkbox" id="chk-nogroup-${proj.id}" onchange="toggleGroupTree('${proj.id}', this.checked)" style="margin-top:3px;" title="${t('title_select_group_parts')}">
                 <label class="form-check-label flex-grow-1 text-muted" for="chk-nogroup-${proj.id}" style="font-size: 0.85rem; cursor: pointer; min-width:0;">
                     <span class="d-block text-truncate"><em>${t('lbl_ungrouped_parts')}</em></span>
                     <span style="font-size:0.75rem;">(${ungroupedCount} parts)</span>
@@ -1154,7 +1154,7 @@
 
                 html += `
                 <div class="d-flex align-items-start mb-1">
-                    <input class="form-check-input me-2 grp-check grp-of-${proj.id} flex-shrink-0" type="checkbox" id="chk-${grp.id}" onchange="toggleGroupTree('${proj.id}', this.checked)" style="margin-top:3px;">
+                    <input class="form-check-input me-2 grp-check grp-of-${proj.id} flex-shrink-0" type="checkbox" id="chk-${grp.id}" onchange="toggleGroupTree('${proj.id}', this.checked)" style="margin-top:3px;" title="${t('title_select_group_parts')}">
                     <label class="form-check-label flex-grow-1" for="chk-${grp.id}" style="font-size: 0.85rem; cursor: pointer; min-width:0;">
                         <span class="d-block text-truncate">${safeHTML(grp.name)}</span>
                         <span class="text-muted" style="font-size:0.75rem;">(${grpCount} parts)</span>

@@ -12,10 +12,10 @@
             data-i18n="tab_profiles_and_materials">📏 Profiles & Materials</button>
     </div>
     <div class="view-toolbar-actions">
-        <button id="btn-toggle-stock-view" class="btn btn-sm toolbar-btn" onclick="toggleStockView()">
+        <button id="btn-toggle-stock-view" class="btn btn-sm toolbar-btn" onclick="toggleStockView()" title="Toggle Expand/Collapse" data-i18n-title="title_toggle_expand">
             <span id="stock-view-icon">🗜️</span>
         </button>
-        <button id="btn-toggle-catalog-view" class="btn btn-sm toolbar-btn d-none" onclick="toggleCatalogView()">
+        <button id="btn-toggle-catalog-view" class="btn btn-sm toolbar-btn d-none" onclick="toggleCatalogView()" title="Toggle Expand/Collapse" data-i18n-title="title_toggle_expand">
             <span id="catalog-view-icon">🗜️</span>
         </button>
         <button class="btn btn-sm toolbar-btn global-toggle-btn" onclick="toggleAllInputSections()" title="Toggle Input Form" data-i18n-title="tip_toggle_input_section"><b>▽</b></button>
@@ -88,42 +88,42 @@
                     <thead class="table-light thead-sticky">
                         <tr>
                             <th class="col-category text-center text-nowrap">
-                                <span onclick="handleSort('stock', 'categoryId', 'string')" class="cursor-pointer">
+                                <span onclick="handleSort('stock', 'categoryId', 'string')" class="cursor-pointer" title="Sort by Category" data-i18n-title="title_sort_by_category">
                                     <span data-i18n="col_category">Category</span> ⇅
                                 </span>
                                 <span id="flt-icon-stock-categoryId" onclick="openFilterModal(event, 'stock', 'categoryId', 'Category')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
                             </th>
                             <th class="col-qty text-center">
-                                <span onclick="handleSort('stock', 'qty', 'number')" class="cursor-pointer">
+                                <span onclick="handleSort('stock', 'qty', 'number')" class="cursor-pointer" title="Sort by Quantity" data-i18n-title="title_sort_by_qty">
                                     <span data-i18n="col_qty">Qty</span> ⇅
                                 </span>
                             </th>
                             <th class="col-profile text-center text-nowrap">
-                                <span onclick="handleSort('stock', 'profileId', 'string')" class="cursor-pointer">
+                                <span onclick="handleSort('stock', 'profileId', 'string')" class="cursor-pointer" title="Sort by Profile" data-i18n-title="title_sort_by_profile">
                                     <span data-i18n="col_profile">Profile</span> ⇅
                                 </span>
                                 <span id="flt-icon-stock-profileId" onclick="openFilterModal(event, 'stock', 'profileId', 'Profile')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
                             </th>
                             <th class="col-size text-center text-nowrap">
-                                <span class="group-icon">🗜️</span> <span onclick="handleSort('stock', 'dimensions', 'number')" class="cursor-pointer">
+                                <span class="group-icon">🗜️</span> <span onclick="handleSort('stock', 'dimensions', 'number')" class="cursor-pointer" title="Sort by Size" data-i18n-title="title_sort_by_size">
                                     <span data-i18n="col_size">Size</span> (<span class="display-unit-label">mm</span>) ⇅
                                 </span>
                                 <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tip_size_wl'))">ⓘ</button>
                             </th>
                             <th class="col-material text-center text-nowrap">
-                                <span onclick="handleSort('stock', 'materialId', 'string')" class="cursor-pointer">
+                                <span onclick="handleSort('stock', 'materialId', 'string')" class="cursor-pointer" title="Sort by Material" data-i18n-title="title_sort_by_material">
                                     <span data-i18n="col_material">Material</span> ⇅
                                 </span>
                                 <span id="flt-icon-stock-materialId" onclick="openFilterModal(event, 'stock', 'materialId', 'Material')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
                             </th>
                             <th class="col-grain text-center text-nowrap">
-                                <span class="group-icon">🗜️</span> <span onclick="handleSort('stock', 'grain', 'string')" class="cursor-pointer">
+                                <span class="group-icon">🗜️</span> <span onclick="handleSort('stock', 'grain', 'string')" class="cursor-pointer" title="Sort by Grain" data-i18n-title="title_sort_by_grain">
                                     <span data-i18n="col_grain">Grain</span> ⇅
                                 </span>
                                 <span id="flt-icon-stock-grain" onclick="openFilterModal(event, 'stock', 'grain', 'Grain')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
                             </th>
                             <th class="col-type text-center text-nowrap">
-                                <span class="group-icon">🗜️</span> <span onclick="handleSort('stock', 'isCutoff', 'string')" class="cursor-pointer">
+                                <span class="group-icon">🗜️</span> <span onclick="handleSort('stock', 'isCutoff', 'string')" class="cursor-pointer" title="Sort by Type" data-i18n-title="title_sort_by_type">
                                     <span data-i18n="col_type">Type</span> ⇅
                                 </span>
                                 <span id="flt-icon-stock-isCutoff" onclick="openFilterModal(event, 'stock', 'isCutoff', 'Type')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
@@ -183,7 +183,7 @@
                             </div>
                             <div class="col-sm">
                                 <label class="form-label form-label-sm fw-bold text-secondary mb-1">
-                                    <span data-i18n="lbl_store">Store</span> <span class="btn-icon-subtle" onclick="openStoreModal()">⚙️</span>
+                                    <span data-i18n="lbl_store">Store</span> <span class="btn-icon-subtle" onclick="openStoreModal()" title="Manage Stores" data-i18n-title="title_manage_stores">⚙️</span>
                                 </label>
                                 <select class="form-select form-select-sm" id="cat-store" required></select>
                             </div>
@@ -219,43 +219,43 @@
                     <thead class="table-light thead-sticky">
                         <tr>
                             <th class="col-category text-center text-nowrap">
-                                <span onclick="handleSort('catalog', 'categoryId', 'string')" class="cursor-pointer">
+                                <span onclick="handleSort('catalog', 'categoryId', 'string')" class="cursor-pointer" title="Sort by Category" data-i18n-title="title_sort_by_category">
                                     <span data-i18n="col_category">Category</span> ⇅
                                 </span>
                                 <span id="flt-icon-catalog-categoryId" onclick="openFilterModal(event, 'catalog', 'categoryId', 'Category')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
                             </th>
                             <th class="col-profile text-center text-nowrap">
-                                <span onclick="handleSort('catalog', 'profileId', 'string')" class="cursor-pointer">
+                                <span onclick="handleSort('catalog', 'profileId', 'string')" class="cursor-pointer" title="Sort by Profile" data-i18n-title="title_sort_by_profile">
                                     <span data-i18n="col_profile">Profile</span> ⇅
                                 </span>
                                 <span id="flt-icon-catalog-profileId" onclick="openFilterModal(event, 'catalog', 'profileId', 'Profile')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
                             </th>
                             <th class="col-size text-center text-nowrap">
-                                <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'dimensions', 'number')" class="cursor-pointer">
+                                <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'dimensions', 'number')" class="cursor-pointer" title="Sort by Size" data-i18n-title="title_sort_by_size">
                                     <span data-i18n="col_size">Size</span> (<span class="display-unit-label">mm</span>) ⇅
                                 </span>
                                 <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tip_size_wl'))">ⓘ</button>
                             </th>
                             <th class="col-material text-center text-nowrap">
-                                <span onclick="handleSort('catalog', 'materialId', 'string')" class="cursor-pointer">
+                                <span onclick="handleSort('catalog', 'materialId', 'string')" class="cursor-pointer" title="Sort by Material" data-i18n-title="title_sort_by_material">
                                     <span data-i18n="col_material">Material</span> ⇅
                                 </span>
                                 <span id="flt-icon-catalog-materialId" onclick="openFilterModal(event, 'catalog', 'materialId', 'Material')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
                             </th>
                             <th class="col-grain text-center text-nowrap">
-                                <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'grain', 'string')" class="cursor-pointer">
+                                <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'grain', 'string')" class="cursor-pointer" title="Sort by Grain" data-i18n-title="title_sort_by_grain">
                                     <span data-i18n="col_grain">Grain</span> ⇅
                                 </span>
                                 <span id="flt-icon-catalog-grain" onclick="openFilterModal(event, 'catalog', 'grain', 'Grain')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
                             </th>
                             <th class="col-store text-center text-nowrap">
-                                <span onclick="handleSort('catalog', 'storeId', 'string')" class="cursor-pointer">
+                                <span onclick="handleSort('catalog', 'storeId', 'string')" class="cursor-pointer" title="Sort by Store" data-i18n-title="title_sort_by_store">
                                     <span data-i18n="lbl_store">Store</span> ⇅
                                 </span>
                                 <span id="flt-icon-catalog-storeId" onclick="openFilterModal(event, 'catalog', 'storeId', 'Store')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
                             </th>
                             <th class="col-costweight text-center" id="th-catalog-price">
-                                <span onclick="handleSort('catalog', 'price', 'number')" class="cursor-pointer">
+                                <span onclick="handleSort('catalog', 'price', 'number')" class="cursor-pointer" title="Sort by Shelf Price" data-i18n-title="title_sort_by_shelf_price">
                                     <span data-i18n="col_shelf_price">Shelf Price (<span class="currency-label">$</span>)</span> ⇅
                                 </span>
                             </th>
@@ -271,7 +271,7 @@
                                 </div>
                             </th>
                             <th class="col-freshness text-center text-nowrap">
-                                <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'lastVerified', 'number')" class="cursor-pointer">
+                                <span class="group-icon">🗜️</span> <span onclick="handleSort('catalog', 'lastVerified', 'number')" class="cursor-pointer" title="Sort by Last Verified Date" data-i18n-title="title_sort_by_last_verified">
                                     <span data-i18n="col_updated">Updated</span> ⇅
                                 </span>
                                 <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tooltip_price_freshness'))">ⓘ</button>
@@ -337,19 +337,19 @@
                             <thead class="table-light thead-sticky">
                                 <tr>
                                     <th class="col-category text-center text-nowrap">
-                                        <span onclick="handleSort('profiles', 'type', 'string')" class="cursor-pointer">
+                                        <span onclick="handleSort('profiles', 'type', 'string')" class="cursor-pointer" title="Sort by Type" data-i18n-title="title_sort_by_type">
                                             <span data-i18n="col_category">Category</span> ⇅
                                         </span>
                                         <span id="flt-icon-profiles-type" onclick="openFilterModal(event, 'profiles', 'type', 'Category')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
                                     </th>
                                     <th class="col-profile text-nowrap text-center">
-                                        <span onclick="handleSort('profiles', 'name', 'string')" class="cursor-pointer">
+                                        <span onclick="handleSort('profiles', 'name', 'string')" class="cursor-pointer" title="Sort by Profile Name" data-i18n-title="title_sort_by_profile_name">
                                             <span data-i18n="col_profile">Profile Name</span> ⇅
                                         </span>
                                         <span id="flt-icon-profiles-name" onclick="openFilterModal(event, 'profiles', 'name', 'Profile Name')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
                                     </th>
                                     <th class="col-size text-center">
-                                        <span onclick="handleSort('profiles', 'dimensions', 'number')" class="cursor-pointer">
+                                        <span onclick="handleSort('profiles', 'dimensions', 'number')" class="cursor-pointer" title="Sort by Dimensions" data-i18n-title="title_sort_by_dimensions">
                                             <span data-i18n="col_size">Size</span> (<span class="display-unit-label">mm</span>) ⇅
                                         </span>
                                         <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tip_size_profiles'))">ⓘ</button>
@@ -403,19 +403,19 @@
                             <thead class="table-light thead-sticky">
                                 <tr>
                                     <th class="col-category text-center text-nowrap">
-                                        <span onclick="handleSort('materials', 'category', 'string')" class="cursor-pointer">
+                                        <span onclick="handleSort('materials', 'category', 'string')" class="cursor-pointer" title="Sort by Category" data-i18n-title="title_sort_by_category">
                                             <span data-i18n="col_category">Category</span> ⇅
                                         </span>
                                         <span id="flt-icon-materials-category" onclick="openFilterModal(event, 'materials', 'category', 'Category')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
                                     </th>
                                     <th class="col-material text-nowrap text-center">
-                                        <span onclick="handleSort('materials', 'name', 'string')" class="cursor-pointer">
+                                        <span onclick="handleSort('materials', 'name', 'string')" class="cursor-pointer" title="Sort by Material Name" data-i18n-title="title_sort_by_material_name">
                                             <span data-i18n="col_material">Material Name</span> ⇅
                                         </span>
                                         <span id="flt-icon-materials-name" onclick="openFilterModal(event, 'materials', 'name', 'Material Name')" class="ms-1 text-muted cursor-pointer" title="Filter">▼</span>
                                     </th>
                                     <th class="col-density text-center">
-                                        <span onclick="handleSort('materials', 'density', 'number')" class="cursor-pointer">
+                                        <span onclick="handleSort('materials', 'density', 'number')" class="cursor-pointer" title="Sort by Density" data-i18n-title="title_sort_by_density">
                                             <span data-i18n="lbl_density">Density (<span class="density-unit-label">kg/m³</span>)</span> ⇅
                                         </span>
                                     </th>
