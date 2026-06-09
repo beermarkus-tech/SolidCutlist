@@ -437,7 +437,7 @@
         const nameInput = document.getElementById('modal-new-group-name');
         
         if (!activeProjectId) {
-            showToast(t('msg_select_project_first'), true);
+            showToast(t('msg_select_project_first'), "warning");
             return;
         }
 
@@ -485,7 +485,7 @@
         saveState();
         renderGroupModalTable();
         
-        showToast(t('msg_group_deleted_parts', { count: affectedParts }), true);
+        showToast(t('msg_group_deleted_parts', { count: affectedParts }), "warning");
     }
 
     // ==========================================

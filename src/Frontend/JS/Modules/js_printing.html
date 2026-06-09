@@ -11,7 +11,7 @@
 
         let printWindow = window.open('', '_blank');
         if (!printWindow) {
-            showToast(t('msg_allow_popups'), true);
+            showToast(t('msg_allow_popups'), "warning");
             return;
         }
 
@@ -146,7 +146,7 @@
     function printOptimizer(type) {
         let printWindow = window.open('', '_blank');
         if (!printWindow) {
-            showToast(t('msg_allow_popups'), true);
+            showToast(t('msg_allow_popups'), "warning");
             return;
         }
         if (appState && appState.settings && !appState.settings.hasPrinted) {
@@ -387,7 +387,7 @@
     function saveLabelTemplate() {
         const nameStr = document.getElementById('label-template-name').value.trim();
         if (!nameStr) {
-            showToast(t('msg_enter_template_name'), true);
+            showToast(t('msg_enter_template_name'), "warning");
             return;
         }
 
@@ -444,14 +444,14 @@
     }
     function executeLabelPrint() {
         if (!appState.latestResults || appState.latestResults.length === 0) {
-            showToast(t('msg_no_opt_results'), true);
+            showToast(t('msg_no_opt_results'), "warning");
             return;
         }
 
         const printPartLabels = !!(document.getElementById('chk-part-labels')?.checked);
         const printStoreLabels = !!(document.getElementById('chk-store-labels')?.checked && !document.getElementById('chk-store-labels')?.disabled);
         if (!printPartLabels && !printStoreLabels) {
-            showToast(t('msg_select_label_type'), true);
+            showToast(t('msg_select_label_type'), "warning");
             return;
         }
 
@@ -620,11 +620,11 @@
         }
 
         if (labelsToPrint.length === 0 && storeLabels.length === 0) {
-            showToast(t('msg_no_mapped_parts'), true);
+            showToast(t('msg_no_mapped_parts'), "warning");
             return;
         }
         if (printPartLabels && labelsToPrint.length === 0) {
-            showToast(t('msg_no_mapped_parts'), true);
+            showToast(t('msg_no_mapped_parts'), "warning");
             return;
         }
 
@@ -805,7 +805,7 @@
         if (printWindow) {
             printWindow.location.href = blobUrl;
         } else {
-            showToast(t('msg_popup_blocked'), true);
+            showToast(t('msg_popup_blocked'), "warning");
         }
         
         labelModalInstance.hide();

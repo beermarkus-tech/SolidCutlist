@@ -152,7 +152,7 @@
     function cancelImportProcess() {
         resetImport();
         navigateTo('view-projects');
-        showToast(t('msg_import_cancelled'), true);
+        showToast(t('msg_import_cancelled'), "warning");
     }
     // --- STEP 1: READ FILE & EXTRACT HEADERS ---
     
@@ -716,7 +716,7 @@
             part.materialId = '';
             part.status = 'needs_mapping'; 
             renderStagingTable(); 
-            showToast(t('msg_category_changed_remap'), true);
+            showToast(t('msg_category_changed_remap'), "warning");
         }
     }
     function deleteStagingPart(id, isConfirmed = false) {
@@ -728,7 +728,7 @@
 
         appState.stagingParts = appState.stagingParts.filter(p => p.id !== id);
         renderStagingTable(); 
-        showToast(t('msg_part_removed_import'), true);
+        showToast(t('msg_part_removed_import'), "warning");
     }
     function applyImportScale(factor) {
         importScaleFactor = parseFloat(factor) || 1;

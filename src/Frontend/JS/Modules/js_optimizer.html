@@ -2460,7 +2460,7 @@
     }
     function openCommitModal() {
         if (!window.currentOffcuts || window.currentOffcuts.length === 0) {
-            showToast(t('msg_no_offcuts_to_commit'), true);
+            showToast(t('msg_no_offcuts_to_commit'), "warning");
             return;
         }
         
@@ -2517,7 +2517,7 @@
     function executeCommitToStock() {
         const checkboxes = document.querySelectorAll('.commit-checkbox:checked:not(:disabled)');
         if (checkboxes.length === 0) {
-            showToast(t('msg_no_items_selected'), true);
+            showToast(t('msg_no_items_selected'), "warning");
             return;
         }
 

@@ -473,7 +473,7 @@
         saveState();
         if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
         renderPartsTable();
-        showToast(t('msg_part_removed'), true);
+        showToast(t('msg_part_removed'), "warning");
     }
     function handleProjectChange() {
         const projId = document.getElementById('part-project').value;

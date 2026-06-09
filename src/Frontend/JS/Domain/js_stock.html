@@ -87,7 +87,7 @@
 
             const tr = document.createElement('tr');
             tr.style.cursor = 'pointer';
-            tr.addEventListener('click', (e) => { if (!e.target.closest('button')) showToast(t('msg_switch_to_full_view'), true); });
+            tr.addEventListener('click', (e) => { if (!e.target.closest('button')) showToast(t('msg_switch_to_full_view'), "warning"); });
             const badgeClass = getCategoryBadgeClass(group.categoryId);
 
             // Safe Profile/Material lookups
