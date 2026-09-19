@@ -390,6 +390,12 @@
             projSelect.value = ""; // Force it to stay on "Select a Project..."
         }
 
+        // Sort groups alphabetically by name once, on open only — adding or
+        // removing a group afterward must not reshuffle the list underneath the user.
+        if (!appState.groups) appState.groups = [];
+        appState.groups.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        saveState();
+
         renderGroupModalTable();
         groupModalInstance.show();
 
