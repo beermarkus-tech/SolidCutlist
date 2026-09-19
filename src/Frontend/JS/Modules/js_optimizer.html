@@ -2332,6 +2332,38 @@
             });
         });
 
+        // 🪄 Safety margin buffer boards (Feature B): each is bought whole and never cut,
+        // so it's 100% usable offcut — fold it into the same totals so "Usable Offcut %"
+        // (and the offcuts table below) reflect the actual buffer stock left in the shop,
+        // not just the packer's own natural waste. Bulk material (Feature A) is excluded —
+        // that's a real length requirement being fulfilled, not leftover buffer stock.
+        (appState.latestMarginResults || []).forEach(res => {
+            if (res.error || !res.sku || res.sku.category !== 'lumber' || !res.purchase || !res.purchase.catalogItem) return;
+            const prof = appState.profiles.find(p => p.id === res.sku.profileId);
+            const mat = appState.materials.find(m => m.id === res.sku.materialId);
+            if (!prof || !mat) return;
+
+            const thick = prof.thickness || 0;
+            const width = prof.width || 0;
+            const length = res.purchase.catalogItem.length || 0;
+            const boardVol = length * width * thick;
+            const boardsNeeded = res.purchase.boardsNeeded || 0;
+
+            for (let i = 0; i < boardsNeeded; i++) {
+                totalRawVolume += boardVol;
+                totalOffcutVolume += boardVol;
+                usableOffcuts.push({
+                    category: 'lumber',
+                    profileId: prof.id,
+                    materialId: mat.id,
+                    profName: prof.name,
+                    matName: mat.name,
+                    grain: 'none',
+                    length: length
+                });
+            }
+        });
+
         // 🪄 THE STACKER: Group identical offcuts and count their quantity
         const groupedOffcutsMap = {};
         usableOffcuts.forEach(off => {
