@@ -10,7 +10,8 @@ const { loadGasPartial } = require('./helpers/extractGasFunction');
 const T = {
     col_project: 'Project', col_group: 'Group', col_part_name: 'Part Name',
     col_category: 'Category', col_qty: 'Qty', col_bulk: 'Bulk', col_profile: 'Profile',
-    col_size: 'Size', col_material: 'Material', col_grain: 'Grain',
+    lbl_width: 'Width', lbl_length: 'Length', lbl_thickness: 'Thickness',
+    col_material: 'Material', col_grain: 'Grain',
     opt_weight: 'Weight', opt_cost: 'Cost', opt_length: 'Length', opt_width: 'Width',
     opt_lumber: 'Lumber', opt_sheet: 'Sheet'
 };
@@ -24,6 +25,13 @@ const { buildPartsCsv } = loadGasPartial('Frontend/JS/Modules/js_export.html', {
     // carries so each test controls its own weight/cost expectation directly.
     _computePartMetric: (part) => ({ weightKg: part._w || 0, cost: part._c || 0 })
 });
+
+// Column indices for the current 14-column layout, named so index shifts don't
+// need to be re-derived by hand in every assertion below.
+const COL = {
+    PROJECT: 0, GROUP: 1, NAME: 2, CATEGORY: 3, QTY: 4, BULK: 5, PROFILE: 6,
+    WIDTH: 7, LENGTH: 8, THICKNESS: 9, MATERIAL: 10, GRAIN: 11, WEIGHT: 12, COST: 13
+};
 
 function baseAppState(overrides) {
     return Object.assign({
@@ -40,15 +48,27 @@ function part(overrides) {
     }, overrides);
 }
 
-test('header row: 12 columns, weight/cost headers carry the current unit and currency', () => {
+function profile(overrides) {
+    return Object.assign({ id: 'PR1', name: '2x4', width: 88.9, thickness: 38.1 }, overrides);
+}
+
+function row(csv, lineIndex = 1) {
+    return csv.split('\r\n')[lineIndex].split(',');
+}
+
+test('header row: 14 columns, Width/Length/Thickness carry the unit, Weight/Cost carry unit and currency', () => {
     const csv = buildPartsCsv([], baseAppState({ settings: { displayUnit: 'mm', currency: '€' } }));
     const header = csv.split('\r\n')[0];
-    assert.equal(header, 'Project,Group,Part Name,Category,Qty,Bulk,Profile,Size,Material,Grain,Weight (kg),Cost (€)');
+    assert.equal(header, 'Project,Group,Part Name,Category,Qty,Bulk,Profile,Width (mm),Length (mm),Thickness (mm),Material,Grain,Weight (kg),Cost (€)');
 });
 
-test('weight header switches to lbs for non-metric display units', () => {
+test('dimension and weight headers switch to "in"/lbs for non-metric display units', () => {
     const csv = buildPartsCsv([], baseAppState({ settings: { displayUnit: 'dec_in', currency: '$' } }));
-    assert.ok(csv.split('\r\n')[0].includes('Weight (lbs)'));
+    const header = csv.split('\r\n')[0];
+    assert.ok(header.includes('Width (in)'));
+    assert.ok(header.includes('Length (in)'));
+    assert.ok(header.includes('Thickness (in)'));
+    assert.ok(header.includes('Weight (lbs)'));
 });
 
 test('row order is preserved exactly as given — no re-filtering or re-sorting inside the builder', () => {
@@ -59,45 +79,117 @@ test('row order is preserved exactly as given — no re-filtering or re-sorting 
     ];
     const csv = buildPartsCsv(parts, baseAppState());
     const dataLines = csv.split('\r\n').slice(1);
-    assert.deepEqual(dataLines.map(l => l.split(',')[2]), ['C-part', 'A-part', 'B-part']);
+    assert.deepEqual(dataLines.map(l => l.split(',')[COL.NAME]), ['C-part', 'A-part', 'B-part']);
+});
+
+test('lumber: Length comes from the part, Width/Thickness come from the real (not nominal) profile dimensions', () => {
+    const prof = profile({ id: 'PR1', name: '2x4', width: 88.9, thickness: 38.1 }); // real 3.5in x 1.5in, not the "2x4" nominal name
+    const p = part({ category: 'lumber', length: 2438, profileId: 'PR1' });
+    const csv = buildPartsCsv([p], baseAppState({ profiles: [prof] }));
+    const cells = row(csv);
+    assert.equal(cells[COL.WIDTH], '88.9');
+    assert.equal(cells[COL.LENGTH], '2438');
+    assert.equal(cells[COL.THICKNESS], '38.1');
+});
+
+test('sheet: Width and Length both come from the part, only Thickness comes from the profile', () => {
+    const prof = profile({ id: 'PR1', width: 0, thickness: 18 }); // profile width is irrelevant for sheets
+    const p = part({ category: 'sheet', width: 1219, length: 2438, profileId: 'PR1' });
+    const csv = buildPartsCsv([p], baseAppState({ profiles: [prof] }));
+    const cells = row(csv);
+    assert.equal(cells[COL.WIDTH], '1219');
+    assert.equal(cells[COL.LENGTH], '2438');
+    assert.equal(cells[COL.THICKNESS], '18');
+});
+
+test('a lumber row with no matching (unmapped) profile exports blank Width/Thickness, not "0"', () => {
+    const p = part({ category: 'lumber', length: 2438, profileId: 'NOT-FOUND' });
+    const csv = buildPartsCsv([p], baseAppState());
+    const cells = row(csv);
+    assert.equal(cells[COL.WIDTH], '');
+    assert.equal(cells[COL.LENGTH], '2438'); // still comes from the part itself
+    assert.equal(cells[COL.THICKNESS], '');
+});
+
+test('a sheet row with no matching (unmapped) profile exports blank Thickness only', () => {
+    const p = part({ category: 'sheet', width: 1219, length: 2438, profileId: 'NOT-FOUND' });
+    const csv = buildPartsCsv([p], baseAppState());
+    const cells = row(csv);
+    assert.equal(cells[COL.WIDTH], '1219');
+    assert.equal(cells[COL.LENGTH], '2438');
+    assert.equal(cells[COL.THICKNESS], '');
+});
+
+test('a fastener row exports blank Width/Length/Thickness', () => {
+    const p = part({ category: 'fastener' });
+    const csv = buildPartsCsv([p], baseAppState());
+    const cells = row(csv);
+    assert.equal(cells[COL.WIDTH], '');
+    assert.equal(cells[COL.LENGTH], '');
+    assert.equal(cells[COL.THICKNESS], '');
+});
+
+test('fractional-inch display: Width, Length, and Thickness each individually get the Excel date-autodetect guard', () => {
+    const prof = profile({ id: 'PR1', width: 88.9, thickness: 38.1 });
+    const p = part({ category: 'lumber', length: 2438, profileId: 'PR1' });
+    const csv = buildPartsCsv([p], baseAppState({ profiles: [prof], settings: { displayUnit: 'frac_in', currency: '$' } }));
+    const cells = row(csv);
+    assert.equal(cells[COL.WIDTH], "'88.9");
+    assert.equal(cells[COL.LENGTH], "'2438");
+    assert.equal(cells[COL.THICKNESS], "'38.1");
+});
+
+test('mm and decimal-inch display units leave Width/Length/Thickness bare (no apostrophe)', () => {
+    const prof = profile({ id: 'PR1', width: 88.9, thickness: 38.1 });
+    const p = part({ category: 'lumber', length: 2438, profileId: 'PR1' });
+    const csvMm = buildPartsCsv([p], baseAppState({ profiles: [prof], settings: { displayUnit: 'mm', currency: '$' } }));
+    const csvDec = buildPartsCsv([p], baseAppState({ profiles: [prof], settings: { displayUnit: 'dec_in', currency: '$' } }));
+    assert.equal(row(csvMm)[COL.WIDTH], '88.9');
+    assert.equal(row(csvDec)[COL.WIDTH], '88.9');
+});
+
+test('a blank dimension is never guarded even in frac_in mode (no bare apostrophe cell)', () => {
+    const p = part({ category: 'lumber', profileId: 'NOT-FOUND' }); // no matching profile -> blank Width/Thickness
+    const csv = buildPartsCsv([p], baseAppState({ settings: { displayUnit: 'frac_in', currency: '$' } }));
+    const cells = row(csv);
+    assert.equal(cells[COL.WIDTH], '');
+    assert.equal(cells[COL.THICKNESS], '');
 });
 
 test('weight and cost are both present in every row regardless of partsMetricMode', () => {
     const p = part({ _w: 2, _c: 15 });
     const appState = baseAppState({ settings: { displayUnit: 'mm', currency: '$', partsMetricMode: 'cost' } });
-    const line = buildPartsCsv([p], appState).split('\r\n')[1];
-    const cells = line.split(',');
-    assert.equal(cells[10], '2.00'); // Weight (kg)
-    assert.equal(cells[11], '15.00'); // Cost ($)
+    const cells = row(buildPartsCsv([p], appState));
+    assert.equal(cells[COL.WEIGHT], '2.00');
+    assert.equal(cells[COL.COST], '15.00');
 });
 
 test('weight converts to lbs when display unit is not metric', () => {
     const p = part({ _w: 1 }); // 1kg -> 2.20462 lbs
     const csv = buildPartsCsv([p], baseAppState({ settings: { displayUnit: 'dec_in', currency: '$' } }));
-    const cells = csv.split('\r\n')[1].split(',');
-    assert.equal(cells[10], '2.20');
+    assert.equal(row(csv)[COL.WEIGHT], '2.20');
 });
 
 test('zero weight/cost render as blank cells, not "0.00"', () => {
     const p = part({ _w: 0, _c: 0 });
     const csv = buildPartsCsv([p], baseAppState());
-    const cells = csv.split('\r\n')[1].split(',');
-    assert.equal(cells[10], '');
-    assert.equal(cells[11], '');
+    const cells = row(csv);
+    assert.equal(cells[COL.WEIGHT], '');
+    assert.equal(cells[COL.COST], '');
 });
 
 test('bulk lumber rows export a blank Qty cell, matching the on-screen "-" treatment', () => {
     const p = part({ category: 'lumber', is_bulk: true, qty: 7 });
     const csv = buildPartsCsv([p], baseAppState());
-    const cells = csv.split('\r\n')[1].split(',');
-    assert.equal(cells[4], ''); // Qty
-    assert.equal(cells[5], '✔️'); // Bulk
+    const cells = row(csv);
+    assert.equal(cells[COL.QTY], '');
+    assert.equal(cells[COL.BULK], '✔️');
 });
 
 test('non-bulk rows export the Bulk column as "-"', () => {
     const p = part({ category: 'lumber', is_bulk: false });
     const csv = buildPartsCsv([p], baseAppState());
-    assert.equal(csv.split('\r\n')[1].split(',')[5], '-');
+    assert.equal(row(csv)[COL.BULK], '-');
 });
 
 test('RFC4180 escaping: a comma in a free-text field is quoted', () => {
@@ -122,39 +214,14 @@ test('formula-injection guard: a name starting with =, +, -, or @ gets a leading
     ['=SUM(A1)', '+1', '-1', '@cmd'].forEach(dangerous => {
         const p = part({ name: dangerous });
         const csv = buildPartsCsv([p], baseAppState());
-        const nameCell = csv.split('\r\n')[1].split(',')[2];
-        assert.equal(nameCell, `'${dangerous}`);
+        assert.equal(row(csv)[COL.NAME], `'${dangerous}`);
     });
 });
 
 test('an ordinary name (no leading special character) is left untouched', () => {
     const p = part({ name: 'Shelf' });
     const csv = buildPartsCsv([p], baseAppState());
-    assert.equal(csv.split('\r\n')[1].split(',')[2], 'Shelf');
-});
-
-test('fractional-inch Size values get a leading apostrophe to block Excel date auto-detection', () => {
-    const p = part({ category: 'lumber', length: 425.45 });
-    const csv = buildPartsCsv([p], baseAppState({ settings: { displayUnit: 'frac_in', currency: '$' } }));
-    const sizeCell = csv.split('\r\n')[1].split(',')[7];
-    assert.equal(sizeCell, "'425.45"); // formatForDisplay is stubbed to echo the raw mm value
-});
-
-test('Size values are left bare (no apostrophe) for mm and decimal-inch display units', () => {
-    const p = part({ category: 'lumber', length: 100 });
-    const csvMm = buildPartsCsv([p], baseAppState({ settings: { displayUnit: 'mm', currency: '$' } }));
-    const csvDec = buildPartsCsv([p], baseAppState({ settings: { displayUnit: 'dec_in', currency: '$' } }));
-    assert.equal(csvMm.split('\r\n')[1].split(',')[7], '100');
-    assert.equal(csvDec.split('\r\n')[1].split(',')[7], '100');
-});
-
-test('sheet Size combines width and length with "×", lumber Size is length only', () => {
-    const sheet = part({ id: 'S1', category: 'sheet', width: 48, length: 96 });
-    const lumber = part({ id: 'L1', category: 'lumber', length: 96 });
-    const csv = buildPartsCsv([sheet, lumber], baseAppState());
-    const lines = csv.split('\r\n').slice(1);
-    assert.equal(lines[0].split(',')[7], '48 × 96');
-    assert.equal(lines[1].split(',')[7], '96');
+    assert.equal(row(csv)[COL.NAME], 'Shelf');
 });
 
 test('the returned string has no BOM — that is the download trigger\'s responsibility, not the builder\'s', () => {
