@@ -381,10 +381,13 @@
         });
 
         // Lean stock: only stock items for the SKUs the optimizer drew from shop stock.
+        // Bulk rows (Feature A) now produce their own real storeId==='shop_stock' entries
+        // in appState.latestBulkResults (same shape runPackingEngine's Stage 1 produces
+        // for non-bulk SKUs), so this single loop covers both — no bulk-specific carve-out needed.
         const _stockItems = [];
         const _usedStockSKUs = new Set();
         const _seenStockIds = new Set();
-        (appState.latestResults || []).forEach(res => {
+        [...(appState.latestResults || []), ...(appState.latestBulkResults || [])].forEach(res => {
             if (res.purchase?.catalogItem?.storeId === 'shop_stock' && res.sku) {
                 const key = `${res.sku.profileId}|${res.sku.materialId}|${res.sku.category}`;
                 if (!_usedStockSKUs.has(key)) {
@@ -403,25 +406,6 @@
                 }
             }
         });
-        // Bulk rows (Feature A) draw against shop stock without producing a
-        // storeId==='shop_stock' result entry the loop above can key off — so pull in
-        // any stock matching a bulk part's SKU directly (same simple SKU-match
-        // createJobSandbox already uses, not exact-consumption tracking).
-        partsToOptimize.filter(p => p.is_bulk).forEach(p => {
-            const key = `${p.profileId}|${p.materialId}|lumber`;
-            if (_usedStockSKUs.has(key)) return;
-            _usedStockSKUs.add(key);
-            (appState.stock || [])
-                .filter(s => s.profileId === p.profileId && s.materialId === p.materialId && s.categoryId === 'lumber')
-                .forEach(s => {
-                    const sid = s.id || `${key}|${s.length}`;
-                    if (!_seenStockIds.has(sid)) {
-                        _seenStockIds.add(sid);
-                        _stockItems.push(s);
-                    }
-                });
-        });
-
         const newJob = {
             id: 'JOB-' + Date.now() + Math.floor(Math.random() * 1000),
             name: jobName,

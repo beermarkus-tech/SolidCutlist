@@ -99,19 +99,53 @@
                 ? group.totalLengthRequired * (1 + marginPercent / 100)
                 : group.totalLengthRequired;
 
-            // Step 2: offset against eligible shop stock (a filter, not an offcut setting —
-            // when the toggle is OFF, all matching stock counts regardless of length).
+            // Step 2: draw from eligible shop stock piece by piece until the target is
+            // covered (a filter, not an offcut setting — when the toggle is OFF, all
+            // matching stock counts regardless of length). Every piece actually drawn is
+            // reported as its own shopping-list line under "My Shop Stock", the same way
+            // runPackingEngine's Stage 1 (Scavenger) reports stock used by non-bulk parts —
+            // not just silently subtracted from the target.
             const matchingStock = (appState.stock || []).filter(s =>
                 s.profileId === group.profileId &&
                 s.materialId === group.materialId &&
                 s.categoryId === 'lumber' &&
                 (!bulkLengthFilterEnabled || (s.length || 0) >= bulkMinimumStockLength)
             );
-            let stockSum = 0;
-            matchingStock.forEach(s => { stockSum += (s.length || 0) * (s.qty || 1); });
+            let explodedStock = [];
+            matchingStock.forEach(s => {
+                for (let i = 0; i < (s.qty || 1); i++) explodedStock.push(s);
+            });
+            // Longest first — fewer, larger pieces consumed before smaller ones, leaving
+            // the more useful (larger) offcuts in stock for later jobs.
+            explodedStock.sort((a, b) => (b.length || 0) - (a.length || 0));
 
-            const remainder = Math.max(0, targetLength - stockSum);
-            if (remainder === 0) return; // stock alone covers it — zero boards isn't a shopping-list line
+            let remaining = targetLength;
+            const usedStockGroups = {};
+            for (let i = 0; i < explodedStock.length && remaining > 0; i++) {
+                const piece = explodedStock[i];
+                const gKey = `${piece.length}|${piece.width || 0}|${piece.grain || 'none'}`;
+                if (!usedStockGroups[gKey]) {
+                    usedStockGroups[gKey] = { length: piece.length, width: piece.width || 0, grain: piece.grain || 'none', boardsNeeded: 0 };
+                }
+                usedStockGroups[gKey].boardsNeeded++;
+                remaining -= piece.length || 0;
+            }
+
+            Object.values(usedStockGroups).forEach(g => {
+                results.push({
+                    sku: { profileId: group.profileId, materialId: group.materialId, category: 'lumber' },
+                    success: true,
+                    purchase: {
+                        catalogItem: { storeId: 'shop_stock', length: g.length, width: g.width, grain: g.grain, price: 0 },
+                        totalCost: 0,
+                        boardsNeeded: g.boardsNeeded,
+                        layout: []
+                    }
+                });
+            });
+
+            const remainder = Math.max(0, remaining);
+            if (remainder === 0) return; // stock alone covers it — nothing left to buy
 
             // Step 3: resolve the remainder against the store catalog.
             const vendorOptions = (appState.catalog || []).filter(c =>
@@ -296,12 +330,16 @@
                 return;
             }
             const c = res.purchase.catalogItem;
-            // Real catalog items share a stable id; shop_stock synthetic entries don't
-            // (see runPackingEngine Stage 1), so those fall back to a length/width/grain
-            // composite so distinct stock groups never collapse into one.
+            // Real catalog items share a stable id, which is already scoped to one
+            // profile+material by definition — safe to merge on id alone. shop_stock
+            // synthetic entries have no id (see runPackingEngine Stage 1), so those fall
+            // back to a length/width/grain composite — but that alone isn't SKU-specific,
+            // so two DIFFERENT profile+material SKUs that happen to share a stock size
+            // must not collapse into one line; include sku in the fallback key too.
+            const sku = res.sku || {};
             const key = c.id
                 ? `id:${c.id}`
-                : `stock:${c.storeId}|${c.length}|${c.width || 0}|${c.grain || 'none'}`;
+                : `stock:${sku.profileId}|${sku.materialId}|${c.storeId}|${c.length}|${c.width || 0}|${c.grain || 'none'}`;
 
             if (indexByKey.has(key)) {
                 const target = merged[indexByKey.get(key)];

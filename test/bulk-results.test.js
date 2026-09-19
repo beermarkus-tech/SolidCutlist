@@ -36,7 +36,7 @@ test('worked example from the brief: 80m required, 5% margin, only 4m boards, no
     assert.equal(results[0].sku.category, 'lumber');
 });
 
-test('stock alone covering the requirement produces zero result entries', () => {
+test('stock alone covering the requirement is listed as a shop-stock line, not silently consumed', () => {
     const parts = [{ id: 'PART-1', category: 'lumber', is_bulk: true, status: 'ready',
                       profileId: 'PR-1', materialId: 'M-1', length: 5000 }];
     const appState = baseAppState({
@@ -46,7 +46,50 @@ test('stock alone covering the requirement produces zero result entries', () => 
     });
 
     const results = computeBulkResults(parts, appState, ['store-1']);
-    assert.equal(results.length, 0); // cross-realm array, compare by content not deepEqual
+    assert.equal(results.length, 1); // one stock piece drawn, no store purchase needed
+    assert.equal(results[0].success, true);
+    assert.equal(results[0].purchase.catalogItem.storeId, 'shop_stock');
+    assert.equal(results[0].purchase.catalogItem.length, 6000);
+    assert.equal(results[0].purchase.boardsNeeded, 1);
+    assert.equal(results[0].purchase.totalCost, 0);
+});
+
+test('stock covering only part of the requirement produces BOTH a stock line and a store line', () => {
+    const parts = [{ id: 'PART-1', category: 'lumber', is_bulk: true, status: 'ready',
+                      profileId: 'PR-1', materialId: 'M-1', length: 10000 }];
+    const appState = baseAppState({
+        stock: [{ profileId: 'PR-1', materialId: 'M-1', categoryId: 'lumber', length: 3000, qty: 1 }],
+        catalog: [{ id: 'CAT-1', profileId: 'PR-1', materialId: 'M-1', categoryId: 'lumber',
+                    storeId: 'store-1', length: 4000, price: 12 }]
+    });
+
+    const results = computeBulkResults(parts, appState, ['store-1']);
+    assert.equal(results.length, 2);
+    const stockLine = results.find(r => r.purchase.catalogItem.storeId === 'shop_stock');
+    const storeLine = results.find(r => r.purchase.catalogItem.storeId === 'store-1');
+    assert.ok(stockLine, 'expected a shop-stock line');
+    assert.equal(stockLine.purchase.boardsNeeded, 1);
+    assert.ok(storeLine, 'expected a store line for the remainder');
+    assert.equal(storeLine.purchase.boardsNeeded, Math.ceil((10000 - 3000) / 4000));
+});
+
+test('multiple distinct stock lengths each become their own shop-stock line, longest drawn first', () => {
+    const parts = [{ id: 'PART-1', category: 'lumber', is_bulk: true, status: 'ready',
+                      profileId: 'PR-1', materialId: 'M-1', length: 4500 }];
+    const appState = baseAppState({
+        stock: [
+            { profileId: 'PR-1', materialId: 'M-1', categoryId: 'lumber', length: 1000, qty: 5 }, // 5000mm available
+            { profileId: 'PR-1', materialId: 'M-1', categoryId: 'lumber', length: 3000, qty: 1 }   // drawn first (longest)
+        ]
+    });
+
+    const results = computeBulkResults(parts, appState, ['store-1']);
+    // 3000mm piece drawn first (remaining 1500), then whole 1000mm pieces one at a time:
+    // one leaves 500mm still remaining, so a second is drawn to fully cover it.
+    const byLength = Object.fromEntries(results.map(r => [r.purchase.catalogItem.length, r.purchase.boardsNeeded]));
+    assert.equal(byLength[3000], 1);
+    assert.equal(byLength[1000], 2);
+    assert.equal(results.length, 2);
 });
 
 test('minimum-stock-length filter ON excludes short offcuts; OFF lets them count', () => {
@@ -62,15 +105,24 @@ test('minimum-stock-length filter ON excludes short offcuts; OFF lets them count
         settings: { optimizer: { bulkEnabled: true }, bulkMinimumStockLength: 500, marginPercent: 0 }
     });
     const onResults = computeBulkResults(parts, onState, ['store-1']);
-    assert.equal(onResults[0].purchase.boardsNeeded, Math.ceil(5000 / 4000));
+    const onStoreLine = onResults.find(r => r.purchase.catalogItem.storeId === 'store-1');
+    assert.ok(onStoreLine, 'expected a store line when the offcut is excluded');
+    assert.equal(onStoreLine.purchase.boardsNeeded, Math.ceil(5000 / 4000));
+    assert.ok(!onResults.some(r => r.purchase.catalogItem.storeId === 'shop_stock'), 'the 300mm offcut must not appear as a stock line when excluded by the filter');
 
-    // Filter OFF: the same 300mm offcut counts, reducing what must be bought.
+    // Filter OFF: the same 300mm offcut counts, reducing what must be bought, and appears
+    // as its own shop-stock line alongside the store line for the remainder.
     const offState = baseAppState({
         stock: [shortStock], catalog,
         settings: { optimizer: { bulkEnabled: false }, bulkMinimumStockLength: 500, marginPercent: 0 }
     });
     const offResults = computeBulkResults(parts, offState, ['store-1']);
-    assert.equal(offResults[0].purchase.boardsNeeded, Math.ceil((5000 - 300) / 4000));
+    const offStockLine = offResults.find(r => r.purchase.catalogItem.storeId === 'shop_stock');
+    const offStoreLine = offResults.find(r => r.purchase.catalogItem.storeId === 'store-1');
+    assert.ok(offStockLine, 'expected the 300mm offcut to be listed as a shop-stock line');
+    assert.equal(offStockLine.purchase.boardsNeeded, 1);
+    assert.ok(offStoreLine, 'expected a store line for the remainder');
+    assert.equal(offStoreLine.purchase.boardsNeeded, Math.ceil((5000 - 300) / 4000));
 });
 
 test('multiple bulk rows for the same profile+material are summed into one requirement', () => {
