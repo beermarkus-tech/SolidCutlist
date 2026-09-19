@@ -49,6 +49,19 @@
         return parseFloat(cleaned) || 0;
     }
 
+    /**
+     * Finds the index of the first header that matches one of the given candidate
+     * strings (case-insensitive, exact match after trimming and stripping a
+     * trailing " (...)" parenthetical unit/currency suffix — so a SolidCutlist-
+     * exported header like "Width (mm)" is recognized as "width" too), or -1 if
+     * none match. Pure — no appState/document reference — so it's unit-testable.
+     */
+    function _findHeaderColumnIndex(headers, candidates) {
+        const normalize = h => String(h || '').trim().toLowerCase().replace(/\s*\([^)]*\)\s*$/, '');
+        const normalizedHeaders = (headers || []).map(normalize);
+        return normalizedHeaders.findIndex(h => candidates.includes(h));
+    }
+
     // --- INITIALIZATION & NAVIGATION ---
     
     // Called when clicking the Import button (or Resume Import)
@@ -297,16 +310,24 @@
         const container = document.getElementById('mapping-dropdowns-container');
         container.innerHTML = '';
 
+        // fallbackIndex is OpenCutList's fixed column order — used only when the
+        // header text itself doesn't match any candidate below. For a genuine
+        // OpenCutList export, the real header text ("Designation", "Path", "Length
+        // - raw", ...) already matches its own candidate list and resolves to this
+        // exact same index, so this stays behavior-neutral for that format.
         const requiredFields = [
-            { id: 'map-name', label: t('lbl_part_name'), defaultIndex: 3 },           // 3 = Designation
-            { id: 'map-group', label: t('lbl_group_path'), defaultIndex: 1 },       // 1 = Path
-            { id: 'map-length', label: t('lbl_length_raw'), defaultIndex: 4 },      // 4 = Length - raw
-            { id: 'map-width', label: t('lbl_width_raw'), defaultIndex: 5 },        // 5 = Width - raw
-            { id: 'map-thickness', label: t('lbl_thickness_raw'), defaultIndex: 6 },// 6 = Thickness - raw
-            { id: 'map-material', label: t('lbl_material_optional'), defaultIndex: 12 } // 12 = Material
+            { id: 'map-name', label: t('lbl_part_name'), fallbackIndex: 3, candidates: ['designation', 'name', 'part name'] },
+            { id: 'map-group', label: t('lbl_group_path'), fallbackIndex: 1, candidates: ['path', 'group', 'group path'] },
+            { id: 'map-length', label: t('lbl_length_raw'), fallbackIndex: 4, candidates: ['length - raw', 'length', 'raw length'] },
+            { id: 'map-width', label: t('lbl_width_raw'), fallbackIndex: 5, candidates: ['width - raw', 'width', 'raw width'] },
+            { id: 'map-thickness', label: t('lbl_thickness_raw'), fallbackIndex: 6, candidates: ['thickness - raw', 'thickness', 'raw thickness'] },
+            { id: 'map-material', label: t('lbl_material_optional'), fallbackIndex: 12, candidates: ['material'] }
         ];
 
         requiredFields.forEach(field => {
+            const detectedIndex = _findHeaderColumnIndex(rawCsvHeaders, field.candidates);
+            field.defaultIndex = detectedIndex !== -1 ? detectedIndex : field.fallbackIndex;
+
             let optionsHtml = `<option value="" disabled selected>${t('opt_select_column')}</option>`;
 
             rawCsvHeaders.forEach((header, index) => {
@@ -601,20 +622,19 @@
             const dimDisplay = `${formatForDisplay(part.thickness)} x ${formatForDisplay(part.width)} x ${formatForDisplay(part.length)}`;
             
             // 🪄 BUILD GROUP DROPDOWN
-            let groupBadgeClass = part.groupId !== '' ? 'text-reset' : 'bg-warning fw-bold border border-warning';
-            
             let groupOptions = '';
-            
-            // 🪄 FIXED: Only inject the warning and quick-create options if the group is actually unassigned
+
+            // An unmatched-but-extracted group is auto-created automatically when the
+            // final Import button is hit (see _resolveStagingGroups()/commitImport())
+            // — no action required from the user, so this uses the same ✨ marker as
+            // the app's other "will be created" affordances instead of a blocking ⚠️.
             if (part.groupId === '') {
-                let missingText = part.extractedGroup ? `⚠️ ${safeHTML(part.extractedGroup)} ${t('msg_missing')}...` : `⚠️ ${t('opt_select')}...`;
-                groupOptions += `<option value="" disabled selected>${missingText}</option>`;
-                
-                if (part.extractedGroup) {
-                    groupOptions += `<option value="CREATE_GROUP" class="fw-bold text-success">✨ + ${t('opt_create')} "${safeHTML(part.extractedGroup)}"</option>`;
-                }
+                let willCreateText = part.extractedGroup
+                    ? `✨ ${safeHTML(part.extractedGroup)} (${t('msg_will_be_created')})`
+                    : `⚠️ ${t('opt_select')}...`;
+                groupOptions += `<option value="" disabled selected class="${part.extractedGroup ? 'fw-bold text-success' : ''}">${willCreateText}</option>`;
             }
-            
+
             groupOptions += `<option value="none" ${part.groupId === 'none' ? 'selected' : ''}>-</option>`;
             
             projGroups.forEach(g => {
@@ -708,25 +728,6 @@
     function updateStagingPart(id, field, value) {
         const part = appState.stagingParts.find(p => p.id === id);
         if (part) {
-            
-            // 🪄 THE QUICK-CREATE INTERCEPTOR
-            if (field === 'groupId' && value === 'CREATE_GROUP') {
-                const newGroupId = 'GRP-' + Date.now() + Math.floor(Math.random() * 1000);
-                if (!appState.groups) appState.groups = [];
-                
-                // Inject the new group into the global database
-                appState.groups.push({
-                    id: newGroupId,
-                    projectId: part.projectId,
-                    name: part.extractedGroup // Use the exact name extracted from the CSV
-                });
-                
-                saveState(); // Commit to memory instantly
-                
-                value = newGroupId; // Swap the fake command for the real ID so the part saves correctly
-                showToast(t('msg_group_created', { name: part.extractedGroup }));
-            }
-
             part[field] = value;
             
             // Re-evaluate status
@@ -785,6 +786,41 @@
         statsEl.textContent = t('txt_import_scale_stats', { minL: formatForDisplay(minL), maxL: formatForDisplay(maxL), unit, minT: formatForDisplay(minT), maxT: formatForDisplay(maxT) });
     }
 
+    /**
+     * Auto-creates any groups that were extracted from the CSV (via the Path/Group
+     * column) but never matched an existing project group, and links each such
+     * staging part to its new group's id — deferred here to commit time rather
+     * than eagerly per-row, so hitting the final Import button is the one moment
+     * a not-yet-existing group actually gets created. Dedupes by projectId +
+     * extractedGroup so multiple staged parts destined for the same not-yet-
+     * created group produce exactly ONE new group, not one per part. Mutates
+     * stagingParts/appState.groups in place. Returns the number of groups created.
+     */
+    function _resolveStagingGroups(stagingParts, appState) {
+        if (!appState.groups) appState.groups = [];
+        const newGroupCache = {}; // `${projectId}|${name.toLowerCase()}` -> groupId
+        let created = 0;
+
+        (stagingParts || []).forEach(stg => {
+            if (stg.groupId !== '' || !stg.extractedGroup) return;
+
+            const cacheKey = `${stg.projectId}|${stg.extractedGroup.toLowerCase()}`;
+            if (!newGroupCache[cacheKey]) {
+                const newGroupId = 'GRP-' + Date.now() + created + Math.floor(Math.random() * 1000);
+                appState.groups.push({
+                    id: newGroupId,
+                    projectId: stg.projectId,
+                    name: stg.extractedGroup
+                });
+                newGroupCache[cacheKey] = newGroupId;
+                created++;
+            }
+            stg.groupId = newGroupCache[cacheKey];
+        });
+
+        return created;
+    }
+
     function commitImport() {
         const unmapped = appState.stagingParts.filter(p => p.status !== 'ready');
         if (unmapped.length > 0) {
@@ -793,6 +829,8 @@
         }
 
         if (!appState.parts) appState.parts = [];
+
+        _resolveStagingGroups(appState.stagingParts, appState);
 
         appState.stagingParts.forEach((stg, index) => {
             appState.parts.push({
