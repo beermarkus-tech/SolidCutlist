@@ -350,9 +350,13 @@
         return finalCutlist;
     }
     // Evaluates 2D constraints and Grain
+    // DIM_EPSILON absorbs binary-float noise (e.g. from independently-entered
+    // dimensions that are conceptually equal but not bit-identical) so an
+    // exact-boundary fit isn't wrongly rejected — 1 micron, irrelevant to any real cut.
+    const DIM_EPSILON = 0.001;
     function checkFit(part, rect, sheetGrain) {
-        let fitsNormal = (part.width <= rect.w && part.length <= rect.l);
-        let fitsRotated = (part.length <= rect.w && part.width <= rect.l);
+        let fitsNormal = (part.width <= rect.w + DIM_EPSILON && part.length <= rect.l + DIM_EPSILON);
+        let fitsRotated = (part.length <= rect.w + DIM_EPSILON && part.width <= rect.l + DIM_EPSILON);
         let normalLegal = true;
         let rotatedLegal = true;
         

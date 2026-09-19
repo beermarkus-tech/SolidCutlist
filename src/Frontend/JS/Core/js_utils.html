@@ -54,13 +54,18 @@
                 // It's just a whole number typed into the fraction setting (e.g., "2")
                 decimalInches = parseFloat(val) || 0;
             }
-            return decimalInches * 25.4; // Convert inches to mm
+            // Round to 1 nanometer — far finer than any real display/measuring
+            // precision, but enough to collapse binary-float multiplication noise
+            // (e.g. 48 * 25.4 === 1219.1999999999998, not the exact 1219.2) so a
+            // value typed directly and the same value re-entered via a rounded
+            // round-trip (e.g. CSV export/import) land on the identical mm value.
+            return Math.round(decimalInches * 25.4 * 1e6) / 1e6; // Convert inches to mm
         }
 
         // If Decimal Inches
         if (unit === 'dec_in') {
             decimalInches = parseFloat(val) || 0;
-            return decimalInches * 25.4;
+            return Math.round(decimalInches * 25.4 * 1e6) / 1e6;
         }
 
         return parseFloat(val) || 0; // Fallback

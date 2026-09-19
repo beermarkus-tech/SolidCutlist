@@ -65,3 +65,30 @@ test('mm and decimal-inch display are unaffected by the fractional-inch separato
     const decCtx = loadWithUnit('dec_in');
     assert.equal(decCtx.formatForDisplay(425.45), '16.75');
 });
+
+// Regression guard for the "48x48 sheet part rejected as too large after CSV
+// round-trip" bug: 48 * 25.4 in raw JS floating point is 1219.1999999999998,
+// not the exact 1219.2 — so a value typed directly into the UI and the same
+// value re-entered via CSV export/import (which rounds to 2 decimal places)
+// used to land on two bit-different mm values, and the packer's zero-tolerance
+// fit check treated the reimported part as microscopically too large.
+test('parseToBaseUnit (dec_in) rounds away binary-float multiplication noise', () => {
+    const { parseToBaseUnit } = loadWithUnit('dec_in');
+    // Raw JS: 48 * 25.4 === 1219.1999999999998, not 1219.2 — assert the clean value.
+    assert.equal(parseToBaseUnit('48'), 1219.2);
+});
+
+test('parseToBaseUnit (dec_in) matches the CSV-import path\'s own rounding for the same input, bit-for-bit', () => {
+    const { parseToBaseUnit } = loadWithUnit('dec_in');
+    // Mirrors js_import.html's processMapping(): Math.round(raw * scaleFactor * 100) / 100,
+    // scaleFactor = 25.4 for an inches-unit import.
+    const importPathResult = Math.round(48 * 25.4 * 100) / 100;
+    assert.equal(parseToBaseUnit('48'), importPathResult);
+});
+
+test('parseToBaseUnit (frac_in) also rounds away binary-float multiplication noise', () => {
+    const { parseToBaseUnit } = loadWithUnit('frac_in');
+    assert.equal(parseToBaseUnit('48'), 1219.2);
+    // 16.75in = 425.45mm exactly, at 6-decimal precision.
+    assert.equal(parseToBaseUnit('16-3/4'), 425.45);
+});
