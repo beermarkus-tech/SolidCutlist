@@ -88,14 +88,20 @@
         const btnPrint = document.getElementById('btn-print-parts');
         const btnImport = document.getElementById('btn-inline-import');
         const btnToggleView = document.getElementById('btn-toggle-project-view');
+        const btnExport = document.getElementById('btn-export-parts-csv');
+        const btnExportInfo = document.getElementById('btn-export-parts-info');
 
         if (activeTab === 'projects') {
             // In Projects Tab: Hide Parts buttons, Show Card Toggle
             if (btnPrint) btnPrint.classList.add('d-none');
+            if (btnExport) btnExport.classList.add('d-none');
+            if (btnExportInfo) btnExportInfo.classList.add('d-none');
             if (btnToggleView) btnToggleView.classList.remove('d-none');
         } else if (activeTab === 'parts') {
             // In Parts Tab: Show Parts buttons, Hide Card Toggle
             if (btnPrint) btnPrint.classList.remove('d-none');
+            if (btnExport) btnExport.classList.remove('d-none');
+            if (btnExportInfo) btnExportInfo.classList.remove('d-none');
             if (btnToggleView) btnToggleView.classList.add('d-none');
         }
     }

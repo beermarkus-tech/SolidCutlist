@@ -294,7 +294,7 @@
         _setPartsFooter(qty, weightKg, cost);
     }
 
-    function _computePartMetric(part, prof, mat) {
+    function _computePartMetric(part, prof, mat, raw = false) {
         const metricMode = (appState.settings && appState.settings.partsMetricMode) ? appState.settings.partsMetricMode : 'weight';
         const currencySymbol = (appState.settings && appState.settings.currency) ? appState.settings.currency : '$';
         // Bulk rows: `length` is the total run, not a per-piece length — the stored qty
@@ -320,6 +320,8 @@
                 rowCost = part.category === 'sheet' ? avg * (part.length * trueWidth) * rowQty : avg * part.length * rowQty;
             }
         }
+        if (raw) return { weightKg: rowWeightKg, cost: rowCost };
+
         if (metricMode === 'cost') {
             return rowCost > 0 ? `<small>${currencySymbol}${rowCost.toFixed(2)}</small>` : `<small>${t('lbl_no_data')}</small>`;
         }

@@ -1,0 +1,133 @@
+<script>
+    // ==========================================
+    // CSV EXPORT (Current Partlist)
+    // ==========================================
+    // Mirrors js_printing.html's role as a dedicated "alternate output format" module,
+    // reusing the exact same Blob pattern already established there.
+
+    /**
+     * Neutralizes CSV formula injection (OWASP CSV Injection): a field starting with
+     * =, +, -, or @ gets a leading apostrophe so spreadsheet apps treat it as literal
+     * text instead of attempting to evaluate it as a formula on open.
+     */
+    function _csvGuardFormula(value) {
+        const s = String(value == null ? '' : value);
+        return /^[=+\-@]/.test(s) ? `'${s}` : s;
+    }
+
+    /** RFC4180 field escaping: quote (and double internal quotes) whenever the field
+     * contains a comma, double quote, or newline — otherwise leave it bare. */
+    function _csvEscapeField(value) {
+        const s = String(value == null ? '' : value);
+        if (/[",\r\n]/.test(s)) {
+            return `"${s.replace(/"/g, '""')}"`;
+        }
+        return s;
+    }
+
+    /**
+     * Builds the CSV body (no BOM — the caller adds that) for the given already
+     * filtered+sorted parts array, mirroring exactly what buildPartsReadRowInner()
+     * shows on screen: same 11 data columns (Actions excluded), same language, same
+     * display unit, both Weight and Cost regardless of the on-screen toggle.
+     *
+     * Deliberately takes appState as an explicit parameter (not read from global
+     * scope) and does its own filtering/sorting nowhere — visibleParts is expected
+     * to already be in on-screen order — so it can be unit-tested standalone via the
+     * extractGasFunction harness, same convention as computeBulkResults().
+     */
+    function buildPartsCsv(visibleParts, appState) {
+        const isMetric = appState.settings && appState.settings.displayUnit === 'mm';
+        const isFracIn = appState.settings && appState.settings.displayUnit === 'frac_in';
+        const weightUnit = isMetric ? 'kg' : 'lbs';
+        const currencySymbol = (appState.settings && appState.settings.currency) ? appState.settings.currency : '$';
+
+        const headers = [
+            t('col_project'),
+            t('col_group'),
+            t('col_part_name'),
+            t('col_category'),
+            t('col_qty'),
+            t('col_bulk'),
+            t('col_profile'),
+            t('col_size'),
+            t('col_material'),
+            t('col_grain'),
+            `${t('opt_weight')} (${weightUnit})`,
+            `${t('opt_cost')} (${currencySymbol})`
+        ];
+
+        const rows = [headers];
+
+        (visibleParts || []).forEach(part => {
+            const proj = appState.projects?.find(p => p.id === part.projectId);
+            const grp = appState.groups?.find(g => g.id === part.groupId);
+            const prof = appState.profiles?.find(p => p.id === part.profileId);
+            const mat = appState.materials?.find(m => m.id === part.materialId);
+
+            const grainText = part.category === 'sheet'
+                ? (part.grain === 'length' ? t('opt_length') : part.grain === 'width' ? t('opt_width') : '-')
+                : '-';
+
+            const displayW = part.category === 'lumber' ? formatForDisplay(prof ? prof.width : 0) : formatForDisplay(part.width);
+            const displayL = formatForDisplay(part.length);
+            let dimText = '-';
+            if (part.category === 'lumber') dimText = displayL;
+            else if (part.category === 'sheet') dimText = `${displayW} × ${displayL}`;
+            // Fractional-inch Size values (e.g. "16-3/4") are a well-known Excel
+            // date-autodetect trap — force them to stay literal text.
+            if (isFracIn && dimText !== '-') dimText = `'${dimText}`;
+
+            const bulkText = part.category === 'lumber' ? (part.is_bulk ? '✔️' : '-') : '-';
+            const qtyText = part.is_bulk ? '' : part.qty;
+
+            const { weightKg, cost } = _computePartMetric(part, prof, mat, true);
+            const displayWeight = isMetric ? weightKg : weightKg * 2.20462;
+
+            rows.push([
+                _csvGuardFormula(proj?.name || ''),
+                _csvGuardFormula(grp?.name || ''),
+                _csvGuardFormula(part.name || ''),
+                t('opt_' + part.category),
+                qtyText,
+                bulkText,
+                _csvGuardFormula(prof?.name || ''),
+                dimText,
+                _csvGuardFormula(mat?.name || ''),
+                grainText,
+                weightKg > 0 ? displayWeight.toFixed(2) : '',
+                cost > 0 ? cost.toFixed(2) : ''
+            ]);
+        });
+
+        return rows.map(row => row.map(_csvEscapeField).join(',')).join('\r\n');
+    }
+
+    /** Impure trigger: gathers the currently visible (filtered + sorted) parts,
+     * builds the CSV, and downloads it via the browser's own download handling —
+     * this app has no Drive/file-write backend, so the destination folder is
+     * whatever the user's browser is configured to do. */
+    function exportPartsToCsv() {
+        const visibleParts = (appState.parts || []).filter(p =>
+            typeof rowPassesFilters === 'function' ? rowPassesFilters(p, 'parts') : true
+        );
+
+        if (visibleParts.length === 0) {
+            showToast(t('msg_no_parts_to_export'), 'warning');
+            return;
+        }
+
+        const csv = '﻿' + buildPartsCsv(visibleParts, appState);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+
+        const dateStamp = new Date().toISOString().slice(0, 10);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `SolidCutlist-Partlist-${dateStamp}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+</script>
