@@ -208,17 +208,47 @@
 
             const shortfall = marginThreshold - actualLeftover;
 
-            const vendorOptions = (appState.catalog || []).filter(c =>
-                c.profileId === profileId &&
-                c.materialId === materialId &&
-                c.categoryId === 'lumber' &&
-                (allowedStoreIds || []).includes(c.storeId)
+            // Prefer adding more of the SAME board the packer already bought for this
+            // SKU (from a real store, not shop stock) rather than letting the resolver
+            // pick a possibly different "best value" length — the shopping list should
+            // read "21x 2x4 @ 144in", never "20x 2x4 @ 144in" + "1x 2x4 @ 194in".
+            const existingStorePurchases = (packerResults || []).filter(res =>
+                !res.error && res.purchase && res.purchase.catalogItem &&
+                res.purchase.catalogItem.storeId !== 'shop_stock' &&
+                res.sku && res.sku.profileId === profileId && res.sku.materialId === materialId
             );
-            const storeOptions = vendorOptions.map(c => ({
-                id: c.id,
-                length: c.length,
-                price: (typeof calculateCostPerPiece === 'function') ? calculateCostPerPiece(c) : (c.price || 0)
-            }));
+
+            let storeOptions, catalogLookup;
+            if (existingStorePurchases.length > 0) {
+                // Multiple lengths can already be on the list for this SKU (e.g. a
+                // tail-substituted hybrid purchase) — top up whichever one the packer
+                // bought the most of.
+                const primary = existingStorePurchases.reduce((best, r) =>
+                    (r.purchase.boardsNeeded || 0) > (best.purchase.boardsNeeded || 0) ? r : best
+                );
+                const c = primary.purchase.catalogItem;
+                storeOptions = [{
+                    id: c.id,
+                    length: c.length,
+                    price: (typeof calculateCostPerPiece === 'function') ? calculateCostPerPiece(c) : (c.price || 0)
+                }];
+                catalogLookup = new Map([[c.id, c]]);
+            } else {
+                // No existing store purchase for this SKU (fully covered by shop stock) —
+                // nothing to top up, so fall back to resolving against the catalog normally.
+                const vendorOptions = (appState.catalog || []).filter(c =>
+                    c.profileId === profileId &&
+                    c.materialId === materialId &&
+                    c.categoryId === 'lumber' &&
+                    (allowedStoreIds || []).includes(c.storeId)
+                );
+                storeOptions = vendorOptions.map(c => ({
+                    id: c.id,
+                    length: c.length,
+                    price: (typeof calculateCostPerPiece === 'function') ? calculateCostPerPiece(c) : (c.price || 0)
+                }));
+                catalogLookup = new Map(vendorOptions.map(c => [c.id, c]));
+            }
 
             const resolved = resolveShortfallGreedy(shortfall, storeOptions);
             // Margin is a best-effort safety buffer on top of an already-successful pack —
@@ -227,7 +257,7 @@
             if (resolved.unresolved || resolved.totalBoards === 0) return;
 
             resolved.groups.forEach(g => {
-                const catalogItem = vendorOptions.find(c => c.id === g.optionId);
+                const catalogItem = catalogLookup.get(g.optionId);
                 if (!catalogItem) return;
                 results.push({
                     sku: { profileId, materialId, category: 'lumber' },

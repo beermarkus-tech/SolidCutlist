@@ -64,10 +64,11 @@ test('waste is summed across every matching finalCutlist entry for a SKU (stock 
     // tail-substituted alt) — each must contribute to the summed leftover, not just one.
     const parts = [lumberPart('A', 1000, 20)];
     const sku = { profileId: 'PR-1', materialId: 'M-1', category: 'lumber' };
+    const catItem = { id: 'CAT-1', storeId: 'store-1', length: 1000, price: 5 };
     const packerResults = [
         { sku, success: true, purchase: { catalogItem: { storeId: 'shop_stock' }, waste: 300 } },
-        { sku, success: true, purchase: { catalogItem: { storeId: 'store-1' }, waste: 400 } },
-        { sku, success: true, purchase: { catalogItem: { storeId: 'store-1' }, waste: 350 } } // tail-alt entry
+        { sku, success: true, purchase: { catalogItem: catItem, boardsNeeded: 15, waste: 400 } },
+        { sku, success: true, purchase: { catalogItem: catItem, boardsNeeded: 5, waste: 350 } } // tail-alt entry
     ];
     // Summed leftover = 300+400+350 = 1050 >= 1000 threshold -> no top-up needed.
     const appState = baseAppState({
@@ -108,4 +109,59 @@ test('no vendor options for the shortfall silently skips the top-up rather than 
     const appState = baseAppState({ catalog: [] }); // no matching catalog entries at all
 
     assert.equal(computeMarginTopups(parts, packerResults, appState, ['store-1']).length, 0);
+});
+
+test('top-up reuses the packer\'s already-chosen board length, never a "better value" length picked independently', () => {
+    // nominal = 3658 * 20 = 73160 (144in boards, 20 needed); 5% threshold = 3658; packer waste 0 -> full shortfall.
+    const parts = [lumberPart('A', 3658, 20)]; // 144in in mm
+    const chosenBoard = { id: 'CAT-144IN', storeId: 'store-1', length: 3658, price: 6 }; // what the packer bought
+    const packerResults = [{
+        sku: { profileId: 'PR-1', materialId: 'M-1', category: 'lumber' },
+        success: true,
+        purchase: { catalogItem: chosenBoard, boardsNeeded: 20, waste: 0 }
+    }];
+    const appState = baseAppState({
+        catalog: [
+            chosenBoard,
+            // A longer, better-value-per-mm board is also available in the catalog — the
+            // resolver would normally prefer this on pure price/length ratio, but the
+            // top-up must NOT switch to it: it should add more 144in boards instead.
+            { id: 'CAT-194IN', storeId: 'store-1', length: 4927, price: 6 } // 194in, same price -> better $/mm
+        ]
+    });
+
+    const results = computeMarginTopups(parts, packerResults, appState, ['store-1']);
+    assert.equal(results.length, 1);
+    assert.equal(results[0].purchase.catalogItem.id, 'CAT-144IN');
+    assert.equal(results[0].purchase.catalogItem.length, 3658);
+});
+
+test('multiple existing store purchases for the same SKU: tops up whichever one the packer bought the most of', () => {
+    const parts = [lumberPart('A', 1000, 30)];
+    const dominant = { id: 'CAT-DOMINANT', storeId: 'store-1', length: 1000, price: 5 };
+    const minor = { id: 'CAT-MINOR', storeId: 'store-1', length: 800, price: 5 };
+    const packerResults = [
+        { sku: { profileId: 'PR-1', materialId: 'M-1', category: 'lumber' }, success: true, purchase: { catalogItem: dominant, boardsNeeded: 25, waste: 0 } },
+        { sku: { profileId: 'PR-1', materialId: 'M-1', category: 'lumber' }, success: true, purchase: { catalogItem: minor, boardsNeeded: 3, waste: 0 } }
+    ];
+    const appState = baseAppState({ catalog: [dominant, minor] });
+
+    const results = computeMarginTopups(parts, packerResults, appState, ['store-1']);
+    assert.equal(results.length, 1);
+    assert.equal(results[0].purchase.catalogItem.id, 'CAT-DOMINANT');
+});
+
+test('SKU fully covered by shop stock (no existing store purchase) falls back to resolving against the catalog', () => {
+    const parts = [lumberPart('A', 1000, 10)];
+    const onlyOption = { id: 'CAT-1', profileId: 'PR-1', materialId: 'M-1', categoryId: 'lumber', storeId: 'store-1', length: 1000, price: 5 };
+    const packerResults = [{
+        sku: { profileId: 'PR-1', materialId: 'M-1', category: 'lumber' },
+        success: true,
+        purchase: { catalogItem: { storeId: 'shop_stock' }, waste: 0 }
+    }];
+    const appState = baseAppState({ catalog: [onlyOption] });
+
+    const results = computeMarginTopups(parts, packerResults, appState, ['store-1']);
+    assert.equal(results.length, 1);
+    assert.equal(results[0].purchase.catalogItem.id, 'CAT-1');
 });
