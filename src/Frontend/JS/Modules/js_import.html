@@ -15,6 +15,40 @@
     // This is the quarantine tank before they go into appState.parts
     if (!appState.stagingParts) appState.stagingParts = [];
 
+    /**
+     * Parses one raw CSV dimension cell into a plain decimal number (no unit
+     * conversion — the caller's scale factor handles that). Accepts plain decimals
+     * (SketchUp-style, e.g. "16.5", with any stray unit suffix like `"` stripped),
+     * as well as fractional-inch strings: the current CSV-export mixed-number
+     * format "16-1/2" (dash-separated), the legacy "16 1/2" (space-separated), or
+     * a bare fraction "1/2" — each optionally prefixed with a leading apostrophe (a
+     * spreadsheet "force text" marker some exported files carry).
+     */
+    function _parseImportDimension(str) {
+        if (!str) return 0;
+        let s = String(str).trim();
+        if (s.startsWith("'")) s = s.slice(1).trim();
+
+        if (s.includes('/')) {
+            const mixed = s.match(/^(\d+(?:\.\d+)?)[ -](\d+)\/(\d+)$/);
+            if (mixed) {
+                const whole = parseFloat(mixed[1]) || 0;
+                const num = parseFloat(mixed[2]) || 0;
+                const den = parseFloat(mixed[3]) || 1;
+                return whole + (num / den);
+            }
+            const bare = s.match(/^(\d+)\/(\d+)$/);
+            if (bare) {
+                const num = parseFloat(bare[1]) || 0;
+                const den = parseFloat(bare[2]) || 1;
+                return num / den;
+            }
+        }
+
+        const cleaned = s.replace(/[^0-9\.]/g, '').trim();
+        return parseFloat(cleaned) || 0;
+    }
+
     // --- INITIALIZATION & NAVIGATION ---
     
     // Called when clicking the Import button (or Resume Import)
@@ -422,16 +456,10 @@
             // Slice the group down to just the parent
             let topLevelGroup = rawPath.split('>')[0].trim();
 
-            // Parse raw CSV number (no unit conversion — scale factor handles that)
-            const cleanDim = (str) => {
-                if (!str) return 0;
-                let cleaned = str.replace(/[^0-9\.]/g, '').trim();
-                return parseFloat(cleaned) || 0;
-            };
-
-            const tRaw = cleanDim(cols[colMap.thickness]);
-            const wRaw = cleanDim(cols[colMap.width]);
-            const lRaw = cleanDim(cols[colMap.length]);
+            // Parse raw CSV number (no unit conversion — scale factor handles that).
+            const tRaw = _parseImportDimension(cols[colMap.thickness]);
+            const wRaw = _parseImportDimension(cols[colMap.width]);
+            const lRaw = _parseImportDimension(cols[colMap.length]);
 
             if (tRaw === 0 || lRaw === 0) continue;
 

@@ -129,31 +129,16 @@ test('a fastener row exports blank Width/Length/Thickness', () => {
     assert.equal(cells[COL.THICKNESS], '');
 });
 
-test('fractional-inch display: Width, Length, and Thickness each individually get the Excel date-autodetect guard', () => {
+test('dimension values are never prefixed with a leading apostrophe, in any display unit (reimport-friendliness over Excel date-autodetect protection)', () => {
     const prof = profile({ id: 'PR1', width: 88.9, thickness: 38.1 });
     const p = part({ category: 'lumber', length: 2438, profileId: 'PR1' });
-    const csv = buildPartsCsv([p], baseAppState({ profiles: [prof], settings: { displayUnit: 'frac_in', currency: '$' } }));
-    const cells = row(csv);
-    assert.equal(cells[COL.WIDTH], "'88.9");
-    assert.equal(cells[COL.LENGTH], "'2438");
-    assert.equal(cells[COL.THICKNESS], "'38.1");
-});
-
-test('mm and decimal-inch display units leave Width/Length/Thickness bare (no apostrophe)', () => {
-    const prof = profile({ id: 'PR1', width: 88.9, thickness: 38.1 });
-    const p = part({ category: 'lumber', length: 2438, profileId: 'PR1' });
-    const csvMm = buildPartsCsv([p], baseAppState({ profiles: [prof], settings: { displayUnit: 'mm', currency: '$' } }));
-    const csvDec = buildPartsCsv([p], baseAppState({ profiles: [prof], settings: { displayUnit: 'dec_in', currency: '$' } }));
-    assert.equal(row(csvMm)[COL.WIDTH], '88.9');
-    assert.equal(row(csvDec)[COL.WIDTH], '88.9');
-});
-
-test('a blank dimension is never guarded even in frac_in mode (no bare apostrophe cell)', () => {
-    const p = part({ category: 'lumber', profileId: 'NOT-FOUND' }); // no matching profile -> blank Width/Thickness
-    const csv = buildPartsCsv([p], baseAppState({ settings: { displayUnit: 'frac_in', currency: '$' } }));
-    const cells = row(csv);
-    assert.equal(cells[COL.WIDTH], '');
-    assert.equal(cells[COL.THICKNESS], '');
+    ['mm', 'dec_in', 'frac_in'].forEach(displayUnit => {
+        const csv = buildPartsCsv([p], baseAppState({ profiles: [prof], settings: { displayUnit, currency: '$' } }));
+        const cells = row(csv);
+        assert.equal(cells[COL.WIDTH], '88.9');
+        assert.equal(cells[COL.LENGTH], '2438');
+        assert.equal(cells[COL.THICKNESS], '38.1');
+    });
 });
 
 test('weight and cost are both present in every row regardless of partsMetricMode', () => {

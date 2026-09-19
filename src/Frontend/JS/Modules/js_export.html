@@ -25,12 +25,6 @@
         return s;
     }
 
-    /** Fractional-inch dimension values (e.g. "16-3/4", or a bare "3/4") are a
-     * well-known Excel date-autodetect trap — force them to stay literal text. */
-    function _csvGuardFracInDim(value, isFracIn) {
-        return (isFracIn && value !== '') ? `'${value}` : value;
-    }
-
     /**
      * Builds the CSV body (no BOM — the caller adds that) for the given already
      * filtered+sorted parts array, mirroring what's on screen (same rows, same
@@ -47,7 +41,6 @@
      */
     function buildPartsCsv(visibleParts, appState) {
         const isMetric = appState.settings && appState.settings.displayUnit === 'mm';
-        const isFracIn = appState.settings && appState.settings.displayUnit === 'frac_in';
         const unitLabel = isMetric ? 'mm' : 'in';
         const weightUnit = isMetric ? 'kg' : 'lbs';
         const currencySymbol = (appState.settings && appState.settings.currency) ? appState.settings.currency : '$';
@@ -98,9 +91,6 @@
                 lengthVal = formatForDisplay(part.length);
                 if (prof) thicknessVal = formatForDisplay(prof.thickness);
             }
-            widthVal = _csvGuardFracInDim(widthVal, isFracIn);
-            lengthVal = _csvGuardFracInDim(lengthVal, isFracIn);
-            thicknessVal = _csvGuardFracInDim(thicknessVal, isFracIn);
 
             const bulkText = part.category === 'lumber' ? (part.is_bulk ? '✔️' : '-') : '-';
             const qtyText = part.is_bulk ? '' : part.qty;
