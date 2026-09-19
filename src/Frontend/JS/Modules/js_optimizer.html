@@ -1714,7 +1714,7 @@
             }
         }
 
-        renderShoppingListTab([...results, ...bulkResults, ...marginResults]); // shopping-list only
+        renderShoppingListTab(mergeShoppingResults([...results, ...bulkResults, ...marginResults])); // shopping-list only
         if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results); // packer-only — see note above
         if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results); // packer-only — see note above
         if (typeof renderSandboxPartlistTab === 'function') renderSandboxPartlistTab(partsToOptimize); // 🪄 Render 4th Tab

@@ -135,7 +135,9 @@
         const avgUnitCost = totalNormPrice / matchingItems.length;
         const trueWidth = part.category === 'lumber' ? (appState.profiles.find(pr => pr.id === part.profileId)?.width || 0) : part.width;
         const unitSize = part.category === 'sheet' ? (part.length * trueWidth) : part.length;
-        return avgUnitCost * unitSize * part.qty;
+        // Bulk rows: length is the total run, so qty (hidden/irrelevant while bulk is on) is 1 here.
+        const effectiveQty = part.is_bulk ? 1 : part.qty;
+        return avgUnitCost * unitSize * effectiveQty;
     }
     function calculatePartWeight(part) {
         if (part.category === 'fastener') return 0;
@@ -145,7 +147,9 @@
         const trueWidth = part.category === 'lumber' ? (prof.width || 0) : part.width;
         const safeThick = prof.thickness || 0;
         const volumeM3 = (part.length * trueWidth * safeThick) / 1000000000;
-        return volumeM3 * (mat.density || 0) * part.qty;
+        // Bulk rows: length is the total run, so qty (hidden/irrelevant while bulk is on) is 1 here.
+        const effectiveQty = part.is_bulk ? 1 : part.qty;
+        return volumeM3 * (mat.density || 0) * effectiveQty;
     }
     function recalculateAllProjectTotals() {
         if (!appState.projects) return;

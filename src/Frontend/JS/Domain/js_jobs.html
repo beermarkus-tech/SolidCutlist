@@ -262,7 +262,7 @@
                 tabInstance.show();
             }
 
-            if (typeof renderShoppingListTab === 'function') renderShoppingListTab([...results, ..._jobBulkResults, ..._jobMarginResults]);
+            if (typeof renderShoppingListTab === 'function') renderShoppingListTab(mergeShoppingResults([...results, ..._jobBulkResults, ..._jobMarginResults]));
             if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
             if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
             if (typeof renderSandboxPartlistTab === 'function') renderSandboxPartlistTab(job.parts);
@@ -457,7 +457,7 @@
 
         // 🪄 CHANGE: Re-render the shopping list right now so it instantly becomes editable!
         if (typeof renderShoppingListTab === 'function' && appState.latestResults) {
-            renderShoppingListTab([...appState.latestResults, ...(appState.latestBulkResults || []), ...(appState.latestMarginResults || [])]);
+            renderShoppingListTab(mergeShoppingResults([...appState.latestResults, ...(appState.latestBulkResults || []), ...(appState.latestMarginResults || [])]));
         }
 
         if (typeof showToast === 'function') showToast(t('msg_job_created', { name: jobName }), "success");
@@ -797,7 +797,7 @@
                 ? computeMarginTopups(job.parts, results, appState, allowedStores) : [];
             appState.latestBulkResults = _recalcBulkResults;
             appState.latestMarginResults = _recalcMarginResults;
-            if (typeof renderShoppingListTab === 'function') renderShoppingListTab([...results, ..._recalcBulkResults, ..._recalcMarginResults]);
+            if (typeof renderShoppingListTab === 'function') renderShoppingListTab(mergeShoppingResults([...results, ..._recalcBulkResults, ..._recalcMarginResults]));
             if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
             if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
             if (typeof renderSandboxPartlistTab === 'function') renderSandboxPartlistTab(job.parts);

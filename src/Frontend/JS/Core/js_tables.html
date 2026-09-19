@@ -73,6 +73,9 @@
                 } else if (key === 'materialId') {
                     valA = appState.materials?.find(m => m.id === a.materialId)?.name || '';
                     valB = appState.materials?.find(m => m.id === b.materialId)?.name || '';
+                } else if (key === 'is_bulk' && isPartList) {
+                    valA = a.is_bulk ? 1 : 0;
+                    valB = b.is_bulk ? 1 : 0;
                 } else if (key === 'weight' && isPartList) {            // 🪄 FIXED VALIDATION
                     const getWeight = (p) => {
                         if (p.category === 'fastener') return 0;

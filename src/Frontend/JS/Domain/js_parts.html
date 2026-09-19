@@ -195,8 +195,11 @@
             const isReady = !!(prof && mat);
             part.status = isReady ? 'ready' : 'needs_mapping';
 
-            // Tally totals
-            const rowQty = parseInt(part.qty) || 1;
+            // Tally totals — bulk rows aren't a per-piece qty, so they contribute 0 to
+            // the piece-count total but still use qty=1 for their own weight/cost math
+            // (length is the total run, so ×1 gives the cost/weight of that whole run).
+            const rowQty = part.is_bulk ? 1 : (parseInt(part.qty) || 1);
+            const qtyForTotal = part.is_bulk ? 0 : rowQty;
             const trueWidth = part.category === 'lumber' ? (prof ? prof.width : 0) : (part.width || 0);
             let rowWeightKg = 0, rowCost = 0;
             if (part.category !== 'fastener' && prof && mat) {
@@ -216,7 +219,7 @@
                     rowCost = part.category === 'sheet' ? avg * (part.length * trueWidth) * rowQty : avg * part.length * rowQty;
                 }
             }
-            totalVisibleQty += rowQty;
+            totalVisibleQty += qtyForTotal;
             totalVisibleWeightKg += rowWeightKg;
             totalVisibleCost += rowCost;
 
@@ -266,9 +269,10 @@
             if (typeof rowPassesFilters === 'function' && !rowPassesFilters(part, 'parts')) return;
             const prof = appState.profiles?.find(p => p.id === part.profileId);
             const mat  = appState.materials?.find(m => m.id === part.materialId);
-            const rowQty = parseInt(part.qty) || 1;
+            const rowQty = part.is_bulk ? 1 : (parseInt(part.qty) || 1);
+            const qtyForTotal = part.is_bulk ? 0 : rowQty;
             const trueWidth = part.category === 'lumber' ? (prof ? prof.width : 0) : (part.width || 0);
-            qty += rowQty;
+            qty += qtyForTotal;
             if (part.category !== 'fastener' && prof && mat) {
                 const vol = ((part.length || 0) * trueWidth * (prof.thickness || 0)) / 1000000000;
                 weightKg += vol * (mat.density || 0) * rowQty;
@@ -293,7 +297,10 @@
     function _computePartMetric(part, prof, mat) {
         const metricMode = (appState.settings && appState.settings.partsMetricMode) ? appState.settings.partsMetricMode : 'weight';
         const currencySymbol = (appState.settings && appState.settings.currency) ? appState.settings.currency : '$';
-        const rowQty = parseInt(part.qty) || 1;
+        // Bulk rows: `length` is the total run, not a per-piece length — the stored qty
+        // is irrelevant here (and hidden from the UI), so treat it as 1 for this math
+        // without ever touching the stored value itself.
+        const rowQty = part.is_bulk ? 1 : (parseInt(part.qty) || 1);
         const trueWidth = part.category === 'lumber' ? (prof ? prof.width : 0) : (part.width || 0);
         let rowWeightKg = 0, rowCost = 0;
         if (part.category !== 'fastener' && prof && mat) {
@@ -342,12 +349,13 @@
         const bulkText = part.category === 'lumber'
             ? (part.is_bulk ? '<span class="text-primary" title="Bulk">✔️</span>' : '<span class="text-muted">-</span>')
             : '<span class="text-muted">-</span>';
+        const qtyText = part.is_bulk ? '-' : part.qty;
         return `
             <td class="p-0 px-1"><small class="text-truncate d-block">${safeHTML(proj?.name || '—')}</small></td>
             <td class="p-0 px-1"><small class="text-muted text-truncate d-block">${safeHTML(grp?.name || '-')}</small></td>
             <td class="p-0 px-1"><small class="fw-bold">${safeHTML(part.name)}</small></td>
             <td><div class="d-flex justify-content-center px-1"><span class="badge ${badgeClass} py-1 d-inline-block" style="width:85px;text-align:center;font-size:0.75rem;text-transform:uppercase;">${t('opt_' + part.category)}</span></div></td>
-            <td class="text-center text-primary fw-bold"><small>${part.qty}</small></td>
+            <td class="text-center text-primary fw-bold"><small>${qtyText}</small></td>
             <td class="text-center"><small>${bulkText}</small></td>
             <td class="p-0 px-1 text-center"><small class="${prof ? '' : 'text-warning fw-bold'}">${safeHTML(prof?.name || '⚠️')}</small></td>
             <td class="text-center p-0 px-1" style="width:130px"><small>${dimText}</small></td>
@@ -402,12 +410,13 @@
                 <option value="width" ${part.grain === 'width' ? 'selected' : ''}>${t('opt_width')}</option>
             </select>`;
         }
-        // Bulk is only meaningful for lumber — qty greys out/freezes when checked, since
-        // `length` is repurposed as the total requirement (see updatePart's is_bulk branch).
-        const qtyDisabled = part.is_bulk ? 'disabled' : '';
-        const qtyClass = part.is_bulk
-            ? 'form-control form-control-sm border-0 bg-transparent text-center text-muted px-0'
-            : 'form-control form-control-sm border-0 bg-transparent text-center text-primary fw-bold px-0';
+        // Bulk is only meaningful for lumber — qty is hidden entirely when checked (not
+        // just greyed out), since `length` is repurposed as the total requirement. The
+        // stored qty value itself is left untouched (see updatePart's is_bulk branch),
+        // so it's back exactly as entered if bulk gets unchecked.
+        const qtyHtml = part.is_bulk
+            ? '<span class="text-muted">-</span>'
+            : `<input type="number" class="form-control form-control-sm border-0 bg-transparent text-center text-primary fw-bold px-0" style="width:40px;" value="${part.qty}" min="1" onchange="updatePart('${part.id}', 'qty', this.value)" title="${t('title_tap_to_edit')}">`;
         const bulkHtml = part.category === 'lumber'
             ? `<input type="checkbox" class="form-check-input" ${part.is_bulk ? 'checked' : ''} onchange="updatePart('${part.id}', 'is_bulk', this.checked)" title="${t('title_bulk_checkbox')}">`
             : '<span class="text-muted">-</span>';
@@ -416,7 +425,7 @@
             <td class="p-0 px-1"><select class="form-select form-select-sm border-0 bg-transparent px-1 py-0" onchange="updatePart('${part.id}', 'groupId', this.value)">${groupOptions}</select></td>
             <td class="p-0 px-1"><input type="text" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" value="${safeHTML(part.name)}" onchange="updatePart('${part.id}', 'name', this.value)" title="${t('title_tap_to_edit')}"></td>
             <td><div class="d-flex justify-content-center px-1"><span class="badge ${badgeClass} py-1 d-inline-block" style="width:85px;text-align:center;font-size:0.75rem;text-transform:uppercase;">${t('opt_' + part.category)}</span></div></td>
-            <td class="p-0 px-1"><div class="d-flex justify-content-center"><input type="number" class="${qtyClass}" style="width:40px;" value="${part.qty}" min="1" ${qtyDisabled} onchange="updatePart('${part.id}', 'qty', this.value)" title="${t('title_tap_to_edit')}"></div></td>
+            <td class="p-0 px-1"><div class="d-flex justify-content-center">${qtyHtml}</div></td>
             <td class="p-0 px-1 text-center">${bulkHtml}</td>
             <td class="p-0 px-1"><select class="form-select form-select-sm border-0 bg-transparent px-0 py-0 align-middle text-center" onchange="updatePart('${part.id}', 'profileId', this.value)" title="${t('title_tap_to_edit_profile')}">${profOptions}</select></td>
             <td class="text-center p-0 px-1 align-middle" style="width:130px">${dimHtml}</td>
@@ -453,11 +462,11 @@
             } else if (field === 'qty') {
                 part[field] = parseInt(newValue) || 1;
             } else if (field === 'is_bulk') {
-                // 🪄 Bulk rows repurpose `length` as a total-length requirement; qty has no
-                // meaning for them, so freeze it at 1 the same way updatePartCategory() wipes
-                // dependent fields when the row's physics change.
+                // 🪄 Bulk rows repurpose `length` as a total-length requirement; qty is
+                // irrelevant while bulk is on and hidden from the UI (see buildPartsEditRowInner),
+                // but deliberately left untouched in storage so the originally entered qty
+                // comes back unharmed if bulk is unchecked (e.g. hit by mistake).
                 part.is_bulk = !!newValue;
-                if (part.is_bulk) part.qty = 1;
             } else if (field === 'projectId') {
                 if (part.projectId === newValue) return;
                 part.projectId = newValue;

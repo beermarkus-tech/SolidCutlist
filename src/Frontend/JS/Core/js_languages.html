@@ -411,6 +411,7 @@
             "title_sort_by_group": "Sort by Group",
             "title_sort_by_part_name": "Sort by Part Name",
             "title_sort_by_category": "Sort by Category",
+            "title_sort_by_bulk": "Sort by Bulk",
             "title_sort_by_profile": "Sort by Profile",
             "title_sort_by_size": "Sort by Size",
             "title_sort_by_material": "Sort by Material",
@@ -653,6 +654,8 @@
             "lbl_scrap": "Rest?",
             "col_category": "Kategorie",
             "col_qty": "Menge",
+            "col_bulk": "Meterware",
+            "title_bulk_checkbox": "Meterware — die Länge ist die gesamte benötigte Lauflänge, keine Einzelteil-Zuschnittlänge",
             "col_profile": "Profil",
             "col_size": "Größe",
             "col_material": "Material",
@@ -707,6 +710,9 @@
             "txt_lumber_scrap": "Kantholz, das kürzer als dieses Maß ist, kommt in den Müll.",
             "lbl_sheet_scrap_min_size": "Reststück Plattenmaterial",
             "txt_sheet_scrap_length": "Plattenzuschnitte, die kleiner als dieses Maß sind, sind Abfall.",
+            "lbl_bulk_min_stock_length": "Mindestlänge für Meterware",
+            "txt_bulk_min_stock_length": "Lagerbestand, der kürzer als dieser Wert ist, zählt nicht für einen Meterware-Bedarf.",
+            "lbl_margin_percent": "Sicherheitsmarge %",
             "hdr_current_partlist": "🧩 Aktuelle Teileliste",
             "tip_print_visible_parts": "Sichtbare Teile drucken",
             "lbl_project": "Projekt",
@@ -830,6 +836,10 @@
             "txt_kerf_form_text": "Sägeblattbreite und Kappschnitt von jedem Brett abziehen.",
             "lbl_scrap_settings": "Restholz-Schwellwerte",
             "txt_scrap_form_text": "Mindestgröße eines Restholzstücks, das als nützlicher Vorrat gilt.",
+            "lbl_bulk_settings": "Meterware",
+            "txt_bulk_form_text": "Mindestlänge im Lagerbestand, die für einen Meterware-Bedarf zählt.",
+            "lbl_margin_settings": "Sicherheitsmarge",
+            "txt_margin_form_text": "Zusätzliche Bretter werden der Einkaufsliste nur hinzugefügt, wenn der eigene Verschnitt des Optimierers diesen Puffer nicht bereits abdeckt.",
             "lbl_current_job": "Aktueller Job:",
             "btn_calculate": "Berechnen",
             "btn_load_job": "Job laden",
@@ -936,6 +946,8 @@
             "tooltip_kerf": "Der Schnittspalt ist die Holzbreite, die jede Säge pro Schnitt entfernt. Ein Standardblatt entfernt ca. 3,2mm (⅛\"). Der Optimierer zieht diesen Betrag für jeden Schnitt ab — bei 5 Schnitten gehen also 5 × Schnittspalt verloren. Miss einen Probeschnitt oder prüfe das Datenblatt deines Blatts.",
             "tooltip_trim": "Vor dem Zuschnitt kürzt der Optimierer ein Ende jedes neuen Bretts, um eine saubere rechtwinklige Referenzkante zu schaffen. Bei Platten werden zwei angrenzende Kanten getrimmt. Standard: 6mm (¼\"). Auf 0 setzen, um diesen Schritt zu überspringen.",
             "tooltip_scrap_threshold": "Nach jedem Schnitt werden verbleibende Abschnitte gegen diese Mindestmaße gemessen. Darüber — als verwendbaren Rest für das nächste Teil im selben Auftrag behalten. Darunter — als Abfall gezählt. Erhöhe diese Werte, wenn du kleine Stücke nicht verfolgen möchtest.",
+            "tooltip_bulk_material": "Für Meterware, die vor Ort angepasst und zugeschnitten wird (Verschalung, Dielen, Latten), statt auf eine vorab festgelegte Länge zugeschnitten zu werden. Markiere eine Teilzeile als Meterware, und ihre Länge wird zur gesamten benötigten Lauflänge. Sie wird vom Zuschnitt ausgeschlossen und erscheint nie in den Zeichnungen — nur eine Stückzahl auf der Einkaufsliste. Die Mindestlänge hier legt fest, welche Reststücke aus dem Lagerbestand auf diese Summe angerechnet werden dürfen.",
+            "tooltip_margin_percent": "Ein Sicherheitspuffer, der für Kanthölzer ohne Meterware der Einkaufsliste hinzugefügt wird. Nachdem der Optimierer deine Bretter verschachtelt hat: Wenn der tatsächliche Verschnitt diesen Prozentsatz des Bedarfs noch nicht abdeckt, werden zusätzliche Bretter nur der Einkaufsliste hinzugefügt — nie in die Zuschnittzeichnungen eingefügt.",
             "tooltip_grain": "Nur für Plattenwerkstoffe. Längs = Faserrichtung verläuft entlang der langen Kante. Quer = Faserrichtung verläuft über die Breite. Der Optimierer dreht ein Plattenteil nicht so, dass die Faserrichtung verletzt wird. Leer lassen, wenn die Faserrichtung keine Rolle spielt.",
             "tooltip_scrap_stock": "Markiere ein Brett als Rest, wenn es ein Abschnitt aus einem früheren Auftrag ist. Wenn Lager verwenden aktiv ist, verwendet der Optimierer Reste vor vollen Brettern — so wächst dein Restestapel nicht weiter.",
             "tooltip_profile": "Ein Profil ist der Querschnitt eines Bretts — Dicke und Breite, ohne Länge. Für Schnittholz beide Maße angeben (z.B. 38×89mm für ein 2×4). Für Platten nur die Dicke (z.B. 18mm). Die erhältlichen Längen werden separat in den Ladenpreisen eingestellt.",
@@ -1012,6 +1024,7 @@
             "title_sort_by_group": "Nach Gruppe sortieren",
             "title_sort_by_part_name": "Nach Teilename sortieren",
             "title_sort_by_category": "Nach Kategorie sortieren",
+            "title_sort_by_bulk": "Nach Meterware sortieren",
             "title_sort_by_profile": "Nach Profil sortieren",
             "title_sort_by_size": "Nach Größe sortieren",
             "title_sort_by_material": "Nach Material sortieren",
@@ -1254,6 +1267,8 @@
             "lbl_scrap": "Chute?",
             "col_category": "Catégorie",
             "col_qty": "Qté",
+            "col_bulk": "Vrac",
+            "title_bulk_checkbox": "Matériau en vrac — la longueur est la longueur totale nécessaire, pas une longueur de coupe par pièce",
             "col_profile": "Profilé",
             "col_size": "Taille",
             "col_material": "Matériau",
@@ -1308,6 +1323,9 @@
             "txt_lumber_scrap": "Le bois plus court que cela va à la poubelle.",
             "lbl_sheet_scrap_min_size": "Chute de panneau",
             "txt_sheet_scrap_length": "Les chutes de panneaux plus petites que cela sont des déchets.",
+            "lbl_bulk_min_stock_length": "Longueur Minimale du Matériau en Vrac",
+            "txt_bulk_min_stock_length": "Le stock en atelier plus court que cette valeur ne compte pas pour un besoin en vrac.",
+            "lbl_margin_percent": "Marge de Sécurité %",
             "hdr_current_partlist": "🧩 Liste de pièces actuelle",
             "tip_print_visible_parts": "Imprimer les pièces visibles",
             "lbl_project": "Projet",
@@ -1431,6 +1449,10 @@
             "txt_kerf_form_text": "Déduire la largeur du trait de scie et le dressage d'usine de chaque planche.",
             "lbl_scrap_settings": "Seuils de chutes",
             "txt_scrap_form_text": "Taille minimale d'une chute pour la conserver comme stock utile.",
+            "lbl_bulk_settings": "Matériau en Vrac",
+            "txt_bulk_form_text": "Longueur minimale de stock qui compte pour un besoin en matériau en vrac.",
+            "lbl_margin_settings": "Marge de Sécurité",
+            "txt_margin_form_text": "Des planches supplémentaires sont ajoutées à la liste d'achats seulement si la chute propre à l'optimiseur ne couvre pas déjà cette marge.",
             "lbl_current_job": "Job actuel :",
             "btn_calculate": "Calculer",
             "btn_load_job": "Charger un job",
@@ -1537,6 +1559,8 @@
             "tooltip_kerf": "Le trait de scie est la largeur de bois retirée par chaque coupe. Une lame standard enlève environ 3,2mm (⅛\"). L\'optimiseur déduit ce montant pour chaque coupe — 5 coupes = 5 × trait de scie de perdu. Mesurez une coupe test ou consultez la fiche technique de votre lame.",
             "tooltip_trim": "Avant de couper les pièces, l\'optimiseur dresse une extrémité de chaque nouvelle planche pour créer un bord de référence carré. Pour les panneaux, deux bords adjacents sont dressés. Standard : 6mm (¼\"). Mettez 0 pour ignorer cette étape.",
             "tooltip_scrap_threshold": "Après chaque coupe, les chutes restantes sont mesurées par rapport à ces minimums. Au-dessus du seuil — conservées comme chute utilisable pour la prochaine pièce du même job. En dessous — comptées comme déchet. Augmentez ces valeurs si vous ne souhaitez pas gérer les petits morceaux.",
+            "tooltip_bulk_material": "Pour le bois ajusté et coupé sur place (bardage, lames de terrasse, tasseaux) plutôt que coupé à une longueur prédéterminée. Marquez une ligne de pièce comme vrac et sa longueur devient la longueur totale nécessaire. Elle est exclue du débit et n'apparaît jamais sur les diagrammes — seulement un nombre de planches sur la liste d'achats. La longueur minimale ici détermine quelles chutes de stock en atelier peuvent compter dans ce total.",
+            "tooltip_margin_percent": "Une marge de sécurité ajoutée à la liste d'achats pour le bois hors vrac. Une fois que l'optimiseur a débité vos planches, si la chute réelle ne couvre pas encore ce pourcentage du besoin, des planches supplémentaires sont ajoutées à la liste d'achats uniquement — jamais imbriquées sur les diagrammes de coupe.",
             "tooltip_grain": "Panneaux uniquement. Sens long = le fil du bois suit le long bord du panneau. Sens large = le fil court dans la largeur. L\'optimiseur ne fera pas pivoter une pièce de panneau d\'une façon qui violerait son sens de fil. Laisser à Aucun si le sens du fil n\'a pas d\'importance.",
             "tooltip_scrap_stock": "Marquez une planche comme chute si c\'est un résidu d\'un travail précédent. Lorsque Utiliser le stock atelier est activé, l\'optimiseur utilise les chutes avant les planches entières — pour que votre pile de restes ne grossisse pas.",
             "tooltip_profile": "Un profilé est la section transversale d\'une planche — épaisseur et largeur, sans longueur. Pour le bois massif, entrez les deux dimensions (ex. 38×89mm pour un 2×4). Pour les panneaux, entrez l\'épaisseur uniquement (ex. 18mm). Les longueurs disponibles à l\'achat sont définies séparément dans les Prix magasin.",
@@ -1613,6 +1637,7 @@
             "title_sort_by_group": "Trier par groupe",
             "title_sort_by_part_name": "Trier par nom de pièce",
             "title_sort_by_category": "Trier par catégorie",
+            "title_sort_by_bulk": "Trier par vrac",
             "title_sort_by_profile": "Trier par profilé",
             "title_sort_by_size": "Trier par taille",
             "title_sort_by_material": "Trier par matériau",
@@ -1855,6 +1880,8 @@
             "lbl_scrap": "¿Resto?",
             "col_category": "Categoría",
             "col_qty": "Cant.",
+            "col_bulk": "Granel",
+            "title_bulk_checkbox": "Material a granel — la longitud es la carrera total necesaria, no una longitud de corte por pieza",
             "col_profile": "Perfil",
             "col_size": "Tamaño",
             "col_material": "Material",
@@ -1909,6 +1936,9 @@
             "txt_lumber_scrap": "La madera más corta que esto va a la basura.",
             "lbl_sheet_scrap_min_size": "Resto Tablero",
             "txt_sheet_scrap_length": "Los recortes de tablero más pequeños que esto son basura.",
+            "lbl_bulk_min_stock_length": "Longitud Mínima de Material a Granel",
+            "txt_bulk_min_stock_length": "El stock del taller más corto que esto no cuenta para un requisito a granel.",
+            "lbl_margin_percent": "Margen de Seguridad %",
             "hdr_current_partlist": "🧩 Lista de Piezas Actual",
             "tip_print_visible_parts": "Imprimir Piezas Visibles",
             "lbl_project": "Proyecto",
@@ -2032,6 +2062,10 @@
             "txt_kerf_form_text": "Deducir el ancho de la hoja y el despunte de fábrica de cada tablón.",
             "lbl_scrap_settings": "Umbrales de Restos",
             "txt_scrap_form_text": "Tamaño mínimo de un recorte para conservarlo como material útil.",
+            "lbl_bulk_settings": "Material a Granel",
+            "txt_bulk_form_text": "Longitud mínima de stock que cuenta para un requisito de material a granel.",
+            "lbl_margin_settings": "Margen de Seguridad",
+            "txt_margin_form_text": "Se añaden tablas adicionales a la lista de compras solo si el sobrante propio del optimizador no cubre ya este margen.",
             "lbl_current_job": "Trabajo Actual:",
             "btn_calculate": "Calcular",
             "btn_load_job": "Cargar Trabajo",
@@ -2138,6 +2172,8 @@
             "tooltip_kerf": "La sangría es el ancho de madera que elimina tu hoja de sierra en cada corte. Una hoja estándar elimina unos 3,2mm (⅛\"). El optimizador deduce esta cantidad por cada corte — con 5 cortes pierdes 5 × sangría de material. Mide un corte de prueba o consulta la ficha técnica de tu hoja.",
             "tooltip_trim": "Antes de cortar las piezas, el optimizador despunta un extremo de cada tabla nueva para crear un borde de referencia recto y cuadrado. En tableros se despuntan dos bordes adyacentes. Estándar: 6mm (¼\"). Pon 0 para omitir este paso.",
             "tooltip_scrap_threshold": "Tras cada corte, los recortes sobrantes se miden contra estos mínimos. Por encima del umbral — se conservan como resto útil para la siguiente pieza del mismo trabajo. Por debajo — se cuentan como desperdicio. Sube estos valores si prefieres no hacer seguimiento de piezas pequeñas.",
+            "tooltip_bulk_material": "Para madera que se ajusta y corta in situ (revestimiento, entablado, listones) en lugar de cortarse a una longitud predeterminada. Marca una fila de pieza como a granel y su longitud pasa a ser la carrera total necesaria. Se excluye del optimizador de corte y nunca aparece en los diagramas — solo una cantidad de tablas en la lista de compras. La longitud mínima aquí determina qué recortes de stock del taller son elegibles para contar en ese total.",
+            "tooltip_margin_percent": "Un margen de seguridad añadido a la lista de compras para madera que no es a granel. Después de que el optimizador empaqueta tus tablas, si el sobrante real aún no cubre este porcentaje de lo necesario, se añaden tablas adicionales solo a la lista de compras — nunca se anidan en los diagramas de corte.",
             "tooltip_grain": "Solo para tableros. Longitud = la veta de la cara discurre a lo largo del borde largo del tablero. Ancho = la veta discurre en sentido transversal. El optimizador no girará una pieza de tablero de forma que viole su configuración de veta. Déjalo en Ninguna si la dirección de veta no importa.",
             "tooltip_scrap_stock": "Marca una tabla como resto si es un recorte de un trabajo anterior. Cuando Usar Stock del Taller está activo, el optimizador usa los restos antes que las tablas enteras — evitando que tu pila de recortes crezca.",
             "tooltip_profile": "Un perfil es la sección transversal de una tabla — su grosor y ancho, sin longitud. Para madera, introduce ambas dimensiones (p.ej. 38×89mm para un 2×4). Para tableros, introduce solo el grosor (p.ej. 18mm). Las longitudes disponibles en tienda se configuran por separado en Precios de Tienda.",
@@ -2214,6 +2250,7 @@
             "title_sort_by_group": "Ordenar por grupo",
             "title_sort_by_part_name": "Ordenar por nombre de la pieza",
             "title_sort_by_category": "Ordenar por categoría",
+            "title_sort_by_bulk": "Ordenar por a granel",
             "title_sort_by_profile": "Ordenar por perfil",
             "title_sort_by_size": "Ordenar por tamaño",
             "title_sort_by_material": "Ordenar por material",
@@ -2456,6 +2493,8 @@
             "lbl_scrap": "Sobra?",
             "col_category": "Categoria",
             "col_qty": "Qtd.",
+            "col_bulk": "Granel",
+            "title_bulk_checkbox": "Material a granel — o comprimento é a extensão total necessária, não um comprimento de corte por peça",
             "col_profile": "Perfil",
             "col_size": "Tamanho",
             "col_material": "Material",
@@ -2510,6 +2549,9 @@
             "txt_lumber_scrap": "Madeira mais curta que isso vai para o lixo.",
             "lbl_sheet_scrap_min_size": "Sobra de Chapa",
             "txt_sheet_scrap_length": "Retalhos de chapa menores que isso são lixo.",
+            "lbl_bulk_min_stock_length": "Comprimento Mínimo de Material a Granel",
+            "txt_bulk_min_stock_length": "Estoque da oficina mais curto que isso não conta para uma necessidade a granel.",
+            "lbl_margin_percent": "Margem de Segurança %",
             "hdr_current_partlist": "🧩 Lista de Peças Atual",
             "tip_print_visible_parts": "Imprimir Peças Visíveis",
             "lbl_project": "Projeto",
@@ -2633,6 +2675,10 @@
             "txt_kerf_form_text": "Deduzir a espessura do corte e o esquadrejamento de cada peça.",
             "lbl_scrap_settings": "Limites de Sobras",
             "txt_scrap_form_text": "Tamanho mínimo de um retalho para ser mantido como estoque útil.",
+            "lbl_bulk_settings": "Material a Granel",
+            "txt_bulk_form_text": "Comprimento mínimo de estoque que conta para uma necessidade de material a granel.",
+            "lbl_margin_settings": "Margem de Segurança",
+            "txt_margin_form_text": "Tábuas extras são adicionadas à lista de compras somente se a sobra do próprio otimizador ainda não cobrir essa margem.",
             "lbl_current_job": "Trabalho Atual:",
             "btn_calculate": "Calcular",
             "btn_load_job": "Carregar Trabalho",
@@ -2739,6 +2785,8 @@
             "tooltip_kerf": "A espessura de corte é a largura de madeira removida pela lâmina da serra a cada corte. Uma lâmina padrão remove cerca de 3,2mm (⅛\"). O otimizador deduz esse valor a cada corte — com 5 cortes você perde 5 × a espessura de corte em material. Meça um corte de teste ou consulte a ficha técnica da sua lâmina.",
             "tooltip_trim": "Antes de cortar as peças, o otimizador apara uma extremidade de cada nova peça de madeira para criar uma borda de referência reta e esquadrejada. Em chapas, duas bordas adjacentes são aparadas. Padrão: 6mm (¼\"). Defina como 0 para pular esta etapa.",
             "tooltip_scrap_threshold": "Após cada corte, os retalhos restantes são medidos em relação a esses mínimos. Acima do limite — mantidos como sobra útil para a próxima peça do mesmo trabalho. Abaixo — contados como desperdício. Aumente esses valores se preferir não rastrear peças pequenas.",
+            "tooltip_bulk_material": "Para madeira que é ajustada e cortada no local (revestimento, deck, ripas) em vez de cortada em um comprimento predeterminado. Marque uma linha de peça como a granel e seu comprimento passa a ser a extensão total necessária. Ela é excluída do otimizador de corte e nunca aparece nos diagramas — apenas uma quantidade de tábuas na lista de compras. O comprimento mínimo aqui define quais sobras de estoque da oficina são elegíveis para contar nesse total.",
+            "tooltip_margin_percent": "Uma margem de segurança adicionada à lista de compras para madeira que não é a granel. Depois que o otimizador encaixa suas tábuas, se a sobra real ainda não cobrir essa porcentagem do necessário, tábuas extras são adicionadas somente à lista de compras — nunca encaixadas nos diagramas de corte.",
             "tooltip_grain": "Somente para chapas. Comprimento = o veio da face corre ao longo da borda longa da chapa. Largura = o veio corre na direção transversal. O otimizador não vai girar uma peça de chapa de forma que viole sua configuração de veio. Deixe como Nenhum se a direção do veio não importar.",
             "tooltip_scrap_stock": "Marque uma peça como sobra se for um retalho de um trabalho anterior. Quando Usar Estoque da Oficina estiver ativado, o otimizador usa as sobras antes das peças inteiras — evitando que sua pilha de retalhos cresça.",
             "tooltip_profile": "Um perfil é a seção transversal de uma peça de madeira — espessura e largura, sem comprimento. Para madeira serrada, insira as duas dimensões (ex: 38×89mm para um 2×4). Para chapas, insira apenas a espessura (ex: 18mm). Os comprimentos disponíveis para compra são configurados separadamente em Preços da Loja.",
@@ -2815,6 +2863,7 @@
             "title_sort_by_group": "Ordenar por grupo",
             "title_sort_by_part_name": "Ordenar por nome da peça",
             "title_sort_by_category": "Ordenar por categoria",
+            "title_sort_by_bulk": "Ordenar por a granel",
             "title_sort_by_profile": "Ordenar por perfil",
             "title_sort_by_size": "Ordenar por tamanho",
             "title_sort_by_material": "Ordenar por material",
@@ -3057,6 +3106,8 @@
             "lbl_scrap": "Scarto?",
             "col_category": "Categoria",
             "col_qty": "Qtà",
+            "col_bulk": "Sfuso",
+            "title_bulk_checkbox": "Materiale sfuso — la lunghezza è la lunghezza totale necessaria, non una lunghezza di taglio per pezzo",
             "col_profile": "Profilo",
             "col_size": "Dimensione",
             "col_material": "Materiale",
@@ -3111,6 +3162,9 @@
             "txt_lumber_scrap": "Il legname più corto di questo va nel cestino.",
             "lbl_sheet_scrap_min_size": "Scarto Pannello",
             "txt_sheet_scrap_length": "I ritagli di pannello più piccoli di questo sono scarti.",
+            "lbl_bulk_min_stock_length": "Lunghezza Minima Materiale Sfuso",
+            "txt_bulk_min_stock_length": "Le scorte più corte di questo valore non contano per un fabbisogno di materiale sfuso.",
+            "lbl_margin_percent": "Margine di Sicurezza %",
             "hdr_current_partlist": "🧩 Lista Pezzi Attuale",
             "tip_print_visible_parts": "Stampa Pezzi Visibili",
             "lbl_project": "Progetto",
@@ -3234,6 +3288,10 @@
             "txt_kerf_form_text": "Detrarre la larghezza del taglio e la spuntatura di fabbrica da ogni asse.",
             "lbl_scrap_settings": "Soglie degli Scarti",
             "txt_scrap_form_text": "Dimensione minima di uno sfrido per mantenerlo come scorta utile.",
+            "lbl_bulk_settings": "Materiale Sfuso",
+            "txt_bulk_form_text": "Lunghezza minima di scorta che conta per un fabbisogno di materiale sfuso.",
+            "lbl_margin_settings": "Margine di Sicurezza",
+            "txt_margin_form_text": "Tavole aggiuntive vengono aggiunte alla lista della spesa solo se lo scarto proprio dell'ottimizzatore non copre già questo margine.",
             "lbl_current_job": "Lavoro Attuale:",
             "btn_calculate": "Calcola",
             "btn_load_job": "Carica Lavoro",
@@ -3340,6 +3398,8 @@
             "tooltip_kerf": "Il kerf è la larghezza di legno rimossa dalla lama della sega ad ogni taglio. Una lama standard rimuove circa 3,2mm (⅛\"). L'ottimizzatore deduce questo valore per ogni taglio — con 5 tagli perdi 5 × kerf di materiale. Misura un taglio di prova o consulta la scheda tecnica della tua lama.",
             "tooltip_trim": "Prima di tagliare i pezzi, l'ottimizzatore squadra un'estremità di ogni nuova tavola per creare un bordo di riferimento retto e perpendicolare. Per i pannelli, vengono squadrati due bordi adiacenti. Standard: 6mm (¼\"). Imposta a 0 per saltare questo passaggio.",
             "tooltip_scrap_threshold": "Dopo ogni taglio, i ritagli rimanenti vengono misurati rispetto a questi minimi. Sopra la soglia — mantenuti come scarto utilizzabile per il pezzo successivo nello stesso lavoro. Sotto — conteggiati come rifiuto. Aumenta questi valori se preferisci non tenere traccia dei pezzi piccoli.",
+            "tooltip_bulk_material": "Per legname che viene adattato e tagliato in loco (rivestimenti, decking, listelli) anziché tagliato a una lunghezza predeterminata. Contrassegna una riga pezzo come sfuso e la sua lunghezza diventa la lunghezza totale necessaria. Viene esclusa dall'ottimizzatore di taglio e non appare mai nei diagrammi — solo un conteggio di tavole nella lista della spesa. La lunghezza minima qui stabilisce quali ritagli di scorta sono idonei a contare in quel totale.",
+            "tooltip_margin_percent": "Un margine di sicurezza aggiunto alla lista della spesa per il legname non sfuso. Dopo che l'ottimizzatore ha imballato le tue tavole, se lo scarto effettivo non copre ancora questa percentuale del fabbisogno, tavole aggiuntive vengono aggiunte solo alla lista della spesa — mai inserite nei diagrammi di taglio.",
             "tooltip_grain": "Solo per pannelli. Lunghezza = la venatura della faccia scorre lungo il bordo lungo del pannello. Larghezza = la venatura scorre in senso trasversale. L'ottimizzatore non ruoterà un pezzo di pannello in modo da violare la sua impostazione di venatura. Lascia su Nessuna se la direzione della venatura non è importante.",
             "tooltip_scrap_stock": "Segna una tavola come scarto se è un ritaglio di un lavoro precedente. Quando Usa Stock Officina è attivo, l'ottimizzatore usa gli scarti prima delle tavole intere — evitando che la tua pila di ritagli cresca.",
             "tooltip_profile": "Un profilo è la sezione trasversale di una tavola — spessore e larghezza, senza lunghezza. Per il legname, inserisci entrambe le dimensioni (es. 38×89mm per un 2×4). Per i pannelli, inserisci solo lo spessore (es. 18mm). Le lunghezze disponibili in negozio si configurano separatamente in Prezzi Negozio.",
@@ -3416,6 +3476,7 @@
             "title_sort_by_group": "Ordina per gruppo",
             "title_sort_by_part_name": "Ordina per nome del pezzo",
             "title_sort_by_category": "Ordina per categoria",
+            "title_sort_by_bulk": "Ordina per sfuso",
             "title_sort_by_profile": "Ordina per profilo",
             "title_sort_by_size": "Ordina per dimensione",
             "title_sort_by_material": "Ordina per materiale",
@@ -3669,32 +3730,25 @@
         applyTranslations();
         if (typeof renderSettings === 'function') renderSettings();
 
-        // Re-render the currently visible view so JS-injected content updates too
-        const activeView = document.querySelector('.app-view:not(.d-none)');
-        if (activeView) {
-            const id = activeView.id;
-            if (id === 'view-projects') {
-                if (typeof renderProjectsTable === 'function') renderProjectsTable();
-                if (typeof renderPartsTable === 'function') renderPartsTable();
-            } else if (id === 'view-setup') {
-                if (typeof renderStockTable === 'function') renderStockTable();
-                if (typeof renderCatalogTable === 'function') renderCatalogTable();
-                if (typeof renderDictionaries === 'function') renderDictionaries();
-            } else if (id === 'view-import') {
-                const sel = document.getElementById('import-unit-select');
-                if (sel && typeof applyImportScale === 'function') applyImportScale(sel.value);
-            } else if (id === 'view-cutlist') {
-                if (typeof populateCatalogDropdowns === 'function') populateCatalogDropdowns();
-                if (typeof populateStockDropdowns === 'function') populateStockDropdowns();
-                if (appState.latestResults) {
-                    if (typeof renderShoppingListTab === 'function') renderShoppingListTab([...appState.latestResults, ...(appState.latestBulkResults || []), ...(appState.latestMarginResults || [])]);
-                    if (typeof renderDiagramsTab === 'function') renderDiagramsTab(appState.latestResults);
-                    if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(appState.latestResults);
-                }
-                if (window.currentSandboxParts && typeof renderSandboxPartlistTab === 'function') {
-                    renderSandboxPartlistTab(window.currentSandboxParts);
-                }
-            }
+        // Re-render every data-driven table, not just the currently visible view —
+        // JS-injected content (e.g. lumber/sheet category badges) lives in tables that
+        // may be hidden (d-none) right now and would otherwise show stale-language
+        // text until something else happens to re-render them later. Mirrors the same
+        // unconditional refresh handleUnitChange() already does.
+        if (typeof renderDictionaries === 'function') renderDictionaries();
+
+        const importSel = document.getElementById('import-unit-select');
+        if (importSel && typeof applyImportScale === 'function') applyImportScale(importSel.value);
+
+        if (typeof populateCatalogDropdowns === 'function') populateCatalogDropdowns();
+        if (typeof populateStockDropdowns === 'function') populateStockDropdowns();
+        if (appState.latestResults) {
+            if (typeof renderShoppingListTab === 'function') renderShoppingListTab(mergeShoppingResults([...appState.latestResults, ...(appState.latestBulkResults || []), ...(appState.latestMarginResults || [])]));
+            if (typeof renderDiagramsTab === 'function') renderDiagramsTab(appState.latestResults);
+            if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(appState.latestResults);
+        }
+        if (window.currentSandboxParts && typeof renderSandboxPartlistTab === 'function') {
+            renderSandboxPartlistTab(window.currentSandboxParts);
         }
 
         showToast( t('msg_lang_changed') );

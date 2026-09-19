@@ -244,4 +244,48 @@
 
         return results;
     }
+
+    /**
+     * Merges shopping-list-only result entries so a bulk/margin top-up that resolves
+     * to the SAME catalog item a packer entry already bought shows as one combined
+     * line ("10x 2x4" instead of "8x 2x4" + "2x 2x4") rather than a separate row.
+     * Error entries are never merged — each stays its own line. Never mutates its
+     * input objects (the packer-only `results` array is reused elsewhere for the
+     * diagrams/analytics tabs and must stay untouched).
+     *
+     * @param {Array} entries - concatenation of packer results + bulk/margin results
+     * @returns {Array} a new array with matching success entries summed together
+     */
+    function mergeShoppingResults(entries) {
+        const merged = [];
+        const indexByKey = new Map();
+
+        (entries || []).forEach(res => {
+            if (!res || res.error || !res.purchase || !res.purchase.catalogItem) {
+                merged.push(res);
+                return;
+            }
+            const c = res.purchase.catalogItem;
+            // Real catalog items share a stable id; shop_stock synthetic entries don't
+            // (see runPackingEngine Stage 1), so those fall back to a length/width/grain
+            // composite so distinct stock groups never collapse into one.
+            const key = c.id
+                ? `id:${c.id}`
+                : `stock:${c.storeId}|${c.length}|${c.width || 0}|${c.grain || 'none'}`;
+
+            if (indexByKey.has(key)) {
+                const target = merged[indexByKey.get(key)];
+                target.purchase = {
+                    ...target.purchase,
+                    boardsNeeded: (target.purchase.boardsNeeded || 0) + (res.purchase.boardsNeeded || 0),
+                    totalCost: (target.purchase.totalCost || 0) + (res.purchase.totalCost || 0)
+                };
+            } else {
+                indexByKey.set(key, merged.length);
+                merged.push({ ...res, purchase: { ...res.purchase } });
+            }
+        });
+
+        return merged;
+    }
 </script>

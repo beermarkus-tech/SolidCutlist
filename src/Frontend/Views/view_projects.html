@@ -230,7 +230,9 @@
                                     <span onclick="handleSort('parts', 'qty', 'number')" class="cursor-pointer" title="Visible Total: 0" data-i18n-title="tip_visible_total" data-i18n="col_qty">Qty ⇅</span>
                                 </th>
                                 <th class="col-bulk text-center" style="width:44px;">
-                                    <span data-i18n="col_bulk">Bulk</span>
+                                    <span onclick="handleSort('parts', 'is_bulk', 'number')" class="cursor-pointer" title="Sort by Bulk" data-i18n-title="title_sort_by_bulk">
+                                        <span data-i18n="col_bulk">Bulk</span> ⇅
+                                    </span>
                                     <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tooltip_bulk_material'))">ⓘ</button>
                                 </th>
                                 <th class="col-profile text-center text-nowrap">
