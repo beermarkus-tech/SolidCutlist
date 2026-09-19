@@ -229,6 +229,10 @@
                                 <th class="col-qty text-center" id="th-parts-qty">
                                     <span onclick="handleSort('parts', 'qty', 'number')" class="cursor-pointer" title="Visible Total: 0" data-i18n-title="tip_visible_total" data-i18n="col_qty">Qty ⇅</span>
                                 </th>
+                                <th class="col-bulk text-center" style="width:44px;">
+                                    <span data-i18n="col_bulk">Bulk</span>
+                                    <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tooltip_bulk_material'))">ⓘ</button>
+                                </th>
                                 <th class="col-profile text-center text-nowrap">
                                     <span onclick="handleSort('parts', 'profileId', 'string')" class="cursor-pointer" title="Sort by Profile" data-i18n-title="title_sort_by_profile">
                                         <span data-i18n="col_profile">Profile</span> ⇅
@@ -277,6 +281,7 @@
                             <tr class="fw-bold">
                                 <td colspan="4" class="text-end text-muted small align-middle" data-i18n="lbl_visible_totals">VISIBLE TOTALS:</td>
                                 <td id="tfoot-parts-qty" class="text-center text-primary fs-6">0</td>
+                                <td></td>
                                 <td colspan="4"></td>
                                 <td id="tfoot-parts-metric" class="text-center text-primary fs-6">0</td>
                                 <td colspan="2"></td>

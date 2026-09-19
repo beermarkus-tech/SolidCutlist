@@ -25,8 +25,10 @@
         if (appState.settings.sheetScrapMinLength === undefined) appState.settings.sheetScrapMinLength = 400.0; // 🪄 NEW
         if (appState.settings.factoryEdgeTrim === undefined) appState.settings.factoryEdgeTrim = 6.35;
         if (appState.settings.sheetFactoryTrim === undefined) appState.settings.sheetFactoryTrim = 6.35; // 🪄 NEW
+        if (appState.settings.bulkMinimumStockLength === undefined) appState.settings.bulkMinimumStockLength = 0; // 🪄 NEW
+        if (appState.settings.marginPercent === undefined) appState.settings.marginPercent = 5; // 🪄 NEW
         if (!appState.settings.currency) appState.settings.currency = '€';
-        
+
         document.getElementById('setting-display-unit').value = appState.settings.displayUnit;
         document.getElementById('setting-kerf').value = formatForDisplay(appState.settings.bladeKerf);
         document.getElementById('setting-sheet-kerf').value = formatForDisplay(appState.settings.sheetBladeKerf); // 🪄 NEW
@@ -35,6 +37,8 @@
         document.getElementById('setting-sheet-scrap-length').value = formatForDisplay(appState.settings.sheetScrapMinLength); // 🪄 NEW
         document.getElementById('setting-factory-trim').value = formatForDisplay(appState.settings.factoryEdgeTrim);
         document.getElementById('setting-sheet-trim').value = formatForDisplay(appState.settings.sheetFactoryTrim); // 🪄 NEW
+        document.getElementById('setting-bulk-min-stock-length').value = formatForDisplay(appState.settings.bulkMinimumStockLength); // 🪄 NEW
+        document.getElementById('setting-margin-percent').value = appState.settings.marginPercent; // 🪄 NEW — plain %, not a length
         document.getElementById('setting-currency').value = appState.settings.currency; // 🪄 NEW
 
         // Transport settings
@@ -63,6 +67,16 @@
         if (_kerfPanel)   _kerfPanel.style.display       = kerfEnabled  ? '' : 'none';
         if (_scrapToggle) _scrapToggle.checked           = scrapEnabled;
         if (_scrapPanel)  _scrapPanel.style.display      = scrapEnabled ? '' : 'none';
+        const bulkEnabled   = appState.settings.optimizer?.bulkEnabled   === true; // 🪄 NEW — default OFF, opt-in
+        const marginEnabled = appState.settings.optimizer?.marginEnabled === true; // 🪄 NEW — default OFF, opt-in
+        const _bulkToggle   = document.getElementById('opt-bulk-enable');
+        const _bulkPanel    = document.getElementById('bulk-settings-panel');
+        const _marginToggle = document.getElementById('opt-margin-enable');
+        const _marginPanel  = document.getElementById('margin-settings-panel');
+        if (_bulkToggle)   _bulkToggle.checked    = bulkEnabled;
+        if (_bulkPanel)    _bulkPanel.style.display   = bulkEnabled   ? '' : 'none';
+        if (_marginToggle) _marginToggle.checked  = marginEnabled;
+        if (_marginPanel)  _marginPanel.style.display = marginEnabled ? '' : 'none';
         const useStockInput = document.getElementById('opt-use-stock');
         if (useStockInput) useStockInput.checked = !!appState.settings.optimizer?.useStock;
 
@@ -86,6 +100,8 @@
             _activeJob.settings.sheetScrapMinLength = parseToBaseUnit(document.getElementById('setting-sheet-scrap-length').value);
             _activeJob.settings.factoryEdgeTrim     = parseToBaseUnit(document.getElementById('setting-factory-trim').value);
             _activeJob.settings.sheetFactoryTrim    = parseToBaseUnit(document.getElementById('setting-sheet-trim').value);
+            _activeJob.settings.bulkMinimumStockLength = parseToBaseUnit(document.getElementById('setting-bulk-min-stock-length').value) || 0;
+            _activeJob.settings.marginPercent          = Math.min(100, Math.max(0, parseFloat(document.getElementById('setting-margin-percent').value) || 0));
             if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
             if (!_activeJob.settings.optimizer.transport) _activeJob.settings.optimizer.transport = {};
             _activeJob.settings.optimizer.transport.boardLmax   = parseToBaseUnit(document.getElementById('setting-transport-board-lmax').value) || 0;
@@ -103,6 +119,8 @@
             appState.settings.sheetScrapMinLength = parseToBaseUnit(document.getElementById('setting-sheet-scrap-length').value);
             appState.settings.factoryEdgeTrim     = parseToBaseUnit(document.getElementById('setting-factory-trim').value);
             appState.settings.sheetFactoryTrim    = parseToBaseUnit(document.getElementById('setting-sheet-trim').value);
+            appState.settings.bulkMinimumStockLength = parseToBaseUnit(document.getElementById('setting-bulk-min-stock-length').value) || 0;
+            appState.settings.marginPercent          = Math.min(100, Math.max(0, parseFloat(document.getElementById('setting-margin-percent').value) || 0));
             if (!appState.settings.optimizer) appState.settings.optimizer = {};
             if (!appState.settings.optimizer.transport) appState.settings.optimizer.transport = {};
             appState.settings.optimizer.transport.boardLmax   = parseToBaseUnit(document.getElementById('setting-transport-board-lmax').value) || 0;

@@ -6,9 +6,12 @@
         if (!partsToOptimize || partsToOptimize.length === 0) return [];
 
         // 🪄 NEW: Filter the injected array directly instead of appState.parts
-        const validParts = partsToOptimize.filter(p => 
-            p.status === 'ready' && 
-            (p.category === 'lumber' || p.category === 'sheet')
+        // Bulk rows (is_bulk) are excluded here — they never enter the packer; they're
+        // resolved separately by computeBulkResults() (js_bulk_margin.html).
+        const validParts = partsToOptimize.filter(p =>
+            p.status === 'ready' &&
+            (p.category === 'lumber' || p.category === 'sheet') &&
+            !p.is_bulk
         );
 
         const groupedSKUs = {};
@@ -1389,6 +1392,48 @@
             if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
         }
     }
+    function toggleBulkMode(isChecked) {
+        if (!appState.settings.optimizer) appState.settings.optimizer = {};
+        appState.settings.optimizer.bulkEnabled = isChecked;
+        ['bulk-settings-panel', 'mob-bulk-settings-panel'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = isChecked ? '' : 'none';
+        });
+        const _activeJob = window.activeJobId && appState.jobs
+            ? appState.jobs.find(j => j.id === window.activeJobId)
+            : null;
+        if (_activeJob) {
+            if (!_activeJob.settings) _activeJob.settings = {};
+            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
+            _activeJob.settings.optimizer.bulkEnabled = isChecked;
+            if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
+            if (typeof syncJobSettingsToMobileUI === 'function') syncJobSettingsToMobileUI();
+        } else {
+            saveState();
+            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
+        }
+    }
+    function toggleMarginMode(isChecked) {
+        if (!appState.settings.optimizer) appState.settings.optimizer = {};
+        appState.settings.optimizer.marginEnabled = isChecked;
+        ['margin-settings-panel', 'mob-margin-settings-panel'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = isChecked ? '' : 'none';
+        });
+        const _activeJob = window.activeJobId && appState.jobs
+            ? appState.jobs.find(j => j.id === window.activeJobId)
+            : null;
+        if (_activeJob) {
+            if (!_activeJob.settings) _activeJob.settings = {};
+            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
+            _activeJob.settings.optimizer.marginEnabled = isChecked;
+            if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
+            if (typeof syncJobSettingsToMobileUI === 'function') syncJobSettingsToMobileUI();
+        } else {
+            saveState();
+            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
+        }
+    }
     // --- UI LOCK STATES ---
     function toggleConfiguratorState(isLocked, isSaved = false, lockInputs = true) {
         const settingsDiv = document.getElementById('job-config-settings');
@@ -1590,7 +1635,15 @@
 
             // Select the part! Clone it and apply the math
             let tempPart = JSON.parse(JSON.stringify(originalPart));
-            tempPart.qty = (parseInt(originalPart.qty) || 1) * finalMulti;
+            if (tempPart.is_bulk) {
+                // 🪄 Bulk rows have no qty of identical pieces — `length` IS the total
+                // requirement, so the project/group multiplier scales it directly
+                // instead of qty (e.g. "2x siding" doubles the total run).
+                tempPart.length = (parseFloat(originalPart.length) || 0) * finalMulti;
+                tempPart.qty = 1;
+            } else {
+                tempPart.qty = (parseInt(originalPart.qty) || 1) * finalMulti;
+            }
             partsToOptimize.push(tempPart);
         });
 
@@ -1626,10 +1679,26 @@
         if (!isRecalculate) window._transientPurchasedItems = {}; // fresh run: forget transient checkboxes
         const results = runPackingEngine(partsToOptimize, allowedStores);
 
+        // Bulk material (Feature A) and safety-margin top-up (Feature B) results are
+        // shopping-list-only — they must NEVER be merged into `results` itself, since
+        // renderDiagramsTab groups by SKU unconditionally and would render an empty,
+        // header-only card for any SKU with no packed boards. Kept as separate arrays,
+        // merged only into the renderShoppingListTab() call below.
+        const bulkResults = (typeof computeBulkResults === 'function')
+            ? computeBulkResults(partsToOptimize, appState, allowedStores) : [];
+        const marginResults = (typeof computeMarginTopups === 'function')
+            ? computeMarginTopups(partsToOptimize, results, appState, allowedStores) : [];
+
         // Render the UI
         document.getElementById('optimizer-empty-state').classList.add('d-none');
         document.getElementById('optimizer-tab-content').classList.remove('d-none');
-        appState.latestResults = results;
+        appState.latestResults = results; // unchanged — canonical for diagrams/analytics/job persistence
+        // Persisted separately so every other place that re-renders the shopping list from
+        // appState.latestResults (unit/language-change redraws, post-save-job redraw — see
+        // js_materials.html, js_languages.html, js_jobs.html) can still include bulk/margin
+        // lines without recomputing them and without polluting latestResults itself.
+        appState.latestBulkResults = bulkResults;
+        appState.latestMarginResults = marginResults;
 
         if (!isRecalculate) {
             // First calculation: reveal shopping controls and switch to shopping tab
@@ -1645,9 +1714,9 @@
             }
         }
 
-        renderShoppingListTab(results);
-        if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
-        if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
+        renderShoppingListTab([...results, ...bulkResults, ...marginResults]); // shopping-list only
+        if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results); // packer-only — see note above
+        if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results); // packer-only — see note above
         if (typeof renderSandboxPartlistTab === 'function') renderSandboxPartlistTab(partsToOptimize); // 🪄 Render 4th Tab
     }
 

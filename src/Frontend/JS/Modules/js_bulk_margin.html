@@ -1,0 +1,247 @@
+<script>
+    // ==========================================
+    // BULK MATERIAL (Feature A) + SAFETY MARGIN (Feature B)
+    // ==========================================
+    // resolveShortfallGreedy() is intentionally pure — no appState/document/t() references —
+    // so it can be lifted out of this partial and unit-tested standalone (see test/).
+
+    /**
+     * Greedily covers a length requirement from an "infinite supply" set of store
+     * board options, always drawing from the single best price/length option
+     * (ties broken by longest length, fewer boards/joints) until the requirement
+     * is met. The final board's overshoot is the natural ceiling — no separate
+     * rounding step. Deliberately simpler than the real optimizer's per-vendor
+     * cost-compare + tail-substitution logic (agreed scope cut for bulk/margin
+     * math, which has no individual parts to place).
+     *
+     * @param {number} remainingLength - length still needed (base unit, mm)
+     * @param {Array<{id, length, price}>} storeOptions
+     * @returns {{groups: Array<{optionId, length, price, boardsNeeded, lineCost}>,
+     *            totalBoards: number, totalCost: number, coveredLength: number,
+     *            unresolved?: boolean}}
+     */
+    function resolveShortfallGreedy(remainingLength, storeOptions) {
+        if (!(remainingLength > 0)) {
+            return { groups: [], totalBoards: 0, totalCost: 0, coveredLength: 0 };
+        }
+
+        const validOptions = (storeOptions || []).filter(o => o && o.length > 0 && o.price >= 0);
+        if (validOptions.length === 0) {
+            return { groups: [], totalBoards: 0, totalCost: 0, coveredLength: 0, unresolved: true };
+        }
+
+        const sorted = [...validOptions].sort((a, b) => {
+            const ratioA = a.price / a.length;
+            const ratioB = b.price / b.length;
+            if (ratioA !== ratioB) return ratioA - ratioB;
+            return b.length - a.length; // tie-break: longest first (fewer boards, fewer joints)
+        });
+        const best = sorted[0];
+
+        const boardsNeeded = Math.ceil(remainingLength / best.length);
+        const group = {
+            optionId: best.id,
+            length: best.length,
+            price: best.price,
+            boardsNeeded,
+            lineCost: boardsNeeded * best.price
+        };
+
+        return {
+            groups: [group],
+            totalBoards: boardsNeeded,
+            totalCost: group.lineCost,
+            coveredLength: boardsNeeded * best.length
+        };
+    }
+
+    /**
+     * Resolves every bulk (is_bulk) lumber row in partsToOptimize into shopping-list-only
+     * result entries, in the same {sku, success, purchase:{catalogItem, totalCost,
+     * boardsNeeded, layout:[]}} shape runPackingEngine() produces — so renderShoppingListTab()
+     * needs no special-casing. layout is always [] (bulk rows never nest cuts on a board,
+     * so they must never be passed to renderDiagramsTab/renderAnalyticsTab — see the
+     * runOptimization() call site). Runs whenever any is_bulk row is present, independent of
+     * the bulkEnabled toggle, which only gates the stock-length filter (§4/§5 of the spec).
+     *
+     * Impure: reads appState.stock/catalog/settings and the shared appState-level
+     * calculateCostPerPiece() helper. resolveShortfallGreedy() above stays pure.
+     */
+    function computeBulkResults(partsToOptimize, appState, allowedStoreIds) {
+        const bulkParts = (partsToOptimize || []).filter(p =>
+            p.category === 'lumber' && p.is_bulk === true && p.status === 'ready'
+        );
+        if (bulkParts.length === 0) return [];
+
+        const settings = appState.settings || {};
+        const opt = settings.optimizer || {};
+        const marginEnabled = opt.marginEnabled === true;
+        const marginPercent = settings.marginPercent || 0;
+        const bulkLengthFilterEnabled = opt.bulkEnabled === true;
+        const bulkMinimumStockLength = settings.bulkMinimumStockLength || 0;
+
+        // Group bulk rows by profileId|materialId — a bulk material could be split
+        // across multiple selected projects/groups, so totals are summed per SKU.
+        const groups = {};
+        bulkParts.forEach(part => {
+            const key = part.profileId + '|' + part.materialId;
+            if (!groups[key]) {
+                groups[key] = { profileId: part.profileId, materialId: part.materialId, totalLengthRequired: 0 };
+            }
+            groups[key].totalLengthRequired += parseFloat(part.length) || 0;
+        });
+
+        const results = [];
+
+        Object.values(groups).forEach(group => {
+            // Step 1: apply the safety margin to the total requirement first.
+            const targetLength = marginEnabled
+                ? group.totalLengthRequired * (1 + marginPercent / 100)
+                : group.totalLengthRequired;
+
+            // Step 2: offset against eligible shop stock (a filter, not an offcut setting —
+            // when the toggle is OFF, all matching stock counts regardless of length).
+            const matchingStock = (appState.stock || []).filter(s =>
+                s.profileId === group.profileId &&
+                s.materialId === group.materialId &&
+                s.categoryId === 'lumber' &&
+                (!bulkLengthFilterEnabled || (s.length || 0) >= bulkMinimumStockLength)
+            );
+            let stockSum = 0;
+            matchingStock.forEach(s => { stockSum += (s.length || 0) * (s.qty || 1); });
+
+            const remainder = Math.max(0, targetLength - stockSum);
+            if (remainder === 0) return; // stock alone covers it — zero boards isn't a shopping-list line
+
+            // Step 3: resolve the remainder against the store catalog.
+            const vendorOptions = (appState.catalog || []).filter(c =>
+                c.profileId === group.profileId &&
+                c.materialId === group.materialId &&
+                c.categoryId === 'lumber' &&
+                (allowedStoreIds || []).includes(c.storeId)
+            );
+            const storeOptions = vendorOptions.map(c => ({
+                id: c.id,
+                length: c.length,
+                price: (typeof calculateCostPerPiece === 'function') ? calculateCostPerPiece(c) : (c.price || 0)
+            }));
+
+            const resolved = resolveShortfallGreedy(remainder, storeOptions);
+
+            if (resolved.unresolved || resolved.totalBoards === 0) {
+                results.push({
+                    sku: { profileId: group.profileId, materialId: group.materialId, category: 'lumber' },
+                    error: 'Missing store inventory for bulk material requirement.'
+                });
+                return;
+            }
+
+            resolved.groups.forEach(g => {
+                const catalogItem = vendorOptions.find(c => c.id === g.optionId);
+                if (!catalogItem) return;
+                results.push({
+                    sku: { profileId: group.profileId, materialId: group.materialId, category: 'lumber' },
+                    success: true,
+                    purchase: {
+                        catalogItem,
+                        totalCost: g.lineCost,
+                        boardsNeeded: g.boardsNeeded,
+                        layout: []
+                    }
+                });
+            });
+        });
+
+        return results;
+    }
+
+    /**
+     * Resolves the global safety-margin top-up (Feature B) for non-bulk lumber. The packer
+     * (runPackingEngine) runs completely unmodified beforehand — this only reads its output
+     * (`packerResults`, the finalCutlist) after the fact. For each non-bulk lumber SKU: if
+     * the packer's own actual leftover already meets marginPercent of the SKU's nominal
+     * required length, nothing is added (the packer's imperfect nesting already carries the
+     * buffer for free — the common case on small jobs). Otherwise the shortfall is resolved
+     * via the same resolveShortfallGreedy() used by Feature A, as additional shopping-list-only
+     * entries (layout: [] — never assigned to the canvas, matching computeBulkResults()).
+     *
+     * Impure: reads appState.catalog/settings and calculateCostPerPiece(). Pure math only
+     * touches the passed-in partsToOptimize/packerResults, never appState.parts directly.
+     */
+    function computeMarginTopups(partsToOptimize, packerResults, appState, allowedStoreIds) {
+        const settings = appState.settings || {};
+        const opt = settings.optimizer || {};
+        if (opt.marginEnabled !== true) return [];
+
+        const marginPercent = settings.marginPercent || 0;
+
+        // Nominal totals per SKU — non-bulk lumber only, the same rows the packer ran on.
+        const nominalTotals = {};
+        (partsToOptimize || []).forEach(part => {
+            if (part.category !== 'lumber' || part.is_bulk || part.status !== 'ready') return;
+            const key = part.profileId + '|' + part.materialId;
+            const len = parseFloat(part.length) || 0;
+            const qty = parseInt(part.qty) || 1;
+            nominalTotals[key] = (nominalTotals[key] || 0) + len * qty;
+        });
+
+        // Actual leftover per SKU — SUM across every matching finalCutlist entry. A SKU can
+        // legitimately produce 2+ entries (a shop-stock draw + a store purchase, or a primary
+        // + a tail-substituted alt from the hybrid-repack logic), so this must not read a
+        // single "winning option" waste value.
+        const leftoverBySku = {};
+        (packerResults || []).forEach(res => {
+            if (res.error || !res.purchase || !res.sku || res.sku.category !== 'lumber') return;
+            const key = res.sku.profileId + '|' + res.sku.materialId;
+            leftoverBySku[key] = (leftoverBySku[key] || 0) + (res.purchase.waste || 0);
+        });
+
+        const results = [];
+
+        Object.keys(nominalTotals).forEach(key => {
+            const [profileId, materialId] = key.split('|');
+            const totalNominal = nominalTotals[key];
+            const actualLeftover = leftoverBySku[key] || 0;
+            const marginThreshold = (marginPercent / 100) * totalNominal;
+
+            if (actualLeftover >= marginThreshold) return; // packer's own slack already covers it
+
+            const shortfall = marginThreshold - actualLeftover;
+
+            const vendorOptions = (appState.catalog || []).filter(c =>
+                c.profileId === profileId &&
+                c.materialId === materialId &&
+                c.categoryId === 'lumber' &&
+                (allowedStoreIds || []).includes(c.storeId)
+            );
+            const storeOptions = vendorOptions.map(c => ({
+                id: c.id,
+                length: c.length,
+                price: (typeof calculateCostPerPiece === 'function') ? calculateCostPerPiece(c) : (c.price || 0)
+            }));
+
+            const resolved = resolveShortfallGreedy(shortfall, storeOptions);
+            // Margin is a best-effort safety buffer on top of an already-successful pack —
+            // if no vendor stocks this SKU, silently skip the top-up rather than erroring;
+            // the SKU's actual required boards were already resolved by the packer.
+            if (resolved.unresolved || resolved.totalBoards === 0) return;
+
+            resolved.groups.forEach(g => {
+                const catalogItem = vendorOptions.find(c => c.id === g.optionId);
+                if (!catalogItem) return;
+                results.push({
+                    sku: { profileId, materialId, category: 'lumber' },
+                    success: true,
+                    purchase: {
+                        catalogItem,
+                        totalCost: g.lineCost,
+                        boardsNeeded: g.boardsNeeded,
+                        layout: []
+                    }
+                });
+            });
+        });
+
+        return results;
+    }
+</script>

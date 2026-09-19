@@ -259,7 +259,7 @@
 
         // 3. Re-render cutlist result tabs if results exist (display-only, no recalculation)
         if (appState.latestResults && appState.latestResults.length > 0) {
-            if (typeof renderShoppingListTab === 'function') renderShoppingListTab(appState.latestResults);
+            if (typeof renderShoppingListTab === 'function') renderShoppingListTab([...appState.latestResults, ...(appState.latestBulkResults || []), ...(appState.latestMarginResults || [])]);
             if (typeof renderDiagramsTab === 'function') renderDiagramsTab(appState.latestResults);
             if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(appState.latestResults);
             if (typeof renderSandboxPartlistTab === 'function' && window.currentSandboxParts) renderSandboxPartlistTab(window.currentSandboxParts);

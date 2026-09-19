@@ -290,6 +290,49 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Bulk Material Toggle -->
+                        <div class="pt-3 pb-3 border-bottom">
+                            <div class="form-check form-switch pt-2 pb-1">
+                                <input class="form-check-input" type="checkbox" id="opt-bulk-enable" onchange="toggleBulkMode(this.checked)">
+                                <label class="form-check-label fw-bold" for="opt-bulk-enable" data-i18n="lbl_bulk_settings">Bulk Material</label><button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;margin-left:4px;" onclick="showInfoTooltip(event, t('tooltip_bulk_material'))">ⓘ</button>
+                            </div>
+                            <div class="form-text mt-0 mb-2 form-text-xs" data-i18n="txt_bulk_form_text">Minimum stock length that counts toward a bulk material requirement.</div>
+                            <div id="bulk-settings-panel" style="display:none;">
+                                <div class="p-3 mb-3 rounded-3 input-panel">
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_bulk_min_stock_length">Minimum Bulk Material Length</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control form-control-sm" id="setting-bulk-min-stock-length" onchange="handleSettingsValueChange()">
+                                                <span class="input-group-text display-unit-label">mm</span>
+                                            </div>
+                                            <div class="form-text mt-1 form-text-xs" data-i18n="txt_bulk_min_stock_length">Shop stock shorter than this doesn't count toward a bulk requirement.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Safety Margin Toggle -->
+                        <div class="pt-3 pb-3 border-bottom">
+                            <div class="form-check form-switch pt-2 pb-1">
+                                <input class="form-check-input" type="checkbox" id="opt-margin-enable" onchange="toggleMarginMode(this.checked)">
+                                <label class="form-check-label fw-bold" for="opt-margin-enable" data-i18n="lbl_margin_settings">Safety Margin</label><button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;margin-left:4px;" onclick="showInfoTooltip(event, t('tooltip_margin_percent'))">ⓘ</button>
+                            </div>
+                            <div class="form-text mt-0 mb-2 form-text-xs" data-i18n="txt_margin_form_text">Extra boards added to the shopping list only if the packer's own leftover doesn't already cover this buffer.</div>
+                            <div id="margin-settings-panel" style="display:none;">
+                                <div class="p-3 mb-3 rounded-3 input-panel">
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_margin_percent">Safety Margin %</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control form-control-sm" id="setting-margin-percent" onchange="handleSettingsValueChange()">
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -600,6 +643,50 @@
                                 <span class="input-group-text px-1 border-start-0 border-end-0">x</span>
                                 <input type="text" class="form-control form-control-sm" id="mob-sheet-scrap-length" onchange="handleMobileSettingsValueChange()">
                                 <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bulk Material Toggle (mobile) -->
+        <div class="pt-3 pb-3 border-bottom">
+            <div class="form-check form-switch pt-2 pb-1">
+                <input class="form-check-input" type="checkbox" id="mob-bulk-enable" onchange="handleMobileSettingsValueChange()">
+                <label class="form-check-label fw-bold" for="mob-bulk-enable" data-i18n="lbl_bulk_settings">Bulk Material</label><button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;margin-left:4px;" onclick="showInfoTooltip(event, t('tooltip_bulk_material'))">ⓘ</button>
+            </div>
+            <div class="form-text mt-0 mb-2 form-text-xs" data-i18n="txt_bulk_form_text">Minimum stock length that counts toward a bulk material requirement.</div>
+            <div id="mob-bulk-settings-panel" style="display:none;">
+                <div class="p-3 mb-3 rounded-3 input-panel">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_bulk_min_stock_length">Minimum Bulk Material Length</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control form-control-sm" id="mob-bulk-min-stock-length" onchange="handleMobileSettingsValueChange()">
+                                <span class="input-group-text display-unit-label">mm</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Safety Margin Toggle (mobile) -->
+        <div class="pt-3 pb-3 border-bottom">
+            <div class="form-check form-switch pt-2 pb-1">
+                <input class="form-check-input" type="checkbox" id="mob-margin-enable" onchange="handleMobileSettingsValueChange()">
+                <label class="form-check-label fw-bold" for="mob-margin-enable" data-i18n="lbl_margin_settings">Safety Margin</label><button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;margin-left:4px;" onclick="showInfoTooltip(event, t('tooltip_margin_percent'))">ⓘ</button>
+            </div>
+            <div class="form-text mt-0 mb-2 form-text-xs" data-i18n="txt_margin_form_text">Extra boards added to the shopping list only if the packer's own leftover doesn't already cover this buffer.</div>
+            <div id="mob-margin-settings-panel" style="display:none;">
+                <div class="p-3 mb-3 rounded-3 input-panel">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_margin_percent">Safety Margin %</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control form-control-sm" id="mob-margin-percent" onchange="handleMobileSettingsValueChange()">
+                                <span class="input-group-text">%</span>
                             </div>
                         </div>
                     </div>

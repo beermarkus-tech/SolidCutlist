@@ -42,7 +42,14 @@
 
                 // Multiply the quantity (e.g., "Build 4 of this chair")
                 let multi = parseInt(sel.multiplier) || 1;
-                newPart.qty = (parseInt(originalPart.qty) || 1) * multi;
+                if (newPart.is_bulk) {
+                    // 🪄 Bulk rows have no qty of identical pieces — length IS the total
+                    // requirement, so the multiplier scales it directly (mirrors runOptimization()).
+                    newPart.length = (parseFloat(originalPart.length) || 0) * multi;
+                    newPart.qty = 1;
+                } else {
+                    newPart.qty = (parseInt(originalPart.qty) || 1) * multi;
+                }
 
                 clonedParts.push(newPart);
             });
@@ -229,6 +236,14 @@
             appState.ui.activeJobId = job.id;
             window.activeJobId = job.id;
             appState.latestResults = results;
+            // Bulk/margin recomputed fresh here (never persisted on the job itself),
+            // while appState is still shadowed by job.catalog/settings/stock below.
+            const _jobBulkResults = (typeof computeBulkResults === 'function')
+                ? computeBulkResults(job.parts, appState, allowedStores) : [];
+            const _jobMarginResults = (typeof computeMarginTopups === 'function')
+                ? computeMarginTopups(job.parts, results, appState, allowedStores) : [];
+            appState.latestBulkResults = _jobBulkResults;
+            appState.latestMarginResults = _jobMarginResults;
 
             // 8. Render while job settings are still active — renderDiagramsTab reads
             //    appState.settings for transport margin/lmax/kerf; must see job.settings
@@ -247,7 +262,7 @@
                 tabInstance.show();
             }
 
-            if (typeof renderShoppingListTab === 'function') renderShoppingListTab(results);
+            if (typeof renderShoppingListTab === 'function') renderShoppingListTab([...results, ..._jobBulkResults, ..._jobMarginResults]);
             if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
             if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
             if (typeof renderSandboxPartlistTab === 'function') renderSandboxPartlistTab(job.parts);
@@ -325,7 +340,14 @@
             let newPart = JSON.parse(JSON.stringify(originalPart));
             newPart.id = 'JOB-PART-' + Date.now() + '-' + partCounter++;
             newPart.originalPartId = originalPart.id;
-            newPart.qty = (parseInt(originalPart.qty) || 1) * finalMulti;
+            if (newPart.is_bulk) {
+                // 🪄 Bulk rows have no qty of identical pieces — length IS the total
+                // requirement, so the multiplier scales it directly (mirrors runOptimization()).
+                newPart.length = (parseFloat(originalPart.length) || 0) * finalMulti;
+                newPart.qty = 1;
+            } else {
+                newPart.qty = (parseInt(originalPart.qty) || 1) * finalMulti;
+            }
             partsToOptimize.push(newPart);
         });
 
@@ -336,9 +358,17 @@
 
         // 3. MINT THE JOB SANDBOX
         // Lean catalog: only the specific boards the optimizer chose or failed on.
-        // Never copy the entire price database into a job.
+        // Never copy the entire price database into a job. Also mines bulk/margin
+        // top-up entries (appState.latestBulkResults/latestMarginResults, persisted
+        // alongside latestResults by runOptimization()) so a saved job's frozen
+        // catalog snapshot still contains whatever those features bought.
         const _catalogMap = new Map();
-        (appState.latestResults || []).forEach(res => {
+        const _resultsForCatalogMining = [
+            ...(appState.latestResults || []),
+            ...(appState.latestBulkResults || []),
+            ...(appState.latestMarginResults || [])
+        ];
+        _resultsForCatalogMining.forEach(res => {
             // Winning vendor board
             if (res.purchase?.catalogItem && res.purchase.catalogItem.storeId !== 'shop_stock') {
                 const c = res.purchase.catalogItem;
@@ -372,6 +402,24 @@
                         });
                 }
             }
+        });
+        // Bulk rows (Feature A) draw against shop stock without producing a
+        // storeId==='shop_stock' result entry the loop above can key off — so pull in
+        // any stock matching a bulk part's SKU directly (same simple SKU-match
+        // createJobSandbox already uses, not exact-consumption tracking).
+        partsToOptimize.filter(p => p.is_bulk).forEach(p => {
+            const key = `${p.profileId}|${p.materialId}|lumber`;
+            if (_usedStockSKUs.has(key)) return;
+            _usedStockSKUs.add(key);
+            (appState.stock || [])
+                .filter(s => s.profileId === p.profileId && s.materialId === p.materialId && s.categoryId === 'lumber')
+                .forEach(s => {
+                    const sid = s.id || `${key}|${s.length}`;
+                    if (!_seenStockIds.has(sid)) {
+                        _seenStockIds.add(sid);
+                        _stockItems.push(s);
+                    }
+                });
         });
 
         const newJob = {
@@ -409,7 +457,7 @@
 
         // 🪄 CHANGE: Re-render the shopping list right now so it instantly becomes editable!
         if (typeof renderShoppingListTab === 'function' && appState.latestResults) {
-            renderShoppingListTab(appState.latestResults);
+            renderShoppingListTab([...appState.latestResults, ...(appState.latestBulkResults || []), ...(appState.latestMarginResults || [])]);
         }
 
         if (typeof showToast === 'function') showToast(t('msg_job_created', { name: jobName }), "success");
@@ -492,6 +540,19 @@
         setV('mob-cutoff',             s.cutoffThreshold,    200.0);
         setV('mob-sheet-scrap-width',  s.sheetScrapMinWidth,  50.0);
         setV('mob-sheet-scrap-length', s.sheetScrapMinLength, 400.0);
+        const _mbEnabled = s.optimizer?.bulkEnabled   === true;
+        const _mmEnabled = s.optimizer?.marginEnabled === true;
+        const _mbToggle  = document.getElementById('mob-bulk-enable');
+        const _mbPanel   = document.getElementById('mob-bulk-settings-panel');
+        const _mmToggle  = document.getElementById('mob-margin-enable');
+        const _mmPanel   = document.getElementById('mob-margin-settings-panel');
+        if (_mbToggle) _mbToggle.checked      = _mbEnabled;
+        if (_mbPanel)  _mbPanel.style.display  = _mbEnabled ? '' : 'none';
+        if (_mmToggle) _mmToggle.checked      = _mmEnabled;
+        if (_mmPanel)  _mmPanel.style.display  = _mmEnabled ? '' : 'none';
+        setV('mob-bulk-min-stock-length', s.bulkMinimumStockLength, 0);
+        const _mMarginEl = document.getElementById('mob-margin-percent');
+        if (_mMarginEl) _mMarginEl.value = s.marginPercent !== undefined ? s.marginPercent : 5; // plain %, not a length
     }
 
     // Sync activeJob.settings → desktop settings sidebar inputs (safe to call any time)
@@ -533,6 +594,19 @@
         if (_kerfPanel)   _kerfPanel.style.display       = _kerfEnabled  ? '' : 'none';
         if (_scrapToggle) _scrapToggle.checked           = _scrapEnabled;
         if (_scrapPanel)  _scrapPanel.style.display      = _scrapEnabled ? '' : 'none';
+        setV('setting-bulk-min-stock-length', s.bulkMinimumStockLength, 0);
+        const _marginEl = document.getElementById('setting-margin-percent');
+        if (_marginEl) _marginEl.value = s.marginPercent !== undefined ? s.marginPercent : 5; // plain %, not a length
+        const _bulkEnabled   = s.optimizer?.bulkEnabled   === true;
+        const _marginEnabled = s.optimizer?.marginEnabled === true;
+        const _bulkToggle    = document.getElementById('opt-bulk-enable');
+        const _bulkPanel     = document.getElementById('bulk-settings-panel');
+        const _marginToggle  = document.getElementById('opt-margin-enable');
+        const _marginPanel   = document.getElementById('margin-settings-panel');
+        if (_bulkToggle)   _bulkToggle.checked     = _bulkEnabled;
+        if (_bulkPanel)    _bulkPanel.style.display   = _bulkEnabled   ? '' : 'none';
+        if (_marginToggle) _marginToggle.checked   = _marginEnabled;
+        if (_marginPanel)  _marginPanel.style.display = _marginEnabled ? '' : 'none';
     }
 
     function openMobileSettings() {
@@ -555,10 +629,18 @@
         const _msPan = document.getElementById('mob-scrap-settings-panel');
         if (_mkTog && _mkPan) _mkPan.style.display = _mkTog.checked ? '' : 'none';
         if (_msTog && _msPan) _msPan.style.display = _msTog.checked ? '' : 'none';
+        // Show/hide mob bulk & margin panels
+        const _mbTog = document.getElementById('mob-bulk-enable');
+        const _mbPan = document.getElementById('mob-bulk-settings-panel');
+        const _mmTog = document.getElementById('mob-margin-enable');
+        const _mmPan = document.getElementById('mob-margin-settings-panel');
+        if (_mbTog && _mbPan) _mbPan.style.display = _mbTog.checked ? '' : 'none';
+        if (_mmTog && _mmPan) _mmPan.style.display = _mmTog.checked ? '' : 'none';
         // Read helpers
         const getVal = id => { const el = document.getElementById(id); return el ? parseToBaseUnit(el.value) : 0; };
         const getChk = id => { const el = document.getElementById(id); return el ? el.checked : false; };
         const getSel = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+        const getPct = id => { const el = document.getElementById(id); return el ? Math.min(100, Math.max(0, parseFloat(el.value) || 0)) : 0; };
         // Write directly to job.settings — never touch master appState.settings
         if (!activeJob.settings) activeJob.settings = {};
         activeJob.settings.bladeKerf           = getVal('mob-kerf');
@@ -573,6 +655,10 @@
         activeJob.settings.optimizer.transport.enabled     = getChk('mob-transport-enable');
         activeJob.settings.optimizer.kerfEnabled           = getChk('mob-kerf-enable');
         activeJob.settings.optimizer.scrapEnabled          = getChk('mob-scrap-enable');
+        activeJob.settings.optimizer.bulkEnabled           = getChk('mob-bulk-enable');
+        activeJob.settings.optimizer.marginEnabled         = getChk('mob-margin-enable');
+        activeJob.settings.bulkMinimumStockLength          = getVal('mob-bulk-min-stock-length');
+        activeJob.settings.marginPercent                   = getPct('mob-margin-percent');
         activeJob.settings.optimizer.transport.boardLmax   = getVal('mob-transport-board-lmax');
         const _bm = Math.max(getVal('mob-transport-board-margin') || 20, 5);
         const _sm = Math.max(getVal('mob-transport-sheet-margin') || 10, 5);
@@ -705,7 +791,13 @@
 
             // Render while job settings are active — same fix as executeLoadJob
             appState.latestResults = results;
-            if (typeof renderShoppingListTab === 'function') renderShoppingListTab(results);
+            const _recalcBulkResults = (typeof computeBulkResults === 'function')
+                ? computeBulkResults(job.parts, appState, allowedStores) : [];
+            const _recalcMarginResults = (typeof computeMarginTopups === 'function')
+                ? computeMarginTopups(job.parts, results, appState, allowedStores) : [];
+            appState.latestBulkResults = _recalcBulkResults;
+            appState.latestMarginResults = _recalcMarginResults;
+            if (typeof renderShoppingListTab === 'function') renderShoppingListTab([...results, ..._recalcBulkResults, ..._recalcMarginResults]);
             if (typeof renderDiagramsTab === 'function') renderDiagramsTab(results);
             if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(results);
             if (typeof renderSandboxPartlistTab === 'function') renderSandboxPartlistTab(job.parts);

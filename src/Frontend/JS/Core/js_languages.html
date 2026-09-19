@@ -41,6 +41,8 @@
             "lbl_scrap": "Scrap?",
             "col_category": "Category",
             "col_qty": "Qty",
+            "col_bulk": "Bulk",
+            "title_bulk_checkbox": "Bulk material — length is the total run needed, not a per-piece cut length",
             "col_profile": "Profile",
             "col_size": "Size",
             "col_material": "Material",
@@ -95,6 +97,9 @@
             "txt_lumber_scrap": "Lumber shorter than this goes in the trash.",
             "lbl_sheet_scrap_min_size": "Sheet Scrap",
             "txt_sheet_scrap_length": "Sheet offcuts smaller than this are trash.",
+            "lbl_bulk_min_stock_length": "Minimum Bulk Material Length",
+            "txt_bulk_min_stock_length": "Shop stock shorter than this doesn't count toward a bulk requirement.",
+            "lbl_margin_percent": "Safety Margin %",
             "hdr_current_partlist": "🧩 Current Partlist",
             "tip_print_visible_parts": "Print Visible Parts",
             "lbl_project": "Project",
@@ -218,6 +223,10 @@
             "txt_kerf_form_text": "Deduct blade width and factory-end trim from every board.",
             "lbl_scrap_settings": "Scrap Thresholds",
             "txt_scrap_form_text": "Minimum offcut size to keep as useful stock.",
+            "lbl_bulk_settings": "Bulk Material",
+            "txt_bulk_form_text": "Minimum stock length that counts toward a bulk material requirement.",
+            "lbl_margin_settings": "Safety Margin",
+            "txt_margin_form_text": "Extra boards added to the shopping list only if the packer's own leftover doesn't already cover this buffer.",
             "lbl_current_job": "Current Job:",
             "btn_calculate": "Calculate",
             "btn_load_job": "Load Job",
@@ -324,6 +333,8 @@
             "tooltip_kerf": "The kerf is the width of wood removed by your saw blade with each cut. A standard blade removes about 3.2mm (⅛\"). The optimizer deducts this amount for every cut on a board — so if you make 5 cuts, you lose 5 × kerf in material. Measure a test cut or check your blade spec sheet to dial this in accurately.",
             "tooltip_trim": "Before cutting parts, the optimizer trims one end of each new lumber board to create a clean square reference edge. For sheets, two adjacent edges are trimmed. Standard is 6mm (¼\"). Set to 0 to skip this step.",
             "tooltip_scrap_threshold": "After each cut, leftover offcuts are measured against these minimums. Above the threshold — kept as usable scrap for the next part in the same job. Below — counted as waste. Raise these values if you prefer not to track small pieces.",
+            "tooltip_bulk_material": "For lumber that's fitted and cut in place (siding, decking, battens) rather than cut to a predetermined length. Mark a part row as bulk and its length becomes the total run needed. It's excluded from the cutter and never appears on the diagrams — only a board count on the shopping list. The minimum length here sets which shop stock offcuts are eligible to count toward that total.",
+            "tooltip_margin_percent": "A safety buffer added to the shopping list for non-bulk lumber. After the optimizer packs your boards, if the actual leftover material doesn't already cover this percentage of what you needed, extra boards are added to the shopping list only — never nested on the cut diagrams.",
             "tooltip_grain": "Sheet panels only. Length = face grain runs along the long edge of the panel. Width = grain runs across. The optimizer will not rotate a sheet part in a way that violates its grain setting. Leave as None if grain direction does not matter.",
             "tooltip_scrap_stock": "Mark a board as scrap if it is a cutoff from a previous job. When Use Shop Stock is on, the optimizer uses scraps before full boards — keeping your offcut pile from growing.",
             "tooltip_profile": "A profile is the cross-section of a board — its thickness and width. It has no length. For lumber, enter both dimensions (e.g. 38×89mm for a 2×4). For sheets, enter thickness only (e.g. 18mm). The lengths you can buy are set separately in Store Prices.",
@@ -3676,7 +3687,7 @@
                 if (typeof populateCatalogDropdowns === 'function') populateCatalogDropdowns();
                 if (typeof populateStockDropdowns === 'function') populateStockDropdowns();
                 if (appState.latestResults) {
-                    if (typeof renderShoppingListTab === 'function') renderShoppingListTab(appState.latestResults);
+                    if (typeof renderShoppingListTab === 'function') renderShoppingListTab([...appState.latestResults, ...(appState.latestBulkResults || []), ...(appState.latestMarginResults || [])]);
                     if (typeof renderDiagramsTab === 'function') renderDiagramsTab(appState.latestResults);
                     if (typeof renderAnalyticsTab === 'function') renderAnalyticsTab(appState.latestResults);
                 }
