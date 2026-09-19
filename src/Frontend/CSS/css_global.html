@@ -1,4 +1,9 @@
 <style>
+    html {
+        /* Kill the browser's native pull-to-refresh / rubber-band gesture */
+        overscroll-behavior-y: none;
+    }
+
     body {
         /* Standardizing font to look a bit more polished */
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -7,6 +12,7 @@
         flex-direction: column;
         height: 100vh;
         overflow: hidden;
+        overscroll-behavior-y: none;
     }
 
     /* Phase 1: App-container fills all space below the navbar */
@@ -143,6 +149,7 @@
         min-height: 0;
         max-height: none !important;
         overflow-y: auto;
+        overscroll-behavior-y: contain;
     }
 
     /* Tab icon / label visibility: desktop shows full text, mobile shows short label */
@@ -536,6 +543,7 @@
         /* Scrollable table container — height managed by flex chain inside .view-content */
         .table-viewport {
             overflow-y: auto;
+            overscroll-behavior-y: contain;
         }
 
         /* Sticky table header with drop shadow */

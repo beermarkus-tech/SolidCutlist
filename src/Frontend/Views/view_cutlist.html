@@ -28,6 +28,7 @@
     /* Sidebar panes scroll as a whole (settings is a flat form) */
     .cutlist-sidebar .tab-pane.active.show {
         overflow-y: auto;
+        overscroll-behavior-y: contain;
     }
 
     /* Job setup pane: tree div scrolls, header stays fixed */
@@ -36,6 +37,7 @@
     }
     #job-configurator-tree {
         overflow-y: auto;
+        overscroll-behavior-y: contain;
     }
 
     /* Footer with Calculate / action buttons */
@@ -68,6 +70,7 @@
         height: auto !important;
         overflow-y: auto !important;
         overflow-x: hidden;
+        overscroll-behavior-y: contain;
     }
 
     /* Mobile: leave room for the sticky action bar at the bottom */
@@ -509,7 +512,7 @@
         <h6 class="offcanvas-title fw-bold mb-0">⚙️ Settings</h6>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
     </div>
-    <div class="offcanvas-body p-3" style="overflow-y:auto;">
+    <div class="offcanvas-body p-3" style="overflow-y:auto;overscroll-behavior-y:contain;">
 
         <!-- Transport -->
         <div class="pb-3 border-bottom">
