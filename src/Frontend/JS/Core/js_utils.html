@@ -27,7 +27,15 @@
         // If Fractional Inches
         if (unit === 'frac_in') {
             if (val.includes('/')) {
-                let parts = val.split(' ');
+                // Accept the display format's hyphenated mixed number (e.g. "16-3/4"),
+                // narrowly matched so it can't misread an unrelated leading minus sign.
+                let parts;
+                const dashMixed = val.match(/^(\d+)-(\d+\/\d+)$/);
+                if (dashMixed) {
+                    parts = [dashMixed[1], dashMixed[2]];
+                } else {
+                    parts = val.split(' ');
+                }
                 if (parts.length === 2) {
                     // It's a mixed fraction (e.g., "1 3/4")
                     let whole = parseFloat(parts[0]) || 0;
@@ -97,7 +105,7 @@
             if (whole === 0) {
                 return `${numerator}/${denominator}`;
             } else {
-                return `${whole} ${numerator}/${denominator}`;
+                return `${whole}-${numerator}/${denominator}`;
             }
         }
         
