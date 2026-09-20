@@ -1321,6 +1321,9 @@
         const reader = new FileReader();
         reader.onload = function(e) {
             const img = new Image();
+            img.onerror = function() {
+                showToast(t('msg_invalid_image_file'), true);
+            };
             img.onload = function() {
                 // 🪄 1. The Math: Calculate new dimensions (Max 600px width/height)
                 const MAX_DIMENSION = 600;
