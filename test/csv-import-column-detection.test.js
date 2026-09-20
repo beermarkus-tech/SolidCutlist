@@ -67,3 +67,21 @@ test('an empty or missing header list never throws', () => {
     assert.equal(_findHeaderColumnIndex([], ['material']), -1);
     assert.equal(_findHeaderColumnIndex(undefined, ['material']), -1);
 });
+
+const QTY_CANDIDATES = ['qty', 'quantity', 'count', 'amount', 'pcs', 'pieces'];
+
+test('a "Qty" or "Quantity" header is detected', () => {
+    assert.equal(_findHeaderColumnIndex(['Name', 'Qty', 'Length'], QTY_CANDIDATES), 1);
+    assert.equal(_findHeaderColumnIndex(['Name', 'Quantity', 'Length'], QTY_CANDIDATES), 1);
+});
+
+test('a genuine OpenCutList header set has no qty-like column, so detection returns -1 — the caller\'s fallbackIndex of -1 then keeps the field unmapped, matching "SketchUp files leave Qty unassigned"', () => {
+    assert.equal(_findHeaderColumnIndex(OPENCUTLIST_HEADERS, QTY_CANDIDATES), -1);
+});
+
+test('SolidCutlist\'s own exported "Qty" header (no unit suffix) is detected too', () => {
+    const headers = ['Project', 'Group', 'Part Name', 'Category', 'Qty', 'Bulk', 'Profile',
+                      'Width (mm)', 'Length (mm)', 'Thickness (mm)', 'Material', 'Grain',
+                      'Weight (kg)', 'Cost ($)'];
+    assert.equal(_findHeaderColumnIndex(headers, QTY_CANDIDATES), 4);
+});

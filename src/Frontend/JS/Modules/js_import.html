@@ -62,6 +62,18 @@
         return normalizedHeaders.findIndex(h => candidates.includes(h));
     }
 
+    /**
+     * Parses one raw CSV quantity cell into a positive integer, defaulting to 1
+     * for a blank/missing cell (an unmapped Qty column — every SketchUp/OpenCutList
+     * row is a single physical instance) or an invalid/zero/negative value (a part
+     * can't have zero or negative quantity). Pure — unit-testable.
+     */
+    function _parseImportQty(rawValue) {
+        if (rawValue === undefined || rawValue === null || String(rawValue).trim() === '') return 1;
+        const parsed = parseInt(String(rawValue).trim(), 10);
+        return (Number.isFinite(parsed) && parsed > 0) ? parsed : 1;
+    }
+
     // --- INITIALIZATION & NAVIGATION ---
     
     // Called when clicking the Import button (or Resume Import)
@@ -318,8 +330,13 @@
         const requiredFields = [
             { id: 'map-name', label: t('lbl_part_name'), fallbackIndex: 3, candidates: ['designation', 'name', 'part name'] },
             { id: 'map-group', label: t('lbl_group_path'), fallbackIndex: 1, candidates: ['path', 'group', 'group path'] },
-            { id: 'map-length', label: t('lbl_length_raw'), fallbackIndex: 4, candidates: ['length - raw', 'length', 'raw length'] },
+            // Qty never existed in OpenCutList's fixed export format, so there's no
+            // sensible position to fall back to — fallbackIndex -1 never matches any
+            // real column index, so this stays on its unmapped placeholder unless a
+            // header actually says "qty"/"quantity"/etc.
+            { id: 'map-qty', label: t('lbl_qty_optional'), fallbackIndex: -1, candidates: ['qty', 'quantity', 'count', 'amount', 'pcs', 'pieces'] },
             { id: 'map-width', label: t('lbl_width_raw'), fallbackIndex: 5, candidates: ['width - raw', 'width', 'raw width'] },
+            { id: 'map-length', label: t('lbl_length_raw'), fallbackIndex: 4, candidates: ['length - raw', 'length', 'raw length'] },
             { id: 'map-thickness', label: t('lbl_thickness_raw'), fallbackIndex: 6, candidates: ['thickness - raw', 'thickness', 'raw thickness'] },
             { id: 'map-material', label: t('lbl_material_optional'), fallbackIndex: 12, candidates: ['material'] }
         ];
@@ -420,6 +437,7 @@
 
         const mapName = document.getElementById('map-name');
         const mapGroup = document.getElementById('map-group'); // 🪄 Now grabbing group mapping
+        const mapQty = document.getElementById('map-qty');
         const mapLength = document.getElementById('map-length');
         const mapWidth = document.getElementById('map-width');
         const mapThickness = document.getElementById('map-thickness');
@@ -428,6 +446,7 @@
         const colMap = {
             name: parseInt(mapName.value),
             group: parseInt(mapGroup.value),
+            qty: parseInt(mapQty.value),
             length: parseInt(mapLength.value),
             width: parseInt(mapWidth.value),
             thickness: parseInt(mapThickness.value),
@@ -473,6 +492,10 @@
             const rawName = cols[colMap.name] || `Part ${i}`;
             const rawPath = (!isNaN(colMap.group) && cols[colMap.group]) ? String(cols[colMap.group]) : '';
             const rawMaterial = isNaN(colMap.material) ? '' : (cols[colMap.material] || '');
+            // Unmapped Qty (SketchUp/OpenCutList) -> every row is 1 instance, matching
+            // today's behavior exactly. Mapped Qty (Excel-style, or a re-imported
+            // SolidCutlist export) -> each row states its own quantity directly.
+            const rowQty = _parseImportQty(isNaN(colMap.qty) ? undefined : cols[colMap.qty]);
 
             // Slice the group down to just the parent
             let topLevelGroup = rawPath.split('>')[0].trim();
@@ -493,7 +516,7 @@
             const mergeKey = `${rawName}_${lRaw}_${wRaw}_${tRaw}_${rawMaterial}_${topLevelGroup}`;
 
             if (mergeMap[mergeKey]) {
-                mergeMap[mergeKey].qty += 1; // Bump quantity for identical parts
+                mergeMap[mergeKey].qty += rowQty; // Sum quantities for identical parts (1 each when Qty isn't mapped)
             } else {
                 let matchedMatId = '';
                 let matchedProfId = '';
@@ -522,7 +545,7 @@
                     id: 'STG-' + Date.now() + '-' + i,
                     projectId: targetProjectId,
                     name: rawName,
-                    qty: 1, // Start at 1 for each new unique instance
+                    qty: rowQty, // Start at this row's own quantity (1 when Qty isn't mapped)
                     length: lBase,
                     width: wBase,
                     thickness: tBase,
