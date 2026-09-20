@@ -396,9 +396,11 @@
         }
 
         const validPreviews = [];
-        
+
         // 🪄 FIXED: Clean loop that just grabs preview data without crashing
-        for (let i = 1; i < rawCsvRows.length; i++) {
+        // rawCsvRows already has the header stripped (see updateFileNameDisplay's
+        // lines.slice(1)), so index 0 here is the first real data row.
+        for (let i = 0; i < rawCsvRows.length; i++) {
             const rowStr = rawCsvRows[i];
             if (!rowStr.trim()) continue;
 
@@ -482,7 +484,9 @@
         const safeMaterials = appState.materials || [];
         const safeProfiles = appState.profiles || [];
 
-        for (let i = 1; i < rawCsvRows.length; i++) {
+        // rawCsvRows already has the header stripped (see updateFileNameDisplay's
+        // lines.slice(1)), so index 0 here is the first real data row.
+        for (let i = 0; i < rawCsvRows.length; i++) {
             const rowStr = rawCsvRows[i];
             if (!rowStr.trim()) continue;
 
