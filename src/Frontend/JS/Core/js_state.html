@@ -56,7 +56,8 @@
         displayUnit: 'frac_in',   // The UI mask: 'mm', 'dec_in', or 'frac_in'
         bladeKerf: 3.175,         // mm (Default to 1/8" standard blade)
         cutoffThreshold: 200.0,    // mm. Anything smaller goes in the trash.
-        factoryEdgeTrim: 6.35     // mm. Amount to chop off a new board to square it up.
+        factoryEdgeTrim: 6.35,    // mm. Amount to chop off a new board to square it up.
+        currency: '$'
     }
     };
     let appState = {}; 
@@ -301,13 +302,13 @@
             ui: {},
             settings: {
                 baseUnit:           'mm',
-                displayUnit:        'mm',
+                displayUnit:        'frac_in',
                 bladeKerf:          3.175,
                 cutoffThreshold:    200.0,
                 factoryEdgeTrim:    6.35,
                 theme:              'light',
                 language:           'en',
-                currency:             '€',
+                currency:             '$',
                 tourComplete:         false,
                 checklistDismissed:   false,
                 isProjectCardView:    false,
@@ -392,13 +393,13 @@
             ui: {},
             settings: {
                 baseUnit:           'mm',
-                displayUnit:        'mm',
+                displayUnit:        'frac_in',
                 bladeKerf:          3.175,
                 cutoffThreshold:    200.0,
                 factoryEdgeTrim:    6.35,
                 theme:              'light',
                 language:           'en',
-                currency:             '€',
+                currency:             '$',
                 tourComplete:         false,
                 checklistDismissed:   false,
                 isProjectCardView:    false,

@@ -108,8 +108,8 @@
             if (_tourStep === 0) {
                 const s            = appState.settings || {};
                 const currentLang  = s.language     || 'en';
-                const currentUnit  = s.displayUnit  || 'mm';
-                const currentCurr  = s.currency     || '€';
+                const currentUnit  = s.displayUnit  || 'frac_in';
+                const currentCurr  = s.currency     || '$';
                 contentEl.innerHTML = `
                     <div style="font-size:3.5rem;line-height:1;">${step.icon}</div>
                     <h5 class="fw-bold mt-3 mb-2">${t('tour_welcome_title')}</h5>

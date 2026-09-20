@@ -17,7 +17,7 @@
 
     function renderSettings() {
         if (!appState.settings) appState.settings = {};
-        if (!appState.settings.displayUnit) appState.settings.displayUnit = 'mm';
+        if (!appState.settings.displayUnit) appState.settings.displayUnit = 'frac_in';
         if (appState.settings.bladeKerf === undefined) appState.settings.bladeKerf = 3.175;
         if (appState.settings.sheetBladeKerf === undefined) appState.settings.sheetBladeKerf = 3.175; // 🪄 NEW
         if (appState.settings.cutoffThreshold === undefined) appState.settings.cutoffThreshold = 200.0;
@@ -27,7 +27,7 @@
         if (appState.settings.sheetFactoryTrim === undefined) appState.settings.sheetFactoryTrim = 6.35; // 🪄 NEW
         if (appState.settings.bulkMinimumStockLength === undefined) appState.settings.bulkMinimumStockLength = 0; // 🪄 NEW
         if (appState.settings.marginPercent === undefined) appState.settings.marginPercent = 5; // 🪄 NEW
-        if (!appState.settings.currency) appState.settings.currency = '€';
+        if (!appState.settings.currency) appState.settings.currency = '$';
 
         document.getElementById('setting-display-unit').value = appState.settings.displayUnit;
         document.getElementById('setting-kerf').value = formatForDisplay(appState.settings.bladeKerf);
