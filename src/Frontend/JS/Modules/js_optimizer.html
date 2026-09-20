@@ -1874,6 +1874,18 @@
 
         if (typeof updateUnitLabels === 'function') updateUnitLabels();
     }
+    /**
+     * Orders two shopping-list items the same way renderDiagramsTab() orders its
+     * SKU card groups (js_canvas.html): lumber before sheets, then ascending
+     * natural-sort by "Profile - Material". Pure — unit-testable.
+     */
+    function _compareShoppingListItems(a, b) {
+        if (a.category === 'lumber' && b.category === 'sheet') return -1;
+        if (a.category === 'sheet' && b.category === 'lumber') return 1;
+        const aTitle = `${a.profName} - ${a.matName}`;
+        const bTitle = `${b.profName} - ${b.matName}`;
+        return aTitle.localeCompare(bTitle, undefined, { numeric: true, sensitivity: 'base' });
+    }
     function renderShoppingListTab(results) {
         const container = document.getElementById('pane-shopping');
         let totalCost = 0;
@@ -2028,6 +2040,10 @@
 
         for (const storeName of sortedStores) {
             const items = storeBuckets[storeName];
+
+            // Match the Cut Diagrams tab's ordering within each store card.
+            items.sort(_compareShoppingListItems);
+
             const headerClass = storeName === '🏪 My Shop Stock' ? 'bg-success'
                 : storeName === '⚠️ Sourcing Issues' ? 'bg-danger'
                 : 'bg-dark';
