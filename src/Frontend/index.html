@@ -611,8 +611,34 @@
                     <p class="text-center text-muted small mb-0 px-2" data-i18n="msg_support_contact">Questions, bugs, or feature ideas? Email me at <a href="mailto:contact@solidhomesteadplans.com">contact@solidhomesteadplans.com</a> — I read every message.</p>
                     <button type="button" class="btn btn-outline-secondary w-100 btn-sm" onclick="showWelcomeTour(true); bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();" data-i18n="tour_btn_show_again">Show Welcome Tour</button>
                     <hr class="w-100 my-0">
+                    <button type="button" class="btn btn-outline-secondary w-100 btn-sm" onclick="exportFullBackup()" title="Download everything in the app as one JSON file" data-i18n-title="title_download_full_backup" data-i18n="btn_download_full_backup">⬇️ Download Full Backup</button>
+                    <button type="button" class="btn btn-outline-secondary w-100 btn-sm" onclick="triggerImportFullBackupFilePicker()" title="Replace everything in the app with a backup file" data-i18n-title="title_restore_full_backup" data-i18n="btn_restore_full_backup">⬆️ Restore from Backup</button>
+                    <hr class="w-100 my-0">
                     <button type="button" class="btn btn-outline-danger w-100 btn-sm" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#resetConfirmModal" data-i18n="btn_reset_app">Reset App &amp; All Data</button>
-                    <p class="text-center text-muted mb-0" style="font-size: 0.7rem; letter-spacing: 0.03em;">SolidCutlist v1.0 WIP build 17 &nbsp;·&nbsp; Solid Homestead Plans</p>
+                    <p class="text-center text-muted mb-0" style="font-size: 0.7rem; letter-spacing: 0.03em;" id="app-build-label">SolidCutlist v1.0 WIP build 18 &nbsp;·&nbsp; Solid Homestead Plans</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="hidden-full-backup-upload" accept=".json" class="d-none" onchange="handleFullBackupFileSelected(event)">
+
+    <!-- Restore Full Backup Confirmation Modal -->
+    <div class="modal fade" id="restoreBackupConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-danger text-white py-2">
+                    <h6 class="modal-title fw-bold" data-i18n="hdr_restore_backup_confirm">⚠️ Restore Backup</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="cancelFullBackupRestore()" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <p class="fw-bold mb-2" data-i18n="msg_restore_backup_confirm_title">Current data will be replaced with the backup file.</p>
+                    <p class="text-muted small mb-2" data-i18n="msg_restore_backup_confirm_detail">Projects, parts, stock, materials, profiles, catalog, jobs, settings, and images will be replaced with the contents of the selected file. Your archive is preserved. This cannot be undone.</p>
+                    <p class="text-muted small fw-bold mb-0" id="restore-backup-summary"></p>
+                </div>
+                <div class="modal-footer p-2 d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal" onclick="cancelFullBackupRestore()" data-i18n="btn_cancel">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-danger px-4 fw-bold" onclick="executeFullBackupRestore()" data-i18n="btn_restore_backup_confirm">Yes, replace everything</button>
                 </div>
             </div>
         </div>

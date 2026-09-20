@@ -371,6 +371,254 @@
     }
 
     // ==========================================
+    // FULL APP BACKUP (EXPORT / RESTORE EVERYTHING)
+    // ==========================================
+    // Covers exactly the same scope as the normal cloud sync (saveAppStateToSheet /
+    // getAppStateFromSheet): projects, groups, parts, stock, catalog, materials,
+    // profiles, stores, jobs, settings -- plus live thumbnails. It never touches
+    // Archive, starter-pack (pck_*), or Metadata content, because none of those are
+    // ever read into appState/window to begin with -- there's nothing to exclude,
+    // this feature simply never looks at them.
+    const FULL_BACKUP_TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores', 'jobs'];
+
+    /** The canonical current-shape defaults, mirroring resetApp()'s hardcoded object.
+     *  Used as the merge base so an older/incomplete backup still produces a
+     *  structurally complete appState after restore. */
+    function _getDefaultAppStateSkeleton() {
+        return {
+            projects: [], groups: [], parts: [],
+            stock: [], catalog: [], materials: [],
+            profiles: [], stores: [], jobs: [],
+            ui: {},
+            settings: {
+                baseUnit:           'mm',
+                displayUnit:        'mm',
+                bladeKerf:          3.175,
+                cutoffThreshold:    200.0,
+                factoryEdgeTrim:    6.35,
+                theme:              'light',
+                language:           'en',
+                currency:             '€',
+                tourComplete:         false,
+                checklistDismissed:   false,
+                isProjectCardView:    false,
+                compactStockView:     false,
+                compactCatalogView:   false,
+                labelTemplates:       []
+            }
+        };
+    }
+
+    /** Pure: builds the full-backup envelope from a live appState + thumbnail map. */
+    function _buildFullBackupPayload(sourceAppState, thumbnails, appVersionLabel) {
+        const snapshot = {};
+        FULL_BACKUP_TABS.forEach(tab => { snapshot[tab] = sourceAppState[tab] || []; });
+        snapshot.settings = sourceAppState.settings || {};
+        return {
+            format: 'solidcutlist-full-backup',
+            schemaVersion: 1,
+            appVersion: appVersionLabel || '',
+            exportedAt: new Date().toISOString(),
+            appState: snapshot,
+            images: thumbnails || {}
+        };
+    }
+
+    /** Pure: structural validation only -- run before anything is mutated, so an
+     *  invalid file is caught while the app is still untouched. */
+    function _validateFullBackupData(parsed) {
+        if (!parsed || typeof parsed !== 'object') return { valid: false, error: 'not_object' };
+        if (parsed.format !== 'solidcutlist-full-backup') return { valid: false, error: 'bad_format' };
+        if (typeof parsed.schemaVersion !== 'number' || parsed.schemaVersion < 1) return { valid: false, error: 'bad_schema_version' };
+        if (!parsed.appState || typeof parsed.appState !== 'object') return { valid: false, error: 'bad_app_state' };
+        return { valid: true };
+    }
+
+    /** Pure: scaffold for future schema migrations. schemaVersion 1 is the current
+     *  shape and needs no transform yet. */
+    function _migrateFullBackupData(parsed) {
+        let data = parsed;
+        // if (data.schemaVersion < 2) { data = migrateV1toV2(data); }
+        return data;
+    }
+
+    /** Pure: overlays the backup's appState onto a complete defaults skeleton, so a
+     *  backup missing a tab/setting added since it was taken still produces a
+     *  structurally complete appState instead of crashing on undefined. A value the
+     *  backup does provide always wins over the default. */
+    function _mergeFullBackupOntoDefaults(backupAppState, defaults) {
+        const base = defaults || _getDefaultAppStateSkeleton();
+        const src = backupAppState || {};
+        const merged = {};
+        FULL_BACKUP_TABS.forEach(tab => {
+            merged[tab] = Array.isArray(src[tab]) ? src[tab] : (base[tab] || []);
+        });
+        merged.ui = (src.ui && typeof src.ui === 'object') ? src.ui : (base.ui || {});
+        merged.settings = Object.assign({}, base.settings, src.settings || {});
+        return merged;
+    }
+
+    /** Reads the build label shown in the settings-modal footer, for the export envelope. */
+    function _getAppVersionLabel() {
+        const el = document.getElementById('app-build-label');
+        return el ? el.innerText.trim() : '';
+    }
+
+    /** Downloads a full-app backup JSON. */
+    function exportFullBackup() {
+        const finish = (thumbnails) => {
+            const payload = _buildFullBackupPayload(appState, thumbnails, _getAppVersionLabel());
+            const jsonStr = JSON.stringify(payload, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const dateStr = new Date().toISOString().split('T')[0];
+            a.href = url;
+            a.download = `SolidCutlist-FullBackup-${dateStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast(t('msg_full_backup_exported'));
+        };
+
+        // Fetch a fresh, complete thumbnail map rather than trusting window.projectImages,
+        // which can still be empty during the ~2s post-boot thumbnail-loading race.
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler((responseStr) => {
+                    try {
+                        const response = JSON.parse(responseStr);
+                        finish(response.status === 'success' ? response.data : (window.projectImages || {}));
+                    } catch (e) {
+                        finish(window.projectImages || {});
+                    }
+                })
+                .withFailureHandler(() => finish(window.projectImages || {}))
+                .getThumbnails();
+        } else {
+            finish(window.projectImages || {});
+        }
+    }
+
+    let _pendingFullBackupData = null;
+
+    function triggerImportFullBackupFilePicker() {
+        document.getElementById('hidden-full-backup-upload').click();
+    }
+
+    function handleFullBackupFileSelected(event) {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = ''; // allow re-selecting the same file next time
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            let parsed;
+            try {
+                parsed = JSON.parse(e.target.result);
+            } catch (err) {
+                showToast(t('msg_full_backup_invalid_file'), true);
+                return;
+            }
+
+            const validation = _validateFullBackupData(parsed);
+            if (!validation.valid) {
+                showToast(t('msg_full_backup_invalid_file'), true);
+                return;
+            }
+
+            // Nothing has been mutated yet -- only now, with a structurally valid
+            // file in hand, do we stage it and ask for confirmation.
+            _pendingFullBackupData = parsed;
+
+            const projectCount = Array.isArray(parsed.appState.projects) ? parsed.appState.projects.length : 0;
+            const exportedDate = parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleDateString() : '?';
+            const summaryEl = document.getElementById('restore-backup-summary');
+            if (summaryEl) {
+                summaryEl.innerText = t('msg_restore_backup_summary', { count: projectCount, date: exportedDate });
+            }
+
+            const modalEl = document.getElementById('restoreBackupConfirmModal');
+            if (modalEl) new bootstrap.Modal(modalEl).show();
+        };
+        reader.onerror = () => {
+            showToast(t('msg_full_backup_read_error'), true);
+        };
+        reader.readAsText(file);
+    }
+
+    function cancelFullBackupRestore() {
+        _pendingFullBackupData = null;
+    }
+
+    /** Full destructive restore: replaces the live app with the staged backup file's
+     *  contents, then persists and reboots exactly like resetApp() does. */
+    function executeFullBackupRestore() {
+        if (!_pendingFullBackupData) return;
+        const parsed = _pendingFullBackupData;
+        _pendingFullBackupData = null;
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById('restoreBackupConfirmModal'));
+        if (modal) modal.hide();
+
+        const migrated = _migrateFullBackupData(parsed);
+        const mergedAppState = _mergeFullBackupOntoDefaults(migrated.appState, _getDefaultAppStateSkeleton());
+        const images = (migrated.images && typeof migrated.images === 'object') ? migrated.images : {};
+
+        appState = mergedAppState;
+        window.projectImages = images;
+
+        // Purge optimizer runtime state (window globals, localStorage job keys, cutlist DOM)
+        if (typeof clearOptimizerState  === 'function') clearOptimizerState();
+        if (typeof resetConfigurator    === 'function') resetConfigurator();
+        document.querySelectorAll('[id^="input-section-"] form').forEach(f => f.reset());
+
+        // Persist locally immediately, bypassing the debounce -- same pattern as resetApp()
+        appState.local_timestamp = Date.now();
+        localStorage.setItem('lumberLogicState', JSON.stringify(appState));
+        if (syncTimeout) { clearTimeout(syncTimeout); syncTimeout = null; }
+        sessionStorage.setItem('resetInProgress', '1');
+
+        _showPackSpinner();
+
+        const _reboot = () => {
+            _hidePackSpinner();
+            const loader = document.getElementById('boot-loader');
+            if (loader) loader.classList.remove('d-none');
+            loadState();
+            showToast(t('msg_full_backup_restored'));
+        };
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            let syncDone = false, thumbsDone = false;
+            const tryReboot = () => { if (syncDone && thumbsDone) _reboot(); };
+
+            google.script.run
+                .withSuccessHandler(() => { syncDone = true; tryReboot(); })
+                .withFailureHandler(() => { syncDone = true; tryReboot(); })
+                .saveAppStateToSheet(JSON.stringify({ appState, timestamp: appState.local_timestamp }));
+
+            google.script.run
+                .withSuccessHandler(() => {
+                    const imageIds = Object.keys(images);
+                    if (imageIds.length === 0) { thumbsDone = true; tryReboot(); return; }
+                    let remaining = imageIds.length;
+                    imageIds.forEach(projectId => {
+                        google.script.run
+                            .withSuccessHandler(() => { remaining--; if (remaining === 0) { thumbsDone = true; tryReboot(); } })
+                            .withFailureHandler(() => { remaining--; if (remaining === 0) { thumbsDone = true; tryReboot(); } })
+                            .saveThumbnail(JSON.stringify({ projectId, base64String: images[projectId] }));
+                    });
+                })
+                .withFailureHandler(() => { thumbsDone = true; tryReboot(); })
+                .clearAllThumbnails();
+        } else {
+            _reboot();
+        }
+    }
+
+    // ==========================================
     // CLOUD SYNC ENGINE (Debounced 1-Way Sync)
     // ==========================================
     let syncTimeout = null;
