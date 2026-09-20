@@ -576,4 +576,136 @@
     // Register Stock table with the central click-to-edit engine
     registerEditableTable('stock', buildStockEditRowInner, buildStockReadRowInner);
 
+    // ==========================================
+    // STOCK JSON EXPORT / IMPORT
+    // ==========================================
+    // Lets shop stock survive an app reset or move to a new install on its own,
+    // without going through a full-app backup. Mirrors the project export/import
+    // pattern (js_projects.html): a versioned envelope, a snapshot of the
+    // profiles/materials stock references (for cross-app healing via the shared
+    // _resolveCatalogRef), and additive/fresh-ID merge on import -- never a
+    // destructive replace.
+
+    /** Pure: builds the stock export envelope. */
+    function _buildStockExportPayload(appState) {
+        const stock = appState.stock || [];
+        const _profileIds = new Set(stock.map(s => s.profileId).filter(Boolean));
+        const _materialIds = new Set(stock.map(s => s.materialId).filter(Boolean));
+        const usedProfiles = (appState.profiles || []).filter(p => _profileIds.has(p.id));
+        const usedMaterials = (appState.materials || []).filter(m => _materialIds.has(m.id));
+        return {
+            format: 'solidcutlist-stock',
+            schemaVersion: 1,
+            exportedAt: new Date().toISOString(),
+            stock,
+            usedProfiles,
+            usedMaterials
+        };
+    }
+
+    /** Downloads a full stock JSON backup. */
+    function exportStock() {
+        const payload = _buildStockExportPayload(appState);
+        const jsonStr = JSON.stringify(payload, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const dateStr = new Date().toISOString().split('T')[0];
+        a.href = url;
+        a.download = `SolidCutlist-Stock-${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast(t('msg_stock_exported'));
+    }
+
+    /** Pure: structural validation only, run before anything is mutated. */
+    function _validateStockImportData(parsed) {
+        if (!parsed || typeof parsed !== 'object') return { valid: false, error: 'not_object' };
+        if (parsed.format !== 'solidcutlist-stock') return { valid: false, error: 'bad_format' };
+        if (!Array.isArray(parsed.stock)) return { valid: false, error: 'bad_stock' };
+        return { valid: true };
+    }
+
+    /** Pure(-ish): mints fresh stock ids and heals profileId/materialId via the
+     *  shared _resolveCatalogRef (js_projects.html), mutating appState.profiles/
+     *  .materials only when a reinsert is needed. Returns { stock, catalogAdditions }. */
+    function _prepareImportedStockForMerge(importData, appState) {
+        const snapProfiles = importData.usedProfiles || [];
+        const snapMaterials = importData.usedMaterials || [];
+        let catalogAdditions = 0;
+
+        const stock = (importData.stock || []).map((row, index) => {
+            const newRow = Object.assign({}, row, {
+                id: 'STK-' + Date.now() + '-' + index + Math.floor(Math.random() * 1000)
+            });
+
+            const srcProfile = snapProfiles.find(p => p.id === row.profileId);
+            if (srcProfile) {
+                const beforeCount = appState.profiles.length;
+                newRow.profileId = _resolveCatalogRef(row.profileId, srcProfile.name, appState.profiles, snapProfiles);
+                if (appState.profiles.length > beforeCount) catalogAdditions++;
+            }
+
+            const srcMaterial = snapMaterials.find(m => m.id === row.materialId);
+            if (srcMaterial) {
+                const beforeCount = appState.materials.length;
+                newRow.materialId = _resolveCatalogRef(row.materialId, srcMaterial.name, appState.materials, snapMaterials);
+                if (appState.materials.length > beforeCount) catalogAdditions++;
+            }
+
+            return newRow;
+        });
+
+        return { stock, catalogAdditions };
+    }
+
+    function triggerImportStockFilePicker() {
+        document.getElementById('hidden-stock-import-upload').click();
+    }
+
+    function handleStockFileSelected(event) {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = ''; // allow re-selecting the same file next time
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            let parsed;
+            try {
+                parsed = JSON.parse(e.target.result);
+            } catch (err) {
+                showToast(t('msg_stock_import_invalid_file'), true);
+                return;
+            }
+
+            const validation = _validateStockImportData(parsed);
+            if (!validation.valid) {
+                showToast(t('msg_stock_import_invalid_file'), true);
+                return;
+            }
+
+            const prepared = _prepareImportedStockForMerge(parsed, appState);
+
+            if (!appState.stock) appState.stock = [];
+            appState.stock.push(...prepared.stock);
+
+            saveState();
+            renderStockTable();
+            if (typeof populateStockDropdowns === 'function') populateStockDropdowns();
+            if (prepared.catalogAdditions > 0) {
+                if (typeof renderProfilesTable === 'function') renderProfilesTable();
+                if (typeof renderMaterialsTable === 'function') renderMaterialsTable();
+            }
+
+            showToast(t('msg_stock_imported', { count: prepared.stock.length }));
+            if (prepared.catalogAdditions > 0) showToast(t('msg_catalog_healed', { count: prepared.catalogAdditions }));
+        };
+        reader.onerror = () => {
+            showToast(t('msg_stock_import_read_error'), true);
+        };
+        reader.readAsText(file);
+    }
+
 </script>

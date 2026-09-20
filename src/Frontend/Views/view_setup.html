@@ -2,16 +2,20 @@
 <div class="view-toolbar">
     <div class="view-toolbar-tabs" role="tablist">
         <button class="vtab active" id="tab-stock" data-bs-toggle="tab" data-bs-target="#pane-stock" type="button" role="tab" aria-selected="true"
-            onclick="populateStockDropdowns(); document.getElementById('btn-toggle-stock-view').classList.remove('d-none'); document.getElementById('btn-toggle-catalog-view').classList.add('d-none');"
+            onclick="populateStockDropdowns(); document.getElementById('btn-toggle-stock-view').classList.remove('d-none'); document.getElementById('btn-toggle-catalog-view').classList.add('d-none'); document.getElementById('btn-export-stock').classList.remove('d-none'); document.getElementById('btn-import-stock').classList.remove('d-none'); document.getElementById('btn-export-store-prices').classList.add('d-none'); document.getElementById('btn-import-store-prices').classList.add('d-none');"
             data-i18n="tab_stock">📦 My Stock</button>
         <button class="vtab" id="tab-catalog" data-bs-toggle="tab" data-bs-target="#pane-catalog" type="button" role="tab" aria-selected="false"
-            onclick="populateCatalogDropdowns(); document.getElementById('btn-toggle-catalog-view').classList.remove('d-none'); document.getElementById('btn-toggle-stock-view').classList.add('d-none');"
+            onclick="populateCatalogDropdowns(); document.getElementById('btn-toggle-catalog-view').classList.remove('d-none'); document.getElementById('btn-toggle-stock-view').classList.add('d-none'); document.getElementById('btn-export-store-prices').classList.remove('d-none'); document.getElementById('btn-import-store-prices').classList.remove('d-none'); document.getElementById('btn-export-stock').classList.add('d-none'); document.getElementById('btn-import-stock').classList.add('d-none');"
             data-i18n="tab_store_prices">🏷️ Store Prices</button>
         <button class="vtab" id="tab-dictionaries" data-bs-toggle="tab" data-bs-target="#pane-dictionaries" type="button" role="tab" aria-selected="false"
-            onclick="renderProfilesTable(); renderMaterialsTable(); document.getElementById('btn-toggle-stock-view').classList.add('d-none'); document.getElementById('btn-toggle-catalog-view').classList.add('d-none');"
+            onclick="renderProfilesTable(); renderMaterialsTable(); document.getElementById('btn-toggle-stock-view').classList.add('d-none'); document.getElementById('btn-toggle-catalog-view').classList.add('d-none'); document.getElementById('btn-export-stock').classList.add('d-none'); document.getElementById('btn-import-stock').classList.add('d-none'); document.getElementById('btn-export-store-prices').classList.add('d-none'); document.getElementById('btn-import-store-prices').classList.add('d-none');"
             data-i18n="tab_profiles_and_materials">📏 Profiles & Materials</button>
     </div>
     <div class="view-toolbar-actions">
+        <button id="btn-export-stock" class="btn btn-sm toolbar-btn fw-bold" onclick="exportStock()" title="Download your shop stock as a JSON file" data-i18n-title="title_export_stock" data-i18n="btn_export_stock">📤 Export Stock</button>
+        <button id="btn-import-stock" class="btn btn-sm toolbar-btn fw-bold" onclick="triggerImportStockFilePicker()" title="Add stock from a JSON file" data-i18n-title="title_import_stock" data-i18n="btn_import_stock">📥 Import Stock</button>
+        <button id="btn-export-store-prices" class="btn btn-sm toolbar-btn d-none fw-bold" onclick="exportStorePrices()" title="Download your store prices as a JSON file" data-i18n-title="title_export_store_prices" data-i18n="btn_export_store_prices">📤 Export Store Prices</button>
+        <button id="btn-import-store-prices" class="btn btn-sm toolbar-btn d-none fw-bold" onclick="triggerImportStorePricesFilePicker()" title="Add store prices from a JSON file" data-i18n-title="title_import_store_prices" data-i18n="btn_import_store_prices">📥 Import Store Prices</button>
         <button id="btn-toggle-stock-view" class="btn btn-sm toolbar-btn" onclick="toggleStockView()" title="Toggle Expand/Collapse" data-i18n-title="title_toggle_expand">
             <span id="stock-view-icon">🗜️</span>
         </button>
@@ -570,5 +574,8 @@
             </div>
         </div>
     </div>
+
+    <input type="file" id="hidden-stock-import-upload" class="d-none" onchange="handleStockFileSelected(event)">
+    <input type="file" id="hidden-store-prices-import-upload" class="d-none" onchange="handleStorePricesFileSelected(event)">
 
 </div>

@@ -20,21 +20,41 @@ const vm = require('vm');
  *   functions/vars attached
  */
 function loadGasPartial(relativeHtmlPath, extraGlobals) {
-    const fullPath = path.join(__dirname, '..', '..', 'src', relativeHtmlPath);
-    const html = fs.readFileSync(fullPath, 'utf8');
+    return loadGasPartials([relativeHtmlPath], extraGlobals);
+}
 
-    const scriptBodies = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)]
-        .map(m => m[1]);
-    if (scriptBodies.length === 0) {
-        throw new Error(`No <script> blocks found in ${relativeHtmlPath}`);
-    }
-
+/**
+ * Same as loadGasPartial, but evaluates several partials into ONE shared VM
+ * context, in order. Needed when the partial under test calls a function
+ * defined in a different partial (e.g. js_stock.html's import logic calling
+ * _resolveCatalogRef from js_projects.html) -- in the real app every partial
+ * shares one global <script> scope, but each loadGasPartial() call only
+ * loads a single file into its own fresh sandbox.
+ *
+ * @param {string[]} relativeHtmlPaths - paths relative to the repo's src/ dir,
+ *   evaluated in the given order into the same context.
+ * @param {object} [extraGlobals] - extra properties to seed into the sandbox.
+ * @returns {object} the shared VM sandbox context.
+ */
+function loadGasPartials(relativeHtmlPaths, extraGlobals) {
     const context = vm.createContext(Object.assign({ console }, extraGlobals || {}));
-    scriptBodies.forEach((src, i) => {
-        new vm.Script(src, { filename: `${relativeHtmlPath}#script${i}` }).runInContext(context);
+
+    relativeHtmlPaths.forEach(relativeHtmlPath => {
+        const fullPath = path.join(__dirname, '..', '..', 'src', relativeHtmlPath);
+        const html = fs.readFileSync(fullPath, 'utf8');
+
+        const scriptBodies = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)]
+            .map(m => m[1]);
+        if (scriptBodies.length === 0) {
+            throw new Error(`No <script> blocks found in ${relativeHtmlPath}`);
+        }
+
+        scriptBodies.forEach((src, i) => {
+            new vm.Script(src, { filename: `${relativeHtmlPath}#script${i}` }).runInContext(context);
+        });
     });
 
     return context;
 }
 
-module.exports = { loadGasPartial };
+module.exports = { loadGasPartial, loadGasPartials };

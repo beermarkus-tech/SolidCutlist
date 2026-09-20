@@ -996,4 +996,148 @@
     // Register Catalog table with the central click-to-edit engine
     registerEditableTable('catalog', buildCatalogEditRowInner, buildCatalogReadRowInner);
 
+    // ==========================================
+    // STORE PRICES (CATALOG + STORES) JSON EXPORT / IMPORT
+    // ==========================================
+    // Lets store pricing survive an app reset or move to a new install on its
+    // own, without a full-app backup. A catalog row references a store, so the
+    // stores it needs travel with it in the same file. Mirrors the project
+    // export/import pattern (js_projects.html): versioned envelope, a snapshot
+    // of the profiles/materials/stores referenced (for cross-app healing via the
+    // shared _resolveCatalogRef -- generic over any {id, name} array, so it
+    // works unmodified for stores too), additive/fresh-ID merge on import.
+
+    /** Pure: builds the store-prices export envelope. */
+    function _buildStorePricesExportPayload(appState) {
+        const catalog = appState.catalog || [];
+        const _storeIds = new Set(catalog.map(c => c.storeId).filter(Boolean));
+        const _profileIds = new Set(catalog.map(c => c.profileId).filter(Boolean));
+        const _materialIds = new Set(catalog.map(c => c.materialId).filter(Boolean));
+        const stores = (appState.stores || []).filter(s => _storeIds.has(s.id));
+        const usedProfiles = (appState.profiles || []).filter(p => _profileIds.has(p.id));
+        const usedMaterials = (appState.materials || []).filter(m => _materialIds.has(m.id));
+        return {
+            format: 'solidcutlist-store-prices',
+            schemaVersion: 1,
+            exportedAt: new Date().toISOString(),
+            catalog,
+            stores,
+            usedProfiles,
+            usedMaterials
+        };
+    }
+
+    /** Downloads a full store-prices JSON backup. */
+    function exportStorePrices() {
+        const payload = _buildStorePricesExportPayload(appState);
+        const jsonStr = JSON.stringify(payload, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const dateStr = new Date().toISOString().split('T')[0];
+        a.href = url;
+        a.download = `SolidCutlist-StorePrices-${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast(t('msg_store_prices_exported'));
+    }
+
+    /** Pure: structural validation only, run before anything is mutated. */
+    function _validateStorePricesImportData(parsed) {
+        if (!parsed || typeof parsed !== 'object') return { valid: false, error: 'not_object' };
+        if (parsed.format !== 'solidcutlist-store-prices') return { valid: false, error: 'bad_format' };
+        if (!Array.isArray(parsed.catalog)) return { valid: false, error: 'bad_catalog' };
+        return { valid: true };
+    }
+
+    /** Pure(-ish): mints fresh catalog ids and heals storeId/profileId/materialId
+     *  via the shared _resolveCatalogRef, mutating appState.stores/.profiles/
+     *  .materials only when a reinsert is needed. Returns { catalog, catalogAdditions }. */
+    function _prepareImportedStorePricesForMerge(importData, appState) {
+        const snapStores = importData.stores || [];
+        const snapProfiles = importData.usedProfiles || [];
+        const snapMaterials = importData.usedMaterials || [];
+        let catalogAdditions = 0;
+
+        const catalog = (importData.catalog || []).map((row, index) => {
+            const newRow = Object.assign({}, row, {
+                id: 'CAT-' + Date.now() + '-' + index + Math.floor(Math.random() * 1000)
+            });
+
+            const srcStore = snapStores.find(s => s.id === row.storeId);
+            if (srcStore) {
+                const beforeCount = appState.stores.length;
+                newRow.storeId = _resolveCatalogRef(row.storeId, srcStore.name, appState.stores, snapStores);
+                if (appState.stores.length > beforeCount) catalogAdditions++;
+            }
+
+            const srcProfile = snapProfiles.find(p => p.id === row.profileId);
+            if (srcProfile) {
+                const beforeCount = appState.profiles.length;
+                newRow.profileId = _resolveCatalogRef(row.profileId, srcProfile.name, appState.profiles, snapProfiles);
+                if (appState.profiles.length > beforeCount) catalogAdditions++;
+            }
+
+            const srcMaterial = snapMaterials.find(m => m.id === row.materialId);
+            if (srcMaterial) {
+                const beforeCount = appState.materials.length;
+                newRow.materialId = _resolveCatalogRef(row.materialId, srcMaterial.name, appState.materials, snapMaterials);
+                if (appState.materials.length > beforeCount) catalogAdditions++;
+            }
+
+            return newRow;
+        });
+
+        return { catalog, catalogAdditions };
+    }
+
+    function triggerImportStorePricesFilePicker() {
+        document.getElementById('hidden-store-prices-import-upload').click();
+    }
+
+    function handleStorePricesFileSelected(event) {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = ''; // allow re-selecting the same file next time
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            let parsed;
+            try {
+                parsed = JSON.parse(e.target.result);
+            } catch (err) {
+                showToast(t('msg_store_prices_import_invalid_file'), true);
+                return;
+            }
+
+            const validation = _validateStorePricesImportData(parsed);
+            if (!validation.valid) {
+                showToast(t('msg_store_prices_import_invalid_file'), true);
+                return;
+            }
+
+            const prepared = _prepareImportedStorePricesForMerge(parsed, appState);
+
+            if (!appState.catalog) appState.catalog = [];
+            appState.catalog.push(...prepared.catalog);
+
+            saveState();
+            renderCatalogTable();
+            if (typeof populateCatalogDropdowns === 'function') populateCatalogDropdowns();
+            if (prepared.catalogAdditions > 0) {
+                if (typeof renderProfilesTable === 'function') renderProfilesTable();
+                if (typeof renderMaterialsTable === 'function') renderMaterialsTable();
+            }
+
+            showToast(t('msg_store_prices_imported', { count: prepared.catalog.length }));
+            if (prepared.catalogAdditions > 0) showToast(t('msg_catalog_healed', { count: prepared.catalogAdditions }));
+        };
+        reader.onerror = () => {
+            showToast(t('msg_store_prices_import_read_error'), true);
+        };
+        reader.readAsText(file);
+    }
+
 </script>

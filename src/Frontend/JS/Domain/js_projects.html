@@ -94,12 +94,14 @@
         if (activeTab === 'projects') {
             // In Projects Tab: Hide Parts buttons, Show Card Toggle
             if (btnPrint) btnPrint.classList.add('d-none');
+            if (btnImport) btnImport.classList.add('d-none');
             if (btnExport) btnExport.classList.add('d-none');
             if (btnExportInfo) btnExportInfo.classList.add('d-none');
             if (btnToggleView) btnToggleView.classList.remove('d-none');
         } else if (activeTab === 'parts') {
             // In Parts Tab: Show Parts buttons, Hide Card Toggle
             if (btnPrint) btnPrint.classList.remove('d-none');
+            if (btnImport) btnImport.classList.remove('d-none');
             if (btnExport) btnExport.classList.remove('d-none');
             if (btnExportInfo) btnExportInfo.classList.remove('d-none');
             if (btnToggleView) btnToggleView.classList.add('d-none');
