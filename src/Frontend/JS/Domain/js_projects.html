@@ -90,21 +90,27 @@
         const btnToggleView = document.getElementById('btn-toggle-project-view');
         const btnExport = document.getElementById('btn-export-parts-csv');
         const btnExportInfo = document.getElementById('btn-export-parts-info');
+        const btnArchive = document.getElementById('btn-load-from-archive');
+        const btnImportProject = document.getElementById('btn-import-project');
 
         if (activeTab === 'projects') {
-            // In Projects Tab: Hide Parts buttons, Show Card Toggle
+            // In Projects Tab: Hide Parts buttons, Show Card Toggle + Archive/Import Project
             if (btnPrint) btnPrint.classList.add('d-none');
             if (btnImport) btnImport.classList.add('d-none');
             if (btnExport) btnExport.classList.add('d-none');
             if (btnExportInfo) btnExportInfo.classList.add('d-none');
             if (btnToggleView) btnToggleView.classList.remove('d-none');
+            if (btnArchive) btnArchive.classList.remove('d-none');
+            if (btnImportProject) btnImportProject.classList.remove('d-none');
         } else if (activeTab === 'parts') {
-            // In Parts Tab: Show Parts buttons, Hide Card Toggle
+            // In Parts Tab: Show Parts buttons, Hide Card Toggle + Archive/Import Project
             if (btnPrint) btnPrint.classList.remove('d-none');
             if (btnImport) btnImport.classList.remove('d-none');
             if (btnExport) btnExport.classList.remove('d-none');
             if (btnExportInfo) btnExportInfo.classList.remove('d-none');
             if (btnToggleView) btnToggleView.classList.add('d-none');
+            if (btnArchive) btnArchive.classList.add('d-none');
+            if (btnImportProject) btnImportProject.classList.add('d-none');
         }
     }
 
