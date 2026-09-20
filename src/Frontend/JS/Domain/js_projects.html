@@ -210,6 +210,7 @@
                         <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Completed')">🟢 ${t('status_completed')}</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item text-danger fw-bold" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Archive')">🗄️ ${t('status_archive_project')}</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="exportProject('${proj.id}')" title="${t('title_export_project')}">📤 ${t('btn_export_project')}</a></li>
                     </ul>
                 </div>
             `;
@@ -688,19 +689,19 @@
                     const _snapProfs = response.usedProfiles  || [];
                     const _snapMats  = response.usedMaterials || [];
                     let _catalogAdditions = 0;
-                    function _resolveRef(archivedId, archivedName, currentItems, snapItems) {
-                        if (currentItems.some(x => x.id === archivedId)) return archivedId;
-                        const byName = currentItems.find(x => x.name === archivedName);
-                        if (byName) return byName.id;
-                        const snap = snapItems.find(x => x.id === archivedId);
-                        if (snap) { currentItems.unshift(snap); _catalogAdditions++; }
-                        return archivedId;
-                    }
                     (response.parts || []).forEach(part => {
                         const sProf = _snapProfs.find(p => p.id === part.profileId);
                         const sMat  = _snapMats.find(m => m.id === part.materialId);
-                        if (sProf) part.profileId  = _resolveRef(part.profileId,  sProf.name, appState.profiles,  _snapProfs);
-                        if (sMat)  part.materialId = _resolveRef(part.materialId, sMat.name,  appState.materials, _snapMats);
+                        if (sProf) {
+                            const beforeCount = appState.profiles.length;
+                            part.profileId = _resolveCatalogRef(part.profileId, sProf.name, appState.profiles, _snapProfs);
+                            if (appState.profiles.length > beforeCount) _catalogAdditions++;
+                        }
+                        if (sMat) {
+                            const beforeCount = appState.materials.length;
+                            part.materialId = _resolveCatalogRef(part.materialId, sMat.name, appState.materials, _snapMats);
+                            if (appState.materials.length > beforeCount) _catalogAdditions++;
+                        }
                     });
                     // --- End catalog resolution ---
 
@@ -785,6 +786,232 @@
             'danger',
             'Delete Forever'
         );
+    }
+
+    // ==========================================
+    // PROJECT EXPORT / IMPORT (JSON FILE)
+    // ==========================================
+    // Reuses the exact same payload shape and catalog-healing strategy as the
+    // Deep Freeze Archive engine above — the difference is purely where the data
+    // lands (a downloadable file vs. the Archive sheet) and, on the way back in,
+    // that every ID is minted fresh rather than reused. Archive/Restore is a MOVE
+    // (the project leaves appState.projects the instant it's archived, so reusing
+    // its original ids on restore is always safe — there's only ever one live
+    // copy). Export/Import is a COPY — the project stays fully live after being
+    // exported, so re-importing that same file later (including into the very
+    // same workspace where the original is still open) must never collide with
+    // it. Hence: fresh project id, fresh group ids (with an old->new remap table
+    // so parts' groupId still points at the right group), fresh part ids.
+
+    /**
+     * Resolves an archived/exported profileId or materialId against the live
+     * catalog, healing it if the original no longer exists there:
+     *   1. Exact id match in currentItems -> keep as-is.
+     *   2. Name match in currentItems -> remap to that existing entry's id.
+     *   3. Neither -> reinsert the snapshot object verbatim (original id kept)
+     *      so the reference still resolves. Mutates currentItems in place only
+     *      in this third case; the caller can detect that by comparing
+     *      currentItems.length before/after.
+     * Pure otherwise — unit-testable. Shared by restoreArchivedProject() above
+     * and importProject() below, so this healing logic only lives in one place.
+     */
+    function _resolveCatalogRef(archivedId, archivedName, currentItems, snapItems) {
+        if (currentItems.some(x => x.id === archivedId)) return archivedId;
+        const byName = currentItems.find(x => x.name === archivedName);
+        if (byName) return byName.id;
+        const snap = snapItems.find(x => x.id === archivedId);
+        if (snap) currentItems.unshift(snap);
+        return archivedId;
+    }
+
+    /**
+     * Builds the exported-project JSON payload for one project: the project row
+     * itself, its groups/parts (filtered from appState by projectId), its
+     * thumbnail (from the passed-in projectImages map, not read from window
+     * directly, so this stays testable), and a snapshot of exactly the
+     * profiles/materials its parts reference — mirrors executeDeepFreeze()'s
+     * payload construction above. stock/catalog are deliberately NOT bundled,
+     * matching the Archive feature's existing scope (they're global, not
+     * per-project, and Archive never captures them either).
+     */
+    function _buildProjectExportPayload(projectId, appState, projectImages) {
+        const project = (appState.projects || []).find(p => p.id === projectId);
+        const groups = (appState.groups || []).filter(g => g.projectId === projectId);
+        const parts = (appState.parts || []).filter(p => p.projectId === projectId);
+        const image = (projectImages && projectImages[projectId]) || null;
+
+        const _partProfileIds = new Set(parts.map(p => p.profileId).filter(Boolean));
+        const _partMaterialIds = new Set(parts.map(p => p.materialId).filter(Boolean));
+        const usedProfiles = (appState.profiles || []).filter(p => _partProfileIds.has(p.id));
+        const usedMaterials = (appState.materials || []).filter(m => _partMaterialIds.has(m.id));
+
+        return {
+            format: 'solidcutlist-project',
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            project,
+            groups,
+            parts,
+            image,
+            usedProfiles,
+            usedMaterials
+        };
+    }
+
+    function exportProject(projectId) {
+        const payload = _buildProjectExportPayload(projectId, appState, window.projectImages);
+        if (!payload.project) return;
+
+        const json = JSON.stringify(payload, null, 2);
+        const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+
+        const safeName = (payload.project.name || 'Project').replace(/[\\/:*?"<>|]/g, '_');
+        const dateStamp = new Date().toISOString().slice(0, 10);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `SolidCutlist-Project-${safeName}-${dateStamp}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        showToast(t('msg_project_exported'));
+    }
+
+    /**
+     * Validates a parsed import file before anything touches appState. Requires
+     * the versioned envelope produced by _buildProjectExportPayload() and a
+     * usable project object; groups/parts default to [] rather than failing
+     * outright if missing/malformed, since a project with no parts yet is still
+     * a legitimate export. Pure — unit-testable.
+     */
+    function _validateProjectImportData(parsed) {
+        if (!parsed || typeof parsed !== 'object') return { valid: false, error: 'not_an_object' };
+        if (parsed.format !== 'solidcutlist-project') return { valid: false, error: 'wrong_format' };
+        if (!parsed.project || typeof parsed.project !== 'object' || !parsed.project.id || !parsed.project.name) {
+            return { valid: false, error: 'missing_project' };
+        }
+        if (!Array.isArray(parsed.groups)) parsed.groups = [];
+        if (!Array.isArray(parsed.parts)) parsed.parts = [];
+        return { valid: true };
+    }
+
+    /**
+     * Prepares an already-validated import payload for merging into appState:
+     * mints a fresh project id, a fresh id for every group (remapping old->new
+     * so parts' groupId still resolves), and a fresh id for every part
+     * (rewriting projectId/groupId to match), then heals each part's
+     * profileId/materialId via _resolveCatalogRef() against the live catalog
+     * plus the snapshot — identical healing semantics to restoreArchivedProject().
+     * Mutates appState.profiles/appState.materials in place only when a
+     * snapshot reinsert is needed. Does not itself touch appState.projects/
+     * .groups/.parts or the DOM, so the actual merge stays in the impure
+     * caller — this core is fully unit-testable.
+     */
+    function _prepareImportedProjectForMerge(importData, appState) {
+        if (!appState.profiles) appState.profiles = [];
+        if (!appState.materials) appState.materials = [];
+
+        const newProjectId = 'PROJ-' + Date.now() + Math.floor(Math.random() * 1000);
+        const project = { ...importData.project, id: newProjectId };
+
+        const groupIdMap = {};
+        const groups = importData.groups.map((g, index) => {
+            const newGroupId = 'GRP-' + Date.now() + index + Math.floor(Math.random() * 1000);
+            groupIdMap[g.id] = newGroupId;
+            return { ...g, id: newGroupId, projectId: newProjectId };
+        });
+
+        const snapProfiles = importData.usedProfiles || [];
+        const snapMaterials = importData.usedMaterials || [];
+        let catalogAdditions = 0;
+
+        const parts = importData.parts.map((p, index) => {
+            const newPartId = 'PART-' + Date.now() + index + Math.floor(Math.random() * 1000);
+            const part = {
+                ...p,
+                id: newPartId,
+                projectId: newProjectId,
+                groupId: (p.groupId && groupIdMap[p.groupId]) ? groupIdMap[p.groupId] : p.groupId
+            };
+
+            const sProf = snapProfiles.find(x => x.id === part.profileId);
+            const sMat = snapMaterials.find(x => x.id === part.materialId);
+            if (sProf) {
+                const beforeCount = appState.profiles.length;
+                part.profileId = _resolveCatalogRef(part.profileId, sProf.name, appState.profiles, snapProfiles);
+                if (appState.profiles.length > beforeCount) catalogAdditions++;
+            }
+            if (sMat) {
+                const beforeCount = appState.materials.length;
+                part.materialId = _resolveCatalogRef(part.materialId, sMat.name, appState.materials, snapMaterials);
+                if (appState.materials.length > beforeCount) catalogAdditions++;
+            }
+            return part;
+        });
+
+        return { project, groups, parts, catalogAdditions };
+    }
+
+    function triggerImportProjectFilePicker() {
+        document.getElementById('input-import-project-file').click();
+    }
+
+    function handleImportProjectFile(event) {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = ''; // allow re-selecting the same file next time
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            let parsed;
+            try {
+                parsed = JSON.parse(e.target.result);
+            } catch (err) {
+                showToast(t('msg_import_project_invalid_file'), 'warning');
+                return;
+            }
+
+            const validation = _validateProjectImportData(parsed);
+            if (!validation.valid) {
+                showToast(t('msg_import_project_invalid_file'), 'warning');
+                return;
+            }
+
+            const prepared = _prepareImportedProjectForMerge(parsed, appState);
+
+            if (!appState.projects) appState.projects = [];
+            if (!appState.groups) appState.groups = [];
+            if (!appState.parts) appState.parts = [];
+            appState.projects.unshift(prepared.project);
+            appState.groups.push(...prepared.groups);
+            appState.parts.push(...prepared.parts);
+
+            if (parsed.image) {
+                if (!window.projectImages) window.projectImages = {};
+                window.projectImages[prepared.project.id] = parsed.image;
+                google.script.run.saveThumbnail(JSON.stringify({
+                    projectId: prepared.project.id,
+                    base64String: parsed.image
+                }));
+            }
+
+            saveState();
+            renderProjectsTable();
+
+            if (prepared.catalogAdditions > 0) {
+                if (typeof renderMaterialsTable === 'function') renderMaterialsTable();
+                if (typeof renderProfilesTable === 'function') renderProfilesTable();
+            }
+
+            showToast(t('msg_project_imported', { name: prepared.project.name }));
+            if (prepared.catalogAdditions > 0) showToast(t('msg_catalog_restored', { count: prepared.catalogAdditions }));
+        };
+        reader.onerror = () => {
+            showToast(t('msg_import_project_read_error'), 'warning');
+        };
+        reader.readAsText(file);
     }
 
     // ==========================================
@@ -880,6 +1107,7 @@
                             <li><a class="dropdown-item" href="#" onclick="duplicateProjectWarning('${proj.id}'); return false;">➕ Clone Project</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="changeProjectStatus('${proj.id}', 'Archive'); return false;">🗄️ Archive Project</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportProject('${proj.id}'); return false;" title="${t('title_export_project')}">📤 ${t('btn_export_project')}</a></li>
                             <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="deleteProject('${proj.id}'); return false;">🗑️ Delete</a></li>
                         </ul>
                     </div>

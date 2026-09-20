@@ -25,13 +25,15 @@
                     <div class="p-3 mb-3 rounded-3 input-panel">
                         <form id="form-add-project" onsubmit="handleAddProject(event)">
                             <div class="row g-2 align-items-end">
-                                <div class="col-sm-10">
+                                <div class="col-sm-7">
                                     <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_new_project_name">New Project Name</label>
                                     <input type="text" class="form-control form-control-sm" id="proj-name" required>
                                 </div>
-                                <div class="col-sm-2 d-flex gap-1">
+                                <div class="col-sm-5 d-flex gap-1 flex-wrap">
                                     <button type="submit" class="btn btn-primary btn-sm flex-grow-1 px-2" data-i18n="btn_add">Add</button>
                                     <button type="button" class="btn btn-outline-secondary btn-sm px-2 text-nowrap" onclick="openArchiveModal()" title="Open Archive Manager" data-i18n-title="title_open_archive" data-i18n="btn_load_from_archive">🗄️ Load from Archive</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm px-2 text-nowrap" onclick="triggerImportProjectFilePicker()" title="Import a project from a JSON file" data-i18n-title="title_import_project" data-i18n="btn_import_project">📂 Import Project</button>
+                                    <input type="file" id="input-import-project-file" accept="application/json,.json" style="display:none;" onchange="handleImportProjectFile(event)">
                                 </div>
                             </div>
                         </form>
