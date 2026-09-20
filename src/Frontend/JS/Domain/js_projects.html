@@ -209,7 +209,7 @@
                         <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'In Progress')">🟠 ${t('status_in_progress')}</a></li>
                         <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Completed')">🟢 ${t('status_completed')}</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger fw-bold" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Archive')">🗄️ ${t('status_archive_project')}</a></li>
+                        <li><a class="dropdown-item" style="cursor: pointer;" onclick="changeProjectStatus('${proj.id}', 'Archive')">🗄️ ${t('status_archive_project')}</a></li>
                         <li><a class="dropdown-item" style="cursor: pointer;" onclick="exportProject('${proj.id}')" title="${t('title_export_project')}">📤 ${t('btn_export_project')}</a></li>
                     </ul>
                 </div>
@@ -1106,7 +1106,7 @@
                             ${proj.link ? `<li><a class="dropdown-item" href="${safeHTML(proj.link)}" target="_blank">🔗 ${t('title_open_link')}</a></li>` : ''}
                             <li><a class="dropdown-item" href="#" onclick="duplicateProjectWarning('${proj.id}'); return false;">➕ Clone Project</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="changeProjectStatus('${proj.id}', 'Archive'); return false;">🗄️ Archive Project</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="changeProjectStatus('${proj.id}', 'Archive'); return false;">🗄️ Archive Project</a></li>
                             <li><a class="dropdown-item" href="#" onclick="exportProject('${proj.id}'); return false;" title="${t('title_export_project')}">📤 ${t('btn_export_project')}</a></li>
                             <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="deleteProject('${proj.id}'); return false;">🗑️ Delete</a></li>
                         </ul>
