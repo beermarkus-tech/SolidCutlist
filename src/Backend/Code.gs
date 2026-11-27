@@ -4,6 +4,58 @@
 
 const TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores', 'jobs'];
 const CELL_LIMIT = 45000; // safe margin below Google Sheets' 50k per-cell limit
+const LOCK_WAIT_MS = 30000;
+
+/**
+ * Runs fn while holding the script lock, so two saves (two tabs, two devices, or
+ * two overlapping requests) can never interleave their sheet writes.
+ */
+function withScriptLock(fn) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(LOCK_WAIT_MS)) {
+    throw new Error('Another save is still running. Please try again in a moment.');
+  }
+  try {
+    return fn();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Prepares a value for setValues() so Sheets stores it exactly as given.
+ * A leading apostrophe makes Sheets keep a string as literal text: without it
+ * "1/2" or "2026-01" turns into a date, "007" into 7, and "=..." into a formula.
+ * getValues() returns the string WITHOUT the apostrophe, so reads are unchanged.
+ */
+function toCell(val) {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string') return val === '' ? '' : "'" + val;
+  return val;
+}
+
+/**
+ * Writes a full grid starting at A1 over the existing content, then clears only
+ * the leftover rows/columns of the previous (larger) grid. Unlike clear()-then-
+ * write, a failure half-way never leaves the tab empty.
+ */
+function overwriteGrid(sheet, rows) {
+  const numRows = rows.length;
+  const numCols = rows.reduce((m, r) => Math.max(m, r.length), 0);
+  const grid = rows.map(r => r.length === numCols ? r : r.concat(new Array(numCols - r.length).fill('')));
+  const oldRows = sheet.getLastRow();
+  const oldCols = sheet.getLastColumn();
+
+  if (numRows > 0 && numCols > 0) {
+    sheet.getRange(1, 1, numRows, numCols).setValues(grid);
+  }
+  if (oldRows > numRows) {
+    sheet.getRange(numRows + 1, 1, oldRows - numRows, Math.max(oldCols, numCols, 1)).clearContent();
+  }
+  if (oldCols > numCols && numRows > 0) {
+    sheet.getRange(1, numCols + 1, numRows, oldCols - numCols).clearContent();
+  }
+}
 
 /**
  * ==========================================
@@ -12,40 +64,47 @@ const CELL_LIMIT = 45000; // safe margin below Google Sheets' 50k per-cell limit
  */
 function saveAppStateToSheet(payloadString) {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const payload = JSON.parse(payloadString);
-    const appState = payload.appState;
-    const timestamp = payload.timestamp;
+    return withScriptLock(() => {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const payload = JSON.parse(payloadString);
+      const appState = payload.appState;
+      const timestamp = payload.timestamp;
+      if (!appState || typeof appState !== 'object') throw new Error('Invalid payload: appState missing.');
 
-    // 1. Update the Metadata (Sync Engine Hub)
-    let metaSheet = ss.getSheetByName('Metadata');
-    if (!metaSheet) {
-      metaSheet = ss.insertSheet('Metadata', 0);
-      metaSheet.setTabColor('#000000'); // Color it black/red to warn people
-    }
-    
-    // Write the lock warning and timestamps
-    metaSheet.getRange('A1:B4').setValues([
-      ['⚠️ SYSTEM STATUS', 'DO NOT EDIT SHEET WHILE APP IS RUNNING'],
-      ['App Version', 'v1.0'],
-      ['Last Cloud Sync', timestamp],
-      ['Safe to Edit?', 'Yes, if the app is currently closed.']
-    ]);
-    metaSheet.getRange('A1:B1').setBackground('#dc3545').setFontColor('#ffffff').setFontWeight('bold');
-
-    // 2. Explode the JSON into individual tabs
-    TABS.forEach(tabName => {
-      if (appState[tabName]) {
-        writeArrayToSheet(ss, tabName, appState[tabName]);
+      let metaSheet = ss.getSheetByName('Metadata');
+      if (!metaSheet) {
+        metaSheet = ss.insertSheet('Metadata', 0);
+        metaSheet.setTabColor('#000000'); // Color it black/red to warn people
       }
+      // Mark the save as in progress; the timestamp is only advanced once every tab
+      // has been written, so a failed save never looks newer than the data it holds.
+      metaSheet.getRange('A1:B2').setValues([
+        ['⚠️ SYSTEM STATUS', 'DO NOT EDIT SHEET WHILE APP IS RUNNING'],
+        ['App Version', 'v1.0']
+      ]);
+      metaSheet.getRange('A4:B4').setValues([['Safe to Edit?', 'No - save in progress']]);
+      metaSheet.getRange('A1:B1').setBackground('#dc3545').setFontColor('#ffffff').setFontWeight('bold');
+
+      // Explode the JSON into individual tabs
+      TABS.forEach(tabName => {
+        if (appState[tabName]) {
+          writeArrayToSheet(ss, tabName, appState[tabName]);
+        }
+      });
+
+      // Flatten and Save Settings (Key/Value pairs)
+      if (appState.settings) {
+        writeSettingsToSheet(ss, 'settings', appState.settings);
+      }
+
+      SpreadsheetApp.flush();
+      metaSheet.getRange('A3:B4').setValues([
+        ['Last Cloud Sync', timestamp],
+        ['Safe to Edit?', 'Yes, if the app is currently closed.']
+      ]);
+
+      return { status: 'success', cloud_timestamp: timestamp };
     });
-
-    // 3. Flatten and Save Settings (Key/Value pairs)
-    if (appState.settings) {
-      writeSettingsToSheet(ss, 'settings', appState.settings);
-    }
-
-    return { status: 'success', cloud_timestamp: timestamp };
   } catch (e) {
     return { status: 'error', message: e.toString() };
   }
@@ -59,10 +118,9 @@ function saveAppStateToSheet(payloadString) {
 function writeArrayToSheet(ss, sheetName, dataArray) {
   let sheet = ss.getSheetByName(sheetName);
   if (!sheet) sheet = ss.insertSheet(sheetName);
-  sheet.clear();
 
   if (!dataArray || dataArray.length === 0) {
-    sheet.getRange('A1').setValue('No data currently in this category.');
+    overwriteGrid(sheet, [['No data currently in this category.']]);
     return;
   }
 
@@ -115,10 +173,11 @@ function writeArrayToSheet(ss, sheetName, dataArray) {
         cells[h] = val !== undefined ? val : '';
       }
     });
-    rows.push(expandedHeaders.map(eh => cells[eh] !== undefined ? cells[eh] : ''));
+    rows.push(expandedHeaders.map(eh => toCell(cells[eh] !== undefined ? cells[eh] : '')));
   });
+  rows[0] = rows[0].map(toCell);
 
-  sheet.getRange(1, 1, rows.length, expandedHeaders.length).setValues(rows);
+  overwriteGrid(sheet, rows);
   sheet.setFrozenRows(1);
   sheet.getRange(1, 1, 1, expandedHeaders.length).setFontWeight('bold').setBackground('#f8f9fa');
 }
@@ -129,17 +188,16 @@ function writeArrayToSheet(ss, sheetName, dataArray) {
 function writeSettingsToSheet(ss, sheetName, settingsObj) {
   let sheet = ss.getSheetByName(sheetName);
   if (!sheet) sheet = ss.insertSheet(sheetName);
-  sheet.clear();
 
   let rows = [['Setting Key', 'Setting Value']];
   for (const [key, value] of Object.entries(settingsObj)) {
     // 🪄 FIX: Safely stringify arrays before sending to the Google Sheet
     let val = value;
     if (typeof val === 'object' && val !== null) val = JSON.stringify(val);
-    rows.push([key, val]);
+    rows.push([toCell(key), toCell(val)]);
   }
 
-  sheet.getRange(1, 1, rows.length, 2).setValues(rows);
+  overwriteGrid(sheet, rows);
   sheet.setFrozenRows(1);
   sheet.getRange(1, 1, 1, 2).setFontWeight('bold').setBackground('#f8f9fa');
 }
@@ -295,35 +353,82 @@ function readArrayFromSheet(sheet) {
  * 3. ARCHIVE SYSTEM (DEEP FREEZE)
  * ==========================================
  */
+const ARCHIVE_HEADERS = ['Project ID', 'Archive Date', 'Project JSON', 'Groups JSON', 'Parts JSON', 'Image Base64', 'Used Profiles JSON', 'Used Materials JSON'];
+const ARCHIVE_CHUNK_COL = 9; // column I: start of the chunked full-payload JSON (large projects)
+
 function archiveProjectToSheet(payloadString) {
   try {
-    const payload = JSON.parse(payloadString);
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let archiveSheet = ss.getSheetByName('Archive');
-    
-    if (!archiveSheet) {
-      archiveSheet = ss.insertSheet('Archive');
-      archiveSheet.appendRow(['Project ID', 'Archive Date', 'Project JSON', 'Groups JSON', 'Parts JSON', 'Image Base64', 'Used Profiles JSON', 'Used Materials JSON']);
-      archiveSheet.getRange('A1:H1').setFontWeight('bold').setBackground('#f8f9fa');
-      archiveSheet.setFrozenRows(1);
-    }
+    return withScriptLock(() => {
+      const payload = JSON.parse(payloadString);
+      if (!payload || !payload.id) throw new Error('Missing project ID.');
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      let archiveSheet = ss.getSheetByName('Archive');
 
-    const timestamp = new Date().toISOString();
-    archiveSheet.appendRow([
-      payload.id,
-      timestamp,
-      JSON.stringify(payload.project),
-      JSON.stringify(payload.groups),
-      JSON.stringify(payload.parts),
-      payload.image || '',
-      JSON.stringify(payload.usedProfiles  || []),
-      JSON.stringify(payload.usedMaterials || [])
-    ]);
+      if (!archiveSheet) {
+        archiveSheet = ss.insertSheet('Archive');
+        archiveSheet.getRange(1, 1, 1, ARCHIVE_HEADERS.length).setValues([ARCHIVE_HEADERS]);
+        archiveSheet.getRange('A1:H1').setFontWeight('bold').setBackground('#f8f9fa');
+        archiveSheet.setFrozenRows(1);
+      }
 
-    return { status: 'success' };
+      const fields = [
+        JSON.stringify(payload.project),
+        JSON.stringify(payload.groups || []),
+        JSON.stringify(payload.parts || []),
+        payload.image || '',
+        JSON.stringify(payload.usedProfiles  || []),
+        JSON.stringify(payload.usedMaterials || [])
+      ];
+      if (String(payload.image || '').length > CELL_LIMIT) throw new Error('Project image is too large to archive.');
+
+      let row;
+      if (fields.every(f => f.length <= CELL_LIMIT)) {
+        row = [payload.id, new Date().toISOString()].concat(fields);
+      } else {
+        // Too big for single cells: keep a small summary in C (name/notes/icon for the
+        // archive list) and store the full payload JSON split across columns I, J, ...
+        const summary = JSON.stringify({
+          name: payload.project && payload.project.name,
+          comment: payload.project && payload.project.comment,
+          icon: payload.project && payload.project.icon
+        });
+        const full = JSON.stringify({
+          project: payload.project, groups: payload.groups || [], parts: payload.parts || [],
+          usedProfiles: payload.usedProfiles || [], usedMaterials: payload.usedMaterials || []
+        });
+        const chunks = [];
+        for (let i = 0; i < full.length; i += CELL_LIMIT) chunks.push(full.slice(i, i + CELL_LIMIT));
+        row = [payload.id, new Date().toISOString(), summary, '', '', payload.image || '', '', ''].concat(chunks);
+      }
+      const rowIndex = archiveSheet.getLastRow() + 1;
+      archiveSheet.getRange(rowIndex, 1, 1, row.length).setValues([row.map(toCell)]);
+      SpreadsheetApp.flush();
+      return { status: 'success' };
+    });
   } catch(e) {
     return { status: 'error', message: e.toString() };
   }
+}
+
+/** Reassembles an archive row (plain or chunked format) into its parts. */
+function _readArchiveRow(row) {
+  const chunks = row.slice(ARCHIVE_CHUNK_COL - 1).map(c => String(c || '')).join('');
+  if (chunks) {
+    const full = JSON.parse(chunks);
+    return {
+      project: full.project, groups: full.groups || [], parts: full.parts || [],
+      image: row[5] || null, usedProfiles: full.usedProfiles || [], usedMaterials: full.usedMaterials || []
+    };
+  }
+  const parseOr = (v, fallback) => { try { return JSON.parse(v); } catch (e) { return fallback; } };
+  return {
+    project: JSON.parse(row[2]),
+    groups: parseOr(row[3], []),
+    parts: parseOr(row[4], []),
+    image: row[5] || null,
+    usedProfiles: parseOr(row[6], []),
+    usedMaterials: parseOr(row[7], [])
+  };
 }
 
 function getArchiveList() {
@@ -338,11 +443,12 @@ function getArchiveList() {
     const list = [];
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
+      if (!row[0]) continue;
       let projData = {};
-      try { projData = JSON.parse(row[2]); } catch(e) {}
+      try { projData = JSON.parse(row[2]) || {}; } catch(e) {}
 
       list.push({
-        id: row[0],
+        id: String(row[0]),
         date: row[1],
         name: projData.name || 'Unknown Project',
         notes: projData.comment || '',
@@ -364,19 +470,9 @@ function loadProjectFromArchive(projectId) {
 
     const data = archiveSheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === projectId) {
-        let usedProfiles = [], usedMaterials = [];
-        try { usedProfiles  = JSON.parse(data[i][6]); } catch(e) {}
-        try { usedMaterials = JSON.parse(data[i][7]); } catch(e) {}
-        return JSON.stringify({
-          status: 'success',
-          project: JSON.parse(data[i][2]),
-          groups: JSON.parse(data[i][3]),
-          parts: JSON.parse(data[i][4]),
-          image: data[i][5] || null,
-          usedProfiles,
-          usedMaterials
-        });
+      if (String(data[i][0]) === String(projectId)) {
+        const rec = _readArchiveRow(data[i]);
+        return JSON.stringify(Object.assign({ status: 'success' }, rec));
       }
     }
     throw new Error('Project not found in archive.');
@@ -387,18 +483,24 @@ function loadProjectFromArchive(projectId) {
 
 function deleteProjectFromArchive(projectId) {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const archiveSheet = ss.getSheetByName('Archive');
-    if (!archiveSheet) throw new Error('Archive tab not found.');
+    return withScriptLock(() => {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const archiveSheet = ss.getSheetByName('Archive');
+      if (!archiveSheet) throw new Error('Archive tab not found.');
 
-    const data = archiveSheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === projectId) {
-        archiveSheet.deleteRow(i + 1);
-        return JSON.stringify({ status: 'success' });
+      const data = archiveSheet.getDataRange().getValues();
+      // Delete every row with this ID (bottom-up so indices stay valid), so a project
+      // archived twice can't be restored twice.
+      let deleted = 0;
+      for (let i = data.length - 1; i >= 1; i--) {
+        if (String(data[i][0]) === String(projectId)) {
+          archiveSheet.deleteRow(i + 1);
+          deleted++;
+        }
       }
-    }
-    throw new Error('Project not found in archive.');
+      if (!deleted) throw new Error('Project not found in archive.');
+      return JSON.stringify({ status: 'success' });
+    });
   } catch(e) {
     return JSON.stringify({ status: 'error', message: e.toString() });
   }
@@ -441,13 +543,14 @@ function getThumbnails() {
   }
 }
 
-function saveThumbnail(payloadString) {
+function saveThumbnail_(payloadString) {
   try {
     const payload = JSON.parse(payloadString);
     const projectId = payload.projectId;
     const base64String = payload.base64String;
     
     if (!projectId || !base64String) throw new Error('Missing ID or Image Data');
+    if (String(base64String).length > CELL_LIMIT) throw new Error('Image is too large (max ' + CELL_LIMIT + ' characters).');
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName('Thumbnails');
@@ -463,7 +566,7 @@ function saveThumbnail(payloadString) {
 
     // Search for existing project image to overwrite
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === projectId) {
+      if (String(data[i][0]) === String(projectId)) {
         rowIndex = i + 1; // +1 because array is 0-indexed but sheets are 1-indexed
         break;
       }
@@ -471,10 +574,10 @@ function saveThumbnail(payloadString) {
 
     if (rowIndex > -1) {
       // Overwrite existing
-      sheet.getRange(rowIndex, 2).setValue(base64String);
+      sheet.getRange(rowIndex, 2).setValue(toCell(base64String));
     } else {
       // Append new
-      sheet.appendRow([projectId, base64String]);
+      sheet.appendRow([toCell(String(projectId)), toCell(base64String)]);
     }
 
     return JSON.stringify({ status: 'success' });
@@ -483,7 +586,7 @@ function saveThumbnail(payloadString) {
   }
 }
 
-function deleteThumbnail(projectId) {
+function deleteThumbnail_(projectId) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('Thumbnails');
@@ -492,7 +595,7 @@ function deleteThumbnail(projectId) {
     const data = sheet.getDataRange().getValues();
 
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === projectId) {
+      if (String(data[i][0]) === String(projectId)) {
         sheet.deleteRow(i + 1);
         return JSON.stringify({ status: 'success' });
       }
@@ -545,7 +648,7 @@ function getStarterPack(profileRegion) {
   }
 }
 
-function bulkImportThumbnails(jsonPayload) {
+function bulkImportThumbnails_(jsonPayload) {
   try {
     const thumbnails = JSON.parse(jsonPayload); // { projectId: base64 }
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -560,7 +663,9 @@ function bulkImportThumbnails(jsonPayload) {
     const lastRow = sheet.getLastRow();
     if (lastRow > 1) sheet.deleteRows(2, lastRow - 1);
 
-    const entries = Object.entries(thumbnails);
+    const entries = Object.entries(thumbnails)
+      .filter(([id, img]) => id && img && String(img).length <= CELL_LIMIT)
+      .map(([id, img]) => [toCell(String(id)), toCell(img)]);
     if (entries.length > 0) {
       sheet.getRange(2, 1, entries.length, 2).setValues(entries);
     }
@@ -571,7 +676,7 @@ function bulkImportThumbnails(jsonPayload) {
   }
 }
 
-function clearAllThumbnails() {
+function clearAllThumbnails_() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('Thumbnails');
@@ -585,6 +690,39 @@ function clearAllThumbnails() {
 
     return JSON.stringify({ status: 'success' });
   } catch(e) {
+    return JSON.stringify({ status: 'error', message: e.toString() });
+  }
+}
+
+// Locked public wrappers (the trailing-underscore versions are private to the server)
+function saveThumbnail(payloadString) {
+  try {
+    return withScriptLock(() => saveThumbnail_(payloadString));
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.toString() });
+  }
+}
+
+function deleteThumbnail(projectId) {
+  try {
+    return withScriptLock(() => deleteThumbnail_(projectId));
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.toString() });
+  }
+}
+
+function bulkImportThumbnails(jsonPayload) {
+  try {
+    return withScriptLock(() => bulkImportThumbnails_(jsonPayload));
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.toString() });
+  }
+}
+
+function clearAllThumbnails() {
+  try {
+    return withScriptLock(() => clearAllThumbnails_());
+  } catch (e) {
     return JSON.stringify({ status: 'error', message: e.toString() });
   }
 }
