@@ -1,0 +1,219 @@
+<script>
+    // ==========================================
+    // SYNC ENGINE: record-level change tracking and merge (pure functions)
+    // ==========================================
+    // Used by the PWA to sync devices through a data file in the user's Google Drive.
+    // Nothing here talks to Drive or the DOM, so all merge rules are unit-tested.
+    //
+    // Model: the app's data is a set of COLLECTIONS, each a map id -> value:
+    //   projects, groups, parts, stock, catalog, materials, profiles, stores, jobs (by record id),
+    //   settings (by setting key), images (project id -> picture).
+    // A device keeps SYNC META: for every item the hash of its content and the time it last
+    // changed on that device, plus TOMBSTONES (time of deletion) so deletions propagate.
+    // Merge rule: per item, the newest change wins; a deletion is a change like any other.
+    // Two devices editing DIFFERENT items never conflict.
+
+    const SYNC_RECORD_TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores', 'jobs'];
+    // Derived values recalculated by every device: not compared, so they never cause conflicts
+    const SYNC_IGNORED_FIELDS = ['totalParts', 'totalCost', 'totalWeight'];
+    // View preferences that belong to one device (phone vs computer), not synced
+    const SYNC_DEVICE_SETTINGS = ['theme', 'isProjectCardView', 'compactStockView', 'compactCatalogView', 'partsMetricMode', 'catalogViewUnit'];
+    const SYNC_TOMBSTONE_DAYS = 90;
+
+    /** JSON with object keys sorted, so equal content always gives the same text. */
+    function syncStableStringify(value) {
+        if (value === null || typeof value !== 'object') return JSON.stringify(value === undefined ? null : value);
+        if (Array.isArray(value)) return '[' + value.map(syncStableStringify).join(',') + ']';
+        return '{' + Object.keys(value).filter(k => value[k] !== undefined).sort()
+            .map(k => JSON.stringify(k) + ':' + syncStableStringify(value[k])).join(',') + '}';
+    }
+
+    /** Short content fingerprint (FNV-1a, 2 x 32 bit) of any JSON value. */
+    function syncHash(value) {
+        const s = typeof value === 'string' ? value : syncStableStringify(value);
+        let h1 = 0x811c9dc5, h2 = 0x01000193;
+        for (let i = 0; i < s.length; i++) {
+            const c = s.charCodeAt(i);
+            h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
+            h2 = Math.imul(h2 ^ c, 2246822519) >>> 0;
+        }
+        return h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0');
+    }
+
+    function _syncComparable(collection, value) {
+        if (!SYNC_RECORD_TABS.includes(collection) || !value || typeof value !== 'object') return value;
+        const copy = Object.assign({}, value);
+        SYNC_IGNORED_FIELDS.forEach(f => delete copy[f]);
+        return copy;
+    }
+
+    /**
+     * Turns app data into collections (id -> value).
+     * state: appState-like object; images: { projectId: picture } (optional).
+     */
+    function syncCollectionsFromState(state, images) {
+        const cols = {};
+        SYNC_RECORD_TABS.forEach(tab => {
+            cols[tab] = {};
+            (Array.isArray(state && state[tab]) ? state[tab] : []).forEach(rec => {
+                if (rec && rec.id !== undefined && rec.id !== null && rec.id !== '') cols[tab][String(rec.id)] = rec;
+            });
+        });
+        cols.settings = {};
+        Object.entries((state && state.settings) || {}).forEach(([k, v]) => {
+            if (!SYNC_DEVICE_SETTINGS.includes(k) && v !== undefined) cols.settings[k] = v;
+        });
+        if (images) {
+            cols.images = {};
+            Object.entries(images).forEach(([id, v]) => { if (id && v) cols.images[String(id)] = v; });
+        }
+        return cols;
+    }
+
+    function syncEmptyMeta() {
+        return { items: {}, tombstones: {} };
+    }
+
+    /**
+     * Records local changes since the last call: new or edited items get time `now`,
+     * items that disappeared get a tombstone. Mutates and returns `meta`.
+     * Collections absent from `cols` are left untouched (e.g. images not loaded yet).
+     */
+    function syncTrackChanges(cols, meta, now) {
+        meta = meta || syncEmptyMeta();
+        meta.items = meta.items || {};
+        meta.tombstones = meta.tombstones || {};
+        Object.keys(cols).forEach(name => {
+            const items = meta.items[name] || (meta.items[name] = {});
+            const tombs = meta.tombstones[name] || (meta.tombstones[name] = {});
+            const current = cols[name];
+            Object.entries(current).forEach(([id, value]) => {
+                const h = syncHash(_syncComparable(name, value));
+                if (!items[id] || items[id].h !== h) items[id] = { h, t: now };
+                delete tombs[id];
+            });
+            Object.keys(items).forEach(id => {
+                if (!(id in current)) { tombs[id] = now; delete items[id]; }
+            });
+        });
+        return meta;
+    }
+
+    /** Builds the document stored in Drive from collections + meta. */
+    function syncBuildDoc(cols, meta, now) {
+        const doc = { format: 'solidcutlist-sync', schemaVersion: 1, updatedAt: now, items: {}, tombstones: {} };
+        Object.keys(cols).forEach(name => {
+            doc.items[name] = {};
+            Object.entries(cols[name]).forEach(([id, v]) => {
+                const m = meta.items[name] && meta.items[name][id];
+                doc.items[name][id] = { t: m ? m.t : now, h: m ? m.h : syncHash(_syncComparable(name, v)), v };
+            });
+            doc.tombstones[name] = Object.assign({}, (meta.tombstones && meta.tombstones[name]) || {});
+        });
+        return doc;
+    }
+
+    /**
+     * Merges two documents (local, remote). Per item the newest change wins; a deletion
+     * newer than the item's last change wins too. Equal times with different content:
+     * the content with the larger hash wins, so both devices pick the same version.
+     * Returns { doc, localChanged, remoteChanged } — whether the merge result differs from
+     * what the local / remote side had (i.e. who needs updating).
+     */
+    function syncMergeDocs(local, remote, now) {
+        const out = { format: 'solidcutlist-sync', schemaVersion: 1, updatedAt: now, items: {}, tombstones: {} };
+        let localChanged = false, remoteChanged = false;
+        const cutoff = now - SYNC_TOMBSTONE_DAYS * 86400000;
+        const names = new Set([...Object.keys(local.items || {}), ...Object.keys((remote && remote.items) || {})]);
+        names.forEach(name => {
+            const L = (local.items && local.items[name]) || {}, R = (remote && remote.items && remote.items[name]) || {};
+            const LT = (local.tombstones && local.tombstones[name]) || {}, RT = (remote && remote.tombstones && remote.tombstones[name]) || {};
+            const items = out.items[name] = {}, tombs = out.tombstones[name] = {};
+            const ids = new Set([...Object.keys(L), ...Object.keys(R), ...Object.keys(LT), ...Object.keys(RT)]);
+            ids.forEach(id => {
+                const candidates = [];
+                if (L[id]) candidates.push({ kind: 'item', side: 'L', t: L[id].t, h: L[id].h, entry: L[id] });
+                if (R[id]) candidates.push({ kind: 'item', side: 'R', t: R[id].t, h: R[id].h, entry: R[id] });
+                if (LT[id] !== undefined) candidates.push({ kind: 'tomb', side: 'L', t: LT[id], h: '' });
+                if (RT[id] !== undefined) candidates.push({ kind: 'tomb', side: 'R', t: RT[id], h: '' });
+                candidates.sort((a, b) => (b.t - a.t) || (a.kind === b.kind ? (b.h > a.h ? 1 : b.h < a.h ? -1 : 0) : (a.kind === 'tomb' ? -1 : 1)));
+                const win = candidates[0];
+                if (win.kind === 'item') {
+                    items[id] = win.entry;
+                    if (!L[id] || L[id].h !== win.h) localChanged = true;
+                    if (!R[id] || R[id].h !== win.h) remoteChanged = true;
+                } else {
+                    const t = Math.max(LT[id] || 0, RT[id] || 0, win.t);
+                    if (t >= cutoff) tombs[id] = t; // very old deletions are forgotten
+                    if (L[id]) localChanged = true;
+                    if (R[id] || RT[id] === undefined && t >= cutoff) remoteChanged = true;
+                }
+            });
+        });
+        return { doc: out, localChanged, remoteChanged };
+    }
+
+    /**
+     * Applies a merged document to app data. Keeps the local order of records that still
+     * exist; records new to this device are put at the top (like newly added items).
+     * Device-only settings are kept. Returns { state, images }.
+     */
+    function syncApplyDoc(doc, state, images) {
+        const next = Object.assign({}, state);
+        SYNC_RECORD_TABS.forEach(tab => {
+            const incoming = (doc.items && doc.items[tab]) || {};
+            const localArr = Array.isArray(state[tab]) ? state[tab] : [];
+            const seen = new Set();
+            const kept = [];
+            localArr.forEach(rec => {
+                const id = rec && rec.id !== undefined ? String(rec.id) : null;
+                if (id !== null && incoming[id]) { kept.push(incoming[id].v); seen.add(id); }
+            });
+            const added = Object.keys(incoming).filter(id => !seen.has(id)).map(id => incoming[id].v);
+            next[tab] = added.concat(kept);
+        });
+        const settings = {};
+        SYNC_DEVICE_SETTINGS.forEach(k => { if (state.settings && k in state.settings) settings[k] = state.settings[k]; });
+        Object.entries((doc.items && doc.items.settings) || {}).forEach(([k, e]) => { settings[k] = e.v; });
+        next.settings = settings;
+        let nextImages = images;
+        if (doc.items && doc.items.images) {
+            nextImages = {};
+            Object.entries(doc.items.images).forEach(([id, e]) => { nextImages[id] = e.v; });
+        }
+        return { state: next, images: nextImages };
+    }
+
+    /** Meta matching a merged document (what this device now knows). */
+    function syncMetaFromDoc(doc) {
+        const meta = syncEmptyMeta();
+        Object.keys(doc.items || {}).forEach(name => {
+            meta.items[name] = {};
+            Object.entries(doc.items[name]).forEach(([id, e]) => { meta.items[name][id] = { h: e.h, t: e.t }; });
+        });
+        Object.keys(doc.tombstones || {}).forEach(name => { meta.tombstones[name] = Object.assign({}, doc.tombstones[name]); });
+        return meta;
+    }
+
+    /** Splits a document into the two Drive files: data (records + settings) and images. */
+    function syncSplitDoc(doc) {
+        const pick = (names) => ({
+            format: doc.format, schemaVersion: doc.schemaVersion, updatedAt: doc.updatedAt,
+            items: Object.fromEntries(names.filter(n => doc.items[n]).map(n => [n, doc.items[n]])),
+            tombstones: Object.fromEntries(names.filter(n => doc.tombstones[n]).map(n => [n, doc.tombstones[n]]))
+        });
+        return { data: pick([...SYNC_RECORD_TABS, 'settings']), images: pick(['images']) };
+    }
+
+    /** Joins the two Drive files back into one document (either may be missing). */
+    function syncJoinDocs(data, images) {
+        const doc = { format: 'solidcutlist-sync', schemaVersion: 1, updatedAt: 0, items: {}, tombstones: {} };
+        [data, images].forEach(part => {
+            if (!part) return;
+            doc.updatedAt = Math.max(doc.updatedAt, part.updatedAt || 0);
+            Object.assign(doc.items, part.items || {});
+            Object.assign(doc.tombstones, part.tombstones || {});
+        });
+        return doc;
+    }
+</script>
