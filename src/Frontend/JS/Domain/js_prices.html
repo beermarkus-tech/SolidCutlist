@@ -395,18 +395,6 @@
             if (costSpan) costSpan.innerText = `${currency}${getNormalizedPriceDisplay(item, viewUnit)}`;
         }
     }
-    function promptDirectCatalogLink(id) {
-        const item = appState.catalog.find(c => c.id === id);
-        if (item) {
-            let newLink = prompt(t('title_edit_link') || "Enter URL for this material size:", item.link || "");
-            if (newLink !== null) {
-                if (newLink && !/^https?:\/\//i.test(newLink)) newLink = 'https://' + newLink;
-                item.link = newLink;
-                saveState();
-                renderCatalogModalTable();
-            }
-        }
-    }
     function deleteDirectModalCatalog(id) {
         requestConfirm(t('confirm_delete_catalog_item') || "Delete this price?", () => {
             appState.catalog = appState.catalog.filter(c => c.id !== id);

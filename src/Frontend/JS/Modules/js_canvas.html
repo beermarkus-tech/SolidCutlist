@@ -593,11 +593,8 @@
         updateUnitLabels();
 
         canvasDrawQueue.forEach(job => {
-            if (job.isSheet) {
-                drawSheetGraphic(job.id, job.board, job.length, job.width, job.grain, job.kerf, job.trim, job.minW, job.minL); 
-            } else {
-                drawBoardGraphic(job.id, job.board, job.length, job.kerf, job.trim);
-            }
+            // Only sheets are drawn on a canvas; lumber boards are pure HTML (see above)
+            drawSheetGraphic(job.id, job.board, job.length, job.width, job.grain, job.kerf, job.trim, job.minW, job.minL);
         });
     }
     function toggleAllSKUs(expand) {
@@ -807,63 +804,4 @@
         }
     }
 
-    // ==========================================
-    // 1D LUMBER RENDERING ENGINE
-    // ==========================================
-    function drawBoardGraphic(canvasId, board, fullLength, kerf, trim) {
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const w = canvas.width;  
-        const h = canvas.height; 
-        const pxPerMm = w / fullLength;
-
-        ctx.fillStyle = '#e9ecef';
-        ctx.fillRect(0, 0, w, h);
-
-        let currentX = 0;
-
-        if (trim > 0 && board.cuts.length > 0) {
-            const trimPx = trim * pxPerMm;
-            ctx.fillStyle = '#adb5bd'; 
-            ctx.fillRect(currentX, 0, trimPx, h);
-            currentX += trimPx;
-        }
-
-        board.cuts.forEach((cut, index) => {
-            if (index > 0) {
-                const kerfPx = kerf * pxPerMm;
-                currentX += kerfPx;
-            }
-
-            const cutPx = cut.length * pxPerMm;
-            
-            ctx.fillStyle = '#8B4513'; 
-            ctx.fillRect(currentX, 0, cutPx, h);
-
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)'; 
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            const stepY = h < 30 ? h / 3 : 10;
-            for (let y = stepY; y < h; y += stepY) {
-                ctx.moveTo(currentX, y);
-                ctx.lineTo(currentX + cutPx, y);
-            }
-            ctx.stroke();
-            
-            ctx.strokeStyle = '#5c2e0b';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(currentX, 0, cutPx, h);
-
-            if (cutPx > 25) { 
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 16px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(index + 1, currentX + (cutPx / 2), h / 2);
-            }
-
-            currentX += cutPx;
-        });
-    }
 </script>

@@ -1290,11 +1290,6 @@
         }
         notifyConfigChanged();
     }
-    function updateTempSetting(key, val) {
-        // Saves local UI tweaks directly to state instantly
-        appState.settings[key] = parseFloat(val) || 0;
-        saveState();
-    }
     /**
      * Applies an optimizer-settings change to the ACTIVE SAVED JOB when one is loaded
      * (marking it dirty — never touching master settings, which jobs must not leak
@@ -1473,30 +1468,6 @@
         if (mobLabel && mobName && jobName) {
             mobName.innerText = jobName;
             mobLabel.classList.remove('d-none');
-        }
-    }
-    function saveOptConfig() {
-        appState.settings.optimizer.useStock = document.getElementById('opt-use-stock').checked;
-        appState.settings.optimizer.sheetCutPreference = document.getElementById('opt-sheet-cut').value;
-        const projChecks = document.querySelectorAll('.opt-project-checkbox:checked');
-        appState.settings.optimizer.selectedProjects = Array.from(projChecks).map(cb => cb.value);
-        const storeChecks = document.querySelectorAll('.opt-store-checkbox:checked');
-        appState.settings.optimizer.selectedStores = Array.from(storeChecks).map(cb => cb.value);
-        saveState();
-        validateOptConfig();
-    }
-    function validateOptConfig() {
-        const btn = document.getElementById('btn-calculate-cutlist');
-        const optState = appState.settings.optimizer;
-        if (optState.selectedProjects.length === 0) {
-            btn.disabled = true;
-            btn.innerText = t('lbl_select_project');
-        } else if (optState.selectedStores.length === 0 && !optState.useStock) {
-            btn.disabled = true;
-            btn.innerText = t('lbl_select_store_stock');
-        } else {
-            btn.disabled = false;
-            btn.innerText = t('btn_calculate_cutlist');
         }
     }
 

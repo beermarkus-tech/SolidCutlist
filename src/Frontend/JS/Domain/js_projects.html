@@ -340,27 +340,6 @@
             showToast(t('msg_project_deleted'));
         }
     }
-    function editProjectLink(id) {
-        const proj = appState.projects.find(p => p.id === id);
-        if (!proj) return;
-        
-        const currentLink = proj.link || "";
-        const newLink = prompt("Paste the link to your SketchUp file, Drive folder, or Image:", currentLink);
-        
-        // If the user clicks 'Cancel', newLink is null. If they click 'OK', save it.
-        if (newLink !== null) {
-            let formattedLink = newLink.trim();
-            // Smart URL Formatter
-            if (formattedLink && !/^https?:\/\//i.test(formattedLink)) {
-                formattedLink = 'https://' + formattedLink;
-            }
-            
-            proj.link = formattedLink;
-            saveState();
-            renderProjectsTable();
-            showToast(t('msg_project_link_updated'));
-        }
-    }
     function duplicateProjectWarning(id) {
         requestConfirm(
             t('confirm_duplicate_project'), 

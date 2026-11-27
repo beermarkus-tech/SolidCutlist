@@ -66,28 +66,6 @@
             }
         }
     }
-    function toggleInputSection(arrayName, normalOffset, hiddenOffset, btnElement) {
-        const inputSection = document.getElementById(`input-section-${arrayName}`);
-        const tableWrapper = document.getElementById(`table-wrapper-${arrayName}`);
-
-        if (!inputSection || !tableWrapper) return; // Failsafe
-
-        if (inputSection.classList.contains('d-none')) {
-            // SHOW THE FORM
-            inputSection.classList.remove('d-none');
-            // Shrink the table back down
-            tableWrapper.style.maxHeight = `calc(100vh - ${normalOffset}px)`;
-            tableWrapper.style.height = `calc(100vh - ${normalOffset}px)`; 
-            btnElement.innerHTML = '<b>▽</b>';
-        } else {
-            // HIDE THE FORM
-            inputSection.classList.add('d-none');
-            // Expand the table to fill the void
-            tableWrapper.style.maxHeight = `calc(100vh - ${hiddenOffset}px)`;
-            tableWrapper.style.height = `calc(100vh - ${hiddenOffset}px)`; 
-            btnElement.innerHTML = '<b>◁</b>';
-        }
-    }
     let globalInputsVisible = true;
     function toggleAllInputSections() {
         globalInputsVisible = !globalInputsVisible;
