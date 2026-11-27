@@ -11,8 +11,17 @@
         display: flex;
         flex-direction: column;
         height: 100vh;
+        /* Visible height: on tablets/phones 100vh includes the area behind browser and
+           system bars, which hid the Calculate button at the bottom of the cut list panel */
+        height: 100dvh;
         overflow: hidden;
         overscroll-behavior-y: none;
+    }
+
+    /* Tablet/desktop layout: keep the bottom of the page clear of the system navigation bar
+       (on phones the sticky action bar already does this itself) */
+    @media (min-width: 768px) {
+        body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     }
 
     /* Phase 1: App-container fills all space below the navbar */
