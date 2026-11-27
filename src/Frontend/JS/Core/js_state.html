@@ -170,6 +170,9 @@
                 finalizeBoot(localData);
                 triggerCloudSync();
             } else {
+                // Booting from the Sheet: local now mirrors it
+                _writeSyncMarker('lumberLogicLastSynced', cloudTime);
+                _writeSyncMarker('lumberLogicUnsynced', '0');
                 finalizeBoot(cloudData);
             }
         } catch(e) {
@@ -181,9 +184,11 @@
     let _conflictLocalData = null;
     let _conflictCloudData = null;
 
+    let _conflictCloudTime = 0;
     function showConflictModal(localData, cloudData, localTime, cloudTime) {
         _conflictLocalData = localData;
         _conflictCloudData = cloudData;
+        _conflictCloudTime = cloudTime;
 
         const loader = document.getElementById('boot-loader');
         if (loader) loader.classList.add('d-none');
@@ -205,6 +210,11 @@
         const modalEl = document.getElementById('modal-data-conflict');
         const instance = bootstrap.Modal.getInstance(modalEl);
         if (instance) instance.hide();
+        if (!useLocal) {
+            // User chose the Sheet's copy: discard the local edits for good
+            _writeSyncMarker('lumberLogicLastSynced', _conflictCloudTime);
+            _writeSyncMarker('lumberLogicUnsynced', '0');
+        }
         finalizeBoot(useLocal ? _conflictLocalData : _conflictCloudData);
         _conflictLocalData = null;
         _conflictCloudData = null;
