@@ -9,12 +9,14 @@
  */
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const ROOT = __dirname;
 const SRC = path.join(ROOT, 'src');
 const OUT = path.join(ROOT, 'dist-pwa');
 const STATIC = path.join(ROOT, 'pwa');
 const BOOTSTRAP = path.join(ROOT, 'node_modules', 'bootstrap', 'dist');
+const SW_TEMPLATE = path.join(ROOT, 'pwa-src', 'sw.template.js');
 
 const INCLUDE_RE = /<\?!=\s*include\(\s*'([^']+)'\s*\)\s*;?\s*\?>/g;
 
@@ -35,6 +37,13 @@ function copyDir(from, to) {
         const a = path.join(from, entry.name), b = path.join(to, entry.name);
         entry.isDirectory() ? copyDir(a, b) : fs.copyFileSync(a, b);
     }
+}
+
+function listFiles(dir, base = dir) {
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+        const p = path.join(dir, e.name);
+        return e.isDirectory() ? listFiles(p, base) : [path.relative(base, p).split(path.sep).join('/')];
+    }).sort();
 }
 
 function replaceOnce(html, search, replacement, label) {
@@ -58,7 +67,14 @@ function build() {
 
     // Apps Script adds these via HtmlOutput; a static page needs them in the <head>
     html = replaceOnce(html, '<meta charset="UTF-8">',
-        '<meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <meta name="theme-color" content="#212529">',
+        '<meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <meta name="theme-color" content="#212529">' +
+        '\n    <link rel="manifest" href="manifest.webmanifest">' +
+        '\n    <link rel="icon" type="image/png" href="icons/favicon-32.png">' +
+        '\n    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">' +
+        '\n    <meta name="mobile-web-app-capable" content="yes">' +
+        '\n    <meta name="apple-mobile-web-app-capable" content="yes">' +
+        '\n    <meta name="apple-mobile-web-app-title" content="SolidCutlist">' +
+        '\n    <meta name="apple-mobile-web-app-status-bar-style" content="black">',
         'charset meta');
 
     if (INCLUDE_RE.test(html) || html.includes('<?')) throw new Error('PWA build: unresolved template scriptlet left');
@@ -72,7 +88,19 @@ function build() {
     copyDir(STATIC, OUT);
     fs.writeFileSync(path.join(OUT, '.nojekyll'), ''); // GitHub Pages: serve files as-is
 
+    // Offline cache: every built file, versioned by a hash of their contents
+    const files = listFiles(OUT).filter(f => f !== 'sw.js' && f !== '.nojekyll' && !f.endsWith('.gitkeep'));
+    const hash = crypto.createHash('sha256');
+    files.forEach(f => { hash.update(f); hash.update(fs.readFileSync(path.join(OUT, f))); });
+    const version = hash.digest('hex').slice(0, 12);
+    const precache = ['./', ...files.map(f => './' + f)];
+    const sw = fs.readFileSync(SW_TEMPLATE, 'utf8')
+        .replace('__VERSION__', version)
+        .replace('__PRECACHE__', JSON.stringify(precache, null, 4));
+    fs.writeFileSync(path.join(OUT, 'sw.js'), sw);
+
     const kb = (fs.statSync(path.join(OUT, 'index.html')).size / 1024).toFixed(0);
+    console.log(`Offline cache: ${precache.length} entries, version ${version}`);
     console.log(`PWA build complete: dist-pwa/index.html (${kb} KB)`);
 }
 

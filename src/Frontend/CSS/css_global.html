@@ -594,4 +594,10 @@
         .shop-item-purchased .fw-bold,
         .shop-item-purchased .text-success,
         .shop-item-purchased .text-muted { text-decoration: line-through; }
+
+    /* Phones: keep the sync status on one line in the top bar */
+    @media (max-width: 575.98px) {
+        #sync-indicator { min-width: 0; }
+        #sync-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 38vw; font-size: 0.75rem; }
+    }
 </style>

@@ -7,7 +7,8 @@
     "test": "node --test 'test/**/*.test.js'",
     "build": "node build.js",
     "build:pwa": "node build-pwa.js",
-    "serve:pwa": "node build-pwa.js && npx --yes http-server dist-pwa -p 8080 -c-1"
+    "serve:pwa": "node build-pwa.js && npx --yes http-server dist-pwa -p 8080 -c-1",
+    "test:e2e": "node build-pwa.js && node test/e2e/pwa-offline.e2e.js dist-pwa"
   },
   "keywords": [],
   "author": "",

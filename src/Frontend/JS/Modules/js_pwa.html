@@ -1,0 +1,70 @@
+<script>
+    // ==========================================
+    // PWA: offline cache registration, updates, persistent storage
+    // ==========================================
+    // Only active in the PWA build (local backend present). Inside Apps Script it does nothing.
+    (function () {
+        if (!window.SOLIDCUTLIST_LOCAL_BACKEND) return;
+        if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
+
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+        });
+
+        function showUpdateBanner(reg) {
+            if (document.getElementById('pwa-update-banner')) return;
+            const bar = document.createElement('div');
+            bar.id = 'pwa-update-banner';
+            bar.className = 'position-fixed bg-dark text-white rounded-3 shadow px-3 py-2 d-flex align-items-center justify-content-between gap-3 border border-warning';
+            // Just below the top navigation bar, so it never covers the phone's bottom action bar
+            bar.style.cssText = 'top:64px; left:50%; transform:translateX(-50%); z-index:3000; width:min(480px, calc(100vw - 32px));';
+            const msg = document.createElement('span');
+            msg.className = 'small';
+            msg.textContent = t('msg_update_available');
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-sm btn-warning fw-bold flex-shrink-0';
+            btn.textContent = t('btn_update_now');
+            btn.onclick = () => {
+                btn.disabled = true;
+                // Send any pending save first, then switch to the new version
+                if (typeof syncTimeout !== 'undefined' && syncTimeout && typeof triggerCloudSync === 'function') {
+                    clearTimeout(syncTimeout); triggerCloudSync();
+                }
+                if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+                else window.location.reload();
+            };
+            bar.append(msg, btn);
+            document.body.appendChild(bar);
+        }
+
+        function watch(reg) {
+            if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg);
+            reg.addEventListener('updatefound', () => {
+                const nw = reg.installing;
+                if (!nw) return;
+                nw.addEventListener('statechange', () => {
+                    // 'installed' while a previous version controls the page = an update is ready
+                    if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner(reg);
+                });
+            });
+            // Look for a new version whenever the app comes back to the foreground
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') reg.update().catch(() => {});
+            });
+        }
+
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').then(watch).catch(err => console.error('Service worker registration failed:', err));
+
+            // Ask the browser not to evict our data under storage pressure. Installed apps
+            // are granted this silently by Chrome/Edge; we don't prompt in a normal tab.
+            const installed = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+            if (installed && navigator.storage && navigator.storage.persist) {
+                navigator.storage.persisted().then(p => { if (!p) return navigator.storage.persist(); }).catch(() => {});
+            }
+        });
+    })();
+</script>
