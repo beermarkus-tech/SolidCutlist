@@ -40,9 +40,9 @@
 
     <!-- Top Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
-        <div class="container-fluid d-flex justify-content-between align-items-center">
+        <div class="container-fluid d-flex flex-nowrap justify-content-between align-items-center">
             
-            <div class="d-flex justify-content-start flex-grow-1" style="flex-basis: 0;">
+            <div class="d-flex justify-content-start flex-grow-1" style="flex-basis: 0; flex-shrink: 0;">
                 <span class="navbar-brand mb-0 h1">🪵 SolidCutlist</span>
             </div>
 
@@ -53,12 +53,12 @@
                 <button id="nav-btn-view-cutlist" class="btn btn-outline-light btn-sm" onclick="navigateTo('view-cutlist')" data-i18n="nav_cutlist">Cutlist</button>
             </div>
 
-            <div class="d-flex justify-content-end align-items-center gap-2 flex-grow-1" style="flex-basis: 0;">
-                <div id="sync-indicator" class="d-flex align-items-center text-white small pe-2" style="opacity: 0.6;">
-                    <span id="sync-icon">✔</span> <span id="sync-text" class="ms-1" data-i18n="msg_saved">Saved</span>
+            <div class="d-flex justify-content-end align-items-center gap-2 flex-grow-1" style="flex-basis: 0; min-width: 0;">
+                <div id="sync-indicator" class="d-flex align-items-center text-white small pe-2" style="opacity: 0.6; min-width: 0; cursor: pointer;">
+                    <span id="sync-icon">✔</span> <span id="sync-text" class="ms-1 text-truncate" data-i18n="msg_saved">Saved</span>
                 </div>
                 <button id="mobile-theme-toggle" class="btn btn-outline-light btn-sm border-0 d-md-none" onclick="toggleThemeDirect()" title="Toggle dark mode">🌙</button>
-                <button class="btn btn-outline-light btn-sm border-0 d-flex align-items-center d-none d-md-inline-block" data-bs-toggle="modal" data-bs-target="#settingsModal" title="Settings" data-i18n-title="tab_settings">⚙️</button>
+                <button id="nav-btn-settings" class="btn btn-outline-light btn-sm border-0 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#settingsModal" title="Settings" data-i18n-title="tab_settings">⚙️</button>
             </div>
             
         </div>
