@@ -1,6 +1,6 @@
 {
   "name": "solidcutlist",
-  "version": "1.1.0-rc.39",
+  "version": "1.1.0-rc.40",
   "description": "SolidCutlist: woodworking cutlist optimizer (Google Apps Script web app bound to a Google Sheet)",
   "main": "build.js",
   "scripts": {

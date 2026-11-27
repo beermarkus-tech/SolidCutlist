@@ -5,12 +5,20 @@
 | Branch / tag | What it is | Live? |
 |---|---|---|
 | `main`, tag `v1.0` | Etsy launch version | **Yes, live** |
-| `work-in-progress`, tag `v1.1-rc` | **v1.1 RC: corrected version of the live app.** New features and all audit fixes. Pushed to the WIP test Sheet only. | **No, not live yet** |
+| `work-in-progress` | **v1.1 RC (build 40): corrected version of the live app.** New features and all audit fixes. Pushed to the WIP test Sheet only. | **No, not live yet** |
 | `PWA` | Starting point for the Progressive Web App rewrite (branched from v1.1 RC build 39) | No |
 
 ---
 
-## v1.1 RC, build 39 (not live yet)
+## v1.1 RC, build 40 (not live yet)
+
+### Build 40
+- **Full backup keeps all project pictures.** The download now includes the pictures
+  shown on screen as well as the stored copy. Before, a backup taken shortly after
+  loading the starter pack, or after a failed background picture save, silently
+  contained no pictures.
+
+## v1.1 RC, build 39
 
 Corrected version of live v1.0. Becomes live once it has been tested in the WIP
 Sheet and merged into `main`.

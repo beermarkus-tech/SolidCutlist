@@ -80,7 +80,7 @@ function saveAppStateToSheet(payloadString) {
       // has been written, so a failed save never looks newer than the data it holds.
       metaSheet.getRange('A1:B2').setValues([
         ['⚠️ SYSTEM STATUS', 'DO NOT EDIT SHEET WHILE APP IS RUNNING'],
-        ['App Version', 'v1.1 RC build 39']
+        ['App Version', 'v1.1 RC build 40']
       ]);
       metaSheet.getRange('A4:B4').setValues([['Safe to Edit?', 'No - save in progress']]);
       metaSheet.getRange('A1:B1').setBackground('#dc3545').setFontColor('#ffffff').setFontWeight('bold');
