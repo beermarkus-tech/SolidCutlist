@@ -539,7 +539,10 @@
                 .withSuccessHandler((responseStr) => {
                     try {
                         const response = JSON.parse(responseStr);
-                        finish(response.status === 'success' ? response.data : (window.projectImages || {}));
+                        // Pictures on screen fill any gap in the stored copy (e.g. right after
+                        // loading the starter pack, before the background save has finished)
+                        const stored = response.status === 'success' ? (response.data || {}) : {};
+                        finish(Object.assign({}, window.projectImages || {}, stored));
                     } catch (e) {
                         finish(window.projectImages || {});
                     }
