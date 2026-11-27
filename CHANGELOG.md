@@ -6,7 +6,20 @@
 |---|---|---|
 | `main`, tag `v1.0` | Etsy launch version | **Yes, live** |
 | `work-in-progress`, tag `v1.1-rc` | **v1.1 RC: corrected version of the live app.** New features and all audit fixes. Pushed to the WIP test Sheet only. | **No, not live yet** |
-| `PWA` | Starting point for the Progressive Web App rewrite (branched from v1.1 RC build 39) | No |
+| `PWA` | **SolidCutlist PWA v2.0 preview** (build 41): installable web app on GitHub Pages, works offline, Google Drive sync. Branched from v1.1 RC build 39. | No, preview |
+
+---
+
+## PWA v2.0 preview, build 41 (not live yet, `PWA` branch)
+
+- Runs as a website (GitHub Pages) without Google Sheets; data stored on the device.
+- Installable on phone, tablet and computer; opens and calculates offline.
+- "New version available · Update now" banner after each deploy.
+- Google Drive sync between devices (hidden app folder in the user's own Drive).
+- Starter packs (EU/US) with project pictures.
+- Phones: Settings button in the top bar (dark mode moved there); top bar stays on one line.
+- Tablets: Calculate button no longer hidden behind the system bar.
+- Build numbers continue after v1.1 RC build 40 (work-in-progress).
 
 ---
 
