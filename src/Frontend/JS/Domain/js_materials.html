@@ -233,6 +233,13 @@
             });
         }
 
+        // Store prices and shop stock referencing it are flagged for re-mapping too
+        // (left pointing at a deleted id they'd silently feed the optimizer bad data)
+        ['catalog', 'stock'].forEach(tab => (appState[tab] || []).forEach(item => {
+            if (item.materialId === id) item.materialId = '';
+        }));
+        if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
+
         // 3. The Execution
         appState.materials = appState.materials.filter(m => m.id !== id);
         saveState();
@@ -428,6 +435,13 @@
                 }
             });
         }
+
+        // Store prices and shop stock referencing it are flagged for re-mapping too
+        // (left pointing at a deleted id they'd silently feed the optimizer bad data)
+        ['catalog', 'stock'].forEach(tab => (appState[tab] || []).forEach(item => {
+            if (item.profileId === id) item.profileId = '';
+        }));
+        if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
 
         // 3. The Execution
         appState.profiles = appState.profiles.filter(p => p.id !== id);

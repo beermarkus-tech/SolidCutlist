@@ -2567,7 +2567,9 @@
         checkboxes.forEach(cb => {
             const index = parseInt(cb.value);
             const off = window.currentOffcuts[index];
-            const saveQty = parseInt(document.getElementById(`commit-qty-${index}`).value) || 1;
+            const _rawQty = parseInt(document.getElementById(`commit-qty-${index}`).value, 10);
+            const saveQty = isNaN(_rawQty) ? 1 : Math.max(0, Math.min(_rawQty, off.qty));
+            if (saveQty === 0) return; // quantity set to 0: nothing to commit for this row
 
             // 1. Create the new Stock Database Object
             const newStockItem = {

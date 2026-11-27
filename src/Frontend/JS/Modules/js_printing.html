@@ -487,26 +487,29 @@
         function _resolvePart(partId) {
             return appState.parts.find(p => p.id === partId) || _activeJobRef?.parts?.find(p => p.id === partId) || null;
         }
+        // Group and order boards EXACTLY like the Cut Diagrams tab (js_canvas.html): one group
+        // per SKU (profile + material), boards sorted longest raw stock first, lumber groups
+        // before sheet groups, then by SKU name — so "Board #3" on a label is board 3 on screen.
         const _mergedGroups = {};
         appState.latestResults.forEach(res => {
-            if (res.error) return;
+            if (res.error || !res.purchase) return;
             const mat = appState.materials.find(m => m.id === res.sku.materialId);
             const prof = appState.profiles.find(p => p.id === res.sku.profileId);
             const matString = [prof?.name, mat?.name].filter(Boolean).join(' ');
             const isSheet = res.sku.category === 'sheet';
-            const fullLen = res.purchase?.catalogItem?.length || 0;
-            const fullW   = res.purchase?.catalogItem?.width  || 0;
-            const groupKey = `${res.sku.category}|${res.sku.profileId}|${res.sku.materialId}|${Math.round(fullLen)}|${Math.round(fullW)}`;
+            const fullLen = res.purchase.catalogItem?.length || 0;
+            const fullW   = isSheet ? (res.purchase.catalogItem?.width || 0) : 0;
+            const groupKey = `${res.sku.profileId}|${res.sku.materialId}`;
             if (!_mergedGroups[groupKey]) {
-                _mergedGroups[groupKey] = { isSheet, fullLen, fullW, matString, boards: [] };
+                _mergedGroups[groupKey] = { isSheet, matString, title: `${prof?.name || ''} - ${mat?.name || ''}`, boards: [] };
             }
-            const allBoards = [...(res.stock?.layout || []), ...(res.purchase?.layout || [])];
-            allBoards.forEach(b => _mergedGroups[groupKey].boards.push(b));
+            (res.purchase.layout || []).forEach(b => _mergedGroups[groupKey].boards.push({ b, fullLen, fullW }));
         });
+        Object.values(_mergedGroups).forEach(g => g.boards.sort((a, b) => b.fullLen - a.fullLen));
         const _sortedGroups = Object.values(_mergedGroups).sort((a, b) => {
             if (!a.isSheet && b.isSheet) return -1;
             if (a.isSheet && !b.isSheet) return 1;
-            return b.fullLen - a.fullLen;
+            return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
         });
 
         // Transport settings — same source as canvas renderer
@@ -518,7 +521,8 @@
         // 2a. Part labels — one per cut, in cutlist display order
         const labelsToPrint = [];
         _sortedGroups.forEach(grp => {
-            grp.boards.forEach((board, bIndex) => {
+            grp.boards.forEach((entry, bIndex) => {
+                const board = entry.b;
                 const boardRef = grp.isSheet ? `Sheet #${bIndex + 1}` : `Board #${bIndex + 1}`;
                 board.cuts.forEach(cut => {
                     const part = _resolvePart(cut.partId);
@@ -545,8 +549,9 @@
         const storeLabels = [];
         if (printStoreLabels) {
             _sortedGroups.forEach(grp => {
-                grp.boards.forEach((board, bIndex) => {
-                    const fullLen = grp.fullLen;
+                grp.boards.forEach((entry, bIndex) => {
+                    const board = entry.b;
+                    const fullLen = entry.fullLen;
                     const boardRef = grp.isSheet ? `Sheet #${bIndex + 1}` : `Board #${bIndex + 1}`;
 
                     if (!grp.isSheet) {
@@ -585,8 +590,8 @@
                         // Sheet: transport zones define the store cuts
                         if (!board.transportZones || board.transportZones.length === 0) return;
                         const _sa   = board.transportZones[0]?.axis || 'length';
-                        const _fal  = _sa === 'width' ? grp.fullW : grp.fullLen;
-                        const _perp = _sa === 'width' ? grp.fullLen : grp.fullW;
+                        const _fal  = _sa === 'width' ? entry.fullW : entry.fullLen;
+                        const _perp = _sa === 'width' ? entry.fullLen : entry.fullW;
 
                         // Build segment boundary ranges along the split axis
                         const _segRanges = [];

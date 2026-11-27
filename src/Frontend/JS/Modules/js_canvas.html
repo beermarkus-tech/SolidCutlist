@@ -156,7 +156,7 @@
                 }
                 const wasteLabel = isSheet ? t('lbl_waste_area') : t('lbl_waste_length');
                 const wasteDisplay = isSheet
-                    ? (wasteVal / 1000000).toFixed(2) + ' m²'
+                    ? (appState.settings.displayUnit === 'mm' ? (wasteVal / 1000000).toFixed(2) + ' m²' : (wasteVal / 92903.04).toFixed(2) + ' sqft')
                     : formatForDisplay(wasteVal);
 
                 // 🪄 THE 1D HTML ENGINE: Build the HTML string BEFORE appending it to the main layout

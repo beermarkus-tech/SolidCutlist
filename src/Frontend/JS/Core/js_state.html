@@ -348,6 +348,8 @@
         const _savedJobs             = appState.jobs     || [];
         const _savedLabelTemplates   = appState.settings?.labelTemplates    || [];
         const _savedLabelConfig      = appState.settings?.currentLabelConfig || null;
+        const _savedLanguage         = appState.settings?.language || 'en';
+        const _savedTheme            = appState.settings?.theme || 'light';
         appState = {
             projects: [], groups: [], parts: [],
             stock: [], catalog: [], materials: [],
@@ -359,8 +361,8 @@
                 bladeKerf:          3.175,
                 cutoffThreshold:    200.0,
                 factoryEdgeTrim:    6.35,
-                theme:              'light',
-                language:           'en',
+                theme:              _savedTheme,
+                language:           _savedLanguage,
                 currency:             '$',
                 tourComplete:         false,
                 checklistDismissed:   false,

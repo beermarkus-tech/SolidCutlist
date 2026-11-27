@@ -321,12 +321,13 @@
             deletedPartsCount = originalLength - appState.parts.length;
         }
 
-        // 3. The Execution (Purge the Project)
+        // 3. The Execution (Purge the Project and its groups — groups are never shared)
         appState.projects = appState.projects.filter(p => p.id !== id);
+        if (appState.groups) appState.groups = appState.groups.filter(g => g.projectId !== id);
         
         // 🪄 Image Garbage Collection
-        delete window.projectImages[id];
-        google.script.run.deleteThumbnail(id);
+        if (window.projectImages) delete window.projectImages[id];
+        if (typeof google !== 'undefined' && google.script && google.script.run) google.script.run.deleteThumbnail(id);
         
         saveState();
         renderProjectsTable();
@@ -1338,12 +1339,11 @@
                 let width = img.width;
                 let height = img.height;
 
-                if (width > height && width > MAX_DIMENSION) {
-                    height *= MAX_DIMENSION / width;
-                    width = MAX_DIMENSION;
-                } else if (height > width && height > MAX_DIMENSION) {
-                    width *= MAX_DIMENSION / height;
-                    height = MAX_DIMENSION;
+                // Scale the LONGER side down to MAX_DIMENSION (square images included)
+                const _longest = Math.max(width, height);
+                if (_longest > MAX_DIMENSION) {
+                    width  = Math.round(width  * MAX_DIMENSION / _longest);
+                    height = Math.round(height * MAX_DIMENSION / _longest);
                 }
 
                 // 🪄 2. The Canvas Crunch: Draw and export as low-quality JPEG
@@ -1358,6 +1358,16 @@
                 let base64String = canvas.toDataURL('image/jpeg', quality);
                 while (base64String.length > 45000 && quality > 0.2) {
                     quality = Math.round((quality - 0.1) * 10) / 10;
+                    base64String = canvas.toDataURL('image/jpeg', quality);
+                }
+                // Still too big for one spreadsheet cell: shrink the picture until it fits
+                while (base64String.length > 45000 && canvas.width > 80) {
+                    const _shrunk = document.createElement('canvas');
+                    _shrunk.width = Math.round(canvas.width * 0.8);
+                    _shrunk.height = Math.round(canvas.height * 0.8);
+                    _shrunk.getContext('2d').drawImage(canvas, 0, 0, _shrunk.width, _shrunk.height);
+                    canvas.width = _shrunk.width; canvas.height = _shrunk.height;
+                    canvas.getContext('2d').drawImage(_shrunk, 0, 0);
                     base64String = canvas.toDataURL('image/jpeg', quality);
                 }
 
