@@ -523,7 +523,7 @@
         _sortedGroups.forEach(grp => {
             grp.boards.forEach((entry, bIndex) => {
                 const board = entry.b;
-                const boardRef = grp.isSheet ? `Sheet #${bIndex + 1}` : `Board #${bIndex + 1}`;
+                const boardRef = t(grp.isSheet ? 'lbl_sheet_ref' : 'lbl_board_ref', { n: bIndex + 1 });
                 board.cuts.forEach(cut => {
                     const part = _resolvePart(cut.partId);
                     if (!part) return;
@@ -552,7 +552,7 @@
                 grp.boards.forEach((entry, bIndex) => {
                     const board = entry.b;
                     const fullLen = entry.fullLen;
-                    const boardRef = grp.isSheet ? `Sheet #${bIndex + 1}` : `Board #${bIndex + 1}`;
+                    const boardRef = t(grp.isSheet ? 'lbl_sheet_ref' : 'lbl_board_ref', { n: bIndex + 1 });
 
                     if (!grp.isSheet) {
                         // Lumber: segments define the store cuts

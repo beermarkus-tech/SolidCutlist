@@ -92,9 +92,9 @@
 
             // Safe Profile/Material lookups
             const profile = appState.profiles.find(p => p.id === group.profileId);
-            const profName = profile ? profile.name : `⚠️ Missing`;
+            const profName = profile ? profile.name : `⚠️ ${t('msg_missing')}`;
             const material = appState.materials.find(m => m.id === group.materialId);
-            const matName = material ? material.name : `⚠️ Missing`;
+            const matName = material ? material.name : `⚠️ ${t('msg_missing')}`;
 
             if (!profile || !material) tr.classList.add('table-warning');
 
@@ -133,13 +133,13 @@
             // 🪄 GRAIN & TYPE LOGIC
             let grainHtml = '-';
             if (group.categoryId === 'sheet') {
-                if (group.grains.size > 1) grainHtml = `<span class="fst-italic text-muted"><small>Multiple</small></span>`;
+                if (group.grains.size > 1) grainHtml = `<span class="fst-italic text-muted"><small>${t('lbl_multiple')}</small></span>`;
                 else grainHtml = `<small>${Array.from(group.grains)[0] === 'none' ? '-' : t('opt_' + Array.from(group.grains)[0])}</small>`;
             }
 
             let typeHtml = '';
             if (group.types.size > 1) {
-                typeHtml = `<span class="d-inline-block border-0 bg-transparent px-0 py-0 mx-auto text-center fst-italic text-muted"><small>Multiple</small></span>`;
+                typeHtml = `<span class="d-inline-block border-0 bg-transparent px-0 py-0 mx-auto text-center fst-italic text-muted"><small>${t('lbl_multiple')}</small></span>`;
             } else {
                 const tVal = Array.from(group.types)[0];
                 typeHtml = `

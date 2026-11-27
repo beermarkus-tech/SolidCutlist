@@ -168,7 +168,7 @@
                 const vendorOptions = chosenOptions.length > 0 ? chosenOptions : allVendorOptions;
 
                 if (vendorOptions.length === 0) {
-                    finalCutlist.push({ sku: batch, error: `Missing store inventory for remaining ${currentParts.length} parts.` });
+                    finalCutlist.push({ sku: batch, error: `Missing store inventory for remaining ${currentParts.length} parts.`, errorKey: 'err_missing_store_inventory', errorCount: currentParts.length });
                     return; 
                 }
 
@@ -349,6 +349,7 @@
                     finalCutlist.push({
                         sku: batch,
                         error: `Remaining ${currentParts.length} parts are too large for any store boards.`,
+                        errorKey: 'err_parts_too_large', errorCount: currentParts.length,
                         failedCatalogItems: vendorOptions,
                         unmappedParts: currentParts
                     });
@@ -1140,7 +1141,7 @@
 
                 <label class="form-check-label flex-grow-1 project-fold-icon collapsed" style="font-size:0.9rem;cursor:pointer;min-width:0;display:flex;flex-wrap:wrap;align-items:center;" data-bs-toggle="collapse" data-bs-target="#collapse-${proj.id}" aria-expanded="false" title="${t('title_expand_groups')}">
                     <span class="fw-bold text-truncate" style="flex:1;min-width:0;">${safeHTML(proj.name)}</span>
-                    <span class="fw-normal text-muted w-100" style="font-size:0.75rem;">(${projTotalCount} parts)</span>
+                    <span class="fw-normal text-muted w-100" style="font-size:0.75rem;">(${t('lbl_n_parts', { count: projTotalCount })})</span>
                 </label>
 
                 <input type="number" class="form-control form-control-sm text-center proj-multi flex-shrink-0" id="multi-${proj.id}" value="1" min="1" onchange="notifyConfigChanged()" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
@@ -1158,7 +1159,7 @@
                 <input class="form-check-input me-2 grp-check grp-of-${proj.id} flex-shrink-0" type="checkbox" id="chk-nogroup-${proj.id}" onchange="toggleGroupTree('${proj.id}', this.checked)" style="margin-top:3px;" title="${t('title_select_group_parts')}">
                 <label class="form-check-label flex-grow-1 text-muted" for="chk-nogroup-${proj.id}" style="font-size: 0.85rem; cursor: pointer; min-width:0;">
                     <span class="d-block text-truncate"><em>${t('lbl_ungrouped_parts')}</em></span>
-                    <span style="font-size:0.75rem;">(${ungroupedCount} parts)</span>
+                    <span style="font-size:0.75rem;">(${t('lbl_n_parts', { count: ungroupedCount })})</span>
                 </label>
                 <input type="number" class="form-control form-control-sm text-center grp-multi flex-shrink-0" id="multi-nogroup-${proj.id}" value="1" min="1" onchange="notifyConfigChanged()" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
             </div>
@@ -1173,7 +1174,7 @@
                     <input class="form-check-input me-2 grp-check grp-of-${proj.id} flex-shrink-0" type="checkbox" id="chk-${grp.id}" onchange="toggleGroupTree('${proj.id}', this.checked)" style="margin-top:3px;" title="${t('title_select_group_parts')}">
                     <label class="form-check-label flex-grow-1" for="chk-${grp.id}" style="font-size: 0.85rem; cursor: pointer; min-width:0;">
                         <span class="d-block text-truncate">${safeHTML(grp.name)}</span>
-                        <span class="text-muted" style="font-size:0.75rem;">(${grpCount} parts)</span>
+                        <span class="text-muted" style="font-size:0.75rem;">(${t('lbl_n_parts', { count: grpCount })})</span>
                     </label>
                     <input type="number" class="form-control form-control-sm text-center grp-multi flex-shrink-0" id="multi-${grp.id}" value="1" min="1" onchange="notifyConfigChanged()" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
                 </div>
@@ -1225,7 +1226,7 @@
                     <input class="form-check-input me-2 flex-shrink-0" type="checkbox" checked tabindex="-1" onclick="return false;" style="margin-top:3px;">
                     <label class="form-check-label flex-grow-1 project-fold-icon collapsed" style="font-size:0.9rem;cursor:pointer;min-width:0;display:flex;flex-wrap:wrap;align-items:center;" data-bs-toggle="collapse" data-bs-target="#collapse-${proj.id}">
                         <span class="fw-bold text-truncate" style="flex:1;min-width:0;">${safeHTML(proj.name)}</span>
-                        <span class="fw-normal text-muted w-100" style="font-size:0.75rem;">(${partsInProject.reduce((s, p) => s + (parseInt(p.qty) || 1), 0)} parts)</span>
+                        <span class="fw-normal text-muted w-100" style="font-size:0.75rem;">(${t('lbl_n_parts', { count: partsInProject.reduce((s, p) => s + (parseInt(p.qty) || 1), 0) })})</span>
                     </label>
                     <input type="number" class="form-control form-control-sm text-center bg-white flex-shrink-0" value="${projMulti}" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
                 </div>
@@ -1245,7 +1246,7 @@
                                 <input class="form-check-input me-2 flex-shrink-0" type="checkbox" checked tabindex="-1" onclick="return false;" style="margin-top:3px;">
                                 <label class="form-check-label flex-grow-1 text-muted" style="font-size: 0.85rem; min-width:0;">
                                     <span class="d-block text-truncate"><em>${t('lbl_ungrouped_parts')}</em></span>
-                                    <span style="font-size:0.75rem;">(${ungroupedCount} parts)</span>
+                                    <span style="font-size:0.75rem;">(${t('lbl_n_parts', { count: ungroupedCount })})</span>
                                 </label>
                                 <input type="number" class="form-control form-control-sm text-center bg-white flex-shrink-0" value="1" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
                             </div>
@@ -1260,7 +1261,7 @@
                                 <input class="form-check-input me-2 flex-shrink-0" type="checkbox" checked tabindex="-1" onclick="return false;" style="margin-top:3px;">
                                 <label class="form-check-label flex-grow-1" style="font-size: 0.85rem; min-width:0;">
                                     <span class="d-block text-truncate">${safeHTML(grp.name)}</span>
-                                    <span class="text-muted" style="font-size:0.75rem;">(${grpParts.reduce((s, p) => s + (parseInt(p.qty) || 1), 0)} parts)</span>
+                                    <span class="text-muted" style="font-size:0.75rem;">(${t('lbl_n_parts', { count: grpParts.reduce((s, p) => s + (parseInt(p.qty) || 1), 0) })})</span>
                                 </label>
                                 <input type="number" class="form-control form-control-sm text-center bg-white flex-shrink-0" value="1" readonly tabindex="-1" style="width: 50px; height: 24px; font-size: 0.8rem; margin-top:1px;">
                             </div>
@@ -1665,13 +1666,13 @@
                                 <span onclick="handleSort('sandbox_parts', 'projectId', 'string')" style="cursor: pointer;">
                                     ${t('col_project')} ⇅
                                 </span>
-                                <span id="flt-icon-sandbox_parts-projectId" onclick="openFilterModal(event, 'sandbox_parts', 'projectId', 'Project')" style="cursor: pointer;" title="Filter">▼</span>
+                                <span id="flt-icon-sandbox_parts-projectId" onclick="openFilterModal(event, 'sandbox_parts', 'projectId', t('col_project'))" style="cursor: pointer;" title="${t('hdr_filter')}">▼</span>
                             </th>
                             <th class="col-group text-nowrap px-2">
                                 <span onclick="handleSort('sandbox_parts', 'groupId', 'string')" style="cursor: pointer;">
                                     ${t('col_group')} ⇅
                                 </span>
-                                <span id="flt-icon-sandbox_parts-groupId" onclick="openFilterModal(event, 'sandbox_parts', 'groupId', 'Group')" style="cursor: pointer;" title="Filter">▼</span>
+                                <span id="flt-icon-sandbox_parts-groupId" onclick="openFilterModal(event, 'sandbox_parts', 'groupId', t('col_group'))" style="cursor: pointer;" title="${t('hdr_filter')}">▼</span>
                             </th>
                             <th class="col-partname px-2">
                                 <span onclick="handleSort('sandbox_parts', 'name', 'string')" style="cursor: pointer;">
@@ -1683,7 +1684,7 @@
                                 <span onclick="handleSort('sandbox_parts', 'category', 'string')" style="cursor: pointer;">
                                     ${t('col_category')} ⇅
                                 </span>
-                                <span id="flt-icon-sandbox_parts-category" onclick="openFilterModal(event, 'sandbox_parts', 'category', 'Category')" style="cursor: pointer;" title="Filter">▼</span>
+                                <span id="flt-icon-sandbox_parts-category" onclick="openFilterModal(event, 'sandbox_parts', 'category', t('col_category'))" style="cursor: pointer;" title="${t('hdr_filter')}">▼</span>
                             </th>
                             <th class="col-qty text-center px-1" id="th-sandbox_parts-qty">
                                 <span onclick="handleSort('sandbox_parts', 'qty', 'number')" style="cursor: pointer;">${t('col_qty')} ⇅</span>
@@ -1692,7 +1693,7 @@
                                 <span onclick="handleSort('sandbox_parts', 'profileId', 'string')" style="cursor: pointer;">
                                     ${t('col_profile')} ⇅
                                 </span>
-                                <span id="flt-icon-sandbox_parts-profileId" onclick="openFilterModal(event, 'sandbox_parts', 'profileId', 'Profile')" style="cursor: pointer;" title="Filter">▼</span>
+                                <span id="flt-icon-sandbox_parts-profileId" onclick="openFilterModal(event, 'sandbox_parts', 'profileId', t('col_profile'))" style="cursor: pointer;" title="${t('hdr_filter')}">▼</span>
                             </th>
                             <th class="col-size text-center px-2">
                                 <span onclick="handleSort('sandbox_parts', 'dimensions', 'number')" style="cursor: pointer;">
@@ -1704,16 +1705,16 @@
                                 <span onclick="handleSort('sandbox_parts', 'materialId', 'string')" style="cursor: pointer;">
                                     ${t('col_material')} ⇅
                                 </span>
-                                <span id="flt-icon-sandbox_parts-materialId" onclick="openFilterModal(event, 'sandbox_parts', 'materialId', 'Material')" style="cursor: pointer;" title="Filter">▼</span>
+                                <span id="flt-icon-sandbox_parts-materialId" onclick="openFilterModal(event, 'sandbox_parts', 'materialId', t('col_material'))" style="cursor: pointer;" title="${t('hdr_filter')}">▼</span>
                             </th>
                             <th class="col-grain text-center text-nowrap px-1">
                                 <span onclick="handleSort('sandbox_parts', 'grain', 'string')" style="cursor: pointer;">
                                     ${t('col_grain')} ⇅
                                 </span>
-                                <span id="flt-icon-sandbox_parts-grain" onclick="openFilterModal(event, 'sandbox_parts', 'grain', 'Grain')" style="cursor: pointer;" title="Filter">▼</span>
+                                <span id="flt-icon-sandbox_parts-grain" onclick="openFilterModal(event, 'sandbox_parts', 'grain', t('col_grain'))" style="cursor: pointer;" title="${t('hdr_filter')}">▼</span>
                             </th>
                             <th class="col-actions text-end px-1">
-                                <span id="flt-clear-sandbox_parts" onclick="clearAllFiltersForTable('sandbox_parts')" class="text-secondary opacity-25 px-1" style="cursor: pointer;" title="Clear all filters">▼⨯</span>
+                                <span id="flt-clear-sandbox_parts" onclick="clearAllFiltersForTable('sandbox_parts')" class="text-secondary opacity-25 px-1" style="cursor: pointer;" title="${t('title_clear_all_filters')}">▼⨯</span>
                             </th>
                         </tr>
                     </thead>
@@ -1731,10 +1732,10 @@
             const mat = appState.materials.find(m => m.id === p.materialId);
             const prof = appState.profiles.find(pr => pr.id === p.profileId);
             
-            const projName = proj ? proj.name : 'Unknown';
+            const projName = proj ? proj.name : t('lbl_unknown');
             const groupName = group ? group.name : '-';
-            const matName = mat ? mat.name : 'Unknown';
-            const profName = prof ? prof.name : 'Unknown';
+            const matName = mat ? mat.name : t('lbl_unknown');
+            const profName = prof ? prof.name : t('lbl_unknown');
             
             // Format dimensions
             const pLength = typeof formatForDisplay === 'function' ? formatForDisplay(p.length) : p.length;
@@ -1756,7 +1757,7 @@
             let catText = typeof t === 'function' && t('opt_' + p.category) ? t('opt_' + p.category) : p.category.toUpperCase();
             let catBadge = `<span class="badge ${badgeClass} py-1 d-inline-block" style="width: 85px; font-size: 0.75rem; text-transform: uppercase;">${catText}</span>`;
 
-            const grainStr = p.grain && p.grain !== 'none' ? p.grain.charAt(0).toUpperCase() + p.grain.slice(1) : '-';
+            const grainStr = p.grain && p.grain !== 'none' ? t('opt_' + p.grain) : '-';
 
             html += `
                 <tr class="small align-middle">
@@ -1803,6 +1804,9 @@
         const bTitle = `${b.profName} - ${b.matName}`;
         return aTitle.localeCompare(bTitle, undefined, { numeric: true, sensitivity: 'base' });
     }
+    // Internal shopping-list bucket ids (display titles are translated at render time)
+    const SHOP_STOCK_BUCKET = '__shop_stock__';
+    const SOURCING_ISSUES_BUCKET = '__sourcing_issues__';
     function renderShoppingListTab(results) {
         const container = document.getElementById('pane-shopping');
         let totalCost = 0;
@@ -1828,7 +1832,7 @@
                         || res.failedCatalogItems.reduce((best, o) => (o.length > best.length ? o : best), res.failedCatalogItems[0]);
 
                     const storeId = repOpt.storeId;
-                    const storeName = (storeId === 'shop_stock') ? '🏪 My Shop Stock' : (appState.stores.find(s => s.id === storeId)?.name || 'Unknown Store');
+                    const storeName = (storeId === 'shop_stock') ? SHOP_STOCK_BUCKET : (appState.stores.find(s => s.id === storeId)?.name || t('lbl_unknown_store'));
                     if (!storeBuckets[storeName]) storeBuckets[storeName] = [];
 
                     const prof = appState.profiles.find(p => p.id === res.sku.profileId);
@@ -1840,8 +1844,8 @@
                         length: repOpt.length,
                         width: repOpt.width,
                         qty: '⚠️',
-                        profName: prof?.name || 'Unknown',
-                        matName: mat?.name || 'Unknown',
+                        profName: prof?.name || t('lbl_unknown'),
+                        matName: mat?.name || t('lbl_unknown'),
                         cost: 0,
                         weight: 0,
                         url: repOpt.url || repOpt.link || '',
@@ -1851,14 +1855,14 @@
                         profileThickness: prof?.thickness || 0,
                         profileWidth: prof?.width || 0,
                         isError: true,
-                        errorMessage: res.error,
+                        errorMessage: res.errorKey ? t(res.errorKey, { count: res.errorCount }) : res.error,
                         unmappedParts: res.unmappedParts
                     });
                 } else {
                     // No catalog options exist at all for this SKU — show a sourcing error row
                     const prof = appState.profiles.find(p => p.id === res.sku.profileId);
                     const mat = appState.materials.find(m => m.id === res.sku.materialId);
-                    const bucketKey = '⚠️ Sourcing Issues';
+                    const bucketKey = SOURCING_ISSUES_BUCKET;
                     if (!storeBuckets[bucketKey]) storeBuckets[bucketKey] = [];
                     storeBuckets[bucketKey].push({
                         catalogId: `no-source-${res.sku.profileId}-${res.sku.materialId}`,
@@ -1866,8 +1870,8 @@
                         length: 0,
                         width: 0,
                         qty: '⚠️',
-                        profName: prof?.name || 'Unknown',
-                        matName: mat?.name || 'Unknown',
+                        profName: prof?.name || t('lbl_unknown'),
+                        matName: mat?.name || t('lbl_unknown'),
                         cost: 0,
                         weight: 0,
                         url: '',
@@ -1876,7 +1880,7 @@
                         profileThickness: prof?.thickness || 0,
                         profileWidth: prof?.width || 0,
                         isError: true,
-                        errorMessage: res.error,
+                        errorMessage: res.errorKey ? t(res.errorKey, { count: res.errorCount }) : res.error,
                         unmappedParts: res.unmappedParts
                     });
                 }
@@ -1887,8 +1891,8 @@
             const storeId = purchase.catalogItem.storeId;
             
             const storeName = (storeId === 'shop_stock') 
-                ? '🏪 My Shop Stock' 
-                : (appState.stores.find(s => s.id === storeId)?.name || 'Unknown Store');
+                ? SHOP_STOCK_BUCKET 
+                : (appState.stores.find(s => s.id === storeId)?.name || t('lbl_unknown_store'));
             
             if (!storeBuckets[storeName]) storeBuckets[storeName] = [];
             
@@ -1915,8 +1919,8 @@
                 length: purchase.catalogItem.length,
                 width: purchase.catalogItem.width,
                 qty: purchase.boardsNeeded,
-                profName: prof?.name || 'Unknown',
-                matName: mat?.name || 'Unknown',
+                profName: prof?.name || t('lbl_unknown'),
+                matName: mat?.name || t('lbl_unknown'),
                 cost: purchase.totalCost,
                 weight: batchWeight,
                 url: purchase.catalogItem.url || purchase.catalogItem.link || '',
@@ -1950,10 +1954,10 @@
 
         // 🪄 Ensure "My Shop Stock" remains securely at the top
         const sortedStores = Object.keys(storeBuckets).sort((a, b) => {
-            if (a === '🏪 My Shop Stock') return -1;
-            if (b === '🏪 My Shop Stock') return 1;
-            if (a === '⚠️ Sourcing Issues') return 1;
-            if (b === '⚠️ Sourcing Issues') return -1;
+            if (a === SHOP_STOCK_BUCKET) return -1;
+            if (b === SHOP_STOCK_BUCKET) return 1;
+            if (a === SOURCING_ISSUES_BUCKET) return 1;
+            if (b === SOURCING_ISSUES_BUCKET) return -1;
             return a.localeCompare(b);
         });
 
@@ -1963,24 +1967,24 @@
             // Match the Cut Diagrams tab's ordering within each store card.
             items.sort(_compareShoppingListItems);
 
-            const headerClass = storeName === '🏪 My Shop Stock' ? 'bg-success'
-                : storeName === '⚠️ Sourcing Issues' ? 'bg-danger'
+            const headerClass = storeName === SHOP_STOCK_BUCKET ? 'bg-success'
+                : storeName === SOURCING_ISSUES_BUCKET ? 'bg-danger'
                 : 'bg-dark';
 
             html += `
                 <div class="card mb-3 border-0 shadow-sm">
                     <div class="card-header ${headerClass} text-white py-2">
-                        <h6 class="mb-0">${safeHTML(storeName)}</h6>
+                        <h6 class="mb-0">${safeHTML(storeName === SHOP_STOCK_BUCKET ? '🏪 ' + t('hdr_my_shop_stock') : storeName === SOURCING_ISSUES_BUCKET ? '⚠️ ' + t('lbl_sourcing_issues') : storeName)}</h6>
                     </div>
                     <ul class="list-group list-group-flush">
             `;
             
             items.forEach(item => {
                 const wDisplay = isMetric ? item.weight : (item.weight * 2.20462);
-                const linkIcon = (item.url && storeName !== '🏪 My Shop Stock')
-                    ? `<a href="${safeUrl(item.url)}" target="_blank" class="text-decoration-none ms-2 fs-5" title="Open in Store">🔗</a>` : '';
+                const linkIcon = (item.url && storeName !== SHOP_STOCK_BUCKET)
+                    ? `<a href="${safeUrl(item.url)}" target="_blank" class="text-decoration-none ms-2 fs-5" title="${t('title_open_in_store')}">🔗</a>` : '';
 
-                const isEditable = window.activeJobId && storeName !== '🏪 My Shop Stock';
+                const isEditable = window.activeJobId && storeName !== SHOP_STOCK_BUCKET;
                 const sizeDisplay = item.category === 'sheet'
                     ? `${formatForDisplay(item.length)} x ${formatForDisplay(item.width)}`
                     : formatForDisplay(item.length);
@@ -1988,16 +1992,16 @@
                 const isPartial = item.oversizedParts && item.oversizedParts.length > 0;
                 const rowClass = (item.isError || isPartial) ? 'list-group-item-danger border-danger' : '';
                 const badgeClass = item.isError ? 'bg-danger' : 'bg-primary';
-                const costDisplay = item.isError ? '<span class="text-danger fw-bold">ERROR</span>' : `${currency}${item.cost.toFixed(2)}`;
+                const costDisplay = item.isError ? `<span class="text-danger fw-bold">${t('lbl_error_short')}</span>` : `${currency}${item.cost.toFixed(2)}`;
                 const weightDisplay = item.isError ? '' : `<small class="text-muted">⚖️ ${wDisplay.toFixed(2)} ${weightUnit}</small>`;
 
-                const isStoreItem = storeName !== '🏪 My Shop Stock' && !item.isError;
+                const isStoreItem = storeName !== SHOP_STOCK_BUCKET && !item.isError;
                 const isPurchased = isStoreItem && !!_purchasedMap[item.catalogId];
                 const pencilBtn = (isEditable && !isPurchased)
-                    ? `<button class="btn btn-sm btn-link p-0 ms-2 text-muted" onclick="openEditMaterialModal('${item.catalogId}')" title="Edit raw material">✏️</button>`
+                    ? `<button class="btn btn-sm btn-link p-0 ms-2 text-muted" onclick="openEditMaterialModal('${item.catalogId}')" title="${t('title_edit_raw_material')}">✏️</button>`
                     : '';
                 const checkboxHtml = isStoreItem
-                    ? `<input type="checkbox" class="form-check-input flex-shrink-0" style="width:1.2em;height:1.2em;cursor:pointer;" ${isPurchased ? 'checked' : ''} onchange="toggleShoppingItemPurchased('${item.catalogId}', this.checked)" title="Mark as purchased">`
+                    ? `<input type="checkbox" class="form-check-input flex-shrink-0" style="width:1.2em;height:1.2em;cursor:pointer;" ${isPurchased ? 'checked' : ''} onchange="toggleShoppingItemPurchased('${item.catalogId}', this.checked)" title="${t('title_mark_purchased')}">`
                     : '';
 
                 // Helper to build a collapsed part list from an array of part objects
@@ -2018,20 +2022,20 @@
                 if (item.isError) {
                     errorText = `<div class="text-danger fw-bold ms-5 mt-1" style="font-size: 0.8rem;">⚠️ ${item.errorMessage}</div>`;
                     if (item.unmappedParts && item.unmappedParts.length > 0) {
-                        errorText += `<div class="text-danger ms-5 mt-1 mb-2" style="font-size: 0.75rem; opacity: 0.9;"><strong>Failed to fit:</strong> ${buildPartList(item.unmappedParts)}</div>`;
+                        errorText += `<div class="text-danger ms-5 mt-1 mb-2" style="font-size: 0.75rem; opacity: 0.9;"><strong>${t('lbl_failed_to_fit')}</strong> ${buildPartList(item.unmappedParts)}</div>`;
                     }
                 } else if (isPartial) {
                     const _tr2 = appState.settings?.optimizer?.transport;
                     const _btLmax = (_tr2?.enabled && _tr2.boardLmax > 0) ? _tr2.boardLmax : 0;
                     const _overMsg = (_btLmax > 0 && item.length > _btLmax)
-                        ? 'Parts too large for the max transport length:'
-                        : 'Parts too large for this board:';
+                        ? t('msg_parts_too_large_transport')
+                        : t('msg_parts_too_large_board');
                     errorText = `<div class="text-danger fw-bold ms-5 mt-1" style="font-size: 0.8rem;">⚠️ ${_overMsg}</div>
                                  <div class="text-danger ms-5 mt-1 mb-2" style="font-size: 0.75rem; opacity: 0.9;">${buildPartList(item.oversizedParts)}</div>`;
                 }
 
-                const linkIconMobile = (item.url && storeName !== '🏪 My Shop Stock')
-                    ? `<a href="${safeUrl(item.url)}" target="_blank" class="text-decoration-none" title="Open in Store">🔗</a>` : '';
+                const linkIconMobile = (item.url && storeName !== SHOP_STOCK_BUCKET)
+                    ? `<a href="${safeUrl(item.url)}" target="_blank" class="text-decoration-none" title="${t('title_open_in_store')}">🔗</a>` : '';
                 const weightMobile = item.isError ? '' : `<span class="text-muted" style="font-size:0.8rem;">⚖️ ${wDisplay.toFixed(2)} ${weightUnit}</span>`;
 
                 html += `
@@ -2482,7 +2486,7 @@
                          </tr>`;
             });
         } else {
-            html += `<tr><td colspan="5" class="text-center text-muted py-3">No usable offcuts generated in this run.</td></tr>`;
+            html += `<tr><td colspan="6" class="text-center text-muted py-3">${t('msg_no_usable_offcuts')}</td></tr>`;
         }
         tbody.innerHTML = html;
         updateUnitLabels();
@@ -2519,7 +2523,6 @@
             
             const badgeClass = getCategoryBadgeClass(off.category);
             const sizeStr = off.width ? `${formatOffcutDim(off.width)} x ${formatOffcutDim(off.length)}` : formatOffcutDim(off.length);
-            const catStr = off.category === 'sheet' ? 'Sheet' : 'Lumber';
 
             html += `
                 <tr class="${rowClass}">
@@ -2729,10 +2732,10 @@
         // Price unit select — labels depend on display unit
         const unitSelect = document.getElementById('edit-mat-price-unit');
         unitSelect.innerHTML = `
-            <option value="piece">per piece</option>
-            <option value="linear">${isMetric ? 'per meter' : 'per linear ft'}</option>
-            <option value="area">${isMetric ? 'per m²' : 'per sqft'}</option>
-            <option value="volume">${isMetric ? 'per m³' : 'per board ft'}</option>
+            <option value="piece">${t('opt_per_piece')}</option>
+            <option value="linear">${t(isMetric ? 'opt_per_meter' : 'opt_per_linear_ft')}</option>
+            <option value="area">${t(isMetric ? 'opt_per_m2' : 'opt_per_sqft')}</option>
+            <option value="volume">${t(isMetric ? 'opt_per_m3' : 'opt_per_board_ft')}</option>
         `;
         unitSelect.value = item.priceUnit || 'piece';
 

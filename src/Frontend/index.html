@@ -301,7 +301,7 @@
             <div class="modal-content shadow border-secondary">
                 <div class="modal-header bg-light border-bottom">
                     <div>
-                        <h6 class="modal-title fw-bold text-dark mb-0">✏️ Edit Raw Material</h6>
+                        <h6 class="modal-title fw-bold text-dark mb-0" data-i18n="hdr_edit_raw_material">✏️ Edit Raw Material</h6>
                         <small id="edit-material-subtitle" class="text-muted"></small>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -309,17 +309,17 @@
                 <div class="modal-body py-3">
 
                     <div class="p-3 rounded-3 mb-3 input-panel">
-                        <h6 class="fw-bold text-secondary mb-3 text-uppercase section-label">Dimensions</h6>
+                        <h6 class="fw-bold text-secondary mb-3 text-uppercase section-label" data-i18n="lbl_dimensions">Dimensions</h6>
                         <div class="row g-3">
                             <div class="col">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Length</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_length">Length</label>
                                 <div class="input-group input-group-sm">
                                     <input type="text" class="form-control form-control-sm" id="edit-mat-length" oninput="updateEditMaterialPreview()">
                                     <span class="input-group-text display-unit-label text-muted">mm</span>
                                 </div>
                             </div>
                             <div class="col d-none" id="edit-mat-width-group">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Width</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_width">Width</label>
                                 <div class="input-group input-group-sm">
                                     <input type="text" class="form-control form-control-sm" id="edit-mat-width" oninput="updateEditMaterialPreview()">
                                     <span class="input-group-text display-unit-label text-muted">mm</span>
@@ -329,17 +329,17 @@
                     </div>
 
                     <div class="p-3 rounded-3 mb-3 input-panel">
-                        <h6 class="fw-bold text-secondary mb-3 text-uppercase section-label">Base Price</h6>
+                        <h6 class="fw-bold text-secondary mb-3 text-uppercase section-label" data-i18n="lbl_base_price">Base Price</h6>
                         <div class="row g-3">
                             <div class="col-7">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Price</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_price">Price</label>
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text text-muted" id="edit-mat-currency-label">$</span>
                                     <input type="number" min="0" step="any" class="form-control form-control-sm" id="edit-mat-price" oninput="updateEditMaterialPreview()">
                                 </div>
                             </div>
                             <div class="col-5">
-                                <label class="form-label form-label-sm fw-bold text-secondary mb-1">Per</label>
+                                <label class="form-label form-label-sm fw-bold text-secondary mb-1" data-i18n="lbl_per">Per</label>
                                 <select class="form-select form-select-sm" id="edit-mat-price-unit" onchange="updateEditMaterialPreview()">
                                     <option value="piece">per piece</option>
                                     <option value="linear">per meter</option>
@@ -352,19 +352,19 @@
 
                     <div class="px-1">
                         <div class="d-flex justify-content-between align-items-center text-muted" style="font-size: 0.85rem;">
-                            <span>New price</span>
+                            <span data-i18n="lbl_new_price">New price</span>
                             <span class="fw-bold text-dark" id="edit-mat-preview-price">—</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center text-muted mt-1" style="font-size: 0.85rem;">
-                            <span>Current price</span>
+                            <span data-i18n="lbl_current_price">Current price</span>
                             <span id="edit-mat-orig-price">—</span>
                         </div>
                     </div>
 
                 </div>
                 <div class="modal-footer border-top">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-sm btn-primary fw-bold" onclick="saveAndRecalculateMaterial()">Save</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" data-i18n="btn_cancel">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-primary fw-bold" onclick="saveAndRecalculateMaterial()" data-i18n="btn_save_plain">Save</button>
                 </div>
             </div>
         </div>
@@ -673,7 +673,7 @@
             <div class="d-flex justify-content-center gap-2 mb-4" id="tour-dots"></div>
             <div id="tour-content" class="text-center" style="min-height:190px;"></div>
             <div class="d-flex justify-content-between align-items-center mt-4">
-                <button class="btn btn-outline-secondary btn-sm" id="tour-btn-prev" onclick="tourPrev()">← Back</button>
+                <button class="btn btn-outline-secondary btn-sm" id="tour-btn-prev" onclick="tourPrev()" data-i18n="tour_btn_back">← Back</button>
                 <button class="btn btn-primary btn-sm px-4" id="tour-btn-next" onclick="tourNext()">Next →</button>
             </div>
         </div>

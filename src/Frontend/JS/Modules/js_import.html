@@ -169,8 +169,8 @@
         const isCsvMetric = (detectedCsvUnit === 'mm');
 
         if (detectedCsvUnit !== 'unknown' && isShopMetric !== isCsvMetric) {
-            document.getElementById('csv-unit-label').innerText = isCsvMetric ? 'Metric' : 'Imperial';
-            document.getElementById('shop-unit-label').innerText = isShopMetric ? 'Metric' : 'Imperial';
+            document.getElementById('csv-unit-label').innerText = t(isCsvMetric ? 'lbl_metric' : 'lbl_imperial');
+            document.getElementById('shop-unit-label').innerText = t(isShopMetric ? 'lbl_metric' : 'lbl_imperial');
             warningBanner.classList.remove('d-none');
         } else {
             warningBanner.classList.add('d-none');
@@ -536,7 +536,7 @@
             const delimiter = window.csvDelimiter || ';';
             const cols = _splitCsvLine(rowStr, delimiter);
 
-            const rawName = cols[colMap.name] || `Part ${i}`;
+            const rawName = cols[colMap.name] || t('lbl_part_n', { n: i + 1 });
             const rawPath = (!isNaN(colMap.group) && cols[colMap.group]) ? String(cols[colMap.group]) : '';
             const rawMaterial = isNaN(colMap.material) ? '' : (cols[colMap.material] || '');
             // Unmapped Qty (SketchUp/OpenCutList) -> every row is 1 instance, matching

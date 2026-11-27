@@ -190,7 +190,7 @@
 
             // 🪄 PROJECT LINK ENGINE
             let linkHtml = proj.link 
-                ? `<a href="${safeUrl(proj.link)}" target="_blank" class="text-decoration-none" title="Open Link">🔗</a>` 
+                ? `<a href="${safeUrl(proj.link)}" target="_blank" class="text-decoration-none" title="${t('title_open_link')}">🔗</a>` 
                 : `<span class="text-muted" style="opacity: 0.3;">🔗</span>`;
 
             // 🪄 STATUS DROPDOWN ENGINE (Fixed Width Badges)
@@ -259,11 +259,11 @@
                 <td class="text-nowrap align-middle">
                     <div class="d-flex justify-content-center align-items-center">
                         ${linkHtml}
-                        <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${proj.id}')" title="Edit Link">✏️</button>
+                        <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${proj.id}')" title="${t('title_edit_link')}">✏️</button>
                     </div>
                 </td>                   
                 <td class="text-end">
-                    <button class="btn btn-sm py-0 px-0" onclick="duplicateProjectWarning('${proj.id}')" title="Duplicate Project">➕</button>
+                    <button class="btn btn-sm py-0 px-0" onclick="duplicateProjectWarning('${proj.id}')" title="${t('title_duplicate_project')}">➕</button>
                     <button class="btn btn-sm py-0 px-0 me-2" onclick="deleteProject('${proj.id}')" title="${t('title_delete')}">🗑️</button>
                 </td>
             `;
@@ -552,11 +552,11 @@
                     currentArchiveData = response.data;
                     renderArchiveTable();
                 } else {
-                    document.getElementById('archive-table-body').innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">Error: ${response.message}</td></tr>`;
+                    document.getElementById('archive-table-body').innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">${safeHTML(t('msg_server_error', { message: response.message }))}</td></tr>`;
                 }
             })
             .withFailureHandler((err) => {
-                document.getElementById('archive-table-body').innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">Server Error: ${err}</td></tr>`;
+                document.getElementById('archive-table-body').innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">${safeHTML(t('msg_server_error', { message: String(err) }))}</td></tr>`;
             })
             .getArchiveList();
     }
@@ -657,13 +657,13 @@
                     const confirmModalEl = document.getElementById('modal-universal-delete');
                     if (confirmModalEl) bootstrap.Modal.getInstance(confirmModalEl)?.hide();
                 } else {
-                    alert('Archiving failed: ' + response.message);
+                    showToast(t('msg_archive_failed', { message: response.message }), 'danger');
                 }
             })
             .withFailureHandler((err) => {
                 unfreezeUI();
                 if (confirmBtn) confirmBtn.innerHTML = originalText;
-                alert('Server error: ' + err);
+                showToast(t('msg_server_error', { message: String(err) }), 'danger');
             })
             .archiveProjectToSheet(JSON.stringify(payload));
     }
@@ -743,13 +743,13 @@
                     bootstrap.Modal.getInstance(document.getElementById('modal-universal-delete'))?.hide();
                     archiveModalInstance?.hide();
                 } else {
-                    alert('Error restoring: ' + response.message);
+                    showToast(t('msg_restore_failed', { message: response.message }), 'danger');
                 }
             })
             .withFailureHandler((err) => {
                 unfreezeUI();
                 if (confirmBtn) confirmBtn.innerHTML = originalText;
-                alert('Server Error: ' + err);
+                showToast(t('msg_server_error', { message: String(err) }), 'danger');
             })
             .loadProjectFromArchive(id);
     }
@@ -782,18 +782,18 @@
                             const confirmModalEl = document.getElementById('modal-universal-delete');
                             if (confirmModalEl) bootstrap.Modal.getInstance(confirmModalEl)?.hide();
                         } else {
-                            alert('Error deleting: ' + response.message);
+                            showToast(t('msg_delete_failed', { message: response.message }), 'danger');
                         }
                     })
                     .withFailureHandler((err) => {
                         unfreezeUI();
                         if (confirmBtn) confirmBtn.innerHTML = originalText;
-                        alert('Server Error: ' + err);
+                        showToast(t('msg_server_error', { message: String(err) }), 'danger');
                     })
                     .deleteProjectFromArchive(id);
             },
             'danger',
-            'Delete Forever'
+            t('btn_delete_forever')
         );
     }
 
@@ -1113,11 +1113,11 @@
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                             <li><a class="dropdown-item" href="#" onclick="openLinkModal('${proj.id}'); return false;">✏️ ${t('title_edit_link')}</a></li>
                             ${proj.link ? `<li><a class="dropdown-item" href="${safeUrl(proj.link)}" target="_blank">🔗 ${t('title_open_link')}</a></li>` : ''}
-                            <li><a class="dropdown-item" href="#" onclick="duplicateProjectWarning('${proj.id}'); return false;">➕ Clone Project</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="duplicateProjectWarning('${proj.id}'); return false;">➕ ${t('title_duplicate_project')}</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" onclick="changeProjectStatus('${proj.id}', 'Archive'); return false;">🗄️ Archive Project</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="changeProjectStatus('${proj.id}', 'Archive'); return false;">🗄️ ${t('status_archive_project')}</a></li>
                             <li><a class="dropdown-item" href="#" onclick="exportProject('${proj.id}'); return false;" title="${t('title_export_project')}">📤 ${t('btn_export_project')}</a></li>
-                            <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="deleteProject('${proj.id}'); return false;">🗑️ Delete</a></li>
+                            <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="deleteProject('${proj.id}'); return false;">🗑️ ${t('title_delete')}</a></li>
                         </ul>
                     </div>
                 </div>
@@ -1191,11 +1191,11 @@
                                  style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; outline: none; line-height: 1.5; cursor: text; word-break: break-word;"
                                  onblur="updateProject('${proj.id}', 'comment', this.innerText)"
                                  title="${t('title_tap_to_edit_notes')}"
-                                 data-placeholder="Add notes...">${safeHTML(proj.comment || '')}</div>
+                                 data-placeholder="${t('ph_add_notes')}">${safeHTML(proj.comment || '')}</div>
                         </div>
                         
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="badge text-dark border shadow-sm" style="cursor: pointer;" onclick="jumpToProjectParts('${proj.id}')" title="${t('title_view_parts')}">🧩 ${partCount} Parts</span>
+                            <span class="badge text-dark border shadow-sm" style="cursor: pointer;" onclick="jumpToProjectParts('${proj.id}')" title="${t('title_view_parts')}">🧩 ${t('lbl_n_parts', { count: partCount })}</span>
                             <span>
                                 <button type="button" class="info-icon-btn" style="position:static;display:inline-block;vertical-align:middle;" onclick="showInfoTooltip(event, t('tooltip_est_cost'))">ⓘ</button>
                                 <span class="badge text-success border shadow-sm fw-bold">${currency}${displayCost}</span>

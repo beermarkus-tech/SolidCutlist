@@ -95,9 +95,9 @@
             const material = appState.materials.find(m => m.id === group.materialId);
             const store = appState.stores?.find(s => s.id === group.storeId);
             
-            const profName = profile ? profile.name : `⚠️ Missing`;
-            const matName = material ? material.name : `⚠️ Missing`;
-            const storeName = store ? store.name : `⚠️ Missing`;
+            const profName = profile ? profile.name : `⚠️ ${t('msg_missing')}`;
+            const matName = material ? material.name : `⚠️ ${t('msg_missing')}`;
+            const storeName = store ? store.name : `⚠️ ${t('msg_missing')}`;
 
             if (!profile || !material || !store) tr.classList.add('table-warning');
 
@@ -141,7 +141,7 @@
             // 🪄 3. GRAIN
             let grainHtml = '-';
             if (group.categoryId === 'sheet') {
-                if (group.grains.size > 1) grainHtml = `<span class="fst-italic text-muted"><small>Multiple</small></span>`;
+                if (group.grains.size > 1) grainHtml = `<span class="fst-italic text-muted"><small>${t('lbl_multiple')}</small></span>`;
                 else grainHtml = `<small>${Array.from(group.grains)[0] === 'none' ? '-' : t('opt_' + Array.from(group.grains)[0])}</small>`;
             }
 
