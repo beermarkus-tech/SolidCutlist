@@ -199,7 +199,14 @@
 
                     if (packResult.unmapped.length === 0) {
                         // Full fit
-                        if (totalCost < lowestCost) {
+                        // Cheapest wins; on a (near-)tie — e.g. no prices entered — prefer fewer
+                        // boards, then less waste, so the result never depends on catalog row order.
+                        const _better = !bestOption
+                            || totalCost < lowestCost - 1e-9
+                            || (Math.abs(totalCost - lowestCost) <= 1e-9 &&
+                                (packResult.boards.length < bestOption.boardsNeeded ||
+                                 (packResult.boards.length === bestOption.boardsNeeded && packResult.totalWaste < bestOption.waste - 1e-9)));
+                        if (_better) {
                             lowestCost = totalCost;
                             bestOption = {
                                 catalogItem: option,
@@ -212,7 +219,9 @@
                     } else if (packResult.boards.length > 0) {
                         // Partial fit — some parts placed, some oversized
                         if (packResult.unmapped.length < fewestUnmapped ||
-                            (packResult.unmapped.length === fewestUnmapped && totalCost < bestPartialCost)) {
+                            (packResult.unmapped.length === fewestUnmapped && (totalCost < bestPartialCost - 1e-9 ||
+                                (Math.abs(totalCost - bestPartialCost) <= 1e-9 && bestPartialOption &&
+                                 packResult.boards.length < bestPartialOption.boardsNeeded)))) {
                             fewestUnmapped = packResult.unmapped.length;
                             bestPartialCost = totalCost;
                             bestPartialOption = {
@@ -360,7 +369,7 @@
         let normalLegal = true;
         let rotatedLegal = true;
         
-        if (part.grain !== 'none' && sheetGrain !== 'none') {
+        if ((part.grain || 'none') !== 'none' && (sheetGrain || 'none') !== 'none') {
             if (part.grain === sheetGrain) rotatedLegal = false; 
             else normalLegal = false; 
         }
@@ -439,7 +448,7 @@
     // The first placement of a given dimension pair sets the preference; later identical parts use
     // the same orientation when it fits, and fall back to checkFit's choice only when it doesn't.
     function _resolveRot(part, rect, sheetGrain, fit, canonRot) {
-        if (part.grain !== 'none' && sheetGrain !== 'none') return fit.rotated; // grain decides
+        if ((part.grain || 'none') !== 'none' && (sheetGrain || 'none') !== 'none') return fit.rotated; // grain decides
         const key = Math.max(part.length, part.width) + '|' + Math.min(part.length, part.width);
         if (canonRot[key] === undefined) { canonRot[key] = fit.rotated; return fit.rotated; }
         if (canonRot[key] === fit.rotated) return fit.rotated;
@@ -477,7 +486,7 @@
             let placed = false;
             for (let i = 0; i < boards.length; i++) {
                 // 🪄 NEW LOGIC: If it fits, instantly subtract the part AND the kerf needed to sever it
-                if (boards[i].remaining >= part.length) {
+                if (boards[i].remaining + DIM_EPSILON >= part.length) {
                     boards[i].cuts.push(part);
                     boards[i].remaining = Math.max(0, boards[i].remaining - part.length - kerf);
                     placed = true;
@@ -486,7 +495,7 @@
             }
             if (!placed) {
                 let usableLength = boardLength - trim;
-                if (usableLength >= part.length) {
+                if (usableLength + DIM_EPSILON >= part.length) {
                     // 🪄 First cut also eats a kerf to separate it from the remaining scrap
                     boards.push({ 
                         cuts: [part], 
@@ -640,7 +649,7 @@
         let unmapped = [];
         parts.forEach(part => {
             // 🪄 NEW LOGIC: Ensure the kerf is taken out of the remaining scrap
-            if (board.remaining >= part.length) {
+            if (board.remaining + DIM_EPSILON >= part.length) {
                 board.cuts.push(part);
                 board.remaining = Math.max(0, board.remaining - part.length - kerf);
             } else {
@@ -692,7 +701,7 @@
             if (seg.sealed) return false;                        // segment is frozen — no more parts
             const k         = seg.cuts.length === 0 ? 0 : kerf; // no kerf before first part
             const available = Math.min(seg.segAbsStart + transportLmax - margin, boardLength) - seg.partsEnd;
-            if (available >= part.length + k) {
+            if (available + DIM_EPSILON >= part.length + k) {
                 seg.cuts.push(part);
                 boardCuts.push(part);
                 seg.partsEnd += k + part.length;
@@ -706,7 +715,7 @@
             const lastSeg  = b.segments[b.segments.length - 1];
             const newStart = lastSeg.partsEnd + margin;
             if (newStart >= boardLength) return false;              // no board left
-            if (part.length > boardLength - newStart) return false; // truly won't fit on board
+            if (part.length > boardLength - newStart + DIM_EPSILON) return false; // truly won't fit on board
             lastSeg.sealed = true;                               // commit — freeze partsEnd before opening next seg
             const oversized = part.length > transportLmax;
             const newSeg = { segAbsStart: newStart, partsEnd: newStart, cuts: [], remaining: 0, oversized };
@@ -738,7 +747,7 @@
 
             // Pass 3: open a new board (allow parts that exceed transportLmax but fit on the board)
             if (!placed) {
-                if (part.length <= boardLength - trim) {
+                if (part.length <= boardLength - trim + DIM_EPSILON) {
                     const oversized = part.length > transportLmax;
                     const firstSeg = { segAbsStart: 0, partsEnd: trim, cuts: [], remaining: 0, oversized };
                     const newBoard = { cuts: [], segments: [firstSeg], transportZones: [], remaining: 0 };
@@ -839,13 +848,13 @@
         // transport-direction dimension.  When one grain is 'none' the optimizer can choose the
         // shorter dimension — but only if the other dimension fits within the usable sheet width.
         function effectiveTransportL(p) {
-            if (p.grain !== 'none' && sheetGrain !== 'none') {
+            if ((p.grain || 'none') !== 'none' && (sheetGrain || 'none') !== 'none') {
                 return p.grain === sheetGrain ? p.length : p.width;
             }
             const minDim = Math.min(p.length, p.width);
             const maxDim = Math.max(p.length, p.width);
             // Rotation is only feasible when the longer dimension fits within the sheet width.
-            return maxDim <= sheetWidth - trim ? minDim : maxDim;
+            return maxDim <= sheetWidth - trim + DIM_EPSILON ? minDim : maxDim;
         }
 
         // Split parts: oversized (effective transport-L >= segMax) sorted largest-first, then normal.
@@ -887,7 +896,7 @@
                 const ozL = effectiveTransportL(part);
                 for (let b of boards) {
                     if (!b.hasOversized) continue;
-                    if (b.nextOzStart + ozL <= totalDim) {
+                    if (b.nextOzStart + ozL <= totalDim + DIM_EPSILON) {
                         const newStripStart = b.nextOzStart;
                         const newStrip = {
                             freeRects: [{ x: trim, y: 0, w: Math.max(0, sheetWidth - trim), l: ozL }],
@@ -912,7 +921,7 @@
 
             // Pass 3-OZ: open a brand-new oversized board
             const ozL3 = effectiveTransportL(part);
-            if (!placed && ozL3 <= totalDim) {
+            if (!placed && ozL3 <= totalDim + DIM_EPSILON) {
                 const ozBoard = makeOversizedBoard(ozL3);
                 const ozStrip = ozBoard.strips[0];
                 const fit = checkFit(part, ozStrip.freeRects[0], sheetGrain);
