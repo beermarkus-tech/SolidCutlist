@@ -1,6 +1,19 @@
 # SolidCutlist PWA: plan
 
-Branch: `PWA` (started from v1.1 RC build 39). Status: **planning**.
+Branch: `PWA` (started from v1.1 RC build 39). Status: **Phase 1 done (code)**. Publishing
+to GitHub Pages is waiting on the one-time Pages setup (see §5); starter-pack files are
+waiting on the export from the Sheet.
+
+### Phase 1 result
+- `npm run build:pwa` → `dist-pwa/`: one static `index.html` (includes resolved), Bootstrap
+  served locally, no Apps Script or CDN left.
+- `src/Frontend/JS/Core/js_local_backend.html`: replaces `google.script.run` outside Apps
+  Script with the same functions, stored in IndexedDB. It does nothing in the Sheet version,
+  so one codebase builds both.
+- Verified in Chromium: boot, editing, save + reload, optimizer + shopping list, phone
+  layout; no console errors. 10 new unit tests for the local backend.
+- `.github/workflows/pwa-pages.yml` publishes every push to `PWA` (after the tests pass).
+- `tools/starter-pack-from-backup.js` turns a full backup into `pwa/starter-packs/*.json`.
 
 ## 1. Decisions taken
 

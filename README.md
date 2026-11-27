@@ -32,6 +32,7 @@ build.js                   Minifies src/ into dist/ (optional, for shipping)
 npm install      # dev dependency: html-minifier-terser (for the build only)
 npm test         # run the test suite (Node 18+)
 npm run build    # write a minified copy to dist/ (fails if any file can't be minified)
+npm run build:pwa  # PWA branch: static website in dist-pwa/ (see docs/PWA_PLAN.md)
 ```
 
 Deploy with [clasp](https://github.com/google/clasp): `.clasp.json` points at `./src`

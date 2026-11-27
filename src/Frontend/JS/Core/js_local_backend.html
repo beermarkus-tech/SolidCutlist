@@ -1,0 +1,207 @@
+<script>
+    // ==========================================
+    // LOCAL BACKEND (PWA)
+    // ==========================================
+    // When the app is NOT served by Google Apps Script (the PWA build on GitHub Pages),
+    // there is no google.script.run. This file provides a drop-in replacement with the
+    // same server-function names and return formats as Backend/Code.gs, backed by the
+    // browser's IndexedDB. The rest of the app calls google.script.run exactly as before.
+    //
+    // Inside Apps Script, google.script.run already exists and this file does nothing.
+    //
+    // Phase 3 (Google Drive sync) plugs in behind this layer.
+    (function () {
+        const root = (typeof window !== 'undefined') ? window : globalThis;
+        if (root.google && root.google.script && root.google.script.run) return; // Apps Script: real backend
+
+        const TABS = ['projects', 'groups', 'parts', 'stock', 'catalog', 'materials', 'profiles', 'stores', 'jobs'];
+
+        // ---------- Key/value storage: IndexedDB, or memory when unavailable (tests) ----------
+        function createStore() {
+            const idb = root.indexedDB;
+            if (!idb) {
+                const mem = new Map();
+                return {
+                    kind: 'memory',
+                    get: async (k) => (mem.has(k) ? JSON.parse(JSON.stringify(mem.get(k))) : undefined),
+                    set: async (k, v) => { mem.set(k, JSON.parse(JSON.stringify(v))); }
+                };
+            }
+            let dbPromise = null;
+            const open = () => dbPromise || (dbPromise = new Promise((resolve, reject) => {
+                const req = idb.open('solidcutlist', 1);
+                req.onupgradeneeded = () => req.result.createObjectStore('kv');
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            }));
+            const tx = (mode, fn) => open().then(db => new Promise((resolve, reject) => {
+                const t = db.transaction('kv', mode);
+                const store = t.objectStore('kv');
+                let result;
+                fn(store, r => { result = r; });
+                t.oncomplete = () => resolve(result);
+                t.onerror = () => reject(t.error);
+                t.onabort = () => reject(t.error);
+            }));
+            return {
+                kind: 'indexeddb',
+                get: (k) => tx('readonly', (s, done) => { const r = s.get(k); r.onsuccess = () => done(r.result); }),
+                set: (k, v) => tx('readwrite', (s) => { s.put(v, k); })
+            };
+        }
+        const store = createStore();
+
+        // Every backend call runs one at a time (read-modify-write safety), like the
+        // server-side script lock in Code.gs.
+        let queue = Promise.resolve();
+        const serialized = (fn) => (...args) => {
+            const run = queue.then(() => fn(...args));
+            queue = run.catch(() => {});
+            return run;
+        };
+
+        const ok = (extra) => Object.assign({ status: 'success' }, extra || {});
+        const fail = (e) => ({ status: 'error', message: String(e && e.message ? e.message : e) });
+        const asJson = (fn) => async (...args) => {
+            try { return JSON.stringify(await fn(...args)); } catch (e) { return JSON.stringify(fail(e)); }
+        };
+        const asObject = (fn) => async (...args) => {
+            try { return await fn(...args); } catch (e) { return fail(e); }
+        };
+
+        // ---------- Server functions (same names/formats as Backend/Code.gs) ----------
+        const LocalBackend = {
+            getAppStateFromSheet: asJson(async () => {
+                const snap = (await store.get('snapshot')) || {};
+                const src = snap.appState || {};
+                const appState = {};
+                TABS.forEach(tab => { appState[tab] = Array.isArray(src[tab]) ? src[tab] : []; });
+                appState.settings = (src.settings && typeof src.settings === 'object') ? src.settings : {};
+                return ok({ appState, cloud_timestamp: snap.timestamp || 0 });
+            }),
+
+            saveAppStateToSheet: asObject(async (payloadString) => {
+                const payload = JSON.parse(payloadString);
+                if (!payload.appState || typeof payload.appState !== 'object') throw new Error('Invalid payload: appState missing.');
+                const appState = {};
+                TABS.forEach(tab => { if (payload.appState[tab]) appState[tab] = payload.appState[tab]; });
+                if (payload.appState.settings) appState.settings = payload.appState.settings;
+                // One record holds data + timestamp, so they can never disagree
+                await store.set('snapshot', { appState, timestamp: payload.timestamp });
+                return ok({ cloud_timestamp: payload.timestamp });
+            }),
+
+            archiveProjectToSheet: asObject(async (payloadString) => {
+                const p = JSON.parse(payloadString);
+                if (!p || !p.id) throw new Error('Missing project ID.');
+                const archive = (await store.get('archive')) || [];
+                archive.push({
+                    id: String(p.id), date: new Date().toISOString(),
+                    project: p.project, groups: p.groups || [], parts: p.parts || [],
+                    image: p.image || null, usedProfiles: p.usedProfiles || [], usedMaterials: p.usedMaterials || []
+                });
+                await store.set('archive', archive);
+                return ok();
+            }),
+
+            getArchiveList: asJson(async () => {
+                const archive = (await store.get('archive')) || [];
+                return ok({ data: archive.map(a => ({
+                    id: a.id, date: a.date,
+                    name: (a.project && a.project.name) || 'Unknown Project',
+                    notes: (a.project && a.project.comment) || '',
+                    icon: (a.project && a.project.icon) || null,
+                    image: a.image || null
+                })) });
+            }),
+
+            loadProjectFromArchive: asJson(async (projectId) => {
+                const archive = (await store.get('archive')) || [];
+                const a = archive.find(x => x.id === String(projectId));
+                if (!a) throw new Error('Project not found in archive.');
+                return ok({ project: a.project, groups: a.groups, parts: a.parts, image: a.image,
+                            usedProfiles: a.usedProfiles, usedMaterials: a.usedMaterials });
+            }),
+
+            deleteProjectFromArchive: asJson(async (projectId) => {
+                const archive = (await store.get('archive')) || [];
+                const kept = archive.filter(x => x.id !== String(projectId));
+                if (kept.length === archive.length) throw new Error('Project not found in archive.');
+                await store.set('archive', kept);
+                return ok();
+            }),
+
+            getThumbnails: asJson(async () => ok({ data: (await store.get('thumbnails')) || {} })),
+
+            saveThumbnail: asJson(async (payloadString) => {
+                const p = JSON.parse(payloadString);
+                if (!p.projectId || !p.base64String) throw new Error('Missing ID or Image Data');
+                const thumbs = (await store.get('thumbnails')) || {};
+                thumbs[String(p.projectId)] = p.base64String;
+                await store.set('thumbnails', thumbs);
+                return ok();
+            }),
+
+            deleteThumbnail: asJson(async (projectId) => {
+                const thumbs = (await store.get('thumbnails')) || {};
+                delete thumbs[String(projectId)];
+                await store.set('thumbnails', thumbs);
+                return ok();
+            }),
+
+            bulkImportThumbnails: asJson(async (jsonPayload) => {
+                const incoming = JSON.parse(jsonPayload) || {};
+                const thumbs = {};
+                Object.entries(incoming).forEach(([id, img]) => { if (id && img) thumbs[String(id)] = img; });
+                await store.set('thumbnails', thumbs);
+                return ok();
+            }),
+
+            clearAllThumbnails: asJson(async () => { await store.set('thumbnails', {}); return ok(); }),
+
+            // Starter packs ship as static JSON files with the PWA (starter-packs/starter_EU.json, _US.json)
+            getStarterPack: asJson(async (region) => {
+                if (typeof root.fetch !== 'function') throw new Error('Starter pack not available.');
+                const file = region === 'US' ? 'starter_US.json' : 'starter_EU.json';
+                const res = await root.fetch('starter-packs/' + file, { cache: 'no-cache' });
+                if (!res.ok) throw new Error('Starter pack not found (' + res.status + ').');
+                const data = await res.json();
+                return ok({ data });
+            })
+        };
+        Object.keys(LocalBackend).forEach(k => { LocalBackend[k] = serialized(LocalBackend[k]); });
+
+        // ---------- google.script.run look-alike ----------
+        function makeRunner(onSuccess, onFailure) {
+            return new Proxy({}, {
+                get(_, prop) {
+                    if (prop === 'withSuccessHandler') return fn => makeRunner(fn, onFailure);
+                    if (prop === 'withFailureHandler') return fn => makeRunner(onSuccess, fn);
+                    if (prop === 'withUserObject') return () => makeRunner(onSuccess, onFailure);
+                    const impl = LocalBackend[prop];
+                    return (...args) => {
+                        if (!impl) {
+                            const err = new Error('Unknown backend function: ' + String(prop));
+                            setTimeout(() => { if (onFailure) onFailure(err); else console.error(err); }, 0);
+                            return;
+                        }
+                        // Always asynchronous, like the real google.script.run
+                        impl(...args).then(
+                            r => { if (onSuccess) onSuccess(r); },
+                            e => { console.error(e); if (onFailure) onFailure(e); }
+                        );
+                    };
+                }
+            });
+        }
+
+        root.google = { script: { run: makeRunner(null, null) } };
+        if (root.document && root.document.addEventListener) {
+            root.document.addEventListener('DOMContentLoaded', () => {
+                const bootStatus = root.document.getElementById('boot-status');
+                if (bootStatus) bootStatus.textContent = 'Loading…';
+            });
+        }
+        root.SOLIDCUTLIST_LOCAL_BACKEND = { store, backend: LocalBackend };
+    })();
+</script>

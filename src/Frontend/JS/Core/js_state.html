@@ -673,7 +673,8 @@
         }
         else if (status === 'success') {
             icon.innerHTML = '<span style="color: #22c55e; font-weight: bold;">✓</span>';
-            text.innerText = t('msg_saved');
+            // PWA without cloud sync yet: the "cloud" is this device's storage
+            text.innerText = window.SOLIDCUTLIST_LOCAL_BACKEND ? t('msg_saved_on_device') : t('msg_saved');
         }
         else if (status === 'error') {
             icon.innerHTML = '⚠️';

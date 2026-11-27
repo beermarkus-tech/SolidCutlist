@@ -7,3 +7,4 @@ node_modules/
 
 # Claude Code local settings (personal permission grants, not shared with the team)
 .claude/settings.local.json
+dist-pwa/
