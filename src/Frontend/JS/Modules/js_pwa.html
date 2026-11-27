@@ -7,9 +7,13 @@
         if (!window.SOLIDCUTLIST_LOCAL_BACKEND) return;
         if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
 
+        // Reload only when the user asked for the update. On the very first visit the
+        // offline cache takes control of the page too (controllerchange) — that must
+        // NOT reload, or a first-time user gets interrupted seconds after opening the app.
         let refreshing = false;
+        let updateRequested = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-            if (refreshing) return;
+            if (!updateRequested || refreshing) return;
             refreshing = true;
             window.location.reload();
         });
@@ -33,6 +37,7 @@
                 if (typeof syncTimeout !== 'undefined' && syncTimeout && typeof triggerCloudSync === 'function') {
                     clearTimeout(syncTimeout); triggerCloudSync();
                 }
+                updateRequested = true;
                 if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
                 else window.location.reload();
             };

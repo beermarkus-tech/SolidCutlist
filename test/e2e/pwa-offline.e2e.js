@@ -19,7 +19,12 @@ const booted = page => page.waitForFunction(() => document.getElementById('boot-
   const ctx = await browser.newContext({ viewport: { width: 412, height: 915 }, isMobile: true, hasTouch: true });
   const page = await ctx.newPage();
   page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text()); });
+  let navigations = 0; page.on('framenavigated', f => { if (f === page.mainFrame()) navigations++; });
   await page.goto('http://localhost:8096/'); await booted(page);
+  await page.evaluate(() => navigator.serviceWorker.ready); await page.waitForTimeout(1500);
+  const firstVisitReloads = navigations - 1;
+  console.log('unexpected reloads on first visit:', firstVisitReloads);
+  if (firstVisitReloads !== 0) errors.push('first visit reloaded the page');
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 10000 }).catch(async () => { await page.reload(); await booted(page); });
   console.log('service worker controlling page:', await page.evaluate(() => !!navigator.serviceWorker.controller));
