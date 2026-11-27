@@ -45,3 +45,7 @@ Deploy with [clasp](https://github.com/google/clasp): `.clasp.json` points at `.
 - Each store price records the unit system it was entered in (`priceSystem`), so
   switching display units never changes prices.
 - Never commit secrets: `.idx/dev.nix` and every other file here is in git history.
+
+## Credits
+
+App icon: the "wood" emoji from [Google Noto Emoji](https://github.com/googlefonts/noto-emoji), Apache License 2.0. See `pwa-src/ICON-CREDITS.md`.
