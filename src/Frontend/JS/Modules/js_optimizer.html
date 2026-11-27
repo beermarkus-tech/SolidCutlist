@@ -1930,6 +1930,7 @@
                         url: repOpt.url || repOpt.link || '',
                         price: repOpt.price || 0,
                         priceUnit: repOpt.priceUnit || 'piece',
+                        priceSystem: getItemPriceSystem(repOpt),
                         profileThickness: prof?.thickness || 0,
                         profileWidth: prof?.width || 0,
                         isError: true,
@@ -2004,6 +2005,7 @@
                 url: purchase.catalogItem.url || purchase.catalogItem.link || '',
                 price: purchase.catalogItem.price || 0,
                 priceUnit: purchase.catalogItem.priceUnit || 'piece',
+                priceSystem: getItemPriceSystem(purchase.catalogItem),
                 profileThickness: prof?.thickness || 0,
                 profileWidth: prof?.width || 0,
                 oversizedParts: res.oversizedParts || [],
@@ -2735,38 +2737,35 @@
     let _editingCatalogId = null;
     let _editingDisplayUnit = null; // effective unit at modal-open time (may differ from global after job restore)
 
-    function calcNormalizedPrice(price, priceUnit, lengthMm, widthMm, thicknessMm, profileWidthMm, category, isMetric) {
+    /**
+     * Normalized price (per m / ft for lumber, per m² / sqft for sheets) of a board.
+     * priceSystem = system the price was ENTERED in ('metric' | 'imperial');
+     * isMetric    = system the RESULT is expressed in. Defaults priceSystem to the result system.
+     */
+    function calcNormalizedPrice(price, priceUnit, lengthMm, widthMm, thicknessMm, profileWidthMm, category, isMetric, priceSystem) {
         if (!price || price <= 0 || !lengthMm || lengthMm <= 0) return null;
         const w_mm = category === 'sheet' ? widthMm : profileWidthMm;
         const t_mm = thicknessMm || 0;
+        const inSys  = priceSystem || (isMetric ? 'metric' : 'imperial');
+        const outSys = isMetric ? 'metric' : 'imperial';
         let cpp;
-        if (priceUnit === 'piece') {
-            cpp = price;
-        } else if (priceUnit === 'linear') {
-            cpp = isMetric ? price * (lengthMm / 1000) : price * (lengthMm / 304.8);
-        } else if (priceUnit === 'area') {
-            cpp = isMetric
-                ? price * (lengthMm / 1000) * (w_mm / 1000)
-                : price * (lengthMm * w_mm / 92903.04);
-        } else if (priceUnit === 'volume') {
-            if (!t_mm) return null;
-            cpp = isMetric
-                ? price * (lengthMm / 1000) * (w_mm / 1000) * (t_mm / 1000)
-                : price * (lengthMm * w_mm * t_mm / 2359737.216);
-        } else {
-            return null;
-        }
-        if (category === 'sheet') {
-            const area = isMetric
-                ? (lengthMm / 1000) * (w_mm / 1000)
-                : (lengthMm * w_mm / 92903.04);
-            if (!area) return null;
-            return { value: cpp / area, unit: isMetric ? '/ m²' : '/ sqft' };
-        } else {
-            const len = isMetric ? (lengthMm / 1000) : (lengthMm / 304.8);
-            if (!len) return null;
-            return { value: cpp / len, unit: isMetric ? '/ m' : '/ ft' };
-        }
+        if (priceUnit === 'piece') cpp = price;
+        else if (priceUnit === 'linear' || priceUnit === 'area' || priceUnit === 'volume') {
+            if (priceUnit === 'volume' && !t_mm) return null;
+            cpp = price * priceUnitQuantity(priceUnit, inSys, lengthMm, w_mm, t_mm);
+        } else return null;
+        const per = category === 'sheet' ? 'area' : 'linear';
+        const qty = priceUnitQuantity(per, outSys, lengthMm, w_mm, t_mm);
+        if (!qty) return null;
+        return { value: cpp / qty, unit: '/ ' + priceUnitLabel(per, outSys) };
+    }
+
+    /** Re-expresses a unit price entered in one system in the other (e.g. 10 €/m → 3.048 €/ft). */
+    function convertUnitPrice(price, priceUnit, fromSystem, toSystem) {
+        if (fromSystem === toSystem || priceUnit === 'piece' || !priceUnit) return price;
+        const qFrom = priceUnitQuantity(priceUnit, fromSystem, 1000, 1000, 1000);
+        const qTo   = priceUnitQuantity(priceUnit, toSystem,   1000, 1000, 1000);
+        return qTo ? price * qFrom / qTo : price;
     }
 
     function openEditMaterialModal(catalogId) {
@@ -2802,8 +2801,10 @@
         const unitText = isMetric ? 'mm' : 'in';
         document.querySelectorAll('#modal-edit-material .display-unit-label').forEach(el => el.textContent = unitText);
 
-        // Price
-        document.getElementById('edit-mat-price').value = item.price || '';
+        // Price — shown in the job's unit system (converted if it was entered in the other one)
+        const _jobSys = isMetric ? 'metric' : 'imperial';
+        const _shownPrice = convertUnitPrice(parseFloat(item.price) || 0, item.priceUnit || 'piece', item.priceSystem || _jobSys, _jobSys);
+        document.getElementById('edit-mat-price').value = _shownPrice ? Math.round(_shownPrice * 10000) / 10000 : '';
         document.getElementById('edit-mat-currency-label').textContent = currency;
 
         // Price unit select — labels depend on display unit
@@ -2817,7 +2818,7 @@
         unitSelect.value = item.priceUnit || 'piece';
 
         // Normalized price preview (original)
-        const orig = calcNormalizedPrice(item.price, item.priceUnit, item.length, item.width, item.profileThickness, item.profileWidth, item.category, isMetric);
+        const orig = calcNormalizedPrice(item.price, item.priceUnit, item.length, item.width, item.profileThickness, item.profileWidth, item.category, isMetric, item.priceSystem);
         const origEl = document.getElementById('edit-mat-orig-price');
         origEl.textContent = orig ? `${currency}${orig.value.toFixed(2)} ${orig.unit}` : '—';
 
@@ -2886,6 +2887,8 @@
         if (item.category === 'sheet') catalogItem.width = widthMm;
         catalogItem.price = price;
         catalogItem.priceUnit = priceUnit;
+        // The price was typed against the job's unit labels
+        catalogItem.priceSystem = (_editingDisplayUnit || appState.settings.displayUnit) === 'mm' ? 'metric' : 'imperial';
 
         setUnsavedChangesState('dirty_input');
         editMaterialModalInstance.hide();

@@ -222,6 +222,9 @@
         // 2. The Auto-Heal Engine
         autoHealMissingIDs();
 
+        // Freeze the price-unit system of legacy catalog prices (see js_prices.html)
+        if (typeof stampAllMissingPriceSystems === 'function') stampAllMissingPriceSystems();
+
         // 3. Run theme and renders
         if (typeof applyTheme === 'function') applyTheme();
         if (typeof renderSettings === 'function') renderSettings();
@@ -681,6 +684,8 @@
         }
     }
     function saveState() {
+        // Any catalog item added without a price system (imports, restores) gets the current one
+        if (typeof stampAllMissingPriceSystems === 'function') stampAllMissingPriceSystems();
         // 1. Recalculate totals (from our Project Dashboard update)
         if (typeof recalculateAllProjectTotals === 'function') recalculateAllProjectTotals();
 

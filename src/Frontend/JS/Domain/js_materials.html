@@ -247,6 +247,8 @@
     }
     function handleUnitChange() {
         // 1. ONLY update the global display preferences. 
+        // Lock existing prices to their current unit system BEFORE switching units
+        if (typeof stampAllMissingPriceSystems === 'function') stampAllMissingPriceSystems();
         appState.settings.displayUnit = document.getElementById('setting-display-unit').value;
         appState.settings.currency = document.getElementById('setting-currency').value;
         

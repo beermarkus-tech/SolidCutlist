@@ -68,6 +68,8 @@
             }
 
             // Unit system + currency — set directly, then sync settings modal
+            // Lock existing prices to their current unit system BEFORE switching units
+            if (typeof stampAllMissingPriceSystems === 'function') stampAllMissingPriceSystems();
             if (unitSel) appState.settings.displayUnit = unitSel.value;
             if (currSel) appState.settings.currency    = currSel.value;
 

@@ -302,8 +302,10 @@
                     </select>`;
             }
 
-            const uLin = isMetric ? 'm' : 'ft';
-            const uArea = isMetric ? 'm²' : 'sqft'; const uVol = isMetric ? 'm³' : 'BF';
+            // Raw price labels follow the system the price was ENTERED in, not the display unit
+            const _ps = getItemPriceSystem(item);
+            const uLin = priceUnitLabel('linear', _ps);
+            const uArea = priceUnitLabel('area', _ps); const uVol = priceUnitLabel('volume', _ps);
             
             let priceHtml = `
                 <div class="d-flex align-items-center justify-content-center text-nowrap mx-auto">
@@ -423,7 +425,8 @@
             length: parseToBaseUnit(document.getElementById('modal-catalog-input-length').value) || 0,
             width: parts[0] === 'sheet' ? (parseToBaseUnit(document.getElementById('modal-catalog-input-width').value) || 0) : 0,
             link: '',
-            lastVerified: Date.now()
+            lastVerified: Date.now(),
+            priceSystem: currentPriceSystem()
         });
         
         saveState();
@@ -516,7 +519,7 @@
             <td class="px-1 py-0 align-middle text-center"><small class="${mat ? '' : 'text-warning fw-bold'}">${safeHTML(mat?.name || '⚠️')}</small></td>
             <td class="text-center px-1 py-0 align-middle"><small>${grainText}</small></td>
             <td class="px-1 py-0 align-middle text-center"><small class="${store ? '' : 'text-warning fw-bold'}">${safeHTML(store?.name || '⚠️')}</small></td>
-            <td class="text-center px-1 py-0 align-middle"><small class="text-muted">${currency}${parseFloat(item.price || 0).toFixed(2)} /${{'piece': t('opt_pc'), 'linear': isMetric ? 'm' : 'ft', 'area': isMetric ? 'm²' : 'sqft', 'volume': isMetric ? 'm³' : 'BF'}[item.priceUnit] || item.priceUnit}</small></td>
+            <td class="text-center px-1 py-0 align-middle"><small class="text-muted">${currency}${parseFloat(item.price || 0).toFixed(2)} /${priceUnitLabel(item.priceUnit || 'piece', getItemPriceSystem(item))}</small></td>
             <td class="text-center fw-bold text-success align-middle"><small>${currency}${displayPrice}</small></td>
             <td class="text-center align-middle">${freshnessHtml}</td>
             <td class="text-nowrap align-middle">
@@ -580,7 +583,8 @@
         }
         const storeHtml = `<select class="text-center form-select form-select-sm border-0 bg-transparent px-1 py-0" onchange="updateCatalogItem('${item.id}', 'storeId', this.value)" title="${t('title_tap_to_change_store')}">${storeOptions}</select>`;
         // Price input + unit dropdown
-        const uLin = isMetric ? 'm' : 'ft'; const uArea = isMetric ? 'm²' : 'sqft'; const uVol = isMetric ? 'm³' : 'BF';
+        const _ps = getItemPriceSystem(item);
+        const uLin = priceUnitLabel('linear', _ps); const uArea = priceUnitLabel('area', _ps); const uVol = priceUnitLabel('volume', _ps);
         const priceHtml = `
             <div class="d-flex align-items-center justify-content-center text-nowrap mx-auto" style="width:130px;">
                 <input type="number" step="0.01" class="form-control form-control-sm border-0 bg-transparent text-end px-0" style="width:60px;"
@@ -653,7 +657,8 @@
             price: parseFloat(document.getElementById('cat-price').value) || 0,
             priceUnit: document.getElementById('cat-price-unit').value,
             link: rawLink,
-            lastVerified: Date.now()
+            lastVerified: Date.now(),
+            priceSystem: currentPriceSystem()
         });
         
         saveState();
@@ -897,53 +902,99 @@
             if (savedMat  && matSelect)  matSelect.value  = savedMat;
         }
     }
-    function calculateCostPerPiece(item) {
-        if (!item.price || item.price === 0) return 0;
-        if (item.priceUnit === 'piece') return item.price;
-        
-        const isMetric = appState.settings.displayUnit === 'mm';
-        const prof = appState.profiles.find(p => p.id === item.profileId);
-        if (!prof) return 0;
+    // ==========================================
+    // PRICE UNIT ENGINE
+    // ==========================================
+    // A catalog price of "10 / linear" means 10 per METRE for a metric price and 10 per
+    // FOOT for an imperial one. The measurement system is stored on each catalog item
+    // (item.priceSystem = 'metric' | 'imperial') at the moment the price is entered, so
+    // switching the display unit later never silently re-interprets stored prices.
+    // Legacy items without priceSystem are stamped with the system they were being
+    // interpreted in (the current display unit) by stampMissingPriceSystems().
 
-        const l_mm = item.length;
-        const w_mm = item.categoryId === 'sheet' ? item.width : (prof.width || 0);
-        const t_mm = prof.thickness || 0;
-
-        if (isMetric) {
-            if (item.priceUnit === 'linear') return item.price * (l_mm / 1000);
-            if (item.priceUnit === 'area') return item.price * ((l_mm / 1000) * (w_mm / 1000));
-            if (item.priceUnit === 'volume') return item.price * ((l_mm / 1000) * (w_mm / 1000) * (t_mm / 1000));
-        } else {
-            if (item.priceUnit === 'linear') return item.price * (l_mm / 304.8);
-            if (item.priceUnit === 'area') return item.price * ((l_mm * w_mm) / 92903.04);
-            if (item.priceUnit === 'volume') return item.price * ((l_mm * w_mm * t_mm) / 2359737.216); // Board Foot Math
-        }
-        return 0;
+    /** 'metric' or 'imperial' for a displayUnit value ('mm' | 'dec_in' | 'frac_in'). */
+    function priceSystemForDisplayUnit(displayUnit) {
+        return displayUnit === 'mm' ? 'metric' : 'imperial';
     }
+    function currentPriceSystem() {
+        return priceSystemForDisplayUnit(appState.settings && appState.settings.displayUnit);
+    }
+    function getItemPriceSystem(item) {
+        return (item && (item.priceSystem === 'metric' || item.priceSystem === 'imperial'))
+            ? item.priceSystem : currentPriceSystem();
+    }
+
+    /** Stamps every catalog item lacking priceSystem with the given system (default: current). */
+    function stampMissingPriceSystems(catalogArray, system) {
+        if (!Array.isArray(catalogArray)) return 0;
+        const sys = system || currentPriceSystem();
+        let n = 0;
+        catalogArray.forEach(c => {
+            if (c && c.priceSystem !== 'metric' && c.priceSystem !== 'imperial') { c.priceSystem = sys; n++; }
+        });
+        return n;
+    }
+    /** Stamps master catalog (current unit) and each job's frozen catalog (job's own unit). */
+    function stampAllMissingPriceSystems() {
+        if (!appState) return;
+        stampMissingPriceSystems(appState.catalog);
+        (appState.jobs || []).forEach(job => {
+            const sys = job && job.settings && job.settings.displayUnit
+                ? priceSystemForDisplayUnit(job.settings.displayUnit) : currentPriceSystem();
+            stampMissingPriceSystems(job && job.catalog, sys);
+        });
+    }
+
+    /**
+     * Size of one board/sheet expressed in a price unit.
+     * unit: 'linear' | 'area' | 'volume'; system: 'metric' | 'imperial'.
+     * metric: m, m², m³ — imperial: ft, sqft, board feet (actual dimensions).
+     */
+    function priceUnitQuantity(unit, system, l_mm, w_mm, t_mm) {
+        const metric = system === 'metric';
+        if (unit === 'linear') return metric ? l_mm / 1000 : l_mm / 304.8;
+        if (unit === 'area')   return metric ? (l_mm / 1000) * (w_mm / 1000) : (l_mm * w_mm) / 92903.04;
+        if (unit === 'volume') return metric ? (l_mm / 1000) * (w_mm / 1000) * (t_mm / 1000) : (l_mm * w_mm * t_mm) / 2359737.216;
+        return 1;
+    }
+
+    /** Short unit label for a price unit in a given system, e.g. '/ m', '/ sqft'. */
+    function priceUnitLabel(unit, system) {
+        const metric = system === 'metric';
+        if (unit === 'piece')  return (typeof t === 'function') ? t('opt_pc') : 'pc';
+        if (unit === 'linear') return metric ? 'm' : 'ft';
+        if (unit === 'area')   return metric ? 'm²' : 'sqft';
+        if (unit === 'volume') return metric ? 'm³' : 'BF';
+        return unit || '';
+    }
+
+    function _catalogItemDims(item) {
+        const prof = (appState.profiles || []).find(p => p.id === item.profileId);
+        if (!prof) return null;
+        return {
+            l: parseFloat(item.length) || 0,
+            w: item.categoryId === 'sheet' ? (parseFloat(item.width) || 0) : (parseFloat(prof.width) || 0),
+            t: parseFloat(prof.thickness) || 0
+        };
+    }
+
+    function calculateCostPerPiece(item) {
+        const price = parseFloat(item && item.price) || 0;
+        if (price <= 0) return 0;
+        if (!item.priceUnit || item.priceUnit === 'piece') return price;
+        const d = _catalogItemDims(item);
+        if (!d) return 0;
+        return price * priceUnitQuantity(item.priceUnit, getItemPriceSystem(item), d.l, d.w, d.t);
+    }
+
+    /** Cost per viewUnit (piece / linear / area / volume) in the CURRENT display system, as a 2-dp string. */
     function getNormalizedPriceDisplay(item, viewUnit) {
         const costPerPiece = calculateCostPerPiece(item);
         if (viewUnit === 'piece') return costPerPiece.toFixed(2);
-        
-        const isMetric = appState.settings.displayUnit === 'mm';
-        const prof = appState.profiles.find(p => p.id === item.profileId);
-        if (!prof || item.length === 0) return '0.00';
-
-        const l_mm = item.length;
-        const w_mm = item.categoryId === 'sheet' ? item.width : (prof.width || 0);
-        const t_mm = prof.thickness || 0;
-
-        let factor = 1;
-        if (isMetric) {
-            if (viewUnit === 'linear') factor = (l_mm / 1000);
-            else if (viewUnit === 'area') factor = ((l_mm / 1000) * (w_mm / 1000));
-            else if (viewUnit === 'volume') factor = ((l_mm / 1000) * (w_mm / 1000) * (t_mm / 1000));
-        } else {
-            if (viewUnit === 'linear') factor = (l_mm / 304.8);
-            else if (viewUnit === 'area') factor = ((l_mm * w_mm) / 92903.04);
-            else if (viewUnit === 'volume') factor = ((l_mm * w_mm * t_mm) / 2359737.216);
-        }
-
-        if (factor === 0) return '0.00';
+        const d = _catalogItemDims(item);
+        if (!d || d.l === 0) return '0.00';
+        const factor = priceUnitQuantity(viewUnit, currentPriceSystem(), d.l, d.w, d.t);
+        if (!factor) return '0.00';
         return (costPerPiece / factor).toFixed(2);
     }
 
