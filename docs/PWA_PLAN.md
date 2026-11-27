@@ -1,0 +1,121 @@
+# SolidCutlist PWA: plan
+
+Branch: `PWA` (started from v1.1 RC build 39). Status: **planning**.
+
+## 1. Decisions taken
+
+| Topic | Decision |
+|---|---|
+| Data | **Local-first + the user's own Google Drive.** Every device keeps a full copy and works offline (in the lumber store); when online it syncs through a hidden app data file in the user's Google Drive. No server of ours, no customer data on our systems. |
+| Hosting | **GitHub Pages**, served from this repo. A custom domain (e.g. `app.solidhomesteadplans.com`) can be added later. |
+| Selling | **Decide later.** No payment gate during development; licensing is added before launch (Phase 6). |
+| Accounts / subscriptions | Not now. The sync layer sits behind one interface, so a hosted backend (accounts, subscriptions) can be added later without rewriting the app. |
+
+## 2. Target architecture
+
+```
+GitHub Pages (static files)
+ ├─ index.html, CSS, JS, views   ← today's frontend, built without Apps Script
+ ├─ manifest.webmanifest, icons  ← "install to home screen"
+ ├─ service worker               ← caches the app, so it opens with no signal
+ └─ bootstrap + fonts (bundled)  ← no CDN at runtime (CDNs don't work offline)
+
+On each device
+ ├─ IndexedDB                    ← all data: projects, parts, stock, prices, jobs,
+ │                                  archive, thumbnails, settings
+ ├─ Optimizer                    ← runs locally (Web Worker in Phase 5)
+ └─ Sync engine ── SyncProvider interface
+                    └─ GoogleDriveProvider (Google sign-in, one data file in the
+                       user's hidden Drive app folder)
+```
+
+### Sync design
+- **Unit of sync = one record** (a part, a stock item, a price…), not the whole state. Every
+  record gets `updatedAt` (+ `deviceId`); deletions leave a small *tombstone* so they
+  propagate.
+- **Merge rule:** per record, the newest change wins. Two devices editing *different*
+  records never conflict; the same record edited on both keeps the newer edit. Settings
+  merge per key.
+- **When:** on app start, on regaining connection, a few seconds after edits, and on a
+  "Sync now" button. Offline edits queue locally and upload later.
+- **Status indicator:** reuses today's sync icon (Saved on device / Synced / Offline /
+  Sync error).
+- **Thumbnails** sync as a separate Drive file, as in the Sheet version, so the data
+  file stays small.
+
+## 3. What is reused vs. rebuilt
+
+| Part | Plan |
+|---|---|
+| Optimizer, unit conversion and parsing, price engine, canvas diagrams, printing and labels, CSV import/export, translations (6 languages), views, CSS | **Reused as-is** (about 85% of the code). The existing 208 tests keep guarding them. |
+| `Backend/Code.gs` (Sheet read/write) | **Replaced** by the local IndexedDB store + Drive sync. |
+| `js_state.html` persistence + the ~23 `google.script.run` calls | **Replaced** by one data-layer module with the same function names, so the domain code barely changes. |
+| Archive, thumbnails | Move from Sheet tabs to IndexedDB (synced). |
+| Starter packs (`pck_*` Sheet tabs, EU/US) | Exported once to JSON files shipped with the app. |
+| `<?!= include() ?>` templating | Resolved at build time by `build.js`, producing one static `index.html`. No framework migration now; ES modules can come gradually later. |
+
+## 4. Phases
+
+**Phase 0 · Setup and checks**
+- Verify that the Drive scope `drive.appdata` (hidden app folder) is classed by Google as
+  *non-sensitive*, which keeps Google's app review light. **Not yet verified**: Google's
+  developer docs are unreachable from the build environment. Fallback: `drive.file`.
+- Create a Google Cloud project, enable the Drive API, create an OAuth client ID for the
+  GitHub Pages URL *(your task, guided step by step)*.
+- Turn on GitHub Pages for the repo *(your task, 1 minute)*.
+
+**Phase 1 · Runs as a website (no Apps Script)**
+- `build.js` gets a `pwa` target: resolves includes, bundles Bootstrap, writes `dist-pwa/`.
+- Data-layer module with local storage; every `google.script.run` call goes through it.
+- Starter packs as JSON. Deploy a preview to GitHub Pages.
+- *Done when:* the full app works in a browser from GitHub Pages on one device.
+
+**Phase 2 · Installable and offline**
+- Web manifest + icons, service worker (precache, update prompt "new version available").
+- IndexedDB store with migration from localStorage; request persistent storage so the
+  browser doesn't evict data.
+- *Done when:* installed on a phone, it opens and recalculates in airplane mode.
+
+**Phase 3 · Google Drive sync**
+- Google sign-in (Google Identity Services), `GoogleDriveProvider`, record-level merge with
+  tombstones, offline queue, status indicator, "Sync now", sign-out.
+- Unit tests for the merge rules (two devices, offline edits, deletes, clock skew).
+- *Done when:* edit on the computer → appears on the phone; edit offline on the phone →
+  appears on the computer after reconnecting.
+
+**Phase 4 · Moving existing users over**
+- Import the v1.1 **full-backup JSON** (the Sheet version can already export it) into the
+  PWA. One file, everything including images.
+- The Sheet version shows a "Move to the new app" hint (after v1.1 is live).
+
+**Phase 5 · Polish and robustness**
+- Optimizer in a Web Worker (no screen freeze on big jobs), with a progress indicator.
+- Browser smoke tests (Playwright), including offline and two-device sync.
+- Phone layout pass on all screens (today only the Cutlist view is mobile-tuned).
+
+**Phase 6 · Launch preparation**
+- Licensing / payment (decision pending).
+- Privacy policy + homepage URL (Google's sign-in consent screen requires them), publish
+  the OAuth consent screen.
+- Custom domain, listing copy, update `SolidCutlist.md`.
+
+## 5. Your tasks (when they come up)
+
+| When | Task |
+|---|---|
+| Phase 0 | Create the Google Cloud project + OAuth client (I'll give exact clicks); enable GitHub Pages. |
+| End of Phase 2 | Install on your phone/tablet and test offline in the shop. |
+| End of Phase 3 | Two-device sync test (computer + phone). |
+| Before Phase 4 | Make v1.1 live (merge to `main`), so buyers can export the backup file. |
+| Phase 6 | Choose the selling model; privacy policy text; domain. |
+
+## 6. Risks and open questions
+
+- **Drive scope classification** (Phase 0, see above).
+- **iPhone/iPad:** Safari can delete website data that isn't used for a while; an
+  *installed* PWA is far safer. Drive sync protects against data loss either way.
+  Google sign-in inside an installed iOS PWA needs testing early in Phase 3.
+- **Same record edited on two offline devices:** the newer edit wins; the other edit of
+  that record is lost. This is acceptable for a single-user shop tool and is shown in the sync log.
+- **Two products during transition:** the Sheet version (v1.x) stays maintained until the
+  PWA launches; fixes go to `work-in-progress` and are merged into `PWA`.
