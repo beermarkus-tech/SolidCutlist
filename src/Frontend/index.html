@@ -606,6 +606,24 @@
                         </div>
                         
                     </form>
+
+                    <!-- Google Drive sync (PWA only; hidden in the Sheet version) -->
+                    <div id="drive-sync-panel" class="d-none mt-4">
+                        <h6 class="fw-bold text-secondary mb-2 text-uppercase section-label" data-i18n="lbl_drive_sync">Google Drive sync</h6>
+                        <div class="p-3 rounded-3 input-panel">
+                            <div id="drive-sync-off">
+                                <p class="small text-muted mb-2" data-i18n="txt_drive_sync_intro">Use the same data on your phone and computer. It is stored in a hidden app folder in your own Google Drive.</p>
+                                <button type="button" class="btn btn-sm btn-primary fw-bold" id="btn-drive-sign-in" onclick="handleDriveSignIn()" data-i18n="btn_drive_sign_in">Sign in with Google</button>
+                            </div>
+                            <div id="drive-sync-on" class="d-none">
+                                <p class="small mb-2" id="drive-sync-status"></p>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="handleDriveSyncNow()" data-i18n="btn_drive_sync_now">Sync now</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="handleDriveSignOut()" data-i18n="btn_drive_sign_out">Sign out</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer border-top-0 pt-0 flex-column gap-2">
                     <p class="text-center text-muted small mb-0 px-2" data-i18n="msg_support_contact">Questions, bugs, or feature ideas? Email me at <a href="mailto:contact@solidhomesteadplans.com">contact@solidhomesteadplans.com</a> — I read every message.</p>
@@ -722,6 +740,7 @@
     <?!= include('Frontend/JS/Modules/js_printing'); ?>
     <?!= include('Frontend/JS/Modules/js_export'); ?>
     <?!= include('Frontend/JS/Modules/js_welcome_tour'); ?>
+    <?!= include('Frontend/JS/Modules/js_sync_drive'); ?>
     <?!= include('Frontend/JS/Modules/js_pwa'); ?>
 
     

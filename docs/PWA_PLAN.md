@@ -1,7 +1,7 @@
 # SolidCutlist PWA: plan
 
-Branch: `PWA` (started from v1.1 RC build 39). Status: **Phases 1 and 2 done.** Publishing to GitHub
-Pages is waiting on the one-time Pages setup (see §5).
+Branch: `PWA` (started from v1.1 RC build 39). Status: **Phases 1 and 2 done and live on GitHub
+Pages. Phase 3 (Drive sync) built and tested; switched on once the Google OAuth client ID is added.**
 
 ### Phase 1 result
 - `npm run build:pwa` → `dist-pwa/`: one static `index.html` (includes resolved), Bootstrap
@@ -26,6 +26,18 @@ Pages is waiting on the one-time Pages setup (see §5).
 - Installed apps ask the browser for persistent storage (no eviction).
 - `npm run test:e2e`: Playwright test of install/offline/update; `test/pwa-build.test.js`
   checks the build output on every `npm test`.
+
+### Phase 3 status
+- `js_sync.html`: record-level merge engine (change times, tombstones, newest wins).
+- `js_sync_drive.html`: Google sign-in + two files in the hidden Drive app folder
+  (`solidcutlist-data.json`, `solidcutlist-images.json`); syncs on start, after edits (5 s),
+  on reconnect, when the app comes back to the screen, and on "Sync now" / tapping the status.
+- Settings → "Google Drive sync" (sign in / sync now / sign out), 6 languages. Hidden until
+  `DRIVE_CLIENT_ID` is set, so nothing changes for users before that.
+- Safety: a failed Drive read stops the round (never overwrites Drive); a fresh device lets
+  Drive win for items both have; expired sign-in pauses sync until a tap.
+- `test/drive-sync.test.js`: 10 end-to-end tests with two simulated devices and a fake Drive.
+- **Open:** client ID, scope classification, real two-device test.
 
 ## 1. Decisions taken
 

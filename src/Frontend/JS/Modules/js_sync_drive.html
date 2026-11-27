@@ -1,0 +1,360 @@
+<script>
+    // ==========================================
+    // GOOGLE DRIVE SYNC (PWA only)
+    // ==========================================
+    // Syncs this device with the user's own Google Drive: two JSON files in the hidden
+    // app-data folder (only this app can see them). Merge rules live in js_sync.html.
+    //
+    // Sign-in uses Google Identity Services (token model): an access token lasts ~1 hour.
+    // Browsers only allow the sign-in popup after a tap, so when the token has expired,
+    // sync pauses and the status says "tap to sync". Local saving never stops.
+
+    // OAuth client ID of the "SolidCutlist PWA" web client (Google Cloud console). Not a secret.
+    const DRIVE_CLIENT_ID = (typeof SOLIDCUTLIST_DRIVE_CLIENT_ID !== 'undefined' && SOLIDCUTLIST_DRIVE_CLIENT_ID) || '';
+    const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+    const DRIVE_FILES = { data: 'solidcutlist-data.json', images: 'solidcutlist-images.json' };
+    const DRIVE_API = 'https://www.googleapis.com/drive/v3';
+    const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
+    const DRIVE_STATE_KEY = 'solidcutlistDriveSync';
+    const DRIVE_SYNC_DELAY_MS = 5000;
+
+    const DriveSync = (function () {
+        const root = (typeof window !== 'undefined') ? window : globalThis;
+        let token = null, tokenExpiry = 0, tokenClient = null, gisLoading = null;
+        let meta = null, metaLoaded = false;
+        let syncing = false, again = false, timer = null, applying = false;
+        let status = 'off'; // off | idle | syncing | synced | paused | error | offline
+        let lastError = '';
+
+        // ---------- persisted switches (per device) ----------
+        function readState() {
+            try { return JSON.parse(root.localStorage.getItem(DRIVE_STATE_KEY)) || {}; } catch (e) { return {}; }
+        }
+        function writeState(patch) {
+            const s = Object.assign(readState(), patch);
+            try { root.localStorage.setItem(DRIVE_STATE_KEY, JSON.stringify(s)); } catch (e) { /* ignore */ }
+            return s;
+        }
+        const isEnabled = () => !!readState().enabled;
+        const isAvailable = () => !!(root.SOLIDCUTLIST_LOCAL_BACKEND && DRIVE_CLIENT_ID);
+
+        // ---------- sync meta (IndexedDB through the local backend store) ----------
+        async function loadMeta() {
+            if (metaLoaded) return meta;
+            const store = root.SOLIDCUTLIST_LOCAL_BACKEND && root.SOLIDCUTLIST_LOCAL_BACKEND.store;
+            meta = store ? (await store.get('syncMeta')) || null : null;
+            metaLoaded = true;
+            return meta;
+        }
+        async function saveMeta() {
+            const store = root.SOLIDCUTLIST_LOCAL_BACKEND && root.SOLIDCUTLIST_LOCAL_BACKEND.store;
+            if (store && meta) await store.set('syncMeta', meta);
+        }
+
+        function currentCollections() {
+            return syncCollectionsFromState(root.appState || {}, root.projectImages || {});
+        }
+
+        // ---------- Google sign-in (Google Identity Services) ----------
+        function loadGis() {
+            if (root.google && root.google.accounts && root.google.accounts.oauth2) return Promise.resolve();
+            if (gisLoading) return gisLoading;
+            // The PWA's google.script.run shim lives on window.google: keep it if GIS replaces the object
+            const scriptShim = root.google && root.google.script;
+            gisLoading = new Promise((resolve, reject) => {
+                const s = root.document.createElement('script');
+                s.src = 'https://accounts.google.com/gsi/client';
+                s.async = true;
+                s.onload = () => {
+                    if (root.google && scriptShim && !root.google.script) root.google.script = scriptShim;
+                    resolve();
+                };
+                s.onerror = () => { gisLoading = null; reject(new Error('Could not load Google sign-in (offline?)')); };
+                root.document.head.appendChild(s);
+            });
+            return gisLoading;
+        }
+
+        function cachedToken() {
+            if (token && Date.now() < tokenExpiry - 60000) return token;
+            try {
+                const t = JSON.parse(root.sessionStorage.getItem('solidcutlistDriveToken'));
+                if (t && Date.now() < t.expiry - 60000) { token = t.token; tokenExpiry = t.expiry; return token; }
+            } catch (e) { /* ignore */ }
+            return null;
+        }
+
+        /** Returns an access token; with interactive=false never opens a popup. */
+        async function getToken(interactive) {
+            const t = cachedToken();
+            if (t || !interactive) return t;
+            await loadGis();
+            return new Promise((resolve, reject) => {
+                if (!tokenClient) {
+                    tokenClient = root.google.accounts.oauth2.initTokenClient({
+                        client_id: DRIVE_CLIENT_ID, scope: DRIVE_SCOPE, callback: () => {}
+                    });
+                }
+                tokenClient.callback = (resp) => {
+                    if (!resp || resp.error) { reject(new Error((resp && (resp.error_description || resp.error)) || 'Sign-in failed')); return; }
+                    token = resp.access_token;
+                    tokenExpiry = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
+                    try { root.sessionStorage.setItem('solidcutlistDriveToken', JSON.stringify({ token, expiry: tokenExpiry })); } catch (e) { /* ignore */ }
+                    resolve(token);
+                };
+                tokenClient.error_callback = (err) => reject(new Error((err && err.type) || 'Sign-in cancelled'));
+                tokenClient.requestAccessToken({ prompt: readState().consented ? '' : 'consent' });
+            });
+        }
+
+        function dropToken() {
+            token = null; tokenExpiry = 0;
+            try { root.sessionStorage.removeItem('solidcutlistDriveToken'); } catch (e) { /* ignore */ }
+        }
+
+        // ---------- Drive REST (appDataFolder) ----------
+        async function api(url, options) {
+            const res = await root.fetch(url, Object.assign({}, options, {
+                headers: Object.assign({ Authorization: 'Bearer ' + token }, (options && options.headers) || {})
+            }));
+            if (res.status === 401) { dropToken(); const e = new Error('auth'); e.auth = true; throw e; }
+            if (!res.ok) { const e = new Error('Google Drive error ' + res.status); e.notFound = res.status === 404; throw e; }
+            return res;
+        }
+        async function findFile(name) {
+            const q = encodeURIComponent(`name='${name}' and trashed=false`);
+            const res = await api(`${DRIVE_API}/files?spaces=appDataFolder&q=${q}&fields=files(id,name,modifiedTime)&pageSize=10`);
+            const files = (await res.json()).files || [];
+            return files[0] || null;
+        }
+        async function readFile(id) {
+            const res = await api(`${DRIVE_API}/files/${id}?alt=media`);
+            return res.json();
+        }
+        async function writeFile(name, id, content) {
+            const body = JSON.stringify(content);
+            if (id) {
+                await api(`${DRIVE_UPLOAD}/files/${id}?uploadType=media`, {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body
+                });
+                return id;
+            }
+            const boundary = 'scl' + Math.random().toString(36).slice(2);
+            const multipart =
+                `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+                JSON.stringify({ name, parents: ['appDataFolder'], mimeType: 'application/json' }) +
+                `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
+            const res = await api(`${DRIVE_UPLOAD}/files?uploadType=multipart&fields=id`, {
+                method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: multipart
+            });
+            return (await res.json()).id;
+        }
+
+        // ---------- status ----------
+        function setStatus(s, err) {
+            status = s; lastError = err || '';
+            if (typeof root.renderDriveSyncPanel === 'function') root.renderDriveSyncPanel();
+            if (typeof root.updateDriveSyncIndicator === 'function') root.updateDriveSyncIndicator(s);
+        }
+
+        // ---------- the sync round ----------
+        async function syncNow(opts) {
+            const interactive = !!(opts && opts.interactive);
+            if (!isAvailable() || !isEnabled()) return { skipped: 'disabled' };
+            if (syncing) { again = true; return { skipped: 'busy' }; }
+            if (root.navigator && root.navigator.onLine === false) { setStatus('offline'); return { skipped: 'offline' }; }
+            syncing = true;
+            try {
+                const t = await getToken(interactive);
+                if (!t) { setStatus('paused'); return { skipped: 'needs-tap' }; }
+                setStatus('syncing');
+                await loadMeta();
+                const ids = readState().fileIds || {};
+                const dataFile = ids.data ? { id: ids.data } : await findFile(DRIVE_FILES.data);
+                const imgFile = ids.images ? { id: ids.images } : await findFile(DRIVE_FILES.images);
+                let remoteData = null, remoteImages = null;
+                // A missing or unreadable remote file must not be overwritten blindly: stop and retry later
+                remoteData = dataFile ? await readFile(dataFile.id) : null;
+                remoteImages = imgFile ? await readFile(imgFile.id) : null;
+                const remote = (remoteData || remoteImages) ? syncJoinDocs(remoteData, remoteImages) : null;
+
+                const now = Date.now();
+                const cols = currentCollections();
+                if (!meta) {
+                    // First sync on this device: when the Drive already has data, it wins for
+                    // items both sides have (a fresh install must not overwrite real data).
+                    meta = syncTrackChanges(cols, syncEmptyMeta(), remote ? 1 : now);
+                } else {
+                    syncTrackChanges(cols, meta, now);
+                }
+                const local = syncBuildDoc(cols, meta, now);
+                const result = syncMergeDocs(local, remote, now);
+
+                if (result.localChanged) applyToApp(result.doc);
+
+                const parts = syncSplitDoc(result.doc);
+                const fileIds = Object.assign({}, ids);
+                const remoteParts = { data: remoteData, images: remoteImages };
+                for (const key of ['data', 'images']) {
+                    const fp = p => p ? syncHash({ i: p.items || {}, t: p.tombstones || {} }) : null;
+                    if (fp(parts[key]) !== fp(remoteParts[key])) {
+                        fileIds[key] = await writeFile(DRIVE_FILES[key], (key === 'data' ? dataFile : imgFile) && (key === 'data' ? dataFile : imgFile).id, parts[key]);
+                    } else if (key === 'data' ? dataFile : imgFile) {
+                        fileIds[key] = (key === 'data' ? dataFile : imgFile).id;
+                    }
+                }
+                meta = syncMetaFromDoc(result.doc);
+                await saveMeta();
+                writeState({ fileIds, lastSync: now, consented: true });
+                setStatus('synced');
+                return { ok: true, localChanged: result.localChanged, remoteChanged: result.remoteChanged };
+            } catch (e) {
+                if (e.auth) { writeState({ fileIds: {} }); setStatus('paused'); return { skipped: 'needs-tap' }; }
+                console.error('Drive sync failed:', e);
+                if (e.notFound) writeState({ fileIds: {} }); // file removed in Drive: look it up again next time
+                setStatus('error', String(e.message || e));
+                return { error: String(e.message || e) };
+            } finally {
+                syncing = false;
+                if (again) { again = false; schedule(); }
+            }
+        }
+
+        /** Puts merged data into the app, saves it on the device and redraws. */
+        function applyToApp(doc) {
+            const applied = syncApplyDoc(doc, root.appState, root.projectImages || {});
+            const langBefore = root.appState.settings && root.appState.settings.language;
+            Object.keys(applied.state).forEach(k => { root.appState[k] = applied.state[k]; });
+            const imagesChanged = syncHash(applied.images || {}) !== syncHash(root.projectImages || {});
+            root.projectImages = applied.images || {};
+            // Saving received data is not a local edit: don't stamp it with a new change time
+            applying = true;
+            try { if (typeof root.saveState === 'function') root.saveState(); } finally { applying = false; }
+            if (imagesChanged && root.google && root.google.script) {
+                root.google.script.run.bulkImportThumbnails(JSON.stringify(root.projectImages));
+            }
+            ['applyTheme', 'renderSettings', 'renderDictionaries', 'renderPartsView'].forEach(fn => {
+                if (typeof root[fn] === 'function') { try { root[fn](); } catch (e) { console.error(fn, e); } }
+            });
+            if (langBefore !== root.appState.settings.language && typeof root.applyTranslations === 'function') root.applyTranslations();
+            if (typeof root.showToast === 'function' && typeof root.t === 'function') root.showToast(root.t('msg_sync_received'), 'info');
+        }
+
+        /** Called on every save: record change times now (not later at sync time) and sync soon. */
+        function noteLocalChange() {
+            if (applying) return;
+            if (!isAvailable() || !isEnabled() || !metaLoaded || !meta) { schedule(); return; }
+            syncTrackChanges(currentCollections(), meta, Date.now());
+            saveMeta().catch(() => {});
+            schedule();
+        }
+
+        function schedule(delay) {
+            if (!isAvailable() || !isEnabled()) return;
+            clearTimeout(timer);
+            timer = setTimeout(() => { syncNow({ interactive: false }); }, delay === undefined ? DRIVE_SYNC_DELAY_MS : delay);
+        }
+
+        async function signIn() {
+            writeState({ enabled: true });
+            const r = await syncNow({ interactive: true });
+            return r;
+        }
+
+        function signOut() {
+            const t = token;
+            dropToken();
+            writeState({ enabled: false, fileIds: {}, consented: false });
+            meta = null; metaLoaded = true;
+            const store = root.SOLIDCUTLIST_LOCAL_BACKEND && root.SOLIDCUTLIST_LOCAL_BACKEND.store;
+            if (store) store.set('syncMeta', null).catch(() => {});
+            if (t && root.google && root.google.accounts && root.google.accounts.oauth2) {
+                try { root.google.accounts.oauth2.revoke(t, () => {}); } catch (e) { /* ignore */ }
+            }
+            setStatus('off');
+        }
+
+        function init() {
+            if (!isAvailable()) return;
+            if (!isEnabled()) { setStatus('off'); return; }
+            loadMeta().then(() => schedule(1500));
+            root.addEventListener('online', () => schedule(1000));
+            root.document.addEventListener('visibilitychange', () => {
+                if (root.document.visibilityState === 'visible') schedule(1000);
+            });
+        }
+
+        return {
+            init, syncNow, signIn, signOut, noteLocalChange, schedule,
+            isAvailable, isEnabled,
+            getStatus: () => status, getLastError: () => lastError, getLastSync: () => readState().lastSync || 0,
+            _resetForTests: () => { token = null; tokenExpiry = 0; tokenClient = null; meta = null; metaLoaded = false; syncing = false; again = false; applying = false; }
+        };
+    })();
+
+    // ---------- UI: settings panel + top-bar indicator ----------
+    function renderDriveSyncPanel() {
+        const panel = document.getElementById('drive-sync-panel');
+        if (!panel) return;
+        if (!DriveSync.isAvailable()) { panel.classList.add('d-none'); return; }
+        panel.classList.remove('d-none');
+        const on = DriveSync.isEnabled();
+        document.getElementById('drive-sync-off').classList.toggle('d-none', on);
+        document.getElementById('drive-sync-on').classList.toggle('d-none', !on);
+        if (on) {
+            const last = DriveSync.getLastSync();
+            const st = DriveSync.getStatus();
+            const line = st === 'error' ? `⚠️ ${t('msg_drive_error')}: ${DriveSync.getLastError()}`
+                : st === 'paused' ? t('msg_drive_tap')
+                : st === 'offline' ? t('msg_drive_offline')
+                : st === 'syncing' ? t('msg_drive_syncing')
+                : last ? t('msg_drive_last_sync', { time: new Date(last).toLocaleString() }) : t('msg_drive_syncing');
+            document.getElementById('drive-sync-status').textContent = line;
+        }
+    }
+
+    function updateDriveSyncIndicator(st) {
+        const icon = document.getElementById('sync-icon');
+        const text = document.getElementById('sync-text');
+        if (!icon || !text || !DriveSync.isEnabled()) return;
+        const map = {
+            syncing: ['<span class="spinner-border spinner-border-sm text-warning" style="width:0.8rem;height:0.8rem;border-width:0.15em;"></span>', 'msg_drive_syncing'],
+            synced:  ['<span style="color:#22c55e;font-weight:bold;">☁︎</span>', 'msg_drive_synced'],
+            paused:  ['<span style="color:#ffc107;">☁︎</span>', 'msg_drive_tap'],
+            offline: ['<span style="color:#9ca3af;">☁︎</span>', 'msg_drive_offline'],
+            error:   ['⚠️', 'msg_drive_error']
+        };
+        if (!map[st]) return;
+        icon.innerHTML = map[st][0];
+        text.textContent = t(map[st][1]);
+    }
+
+    async function handleDriveSignIn() {
+        const btn = document.getElementById('btn-drive-sign-in');
+        if (btn) btn.disabled = true;
+        try {
+            const r = await DriveSync.signIn();
+            if (r && r.ok) showToast(t('msg_drive_signed_in'));
+            else if (r && r.error) showToast(t('msg_drive_error') + ': ' + r.error, 'danger');
+        } catch (e) {
+            showToast(t('msg_drive_error') + ': ' + (e.message || e), 'danger');
+        } finally {
+            if (btn) btn.disabled = false;
+            renderDriveSyncPanel();
+        }
+    }
+    function handleDriveSyncNow() { DriveSync.syncNow({ interactive: true }).then(renderDriveSyncPanel); }
+    function handleDriveSignOut() {
+        requestConfirm(t('confirm_drive_sign_out'), () => { DriveSync.signOut(); renderDriveSyncPanel(); }, 'warning', t('btn_drive_sign_out'));
+    }
+
+    // Tapping the top-bar sync status syncs now (and renews Google sign-in if it expired)
+    document.addEventListener('DOMContentLoaded', () => {
+        const ind = document.getElementById('sync-indicator');
+        if (ind) ind.addEventListener('click', () => {
+            if (DriveSync.isAvailable() && DriveSync.isEnabled()) handleDriveSyncNow();
+        });
+        const modal = document.getElementById('settingsModal');
+        if (modal) modal.addEventListener('show.bs.modal', renderDriveSyncPanel);
+    });
+</script>

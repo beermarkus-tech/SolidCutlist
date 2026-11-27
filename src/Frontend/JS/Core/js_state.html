@@ -278,6 +278,9 @@
         // 6. Hide loader
         hideBootLoader();
 
+        // Start Google Drive sync once per page (PWA only; no-op elsewhere)
+        if (typeof DriveSync !== 'undefined' && !window._driveSyncStarted) { window._driveSyncStarted = true; DriveSync.init(); }
+
         // 7. Welcome tour (desktop only) or checklist
         if (!isMobile) {
             if (!appState.settings.tourComplete && typeof showWelcomeTour === 'function') {
@@ -802,6 +805,9 @@
 
         // 4. Update UI to show local save
         updateSyncUI('local');
+
+        // 4b. Google Drive sync (PWA): record change times now and sync shortly
+        if (typeof DriveSync !== 'undefined') DriveSync.noteLocalChange();
 
         // 5. Debounce the cloud save (3 seconds of silence)
         if (syncTimeout) clearTimeout(syncTimeout);
