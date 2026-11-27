@@ -1,0 +1,675 @@
+{
+ "materials": [
+  {
+   "id": "M-STD-002",
+   "name": "Pine General",
+   "category": "lumber",
+   "density": 550
+  },
+  {
+   "id": "M-STD-003",
+   "name": "Cedar (Western Red)",
+   "category": "lumber",
+   "density": 370
+  },
+  {
+   "id": "M-STD-004",
+   "name": "Pine Treated (Cl. 2)",
+   "category": "lumber",
+   "density": 550
+  },
+  {
+   "id": "M-STD-005",
+   "name": "Pine Treated (Cl. 3)",
+   "category": "lumber",
+   "density": 550
+  },
+  {
+   "id": "M-STD-006",
+   "name": "Pine Treated (Cl. 4)",
+   "category": "lumber",
+   "density": 560
+  },
+  {
+   "id": "M-STD-007",
+   "name": "Oak",
+   "category": "lumber",
+   "density": 720
+  },
+  {
+   "id": "M-STD-008",
+   "name": "Beech",
+   "category": "lumber",
+   "density": 720
+  },
+  {
+   "id": "M-STD-009",
+   "name": "Walnut",
+   "category": "lumber",
+   "density": 625
+  },
+  {
+   "id": "M-STD-010",
+   "name": "Maple",
+   "category": "lumber",
+   "density": 720
+  },
+  {
+   "id": "M-STD-011",
+   "name": "Cherry",
+   "category": "lumber",
+   "density": 580
+  },
+  {
+   "id": "M-STD-012",
+   "name": "Birch",
+   "category": "lumber",
+   "density": 670
+  },
+  {
+   "id": "M-STD-013",
+   "name": "Poplar",
+   "category": "lumber",
+   "density": 435
+  },
+  {
+   "id": "M-STD-014",
+   "name": "Larch",
+   "category": "lumber",
+   "density": 590
+  },
+  {
+   "id": "M-STD-015",
+   "name": "Plywood",
+   "category": "sheet",
+   "density": 680
+  },
+  {
+   "id": "M-STD-016",
+   "name": "MDF",
+   "category": "sheet",
+   "density": 720
+  },
+  {
+   "id": "M-STD-017",
+   "name": "OSB",
+   "category": "sheet",
+   "density": 600
+  },
+  {
+   "id": "M-STD-018",
+   "name": "Melamine",
+   "category": "sheet",
+   "density": 680
+  }
+ ],
+ "profiles": [
+  {
+   "id": "PR-001",
+   "name": "1x2 Nominal",
+   "type": "lumber",
+   "thickness": 19.05,
+   "width": 38.1
+  },
+  {
+   "id": "PR-002",
+   "name": "1x3 Nominal",
+   "type": "lumber",
+   "thickness": 19.05,
+   "width": 63.5
+  },
+  {
+   "id": "PR-003",
+   "name": "1x4 Nominal",
+   "type": "lumber",
+   "thickness": 19.05,
+   "width": 88.9
+  },
+  {
+   "id": "PR-004",
+   "name": "1x6 Nominal",
+   "type": "lumber",
+   "thickness": 19.05,
+   "width": 139.7
+  },
+  {
+   "id": "PR-005",
+   "name": "1x8 Nominal",
+   "type": "lumber",
+   "thickness": 19.05,
+   "width": 184.15
+  },
+  {
+   "id": "PR-006",
+   "name": "1x10 Nominal",
+   "type": "lumber",
+   "thickness": 19.05,
+   "width": 235
+  },
+  {
+   "id": "PR-007",
+   "name": "1x12 Nominal",
+   "type": "lumber",
+   "thickness": 19.05,
+   "width": 285.75
+  },
+  {
+   "id": "PR-008",
+   "name": "2x2 Nominal",
+   "type": "lumber",
+   "thickness": 38.1,
+   "width": 38.1
+  },
+  {
+   "id": "PR-009",
+   "name": "2x4 Nominal",
+   "type": "lumber",
+   "thickness": 38.1,
+   "width": 88.9
+  },
+  {
+   "id": "PR-010",
+   "name": "2x6 Nominal",
+   "type": "lumber",
+   "thickness": 38.1,
+   "width": 139.7
+  },
+  {
+   "id": "PR-011",
+   "name": "2x8 Nominal",
+   "type": "lumber",
+   "thickness": 38.1,
+   "width": 184.15
+  },
+  {
+   "id": "PR-012",
+   "name": "2x10 Nominal",
+   "type": "lumber",
+   "thickness": 38.1,
+   "width": 235
+  },
+  {
+   "id": "PR-013",
+   "name": "2x12 Nominal",
+   "type": "lumber",
+   "thickness": 38.1,
+   "width": 285.75
+  },
+  {
+   "id": "PR-014",
+   "name": "4x4 Nominal",
+   "type": "lumber",
+   "thickness": 88.9,
+   "width": 88.9
+  },
+  {
+   "id": "PR-015",
+   "name": "4x6 Nominal",
+   "type": "lumber",
+   "thickness": 88.9,
+   "width": 139.7
+  },
+  {
+   "id": "PR-016",
+   "name": "6x6 Nominal",
+   "type": "lumber",
+   "thickness": 139.7,
+   "width": 139.7
+  },
+  {
+   "id": "PR-017",
+   "name": "1/4\" Sheet",
+   "type": "sheet",
+   "thickness": 6.35,
+   "width": 0
+  },
+  {
+   "id": "PR-018",
+   "name": "3/8\" Sheet",
+   "type": "sheet",
+   "thickness": 9.53,
+   "width": 0
+  },
+  {
+   "id": "PR-019",
+   "name": "1/2\" Sheet",
+   "type": "sheet",
+   "thickness": 12.7,
+   "width": 0
+  },
+  {
+   "id": "PR-020",
+   "name": "5/8\" Sheet",
+   "type": "sheet",
+   "thickness": 15.88,
+   "width": 0
+  },
+  {
+   "id": "PR-021",
+   "name": "3/4\" Sheet",
+   "type": "sheet",
+   "thickness": 19.05,
+   "width": 0
+  },
+  {
+   "id": "PR-022",
+   "name": "1\" Sheet",
+   "type": "sheet",
+   "thickness": 25.4,
+   "width": 0
+  }
+ ],
+ "projects": [
+  {
+   "id": "PROJ-178016906248729",
+   "name": "Shelf",
+   "date": "2026-05-30",
+   "status": "Design",
+   "totalParts": 22,
+   "totalCost": 147.5,
+   "totalWeight": 142.911585144,
+   "comment": "A simple shelf.",
+   "icon": "🪜",
+   "link": "https://www.etsy.com/shop/SolidHomesteadPlans"
+  },
+  {
+   "id": "PROJ-1778698976175451",
+   "name": "Workbench",
+   "date": "2026-05-13",
+   "status": "Design",
+   "totalParts": 26,
+   "totalCost": 77.55631510416667,
+   "totalWeight": 73.94998564811999,
+   "comment": "A simple workbench.",
+   "icon": "🪑",
+   "link": "https://www.etsy.com/shop/SolidHomesteadPlans"
+  },
+  {
+   "id": "PROJ-1777057379288263",
+   "name": "Single Bed",
+   "date": "2026-04-24",
+   "status": "Design",
+   "totalParts": 17,
+   "totalCost": 92.05729166666669,
+   "totalWeight": 59.77148819872001,
+   "comment": "A simple single bed, 40\" x 82\".",
+   "icon": "🛏️",
+   "link": "https://www.etsy.com/shop/SolidHomesteadPlans"
+  }
+ ],
+ "groups": [
+  {
+   "id": "GRP-178016908543411",
+   "projectId": "PROJ-178016906248729",
+   "name": "Structure"
+  },
+  {
+   "id": "GRP-1780169082476179",
+   "projectId": "PROJ-178016906248729",
+   "name": "Shelves"
+  },
+  {
+   "id": "GRP-1778699021257645",
+   "projectId": "PROJ-1778698976175451",
+   "name": "Structure"
+  },
+  {
+   "id": "GRP-1778699018926393",
+   "projectId": "PROJ-1778698976175451",
+   "name": "Shelves"
+  },
+  {
+   "id": "GRP-1777057460676775",
+   "projectId": "PROJ-1777057379288263",
+   "name": "Lying Surface"
+  },
+  {
+   "id": "GRP-1777057456174342",
+   "projectId": "PROJ-1777057379288263",
+   "name": "Legs"
+  },
+  {
+   "id": "GRP-1777057454477375",
+   "projectId": "PROJ-1777057379288263",
+   "name": "Frame"
+  }
+ ],
+ "parts": [
+  {
+   "id": "PART-178016916262083",
+   "projectId": "PROJ-178016906248729",
+   "groupId": "GRP-1780169082476179",
+   "category": "lumber",
+   "name": "Stud",
+   "qty": 6,
+   "width": 0,
+   "length": 1828.8,
+   "grain": "none",
+   "profileId": "PR-009",
+   "materialId": "M-STD-002",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1780169151848488",
+   "projectId": "PROJ-178016906248729",
+   "groupId": "GRP-1780169082476179",
+   "category": "lumber",
+   "name": "Beam",
+   "qty": 8,
+   "width": 0,
+   "length": 3657.6,
+   "grain": "none",
+   "profileId": "PR-009",
+   "materialId": "M-STD-002",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1780169131406391",
+   "projectId": "PROJ-178016906248729",
+   "groupId": "GRP-1780169082476179",
+   "category": "sheet",
+   "name": "Shelf Short",
+   "qty": 4,
+   "width": 609.5999999999999,
+   "length": 1219.1999999999998,
+   "grain": "none",
+   "profileId": "PR-019",
+   "materialId": "M-STD-017",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1780169113912425",
+   "projectId": "PROJ-178016906248729",
+   "groupId": "GRP-1780169082476179",
+   "category": "sheet",
+   "name": "Shelf Long",
+   "qty": 4,
+   "width": 609.5999999999999,
+   "length": 2438.3999999999996,
+   "grain": "none",
+   "profileId": "PR-019",
+   "materialId": "M-STD-017",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1778699133246699",
+   "projectId": "PROJ-1778698976175451",
+   "groupId": "GRP-1778699021257645",
+   "category": "lumber",
+   "name": "Rib",
+   "qty": 8,
+   "width": 0,
+   "length": 800.0999999999999,
+   "grain": "none",
+   "profileId": "PR-009",
+   "materialId": "M-STD-002",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1778699122841616",
+   "projectId": "PROJ-1778698976175451",
+   "groupId": "GRP-1778699021257645",
+   "category": "lumber",
+   "name": "Blocking Long",
+   "qty": 4,
+   "width": 0,
+   "length": 501.65,
+   "grain": "none",
+   "profileId": "PR-009",
+   "materialId": "M-STD-002",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1778699108814736",
+   "projectId": "PROJ-1778698976175451",
+   "groupId": "GRP-1778699021257645",
+   "category": "lumber",
+   "name": "Blocking Short",
+   "qty": 4,
+   "width": 0,
+   "length": 215.89999999999998,
+   "grain": "none",
+   "profileId": "PR-009",
+   "materialId": "M-STD-002",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1778699093197397",
+   "projectId": "PROJ-1778698976175451",
+   "groupId": "GRP-1778699021257645",
+   "category": "lumber",
+   "name": "Leg",
+   "qty": 4,
+   "width": 0,
+   "length": 895.3499999999999,
+   "grain": "none",
+   "profileId": "PR-009",
+   "materialId": "M-STD-002",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1778699079350942",
+   "projectId": "PROJ-1778698976175451",
+   "groupId": "GRP-1778699021257645",
+   "category": "lumber",
+   "name": "Beam",
+   "qty": 4,
+   "width": 0,
+   "length": 1397,
+   "grain": "none",
+   "profileId": "PR-009",
+   "materialId": "M-STD-002",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1778699055372529",
+   "projectId": "PROJ-1778698976175451",
+   "groupId": "GRP-1778699018926393",
+   "category": "sheet",
+   "name": "Bottom Shelf",
+   "qty": 1,
+   "width": 876.3,
+   "length": 1219.1999999999998,
+   "grain": "none",
+   "profileId": "PR-022",
+   "materialId": "M-STD-015",
+   "status": "ready"
+  },
+  {
+   "id": "PART-177869904269070",
+   "projectId": "PROJ-1778698976175451",
+   "groupId": "GRP-1778699018926393",
+   "category": "sheet",
+   "name": "Top Shelf",
+   "qty": 1,
+   "width": 876.3,
+   "length": 1397,
+   "grain": "none",
+   "profileId": "PR-022",
+   "materialId": "M-STD-015",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1777057741073759",
+   "projectId": "PROJ-1777057379288263",
+   "groupId": "GRP-1777057460676775",
+   "category": "sheet",
+   "name": "Lying Surface",
+   "qty": 1,
+   "width": 965.1999999999999,
+   "length": 2032,
+   "grain": "none",
+   "profileId": "PR-021",
+   "materialId": "M-STD-015",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1777057698732340",
+   "projectId": "PROJ-1777057379288263",
+   "groupId": "GRP-1777057454477375",
+   "category": "lumber",
+   "name": "Ledge Short",
+   "qty": 2,
+   "width": 0,
+   "length": 889,
+   "grain": "none",
+   "profileId": "PR-008",
+   "materialId": "M-STD-008",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1777057671274641",
+   "projectId": "PROJ-1777057379288263",
+   "groupId": "GRP-1777057454477375",
+   "category": "lumber",
+   "name": "Ledge Long",
+   "qty": 2,
+   "width": 0,
+   "length": 2032,
+   "grain": "none",
+   "profileId": "PR-008",
+   "materialId": "M-STD-008",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1777057630726678",
+   "projectId": "PROJ-1777057379288263",
+   "groupId": "GRP-1777057456174342",
+   "category": "sheet",
+   "name": "Leg Plate Small",
+   "qty": 4,
+   "width": 127,
+   "length": 355.59999999999997,
+   "grain": "none",
+   "profileId": "PR-022",
+   "materialId": "M-STD-015",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1777057613007577",
+   "projectId": "PROJ-1777057379288263",
+   "groupId": "GRP-1777057456174342",
+   "category": "sheet",
+   "name": "Leg Plate Large",
+   "qty": 4,
+   "width": 152.39999999999998,
+   "length": 355.59999999999997,
+   "grain": "none",
+   "profileId": "PR-022",
+   "materialId": "M-STD-015",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1777057566367842",
+   "projectId": "PROJ-1777057379288263",
+   "groupId": "GRP-1777057454477375",
+   "category": "sheet",
+   "name": "Sideframe Long",
+   "qty": 2,
+   "width": 203.2,
+   "length": 2032,
+   "grain": "none",
+   "profileId": "PR-022",
+   "materialId": "M-STD-015",
+   "status": "ready"
+  },
+  {
+   "id": "PART-1777057517738188",
+   "projectId": "PROJ-1777057379288263",
+   "groupId": "GRP-1777057454477375",
+   "category": "sheet",
+   "name": "Sideframe Short",
+   "qty": 2,
+   "width": 203.2,
+   "length": 1016,
+   "grain": "none",
+   "profileId": "PR-022",
+   "materialId": "M-STD-015",
+   "status": "ready"
+  }
+ ],
+ "catalog": [
+  {
+   "id": "CAT-1778699358115580",
+   "categoryId": "lumber",
+   "profileId": "PR-009",
+   "materialId": "M-STD-002",
+   "storeId": "STR-START-001",
+   "length": 3657.6,
+   "width": 0,
+   "grain": "none",
+   "price": 8.5,
+   "priceUnit": "piece",
+   "link": "https://www.google.com",
+   "lastVerified": 1780169234816,
+   "priceSystem": "imperial"
+  },
+  {
+   "id": "CAT-START-001",
+   "categoryId": "sheet",
+   "profileId": "PR-021",
+   "materialId": "M-STD-015",
+   "storeId": "STR-START-001",
+   "length": 2438.3999999999996,
+   "width": 1219.1999999999998,
+   "grain": "none",
+   "price": 33,
+   "priceUnit": "piece",
+   "link": "https://www.google.com",
+   "lastVerified": 1778699330777,
+   "priceSystem": "imperial"
+  },
+  {
+   "id": "CAT-START-002",
+   "categoryId": "sheet",
+   "profileId": "PR-022",
+   "materialId": "M-STD-015",
+   "storeId": "STR-START-001",
+   "length": 2438.3999999999996,
+   "width": 1219.1999999999998,
+   "grain": "none",
+   "price": 45,
+   "priceUnit": "piece",
+   "link": "https://www.google.com",
+   "lastVerified": 1778699316394,
+   "priceSystem": "imperial"
+  },
+  {
+   "id": "CAT-178016931839456",
+   "categoryId": "sheet",
+   "profileId": "PR-019",
+   "materialId": "M-STD-017",
+   "storeId": "STR-START-001",
+   "length": 2438.3999999999996,
+   "width": 1219.1999999999998,
+   "grain": "none",
+   "price": 18,
+   "priceUnit": "piece",
+   "link": "https://www.google.com",
+   "lastVerified": 1780169359966,
+   "priceSystem": "imperial"
+  },
+  {
+   "id": "CAT-START-005",
+   "categoryId": "lumber",
+   "profileId": "PR-008",
+   "materialId": "M-STD-008",
+   "storeId": "STR-START-001",
+   "length": 2438.3999999999996,
+   "width": 0,
+   "grain": "none",
+   "price": 19,
+   "priceUnit": "piece",
+   "link": "https://www.google.com",
+   "lastVerified": 1778699464467,
+   "priceSystem": "imperial"
+  }
+ ],
+ "stores": [
+  {
+   "id": "STR-START-001",
+   "name": "Lumber Store"
+  }
+ ],
+ "thumbnails": {}
+}
