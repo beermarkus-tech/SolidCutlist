@@ -32,12 +32,14 @@ Pages. Phase 3 (Drive sync) built and tested; switched on once the Google OAuth 
 - `js_sync_drive.html`: Google sign-in + two files in the hidden Drive app folder
   (`solidcutlist-data.json`, `solidcutlist-images.json`); syncs on start, after edits (5 s),
   on reconnect, when the app comes back to the screen, and on "Sync now" / tapping the status.
-- Settings → "Google Drive sync" (sign in / sync now / sign out), 6 languages. Hidden until
-  `DRIVE_CLIENT_ID` is set, so nothing changes for users before that.
+- Settings → "Google Drive sync" (sign in / sync now / sign out), 6 languages. PWA only.
+- OAuth client ID set (consent screen in Testing: only listed test users can sign in).
+- Scope `drive.appdata` confirmed **non-sensitive** in the Google Cloud console: no Google
+  verification needed to publish the consent screen.
 - Safety: a failed Drive read stops the round (never overwrites Drive); a fresh device lets
   Drive win for items both have; expired sign-in pauses sync until a tap.
 - `test/drive-sync.test.js`: 10 end-to-end tests with two simulated devices and a fake Drive.
-- **Open:** client ID, scope classification, real two-device test.
+- **Open:** real two-device test.
 
 ## 1. Decisions taken
 
@@ -94,9 +96,7 @@ On each device
 ## 4. Phases
 
 **Phase 0 · Setup and checks**
-- Verify that the Drive scope `drive.appdata` (hidden app folder) is classed by Google as
-  *non-sensitive*, which keeps Google's app review light. **Not yet verified**: Google's
-  developer docs are unreachable from the build environment. Fallback: `drive.file`.
+- Drive scope `drive.appdata` (hidden app folder): **confirmed non-sensitive**.
 - Create a Google Cloud project, enable the Drive API, create an OAuth client ID for the
   GitHub Pages URL *(your task, guided step by step)*.
 - Turn on GitHub Pages for the repo *(your task, 1 minute)*.
@@ -148,7 +148,6 @@ On each device
 
 ## 6. Risks and open questions
 
-- **Drive scope classification** (Phase 0, see above).
 - **iPhone/iPad:** Safari can delete website data that isn't used for a while; an
   *installed* PWA is far safer. Drive sync protects against data loss either way.
   Google sign-in inside an installed iOS PWA needs testing early in Phase 3.

@@ -284,10 +284,9 @@ test('sign-out stops syncing, revokes access and keeps the data on the device', 
     assert.equal((await pc.sync.syncNow()).skipped, 'disabled');
 });
 
-test('without a client ID (or outside the PWA) sync is unavailable and does nothing', () => {
+test('outside the PWA (Sheet version) sync is unavailable and does nothing', () => {
     const ctx = loadGasPartials(['Frontend/JS/Core/js_sync.html', 'Frontend/JS/Modules/js_sync_drive.html'], {
-        document: { addEventListener() {} }, localStorage: { getItem: () => null, setItem() {} },
-        SOLIDCUTLIST_LOCAL_BACKEND: { store: {} }
+        document: { addEventListener() {} }, localStorage: { getItem: () => null, setItem() {} }
     });
     const DS = vm.runInContext('DriveSync', ctx);
     assert.equal(DS.isAvailable(), false);

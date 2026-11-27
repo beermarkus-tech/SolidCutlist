@@ -10,7 +10,8 @@
     // sync pauses and the status says "tap to sync". Local saving never stops.
 
     // OAuth client ID of the "SolidCutlist PWA" web client (Google Cloud console). Not a secret.
-    const DRIVE_CLIENT_ID = (typeof SOLIDCUTLIST_DRIVE_CLIENT_ID !== 'undefined' && SOLIDCUTLIST_DRIVE_CLIENT_ID) || '';
+    const DRIVE_CLIENT_ID = (typeof SOLIDCUTLIST_DRIVE_CLIENT_ID !== 'undefined' && SOLIDCUTLIST_DRIVE_CLIENT_ID)
+        || '979914831203-n4vrjldr031ddg4gl1n0vjf23qo266ea.apps.googleusercontent.com';
     const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
     const DRIVE_FILES = { data: 'solidcutlist-data.json', images: 'solidcutlist-images.json' };
     const DRIVE_API = 'https://www.googleapis.com/drive/v3';
