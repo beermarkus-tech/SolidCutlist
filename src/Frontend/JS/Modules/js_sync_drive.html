@@ -18,6 +18,7 @@
     const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
     const DRIVE_STATE_KEY = 'solidcutlistDriveSync';
     const DRIVE_SYNC_DELAY_MS = 5000;
+    const SYNC_META_VERSION = 2;
 
     const DriveSync = (function () {
         const root = (typeof window !== 'undefined') ? window : globalThis;
@@ -44,16 +45,24 @@
             if (metaLoaded) return meta;
             const store = root.SOLIDCUTLIST_LOCAL_BACKEND && root.SOLIDCUTLIST_LOCAL_BACKEND.store;
             meta = store ? (await store.get('syncMeta')) || null : null;
+            if (meta && meta.v !== SYNC_META_VERSION) meta = null; // older format: start like a first sync
             metaLoaded = true;
             return meta;
         }
         async function saveMeta() {
             const store = root.SOLIDCUTLIST_LOCAL_BACKEND && root.SOLIDCUTLIST_LOCAL_BACKEND.store;
-            if (store && meta) await store.set('syncMeta', meta);
+            if (store && meta) { meta.v = SYNC_META_VERSION; await store.set('syncMeta', meta); }
         }
 
+        // The app keeps its data in a script-level `let appState` (not a window property)
+        function appData() {
+            // eslint-disable-next-line no-undef
+            const st = (typeof appState !== 'undefined') ? appState : root.appState;
+            if (!st || typeof st !== 'object') throw new Error('App data not loaded yet');
+            return st;
+        }
         function currentCollections() {
-            return syncCollectionsFromState(root.appState || {}, root.projectImages || {});
+            return syncCollectionsFromState(appData(), root.projectImages || {});
         }
 
         // ---------- Google sign-in (Google Identity Services) ----------
@@ -182,9 +191,16 @@
                 const now = Date.now();
                 const cols = currentCollections();
                 if (!meta) {
-                    // First sync on this device: when the Drive already has data, it wins for
-                    // items both sides have (a fresh install must not overwrite real data).
-                    meta = syncTrackChanges(cols, syncEmptyMeta(), remote ? 1 : now);
+                    // First sync on this device: for items that are already in Drive, the Drive
+                    // copy wins (a fresh install must not overwrite real data). Items only this
+                    // device has count as new and are uploaded.
+                    meta = syncTrackChanges(cols, syncEmptyMeta(), now);
+                    if (remote) {
+                        Object.keys(meta.items).forEach(name => {
+                            const r = (remote.items && remote.items[name]) || {};
+                            Object.keys(meta.items[name]).forEach(id => { if (r[id]) meta.items[name][id].t = 1; });
+                        });
+                    }
                 } else {
                     syncTrackChanges(cols, meta, now);
                 }
@@ -223,9 +239,10 @@
 
         /** Puts merged data into the app, saves it on the device and redraws. */
         function applyToApp(doc) {
-            const applied = syncApplyDoc(doc, root.appState, root.projectImages || {});
-            const langBefore = root.appState.settings && root.appState.settings.language;
-            Object.keys(applied.state).forEach(k => { root.appState[k] = applied.state[k]; });
+            const st = appData();
+            const applied = syncApplyDoc(doc, st, root.projectImages || {});
+            const langBefore = st.settings && st.settings.language;
+            Object.keys(applied.state).forEach(k => { st[k] = applied.state[k]; });
             const imagesChanged = syncHash(applied.images || {}) !== syncHash(root.projectImages || {});
             root.projectImages = applied.images || {};
             // Saving received data is not a local edit: don't stamp it with a new change time
@@ -237,7 +254,7 @@
             ['applyTheme', 'renderSettings', 'renderDictionaries', 'renderPartsView'].forEach(fn => {
                 if (typeof root[fn] === 'function') { try { root[fn](); } catch (e) { console.error(fn, e); } }
             });
-            if (langBefore !== root.appState.settings.language && typeof root.applyTranslations === 'function') root.applyTranslations();
+            if (langBefore !== (st.settings && st.settings.language) && typeof root.applyTranslations === 'function') root.applyTranslations();
             if (typeof root.showToast === 'function' && typeof root.t === 'function') root.showToast(root.t('msg_sync_received'), 'info');
         }
 
@@ -245,7 +262,7 @@
         function noteLocalChange() {
             if (applying) return;
             if (!isAvailable() || !isEnabled() || !metaLoaded || !meta) { schedule(); return; }
-            syncTrackChanges(currentCollections(), meta, Date.now());
+            try { syncTrackChanges(currentCollections(), meta, Date.now()); } catch (e) { return; }
             saveMeta().catch(() => {});
             schedule();
         }

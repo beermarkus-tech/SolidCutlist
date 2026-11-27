@@ -95,7 +95,7 @@ function device(drive, clock, state, images) {
         setTimeout: (fn, ms) => { dev.timers.push({ fn, ms }); return dev.timers.length; },
         clearTimeout: () => {},
         fetch: drive.fetch,
-        appState: plain(state || {}),
+        __initialState: JSON.stringify(state || {}),
         projectImages: plain(images || {}),
         google: { script: { run: { bulkImportThumbnails: json => dev.thumbImports.push(JSON.parse(json)) } }, accounts: { oauth2: gis } },
         // like the real saveState: tells sync about the change
@@ -104,10 +104,13 @@ function device(drive, clock, state, images) {
         t: k => k
     });
     vm.runInContext('Date.now = () => __clock.now;', ctx);
+    // Like the real app: data lives in a script-level `let`, NOT on window
+    vm.runInContext('let appState = JSON.parse(__initialState);', ctx);
     DS = vm.runInContext('DriveSync', ctx);
     dev.ctx = ctx; dev.sync = DS; dev.kv = kv;
-    dev.state = () => ctx.appState;
-    dev.edit = fn => { fn(ctx.appState, ctx); clock.now += 1000; ctx.saveState(); };
+    dev.state = () => vm.runInContext('appState', ctx);
+    assert.equal(ctx.appState, undefined, 'test setup mirrors the app: no window.appState');
+    dev.edit = fn => { fn(dev.state(), ctx); clock.now += 1000; ctx.saveState(); };
     return dev;
 }
 const names = (dev, tab) => plain(dev.state()[tab].map(r => r.name).sort());
@@ -291,4 +294,32 @@ test('outside the PWA (Sheet version) sync is unavailable and does nothing', () 
     const DS = vm.runInContext('DriveSync', ctx);
     assert.equal(DS.isAvailable(), false);
     DS.init(); DS.noteLocalChange();
+});
+
+test('a device with sync data from an older build starts over safely (Drive wins for shared items)', async () => {
+    const drive = fakeDrive(), clock = { now: 1e12 };
+    const pc = device(drive, clock, pcData());
+    await pc.sync.signIn();
+    clock.now += 60000;
+    const phone = device(drive, clock, { parts: [{ id: 'A', name: 'Leg', qty: 1 }, { id: 'C', name: 'Shelf' }] });
+    phone.kv.set('syncMeta', { items: { images: {} }, tombstones: {} }); // old format, no version
+    phone.ctx.localStorage.setItem('solidcutlistDriveSync', JSON.stringify({ enabled: true, consented: true }));
+    await phone.sync.syncNow({ interactive: true });
+    assert.equal(part(phone, 'A').qty, 4, 'Drive copy kept');
+    clock.now += 1000;
+    await pc.sync.syncNow();
+    assert.equal(part(pc, 'A').qty, 4);
+    assert.deepEqual(names(pc, 'parts'), ['Leg', 'Shelf', 'Top'], 'phone-only item uploaded');
+    assert.equal(phone.kv.get('syncMeta').v, 2);
+});
+
+test('sync refuses to run before the app data is loaded (never uploads an empty state)', async () => {
+    const drive = fakeDrive(), clock = { now: 1e12 };
+    const pc = device(drive, clock, pcData());
+    await pc.sync.signIn();
+    const phone = device(drive, clock, {});
+    vm.runInContext('appState = undefined;', phone.ctx);
+    const r = await phone.sync.signIn();
+    assert.match(r.error, /not loaded/);
+    assert.equal(drive.byName('solidcutlist-data.json').items.parts.A.v.qty, 4);
 });
