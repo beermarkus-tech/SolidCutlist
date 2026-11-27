@@ -1978,7 +1978,7 @@
             items.forEach(item => {
                 const wDisplay = isMetric ? item.weight : (item.weight * 2.20462);
                 const linkIcon = (item.url && storeName !== '🏪 My Shop Stock')
-                    ? `<a href="${item.url}" target="_blank" class="text-decoration-none ms-2 fs-5" title="Open in Store">🔗</a>` : '';
+                    ? `<a href="${safeUrl(item.url)}" target="_blank" class="text-decoration-none ms-2 fs-5" title="Open in Store">🔗</a>` : '';
 
                 const isEditable = window.activeJobId && storeName !== '🏪 My Shop Stock';
                 const sizeDisplay = item.category === 'sheet'
@@ -2031,7 +2031,7 @@
                 }
 
                 const linkIconMobile = (item.url && storeName !== '🏪 My Shop Stock')
-                    ? `<a href="${item.url}" target="_blank" class="text-decoration-none" title="Open in Store">🔗</a>` : '';
+                    ? `<a href="${safeUrl(item.url)}" target="_blank" class="text-decoration-none" title="Open in Store">🔗</a>` : '';
                 const weightMobile = item.isError ? '' : `<span class="text-muted" style="font-size:0.8rem;">⚖️ ${wDisplay.toFixed(2)} ${weightUnit}</span>`;
 
                 html += `

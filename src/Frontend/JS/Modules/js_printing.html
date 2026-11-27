@@ -51,9 +51,9 @@
 
                 rowsHtml += `
                     <tr class="small">
-                        <td>${projName}</td>
-                        <td class="text-muted">${groupName}</td>
-                        <td class="fw-bold">${part.name || '-'}</td>
+                        <td>${safeHTML(projName)}</td>
+                        <td class="text-muted">${safeHTML(groupName)}</td>
+                        <td class="fw-bold">${safeHTML(part.name || '-')}</td>
                         <td>
                             <div class="d-flex justify-content-center px-1">
                                 <span class="badge ${badgeClass} py-1 d-inline-block" 
@@ -64,8 +64,8 @@
                         </td>
                         <td class="text-center"><strong>${part.qty}</strong></td>
                         <td class="text-center">${dimText}</td>
-                        <td class="text-center">${profName}</td>
-                        <td class="text-center">${matName}</td>
+                        <td class="text-center">${safeHTML(profName)}</td>
+                        <td class="text-center">${safeHTML(matName)}</td>
                         <td class="text-center">${grainText}</td>
                     </tr>
                 `;

@@ -207,7 +207,7 @@
         const material = appState.materials?.find(m => m.id === parts[2]);
         const store = appState.stores?.find(s => s.id === parts[3]);
         
-        document.getElementById('modal-catalog-details-title').innerHTML = `🏷️ ${t('ttl_manage_prices')}: <span class="text-primary">${profile?.name || ''} — ${material?.name || ''}</span> @ <span class="text-dark">${store?.name || ''}</span>`;
+        document.getElementById('modal-catalog-details-title').innerHTML = `🏷️ ${t('ttl_manage_prices')}: <span class="text-primary">${safeHTML(profile?.name || '')} — ${safeHTML(material?.name || '')}</span> @ <span class="text-dark">${safeHTML(store?.name || '')}</span>`;
 
         const isMetric = appState.settings.displayUnit === 'mm';
         const isSheet = parts[0] === 'sheet';
@@ -348,7 +348,7 @@
             `;
 
             let linkHtml = item.link 
-                ? `<a href="${safeHTML(item.link)}" target="_blank" class="text-decoration-none" title="${t('title_open_link')}">🔗</a>` 
+                ? `<a href="${safeUrl(item.link)}" target="_blank" class="text-decoration-none" title="${t('title_open_link')}">🔗</a>` 
                 : `<span class="text-muted" style="opacity: 0.3;">🔗</span>`;
                 
             let actionHtml = `
@@ -364,7 +364,7 @@
                 <td class="text-nowrap align-middle">
                     <div class="d-flex justify-content-center align-items-center">
                         ${linkHtml}
-                        <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${item.id}', '${safeHTML(item.link || '')}')" title="${t('title_edit_link')}" tabindex="-1">✏️</button>
+                        <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${item.id}')" title="${t('title_edit_link')}" tabindex="-1">✏️</button>
                     </div>
                 </td>
                 <td class="align-middle py-1 pe-3 text-end">${actionHtml}</td>
@@ -510,7 +510,7 @@
         const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
         const freshnessHtml = `<span class="badge shadow-sm" style="background-color:${badgeBg};color:${badgeColor};cursor:pointer;display:inline-flex;justify-content:center;align-items:center;user-select:none;" onclick="event.stopPropagation();verifyPrice('${item.id}')" title="${t('title_click_to_verify')}">${dd}/${mm}</span>`;
         const linkHtml = item.link
-            ? `<a href="${safeHTML(item.link)}" target="_blank" class="text-decoration-none" onclick="event.stopPropagation()" title="${t('title_open_link')}">🔗</a>`
+            ? `<a href="${safeUrl(item.link)}" target="_blank" class="text-decoration-none" onclick="event.stopPropagation()" title="${t('title_open_link')}">🔗</a>`
             : `<span class="text-muted" style="opacity:0.3;">🔗</span>`;
         return `
             <td><div class="d-flex justify-content-center px-1"><span class="badge ${badgeClass} py-1 d-inline-block" style="width:85px;text-align:center;font-size:0.75rem;text-transform:uppercase;">${t('opt_' + item.categoryId)}</span></div></td>
@@ -525,7 +525,7 @@
             <td class="text-nowrap align-middle">
                 <div class="d-flex justify-content-end align-items-center">
                     ${linkHtml}
-                    <button class="btn btn-sm py-0 px-1" onclick="event.stopPropagation();openLinkModal('${item.id}', '${safeHTML(item.link || '')}')" title="${t('title_edit_link')}">✏️</button>
+                    <button class="btn btn-sm py-0 px-1" onclick="event.stopPropagation();openLinkModal('${item.id}')" title="${t('title_edit_link')}">✏️</button>
                 </div>
             </td>
             <td class="text-end">
@@ -610,7 +610,7 @@
         const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
         const freshnessHtml = `<span class="badge shadow-sm" style="background-color:${badgeBg};color:${badgeColor};cursor:pointer;display:inline-flex;justify-content:center;align-items:center;user-select:none;" onclick="verifyPrice('${item.id}')" title="${t('title_click_to_verify')}">${dd}/${mm}</span>`;
         const linkHtml = item.link
-            ? `<a href="${safeHTML(item.link)}" target="_blank" class="text-decoration-none" onclick="event.stopPropagation()" title="${t('title_open_link')}">🔗</a>`
+            ? `<a href="${safeUrl(item.link)}" target="_blank" class="text-decoration-none" onclick="event.stopPropagation()" title="${t('title_open_link')}">🔗</a>`
             : `<span class="text-muted" style="opacity:0.3;">🔗</span>`;
         return `
             <td><div class="d-flex justify-content-center px-1"><span class="badge ${badgeClass} py-1 d-inline-block" style="width:85px;text-align:center;font-size:0.75rem;text-transform:uppercase;">${t('opt_' + item.categoryId)}</span></div></td>
@@ -625,7 +625,7 @@
             <td class="text-nowrap align-middle">
                 <div class="d-flex justify-content-end align-items-center">
                     ${linkHtml}
-                    <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${item.id}', '${safeHTML(item.link || '')}')" title="${t('title_edit_link')}">✏️</button>
+                    <button class="btn btn-sm py-0 px-1" onclick="openLinkModal('${item.id}')" title="${t('title_edit_link')}">✏️</button>
                 </div>
             </td>
             <td class="text-end">
@@ -1001,6 +1001,10 @@
     // Hyperlink Modal
     let linkModalInstance = null;
     function openLinkModal(itemId, currentLink) {
+        // Read the current link from state (passing it through an inline onclick string
+        // broke on links containing an apostrophe)
+        const _owner = (appState.projects || []).find(p => p.id === itemId) || (appState.catalog || []).find(c => c.id === itemId);
+        if (_owner) currentLink = _owner.link || '';
         if (!linkModalInstance) linkModalInstance = new bootstrap.Modal(document.getElementById('modal-link-editor'));
         document.getElementById('modal-link-item-id').value = itemId;
         document.getElementById('modal-link-url').value = currentLink || '';

@@ -3,9 +3,15 @@
     // MATH & UTILITY ENGINE
     // ==========================================
 
+    /** Returns an http(s) URL safe to put in an href attribute, or '' for anything else
+     *  (e.g. javascript: links). Escaped for use inside a double-quoted attribute. */
+    function safeUrl(url) {
+        const u = String(url || '').trim();
+        return /^https?:\/\//i.test(u) ? safeHTML(u) : '';
+    }
     /** Prevents inch marks (") from breaking HTML input values */
     function safeHTML(str) {
-        if (!str) return '';
+        if (str === null || str === undefined) return '';
         return String(str)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')

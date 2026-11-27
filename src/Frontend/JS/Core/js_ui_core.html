@@ -154,13 +154,13 @@
         // Inner HTML of the toast
         toastEl.innerHTML = `
             <div class="d-flex">
-                <div class="toast-body">
-                    ${message}
-                </div>
+                <div class="toast-body"></div>
                 <button type="button" class="btn-close ${close} me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
         `;
         
+        // Plain text: messages often contain user-entered names
+        toastEl.querySelector('.toast-body').textContent = String(message);
         container.appendChild(toastEl);
         
         // Initialize and show using Bootstrap's JS API
