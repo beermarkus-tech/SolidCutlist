@@ -212,6 +212,28 @@
         });
     }
 
+    /**
+     * Form validation helper: true when the dimension typed in `inputId` parses to a
+     * positive length; otherwise flags the field, shows `msgKey` and returns false.
+     * Disabled / missing inputs are not validated.
+     */
+    function validatePositiveDimension(inputId, msgKey) {
+        const el = document.getElementById(inputId);
+        if (!el || el.disabled) return true;
+        const ok = parseToBaseUnit(el.value) > 0;
+        el.classList.toggle('is-invalid', !ok);
+        if (!ok) {
+            if (typeof showToast === 'function') showToast(t(msgKey), 'warning');
+            el.focus();
+            el.addEventListener('input', () => el.classList.remove('is-invalid'), { once: true });
+        }
+        return ok;
+    }
+    /** Runs several validatePositiveDimension checks, stopping at the first failure. */
+    function validateDimensions(checks) {
+        return checks.every(([id, key]) => validatePositiveDimension(id, key));
+    }
+
     // ==========================================
     // DUPLICATION ENGINE
     // ==========================================

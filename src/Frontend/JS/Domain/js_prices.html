@@ -373,6 +373,12 @@
         });
     }
     function updateDirectModalCatalog(id, field, newValue) {
+        // Reject text / zero / negative sizes instead of silently storing 0
+        if ((field === 'length' || field === 'width' || field === 'thickness') && !(parseToBaseUnit(newValue) > 0)) {
+            showToast(t(field === 'width' ? 'msg_invalid_width' : field === 'thickness' ? 'msg_invalid_thickness' : 'msg_invalid_length'), 'warning');
+            renderCatalogModalTable();
+            return;
+        }
         const item = appState.catalog.find(c => c.id === id);
         if (item) {
             if (field === 'length' || field === 'width') item[field] = parseToBaseUnit(newValue) || 0;
@@ -411,6 +417,7 @@
     }
     function handleAddModalCatalog(event) {
         event.preventDefault();
+        if (!validateDimensions([['modal-catalog-input-width','msg_invalid_width'],['modal-catalog-input-length','msg_invalid_length']])) return;
         const parts = currentCatalogModalFingerprint.split('_');
         
         appState.catalog.unshift({
@@ -635,6 +642,7 @@
     }
     function handleAddCatalogItem(event) {
         event.preventDefault();
+        if (!validateDimensions([['cat-width','msg_invalid_width'],['cat-length','msg_invalid_length']])) return;
         const category = document.getElementById('cat-category').value;
         
         // 🪄 Smart URL Formatter
@@ -678,6 +686,12 @@
         }
     }
     function updateCatalogItem(id, field, newValue) {
+        // Reject text / zero / negative sizes instead of silently storing 0
+        if ((field === 'length' || field === 'width' || field === 'thickness') && !(parseToBaseUnit(newValue) > 0)) {
+            showToast(t(field === 'width' ? 'msg_invalid_width' : field === 'thickness' ? 'msg_invalid_thickness' : 'msg_invalid_length'), 'warning');
+            renderCatalogTable();
+            return;
+        }
         const item = appState.catalog.find(c => c.id === id);
         if (item) {
             let parsed;

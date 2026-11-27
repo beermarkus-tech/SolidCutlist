@@ -296,6 +296,12 @@
         });
     }
     function updateDirectModalStock(id, field, newValue) {
+        // Reject text / zero / negative sizes instead of silently storing 0
+        if ((field === 'length' || field === 'width' || field === 'thickness') && !(parseToBaseUnit(newValue) > 0)) {
+            showToast(t(field === 'width' ? 'msg_invalid_width' : field === 'thickness' ? 'msg_invalid_thickness' : 'msg_invalid_length'), 'warning');
+            renderStockModalTable();
+            return;
+        }
         const item = appState.stock.find(s => s.id === id);
         if (item) {
             if (field === 'qty') item[field] = parseInt(newValue, 10) || 1;
@@ -315,6 +321,7 @@
     }
     function handleAddModalStock(event) {
         event.preventDefault();
+        if (!validateDimensions([['modal-stock-input-width','msg_invalid_width'],['modal-stock-input-length','msg_invalid_length']])) return;
         const parts = currentStockModalFingerprint.split('_');
         
         appState.stock.unshift({
@@ -508,6 +515,7 @@
     }
     function handleAddStock(event) {
         event.preventDefault();
+        if (!validateDimensions([['stock-width','msg_invalid_width'],['stock-length','msg_invalid_length']])) return;
         
         const category = document.getElementById('stock-category').value;
         const lengthInput = parseToBaseUnit(document.getElementById('stock-length').value);
@@ -520,7 +528,7 @@
             categoryId: category,
             profileId: document.getElementById('stock-profile').value,
             materialId: document.getElementById('stock-material').value,
-            qty: parseInt(document.getElementById('stock-qty').value, 10),
+            qty: Math.max(1, parseInt(document.getElementById('stock-qty').value, 10) || 1),
             length: lengthInput,
             width: widthInput,
             grain: document.getElementById('stock-grain').value,
@@ -540,6 +548,12 @@
         document.getElementById('stock-qty').focus();
     }
     function updateStock(id, field, newValue) {
+        // Reject text / zero / negative sizes instead of silently storing 0
+        if ((field === 'length' || field === 'width' || field === 'thickness') && !(parseToBaseUnit(newValue) > 0)) {
+            showToast(t(field === 'width' ? 'msg_invalid_width' : field === 'thickness' ? 'msg_invalid_thickness' : 'msg_invalid_length'), 'warning');
+            renderStockTable();
+            return;
+        }
         const item = appState.stock.find(s => s.id === id);
         if (item) {
             let parsed;

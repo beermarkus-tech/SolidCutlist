@@ -106,6 +106,7 @@
     // --- CRUD OPERATIONS ---
     function handleAddPart(event) {
         event.preventDefault();
+        if (!validateDimensions([['part-length','msg_invalid_length'],['part-width','msg_invalid_width']])) return;
 
         const projId = document.getElementById('part-project').value;
         const groupId = document.getElementById('part-group').value;
@@ -123,7 +124,7 @@
             groupId: groupId,
             category: cat,
             name: nameInput.value,
-            qty: parseInt(qtyInput.value) || 1,
+            qty: Math.max(1, parseInt(qtyInput.value, 10) || 1),
             width: parseToBaseUnit(widthInput.value) || 0,
             length: parseToBaseUnit(lengthInput.value) || 0,
             grain: document.getElementById('part-grain').value, // 🪄 NEW
@@ -457,6 +458,12 @@
         }
     }
     function updatePart(partId, field, newValue) {
+        // Reject text / zero / negative sizes instead of silently storing 0
+        if ((field === 'length' || field === 'width' || field === 'thickness') && !(parseToBaseUnit(newValue) > 0)) {
+            showToast(t(field === 'width' ? 'msg_invalid_width' : field === 'thickness' ? 'msg_invalid_thickness' : 'msg_invalid_length'), 'warning');
+            renderPartsTable();
+            return;
+        }
         const part = appState.parts.find(p => p.id === partId);
         if (part) {
             if (field === 'width' || field === 'length') {

@@ -366,6 +366,7 @@
     }
     function handleAddProfile(event) {
         event.preventDefault();
+        if (!validateDimensions([['prof-thickness','msg_invalid_thickness'],['prof-width','msg_invalid_width']])) return;
         
         const name = document.getElementById('prof-name').value;
         const category = document.getElementById('prof-category').value;
@@ -396,6 +397,12 @@
         document.getElementById('prof-name').focus();
     }
     function updateProfile(id, field, newValue) {
+        // Reject text / zero / negative sizes instead of silently storing 0
+        if ((field === 'length' || field === 'width' || field === 'thickness') && !(parseToBaseUnit(newValue) > 0)) {
+            showToast(t(field === 'width' ? 'msg_invalid_width' : field === 'thickness' ? 'msg_invalid_thickness' : 'msg_invalid_length'), 'warning');
+            renderProfilesTable();
+            return;
+        }
         const prof = appState.profiles.find(p => p.id === id);
         if (prof) {
             if (field === 'thickness' || field === 'width') {
