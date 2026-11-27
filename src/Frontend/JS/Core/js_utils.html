@@ -14,61 +14,77 @@
             .replace(/'/g, '&#39;');
     }
     /** Parses user UI input (string or number) into Base Units (decimal mm) for the AppState. */
-    function parseToBaseUnit(input) {
-        if (!input) return 0;
-        let val = String(input).trim();
-        let unit = appState.settings.displayUnit;
-        let decimalInches = 0;
+    /**
+     * Parses a user-typed or CSV dimension into a plain decimal number (no unit
+     * conversion). Returns NaN when the text isn't a number. Accepts:
+     *  - decimals with a dot or a comma ("18.5", "18,5"), thousands separators
+     *    ("1,200", "1.200,5", "1,200.5")
+     *  - mixed fractions "16-3/4", "16 3/4", "16  3/4", bare fractions "3/4"
+     *  - a trailing unit mark (mm, cm, m, in, ft, ", ', ″, ′) and a leading
+     *    apostrophe (spreadsheet force-text marker)
+     *  - a leading minus sign (callers decide whether negatives are valid)
+     */
+    function parseDimensionNumber(input) {
+        if (input === null || input === undefined) return NaN;
+        let s = String(input).trim();
+        if (s.startsWith("'")) s = s.slice(1).trim();
+        s = s.replace(/\s*(mm|cm|m|inches|inch|in|feet|ft|"|\u2033|\u201d|'|\u2032)\s*$/i, '').trim();
+        s = s.replace(/\s+/g, ' ');
+        if (!s) return NaN;
+        let sign = 1;
+        if (s.startsWith('-')) { sign = -1; s = s.slice(1).trim(); }
 
-        if (unit === 'mm') {
-            return parseFloat(val) || 0;
-        }
-
-        // If Fractional Inches
-        if (unit === 'frac_in') {
-            if (val.includes('/')) {
-                // Accept the display format's hyphenated mixed number (e.g. "16-3/4"),
-                // narrowly matched so it can't misread an unrelated leading minus sign.
-                let parts;
-                const dashMixed = val.match(/^(\d+)-(\d+\/\d+)$/);
-                if (dashMixed) {
-                    parts = [dashMixed[1], dashMixed[2]];
-                } else {
-                    parts = val.split(' ');
-                }
-                if (parts.length === 2) {
-                    // It's a mixed fraction (e.g., "1 3/4")
-                    let whole = parseFloat(parts[0]) || 0;
-                    let frac = parts[1].split('/');
-                    let num = parseFloat(frac[0]) || 0;
-                    let den = parseFloat(frac[1]) || 1;
-                    decimalInches = whole + (num / den);
-                } else {
-                    // It's just a fraction (e.g., "3/4")
-                    let frac = val.split('/');
-                    let num = parseFloat(frac[0]) || 0;
-                    let den = parseFloat(frac[1]) || 1;
-                    decimalInches = num / den;
-                }
-            } else {
-                // It's just a whole number typed into the fraction setting (e.g., "2")
-                decimalInches = parseFloat(val) || 0;
+        const toDecimal = (str) => {
+            if (/^\d+$/.test(str)) return parseFloat(str);
+            const hasDot = str.includes('.'), hasComma = str.includes(',');
+            if (hasDot && hasComma) {
+                // The LAST separator is the decimal mark, the other one groups thousands
+                if (str.lastIndexOf(',') > str.lastIndexOf('.')) str = str.replace(/\./g, '').replace(',', '.');
+                else str = str.replace(/,/g, '');
+            } else if (hasComma) {
+                if (/^\d{1,3}(,\d{3})+$/.test(str)) str = str.replace(/,/g, '');      // 1,200 -> 1200
+                else if ((str.match(/,/g) || []).length === 1) str = str.replace(',', '.'); // 18,5 -> 18.5
+                else return NaN;
+            } else if (hasDot && /^\d{1,3}(\.\d{3}){2,}$/.test(str)) {
+                str = str.replace(/\./g, '');                                         // 1.200.000
             }
+            return /^(\d+\.?\d*|\.\d+)$/.test(str) ? parseFloat(str) : NaN;
+        };
+
+        let m = s.match(/^(\d+(?:[.,]\d+)?)(?: ?- ?| )(\d+) ?\/ ?(\d+)$/);
+        if (m) {
+            const den = parseFloat(m[3]);
+            const whole = toDecimal(m[1]);
+            if (!den || isNaN(whole)) return NaN;
+            return sign * (whole + parseFloat(m[2]) / den);
+        }
+        m = s.match(/^(\d+) ?\/ ?(\d+)$/);
+        if (m) {
+            const den = parseFloat(m[2]);
+            return den ? sign * (parseFloat(m[1]) / den) : NaN;
+        }
+        const d = toDecimal(s);
+        return isNaN(d) ? NaN : sign * d;
+    }
+
+    /**
+     * Parses user UI input (string or number) in the current display unit into Base
+     * Units (decimal mm) for the AppState. Invalid, empty or negative input returns 0.
+     */
+    function parseToBaseUnit(input) {
+        if (input === null || input === undefined || input === '') return 0;
+        const n = parseDimensionNumber(input);
+        if (!isFinite(n) || n < 0) return 0;
+        const unit = appState.settings.displayUnit;
+        if (unit === 'dec_in' || unit === 'frac_in') {
             // Round to 1 nanometer — far finer than any real display/measuring
             // precision, but enough to collapse binary-float multiplication noise
             // (e.g. 48 * 25.4 === 1219.1999999999998, not the exact 1219.2) so a
             // value typed directly and the same value re-entered via a rounded
             // round-trip (e.g. CSV export/import) land on the identical mm value.
-            return Math.round(decimalInches * 25.4 * 1e6) / 1e6; // Convert inches to mm
+            return Math.round(n * 25.4 * 1e6) / 1e6;
         }
-
-        // If Decimal Inches
-        if (unit === 'dec_in') {
-            decimalInches = parseFloat(val) || 0;
-            return Math.round(decimalInches * 25.4 * 1e6) / 1e6;
-        }
-
-        return parseFloat(val) || 0; // Fallback
+        return n;
     }
     /** Formats Base Units (decimal mm) from the AppState back into a user-friendly string. Snaps fractional inches to the nearest 1/16th. */
     function formatForDisplay(mmValue) {

@@ -24,29 +24,71 @@
      * a bare fraction "1/2" — each optionally prefixed with a leading apostrophe (a
      * spreadsheet "force text" marker some exported files carry).
      */
+    /**
+     * Splits one CSV line into trimmed fields, honouring double-quoted fields
+     * (which may contain the delimiter) and "" escapes, as written by the app's
+     * own CSV export and by spreadsheet programs.
+     */
+    function _splitCsvLine(line, delimiter) {
+        const out = [];
+        let cur = '', inQuotes = false;
+        const str = String(line || '');
+        for (let i = 0; i < str.length; i++) {
+            const ch = str[i];
+            if (inQuotes) {
+                if (ch === '"') {
+                    if (str[i + 1] === '"') { cur += '"'; i++; }
+                    else inQuotes = false;
+                } else cur += ch;
+            } else if (ch === '"' && cur.trim() === '') {
+                inQuotes = true; cur = '';
+            } else if (ch === delimiter) {
+                out.push(cur.trim()); cur = '';
+            } else cur += ch;
+        }
+        out.push(cur.trim());
+        return out;
+    }
+
+    /** Picks the delimiter (';', ',' or tab) that splits the header line into the most columns. */
+    function _detectCsvDelimiter(headerLine) {
+        let best = ',', bestCount = 1;
+        [';', ',', '\t'].forEach(d => {
+            const n = _splitCsvLine(headerLine, d).length;
+            if (n > bestCount) { best = d; bestCount = n; }
+        });
+        return best;
+    }
+
+    /**
+     * Finds the profile of the given type whose dimensions are CLOSEST to the
+     * imported thickness (and width, for lumber), within a 1.5 mm tolerance.
+     * Lumber also matches when the CSV lists thickness and width swapped.
+     * Returns the profile or undefined.
+     */
+    function _matchImportProfile(profiles, type, thickness, width) {
+        const tol = 1.5;
+        let best, bestErr = Infinity;
+        (profiles || []).forEach(p => {
+            if (p.type !== type) return;
+            let err;
+            if (type === 'lumber') {
+                const e1 = Math.max(Math.abs(p.thickness - thickness), Math.abs(p.width - width));
+                const e2 = Math.max(Math.abs(p.thickness - width), Math.abs(p.width - thickness));
+                err = Math.min(e1, e2);
+            } else {
+                err = Math.abs(p.thickness - thickness);
+            }
+            if (err <= tol && err < bestErr) { best = p; bestErr = err; }
+        });
+        return best;
+    }
+
     function _parseImportDimension(str) {
         if (!str) return 0;
-        let s = String(str).trim();
-        if (s.startsWith("'")) s = s.slice(1).trim();
-
-        if (s.includes('/')) {
-            const mixed = s.match(/^(\d+(?:\.\d+)?)[ -](\d+)\/(\d+)$/);
-            if (mixed) {
-                const whole = parseFloat(mixed[1]) || 0;
-                const num = parseFloat(mixed[2]) || 0;
-                const den = parseFloat(mixed[3]) || 1;
-                return whole + (num / den);
-            }
-            const bare = s.match(/^(\d+)\/(\d+)$/);
-            if (bare) {
-                const num = parseFloat(bare[1]) || 0;
-                const den = parseFloat(bare[2]) || 1;
-                return num / den;
-            }
-        }
-
-        const cleaned = s.replace(/[^0-9\.]/g, '').trim();
-        return parseFloat(cleaned) || 0;
+        // Shared parser (js_utils.html): decimal commas, fractions, unit marks
+        const n = parseDimensionNumber(str);
+        return (isFinite(n) && n > 0) ? n : 0;
     }
 
     /**
@@ -302,8 +344,9 @@
                     return;
                 }
 
-                window.csvDelimiter = lines[0].includes(';') ? ';' : ',';
-                rawCsvHeaders = lines[0].split(window.csvDelimiter).map(h => h.replace(/^"|"$/g, '').trim());
+                const headerLine = lines[0].replace(/^\uFEFF/, ''); // strip UTF-8 BOM (Excel)
+                window.csvDelimiter = _detectCsvDelimiter(headerLine);
+                rawCsvHeaders = _splitCsvLine(headerLine, window.csvDelimiter);
                 rawCsvRows = lines.slice(1); 
 
                 // 🪄 Trigger the standalone checker!
@@ -405,7 +448,7 @@
             if (!rowStr.trim()) continue;
 
             const delimiter = window.csvDelimiter || ';';
-            const cols = rowStr.split(delimiter).map(c => c.replace(/^"|"$/g, '').trim());
+            const cols = _splitCsvLine(rowStr, delimiter);
             const cellData = cols[colIndex];
 
             // Only grab it if it actually contains text
@@ -491,7 +534,7 @@
             if (!rowStr.trim()) continue;
 
             const delimiter = window.csvDelimiter || ';';
-            const cols = rowStr.split(delimiter).map(c => c.replace(/^"|"$/g, '').trim());
+            const cols = _splitCsvLine(rowStr, delimiter);
 
             const rawName = cols[colMap.name] || `Part ${i}`;
             const rawPath = (!isNaN(colMap.group) && cols[colMap.group]) ? String(cols[colMap.group]) : '';
@@ -531,9 +574,8 @@
                     if (mat) matchedMatId = mat.id;
                 }
 
-                const tolerance = 1.5; 
-                const lumberMatch = safeProfiles.find(p => p.type === 'lumber' && Math.abs(p.thickness - tBase) <= tolerance && Math.abs(p.width - wBase) <= tolerance);
-                const sheetMatch = safeProfiles.find(p => p.type === 'sheet' && Math.abs(p.thickness - tBase) <= tolerance);
+                const lumberMatch = _matchImportProfile(safeProfiles, 'lumber', tBase, wBase);
+                const sheetMatch = _matchImportProfile(safeProfiles, 'sheet', tBase, wBase);
 
                 if (lumberMatch) {
                     matchedProfId = lumberMatch.id;
@@ -610,9 +652,8 @@
 
             // 3. Re-evaluate Profile & Category (If empty)
             if (part.profileId === '') {
-                const tolerance = 1.5; 
-                const lumberMatch = safeProfiles.find(p => p.type === 'lumber' && Math.abs(p.thickness - part.thickness) <= tolerance && Math.abs(p.width - part.width) <= tolerance);
-                const sheetMatch = safeProfiles.find(p => p.type === 'sheet' && Math.abs(p.thickness - part.thickness) <= tolerance);
+                const lumberMatch = _matchImportProfile(safeProfiles, 'lumber', part.thickness, part.width);
+                const sheetMatch = _matchImportProfile(safeProfiles, 'sheet', part.thickness, part.width);
 
                 if (part.category === 'lumber' && lumberMatch) {
                     part.profileId = lumberMatch.id;

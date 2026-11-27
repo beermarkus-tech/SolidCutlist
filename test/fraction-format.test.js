@@ -55,7 +55,10 @@ test('a bare negative fraction (no leading whole number) is unaffected by the ne
     // Regression guard: the narrow hyphen regex only matches "digits-digits/digits",
     // so a lone "-3/4" must still fall through to the original bare-fraction parsing
     // instead of being misread as a "0-3/4" mixed number.
-    assert.ok(Math.abs(parseToBaseUnit('-3/4') - (-19.05)) < 0.001);
+    const { parseDimensionNumber } = loadWithUnit('frac_in');
+    assert.equal(parseDimensionNumber('-3/4'), -0.75);
+    // Negative dimensions are invalid input and parse to 0 (never a positive 0-3/4).
+    assert.equal(parseToBaseUnit('-3/4'), 0);
 });
 
 test('mm and decimal-inch display are unaffected by the fractional-inch separator change', () => {
