@@ -1294,39 +1294,30 @@
         appState.settings[key] = parseFloat(val) || 0;
         saveState();
     }
-    function toggleUseStock(isChecked) {
-        if (!appState.settings.optimizer) appState.settings.optimizer = {};
-        appState.settings.optimizer.useStock = isChecked;
-        const _activeJob = window.activeJobId && appState.jobs
-            ? appState.jobs.find(j => j.id === window.activeJobId)
-            : null;
-        if (_activeJob) {
-            if (!_activeJob.settings) _activeJob.settings = {};
-            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
-            _activeJob.settings.optimizer.useStock = isChecked;
-            if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
-        } else {
-            saveState();
-            notifyConfigChanged();
-        }
-    }
-    function updateSheetCutPreference(val) {
-        if (!appState.settings.optimizer) appState.settings.optimizer = {};
-        appState.settings.optimizer.sheetCutPreference = val;
-        // When a saved job is active, sync into job.settings and mark dirty instead of auto-saving
-        const _activeJob = window.activeJobId && appState.jobs
-            ? appState.jobs.find(j => j.id === window.activeJobId)
-            : null;
-        if (_activeJob) {
-            if (!_activeJob.settings) _activeJob.settings = {};
-            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
-            _activeJob.settings.optimizer.sheetCutPreference = val;
+    /**
+     * Applies an optimizer-settings change to the ACTIVE SAVED JOB when one is loaded
+     * (marking it dirty — never touching master settings, which jobs must not leak
+     * into), or to the master settings otherwise (saved + Recalculate signal).
+     */
+    function _applyOptimizerSetting(mutate) {
+        const job = window.activeJobId && appState.jobs
+            ? appState.jobs.find(j => j.id === window.activeJobId) : null;
+        const settings = job ? (job.settings || (job.settings = {})) : appState.settings;
+        if (!settings.optimizer) settings.optimizer = {};
+        mutate(settings.optimizer);
+        if (job) {
             if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
             if (typeof syncJobSettingsToMobileUI === 'function') syncJobSettingsToMobileUI();
         } else {
             saveState();
-            notifyConfigChanged();
+            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
         }
+    }
+    function toggleUseStock(isChecked) {
+        _applyOptimizerSetting(o => { o.useStock = isChecked; });
+    }
+    function updateSheetCutPreference(val) {
+        _applyOptimizerSetting(o => { o.sheetCutPreference = val; });
     }
     // --- DIRTY-STATE SIGNAL (pre-save) ---
     function notifyConfigChanged() {
@@ -1342,110 +1333,24 @@
         btnAction1.onclick = runOptimization;
     }
     function toggleTransportMode(isChecked) {
-        if (!appState.settings.optimizer) appState.settings.optimizer = {};
-        if (!appState.settings.optimizer.transport) appState.settings.optimizer.transport = {};
-        appState.settings.optimizer.transport.enabled = isChecked;
-        const transportPanel = document.getElementById('transport-settings-panel');
-        if (transportPanel) transportPanel.style.display = isChecked ? '' : 'none';
-        // When a saved job is active, sync into job.settings and mark dirty instead of auto-saving
-        const _activeJob = window.activeJobId && appState.jobs
-            ? appState.jobs.find(j => j.id === window.activeJobId)
-            : null;
-        if (_activeJob) {
-            if (!_activeJob.settings) _activeJob.settings = {};
-            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
-            if (!_activeJob.settings.optimizer.transport) _activeJob.settings.optimizer.transport = {};
-            _activeJob.settings.optimizer.transport.enabled = isChecked;
-            if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
-            if (typeof syncJobSettingsToMobileUI === 'function') syncJobSettingsToMobileUI();
-        } else {
-            saveState();
-            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
-        }
+        ['transport-settings-panel'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = isChecked ? '' : 'none'; });
+        _applyOptimizerSetting(o => { if (!o.transport) o.transport = {}; o.transport.enabled = isChecked; });
     }
     function toggleKerfMode(isChecked) {
-        if (!appState.settings.optimizer) appState.settings.optimizer = {};
-        appState.settings.optimizer.kerfEnabled = isChecked;
-        ['kerf-trim-settings-panel', 'mob-kerf-trim-settings-panel'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = isChecked ? '' : 'none';
-        });
-        const _activeJob = window.activeJobId && appState.jobs
-            ? appState.jobs.find(j => j.id === window.activeJobId)
-            : null;
-        if (_activeJob) {
-            if (!_activeJob.settings) _activeJob.settings = {};
-            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
-            _activeJob.settings.optimizer.kerfEnabled = isChecked;
-            if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
-            if (typeof syncJobSettingsToMobileUI === 'function') syncJobSettingsToMobileUI();
-        } else {
-            saveState();
-            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
-        }
+        ['kerf-trim-settings-panel', 'mob-kerf-trim-settings-panel'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = isChecked ? '' : 'none'; });
+        _applyOptimizerSetting(o => { o.kerfEnabled = isChecked; });
     }
     function toggleScrapMode(isChecked) {
-        if (!appState.settings.optimizer) appState.settings.optimizer = {};
-        appState.settings.optimizer.scrapEnabled = isChecked;
-        ['scrap-settings-panel', 'mob-scrap-settings-panel'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = isChecked ? '' : 'none';
-        });
-        const _activeJob = window.activeJobId && appState.jobs
-            ? appState.jobs.find(j => j.id === window.activeJobId)
-            : null;
-        if (_activeJob) {
-            if (!_activeJob.settings) _activeJob.settings = {};
-            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
-            _activeJob.settings.optimizer.scrapEnabled = isChecked;
-            if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
-            if (typeof syncJobSettingsToMobileUI === 'function') syncJobSettingsToMobileUI();
-        } else {
-            saveState();
-            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
-        }
+        ['scrap-settings-panel', 'mob-scrap-settings-panel'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = isChecked ? '' : 'none'; });
+        _applyOptimizerSetting(o => { o.scrapEnabled = isChecked; });
     }
     function toggleBulkMode(isChecked) {
-        if (!appState.settings.optimizer) appState.settings.optimizer = {};
-        appState.settings.optimizer.bulkEnabled = isChecked;
-        ['bulk-settings-panel', 'mob-bulk-settings-panel'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = isChecked ? '' : 'none';
-        });
-        const _activeJob = window.activeJobId && appState.jobs
-            ? appState.jobs.find(j => j.id === window.activeJobId)
-            : null;
-        if (_activeJob) {
-            if (!_activeJob.settings) _activeJob.settings = {};
-            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
-            _activeJob.settings.optimizer.bulkEnabled = isChecked;
-            if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
-            if (typeof syncJobSettingsToMobileUI === 'function') syncJobSettingsToMobileUI();
-        } else {
-            saveState();
-            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
-        }
+        ['bulk-settings-panel', 'mob-bulk-settings-panel'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = isChecked ? '' : 'none'; });
+        _applyOptimizerSetting(o => { o.bulkEnabled = isChecked; });
     }
     function toggleMarginMode(isChecked) {
-        if (!appState.settings.optimizer) appState.settings.optimizer = {};
-        appState.settings.optimizer.marginEnabled = isChecked;
-        ['margin-settings-panel', 'mob-margin-settings-panel'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = isChecked ? '' : 'none';
-        });
-        const _activeJob = window.activeJobId && appState.jobs
-            ? appState.jobs.find(j => j.id === window.activeJobId)
-            : null;
-        if (_activeJob) {
-            if (!_activeJob.settings) _activeJob.settings = {};
-            if (!_activeJob.settings.optimizer) _activeJob.settings.optimizer = {};
-            _activeJob.settings.optimizer.marginEnabled = isChecked;
-            if (typeof setUnsavedChangesState === 'function') setUnsavedChangesState('dirty_input');
-            if (typeof syncJobSettingsToMobileUI === 'function') syncJobSettingsToMobileUI();
-        } else {
-            saveState();
-            if (typeof notifyConfigChanged === 'function') notifyConfigChanged();
-        }
+        ['margin-settings-panel', 'mob-margin-settings-panel'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = isChecked ? '' : 'none'; });
+        _applyOptimizerSetting(o => { o.marginEnabled = isChecked; });
     }
     // --- UI LOCK STATES ---
     function toggleConfiguratorState(isLocked, isSaved = false, lockInputs = true) {
@@ -1538,6 +1443,9 @@
         }
 
         if (typeof renderOptimizerConfig === 'function') renderOptimizerConfig();
+        // Leaving a job: put the MASTER settings back into the sidebar, otherwise the job's
+        // values stay on screen and the next edit would copy them into the master settings.
+        if (typeof renderSettings === 'function') renderSettings();
     }
 
     function clearOptimizerState() {
