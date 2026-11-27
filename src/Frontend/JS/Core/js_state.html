@@ -125,6 +125,47 @@
             }, 100);
         }
     }
+    /** Records a successful direct save (reset / restore) so the next boot sees local == cloud. */
+    function _recordSyncSuccess(response) {
+        if (response && response.status === 'success') {
+            _writeSyncMarker('lumberLogicLastSynced', response.cloud_timestamp);
+            _writeSyncMarker('lumberLogicUnsynced', '0');
+        }
+    }
+    function _readSyncMarker(key) {
+        try { return localStorage.getItem(key); } catch (e) { return null; }
+    }
+    function _writeSyncMarker(key, value) {
+        try {
+            if (value === null) localStorage.removeItem(key);
+            else localStorage.setItem(key, String(value));
+        } catch (e) { /* storage unavailable — markers are best-effort */ }
+    }
+
+    /**
+     * Pure: decides which copy to boot from.
+     *  - 'cloud'    : nothing unsynced locally (or no local copy)
+     *  - 'local'    : local has unsynced edits and the Sheet hasn't changed since our last
+     *                 successful sync (or the Sheet is empty) — safe to keep local and upload
+     *  - 'conflict' : local has unsynced edits AND the Sheet was written by someone else since
+     * Legacy installs without sync markers fall back to the old "local >10 s newer" rule.
+     */
+    function decideBootSource({ hasLocal, localTime, cloudTime, unsyncedFlag, lastSyncedCloudTime }) {
+        if (!hasLocal) return 'cloud';
+        if (unsyncedFlag === null || unsyncedFlag === undefined) {
+            // No marker yet (first run of this version): previous behaviour
+            if (lastSyncedCloudTime === null || lastSyncedCloudTime === undefined) {
+                return localTime > cloudTime + 10000 ? 'conflict' : 'cloud';
+            }
+            return 'cloud';
+        }
+        if (unsyncedFlag !== '1') return 'cloud';
+        if (!cloudTime) return 'local';
+        if (lastSyncedCloudTime !== null && lastSyncedCloudTime !== undefined &&
+            String(cloudTime) === String(lastSyncedCloudTime)) return 'local';
+        return 'conflict';
+    }
+
     /** The Handshake: Compares timestamps and resolves conflicts */
     function handleCloudDataResponse(responseStr, localData) {
         try {
@@ -142,12 +183,21 @@
             const cloudData = response.appState;
             const cloudTime = response.cloud_timestamp || 0;
             const localTime = localData ? (localData.local_timestamp || 0) : 0;
+            const decision = decideBootSource({
+                hasLocal: !!localData,
+                localTime,
+                cloudTime,
+                unsyncedFlag: _readSyncMarker('lumberLogicUnsynced'),
+                lastSyncedCloudTime: _readSyncMarker('lumberLogicLastSynced')
+            });
 
-            // 🪄 THE FAILSAFE: Local is more than 10 seconds newer than the Cloud
-            if (localTime > cloudTime + 10000) {
+            if (decision === 'conflict') {
                 showConflictModal(localData, cloudData, localTime, cloudTime);
+            } else if (decision === 'local') {
+                // Local edits never reached the Sheet and nobody else wrote since: keep them and upload.
+                finalizeBoot(localData);
+                triggerCloudSync();
             } else {
-                // Cloud is newer, or perfectly equal. Proceed normally.
                 finalizeBoot(cloudData);
             }
         } catch(e) {
@@ -337,7 +387,7 @@
 
         // 5. Save to localStorage immediately (bypass the debounce)
         appState.local_timestamp = Date.now();
-        localStorage.setItem('lumberLogicState', JSON.stringify(appState));
+        writeLocalBackup();
         if (syncTimeout) { clearTimeout(syncTimeout); syncTimeout = null; }
 
         // 5. SessionStorage flag: tells handleCloudDataResponse to skip the
@@ -361,7 +411,7 @@
             const tryReboot = () => { if (syncDone && thumbsDone) _reboot(); };
 
             google.script.run
-                .withSuccessHandler(() => { syncDone  = true; tryReboot(); })
+                .withSuccessHandler((r) => { _recordSyncSuccess(r); syncDone = true; tryReboot(); })
                 .withFailureHandler(_reboot)
                 .saveAppStateToSheet(JSON.stringify({ appState, timestamp: appState.local_timestamp }));
 
@@ -580,7 +630,7 @@
 
         // Persist locally immediately, bypassing the debounce -- same pattern as resetApp()
         appState.local_timestamp = Date.now();
-        localStorage.setItem('lumberLogicState', JSON.stringify(appState));
+        writeLocalBackup();
         if (syncTimeout) { clearTimeout(syncTimeout); syncTimeout = null; }
         sessionStorage.setItem('resetInProgress', '1');
 
@@ -599,7 +649,7 @@
             const tryReboot = () => { if (syncDone && thumbsDone) _reboot(); };
 
             google.script.run
-                .withSuccessHandler(() => { syncDone = true; tryReboot(); })
+                .withSuccessHandler((r) => { _recordSyncSuccess(r); syncDone = true; tryReboot(); })
                 .withFailureHandler(() => { syncDone = true; tryReboot(); })
                 .saveAppStateToSheet(JSON.stringify({ appState, timestamp: appState.local_timestamp }));
 
@@ -651,31 +701,60 @@
             text.innerText = t('msg_sync_failed');
         }
     }
+    // Keys that are rebuilt at runtime and never need to be stored or uploaded
+    const TRANSIENT_STATE_KEYS = ['latestResults', 'stagingParts'];
+
+    function _stripTransient(state) {
+        const copy = Object.assign({}, state);
+        TRANSIENT_STATE_KEYS.forEach(k => delete copy[k]);
+        return copy;
+    }
+
+    let _syncInFlight = false;
+    let _syncQueued = false;
+    let _storageWarningShown = false;
+
     function triggerCloudSync() {
+        // One save at a time: a second request waits and re-sends the LATEST state, so an
+        // older payload can never land after (and overwrite) a newer one.
+        if (_syncInFlight) { _syncQueued = true; return; }
+        if (syncTimeout) { clearTimeout(syncTimeout); syncTimeout = null; }
+
         updateSyncUI('syncing');
 
-        // Package the payload with a timestamp
         const currentTimestamp = Date.now();
+        const stateVersionSent = appState.local_timestamp || 0;
         const payload = {
-            appState: appState,
+            appState: _stripTransient(appState),
             timestamp: currentTimestamp
         };
 
-        // Fire to Google Apps Script asynchronously
         if (typeof google !== 'undefined' && google.script && google.script.run) {
+            _syncInFlight = true;
+            const done = () => {
+                _syncInFlight = false;
+                if (_syncQueued) { _syncQueued = false; triggerCloudSync(); }
+            };
             google.script.run
                 .withSuccessHandler(function(response) {
-                    if (response.status === 'success') {
+                    if (response && response.status === 'success') {
                         lastCloudSyncTime = response.cloud_timestamp;
+                        _writeSyncMarker('lumberLogicLastSynced', response.cloud_timestamp);
+                        // Only clear "unsynced" if nothing changed while this save was in flight
+                        if ((appState.local_timestamp || 0) <= stateVersionSent && !_syncQueued) {
+                            _writeSyncMarker('lumberLogicUnsynced', '0');
+                        }
                         updateSyncUI('success');
                     } else {
-                        console.error('Cloud Sync Error:', response.message);
+                        console.error('Cloud Sync Error:', response && response.message);
                         updateSyncUI('error');
                     }
+                    done();
                 })
                 .withFailureHandler(function(error) {
                     console.error('Cloud Sync Network Failure:', error);
                     updateSyncUI('error');
+                    done();
                 })
                 .saveAppStateToSheet(JSON.stringify(payload));
         } else {
@@ -683,6 +762,25 @@
             updateSyncUI('error');
         }
     }
+
+    /**
+     * Writes the local backup. Never throws: if storage is full it retries without
+     * transient data and, failing that, warns the user once — the cloud save still runs.
+     */
+    function writeLocalBackup() {
+        try {
+            localStorage.setItem('lumberLogicState', JSON.stringify(_stripTransient(appState)));
+            return true;
+        } catch (e) {
+            console.error('Local backup failed:', e);
+            if (!_storageWarningShown && typeof showToast === 'function') {
+                _storageWarningShown = true;
+                showToast(t('msg_local_backup_failed'), 'warning');
+            }
+            return false;
+        }
+    }
+
     function saveState() {
         // Any catalog item added without a price system (imports, restores) gets the current one
         if (typeof stampAllMissingPriceSystems === 'function') stampAllMissingPriceSystems();
@@ -695,25 +793,33 @@
         // Update getting-started checklist immediately on every save
         if (typeof renderChecklist === 'function') renderChecklist();
 
-        // 2. Inject a local timestamp into the state 
-        // (We will use this in Phase 3 to check if the browser crashed before the cloud sync finished)
+        // 2. Stamp the change and mark it as not yet in the Sheet
         appState.local_timestamp = Date.now();
+        _writeSyncMarker('lumberLogicUnsynced', '1');
 
-        // 3. Save to browser storage instantly
-        localStorage.setItem('lumberLogicState', JSON.stringify(appState));
-        console.log('Shop data instantly saved to local memory.');
-        
+        // 3. Save to browser storage instantly (never throws)
+        writeLocalBackup();
+
         // 4. Update UI to show local save
         updateSyncUI('local');
 
-        // 5. The Debounce Trap (3 seconds)
-        if (syncTimeout) {
-            clearTimeout(syncTimeout); // User is still typing! Reset the clock.
-        }
+        // 5. Debounce the cloud save (3 seconds of silence)
+        if (syncTimeout) clearTimeout(syncTimeout);
         syncTimeout = setTimeout(() => {
-            triggerCloudSync(); // 3 seconds of silence have passed. Fire the payload!
+            syncTimeout = null;
+            triggerCloudSync();
         }, 3000);
     }
+
+    // Leaving the page with a save still waiting in the debounce: send it now.
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('pagehide', () => {
+        if (syncTimeout) { clearTimeout(syncTimeout); syncTimeout = null; triggerCloudSync(); }
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden' && syncTimeout) {
+            clearTimeout(syncTimeout); syncTimeout = null; triggerCloudSync();
+        }
+    });
 
     // ==========================================
     // APP IGNITION SWITCH
