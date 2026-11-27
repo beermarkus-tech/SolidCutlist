@@ -276,8 +276,7 @@
         }
 
         // 6. Hide loader
-        const loader = document.getElementById('boot-loader');
-        if (loader) loader.classList.add('d-none');
+        hideBootLoader();
 
         // 7. Welcome tour (desktop only) or checklist
         if (!isMobile) {
@@ -290,6 +289,24 @@
 
         console.log(`🪵 SolidCutlist successfully booted into ${isMobile ? 'MOBILE' : 'DESKTOP'} mode.`);
         updateSyncUI('success');
+    }
+    /**
+     * Hides the boot/splash screen. In the PWA, which starts in a blink from its offline
+     * cache, the logo stays up an extra half second and then fades out, so it is seen.
+     */
+    function hideBootLoader() {
+        const loader = document.getElementById('boot-loader');
+        if (!loader) return;
+        if (!window.SOLIDCUTLIST_LOCAL_BACKEND) { loader.classList.add('d-none'); return; }
+        setTimeout(() => {
+            loader.style.transition = 'opacity 0.3s ease';
+            loader.style.opacity = '0';
+            setTimeout(() => {
+                loader.classList.add('d-none');
+                loader.style.opacity = '';
+                loader.style.transition = '';
+            }, 300);
+        }, 500);
     }
     function autoHealMissingIDs() {
         // 🪄 FIX: Added 'stores' here as well
