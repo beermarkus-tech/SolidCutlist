@@ -495,7 +495,7 @@
             const blob = new Blob([jsonStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            const dateStr = new Date().toISOString().split('T')[0];
+            const dateStr = localISODate();
             a.href = url;
             a.download = `SolidCutlist-FullBackup-${dateStr}.json`;
             document.body.appendChild(a);

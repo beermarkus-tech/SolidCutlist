@@ -33,7 +33,7 @@
     // This prevents the Google Apps Script concurrent request collision.
     document.addEventListener('DOMContentLoaded', () => {
         const dateInput = document.getElementById('proj-date');
-        if (dateInput) dateInput.value = new Date().toISOString().split('T')[0]; // Set input to YYYY-MM-DD
+        if (dateInput) dateInput.value = localISODate(); // Set input to YYYY-MM-DD
         setTimeout(fetchProjectThumbnails, 2000); 
     });
 
@@ -284,7 +284,7 @@
         const newProject = {
             id: newId,
             name: nameInput.value,
-            date: dateInput ? dateInput.value : new Date().toISOString().split('T')[0],
+            date: dateInput ? dateInput.value : localISODate(),
             status: 'Design'
         };
         
@@ -294,7 +294,7 @@
         showToast(t('msg_project_created'));
         
         nameInput.value = ''; // Clear the form
-        if (dateInput) dateInput.value = new Date().toISOString().split('T')[0]; // Reset date to today for the next entry
+        if (dateInput) dateInput.value = localISODate(); // Reset date to today for the next entry
     }
     function updateProject(id, field, newValue) {
         const project = appState.projects.find(p => p.id === id);
@@ -1397,7 +1397,7 @@
         try {
             const d = new Date(dateVal);
             if (isNaN(d.getTime())) return ''; // Invalid date
-            return d.toISOString().split('T')[0];
+            return localISODate(d);
         } catch (e) {
             return '';
         }

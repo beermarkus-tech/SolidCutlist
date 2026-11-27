@@ -35,6 +35,7 @@ function getAllFiles(dirPath, arrayOfFiles = []) {
 
 // 3. Process and copy everything to 'dist'
 async function build() {
+    let failures = 0;
     const allFiles = getAllFiles(srcDir);
 
     for (const srcPath of allFiles) {
@@ -59,6 +60,7 @@ async function build() {
                 console.log(`✅ Minified: ${relativePath}`);
             } catch (err) {
                 console.error(`❌ Error minifying ${relativePath}:`, err);
+                failures++;
             }
         } else {
             fs.copyFileSync(srcPath, destPath);
@@ -66,7 +68,12 @@ async function build() {
         }
     }
 
+    if (failures > 0) {
+        // A half-minified dist must never be pushed: fail loudly
+        console.error(`❌ Build FAILED: ${failures} file(s) could not be minified.`);
+        process.exit(1);
+    }
     console.log('🚀 Build complete! Check the "dist" folder.');
 }
 
-build();
+build().catch(err => { console.error('❌ Build crashed:', err); process.exit(1); });

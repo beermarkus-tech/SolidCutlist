@@ -3,6 +3,13 @@
     // MATH & UTILITY ENGINE
     // ==========================================
 
+    /** YYYY-MM-DD of a date in the user's LOCAL time zone (toISOString() is UTC and
+     *  gives yesterday's date late in the evening west of UTC, or after midnight in Europe). */
+    function localISODate(date) {
+        const d = date instanceof Date ? date : new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
     /** Returns an http(s) URL safe to put in an href attribute, or '' for anything else
      *  (e.g. javascript: links). Escaped for use inside a double-quoted attribute. */
     function safeUrl(url) {
@@ -95,6 +102,7 @@
     /** Formats Base Units (decimal mm) from the AppState back into a user-friendly string. Snaps fractional inches to the nearest 1/16th. */
     function formatForDisplay(mmValue) {
         let val = parseFloat(mmValue) || 0;
+        if (val < 0) return '-' + formatForDisplay(-val); // fraction math below assumes >= 0
         let unit = appState.settings.displayUnit;
 
         if (unit === 'mm') {
