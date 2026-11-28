@@ -19,9 +19,9 @@ Read this first, then `docs/PWA_PLAN.md` and `CHANGELOG.md`.
 |---|---|---|
 | `main` (tag `v1.0`) | v1.0 | **Live** (Etsy). Untouched. |
 | `work-in-progress` | v1.1 RC **build 40** (not live yet) | Corrected version of the live app (all audit fixes). Pushed to the WIP test Sheet. Owner tested: works well. |
-| `PWA` | **SolidCutlist PWA v2.0 preview · build 41** (not live yet) | Progressive Web App, live as a preview on GitHub Pages. Active branch. |
+| `PWA` | **SolidCutlist PWA v2.0 preview · build 42** (not live yet) | Progressive Web App, live as a preview on GitHub Pages. Active branch. |
 
-- Build numbers are shared: next PWA push that changes the app → build 42. The label is in
+- Build numbers are shared: next PWA push that changes the app → build 43. The label is in
   `src/Frontend/index.html` (`id="app-build-label"`); also add a `CHANGELOG.md` entry.
 - `work-in-progress` commit `5fe5ca1` (build 40 backup fix) is not merged into `PWA` as a commit,
   but the same code change is already in `PWA`.
@@ -61,6 +61,9 @@ Read this first, then `docs/PWA_PLAN.md` and `CHANGELOG.md`.
 - Merge: per record, newest change wins; deletions via tombstones (90 days); device-only view
   settings are not synced. First sync on a device: Drive wins for items already in Drive.
 - Google tokens last ~1 hour; then status shows "tap to sync" (popup needs a tap).
+  Build 42: token kept in localStorage (survives closing the app within the hour); the account
+  email (Drive `about`) is remembered and passed as `login_hint` so renewals skip the account
+  chooser. Owner rejected: auto-renew on any tap (annoying) and a refresh-token server (overkill).
 
 ### Lessons learned (avoid repeating)
 - `appState` is a script-level `let` in `js_state.html`, **not** `window.appState`. Code in other
@@ -105,7 +108,7 @@ Read this first, then `docs/PWA_PLAN.md` and `CHANGELOG.md`.
 
 ```bash
 npm install
-npm test            # unit tests (244 passing at build 41)
+npm test            # unit tests (245 passing at build 42)
 npm run build:pwa   # static site → dist-pwa/
 npm run serve:pwa   # local preview at http://localhost:8080
 npm run test:e2e    # Playwright: install/offline/update

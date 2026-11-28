@@ -6,9 +6,15 @@
 |---|---|---|
 | `main`, tag `v1.0` | Etsy launch version | **Yes, live** |
 | `work-in-progress`, tag `v1.1-rc` | **v1.1 RC: corrected version of the live app.** New features and all audit fixes. Pushed to the WIP test Sheet only. | **No, not live yet** |
-| `PWA` | **SolidCutlist PWA v2.0 preview** (build 41): installable web app on GitHub Pages, works offline, Google Drive sync. Branched from v1.1 RC build 39. | No, preview |
+| `PWA` | **SolidCutlist PWA v2.0 preview** (build 42): installable web app on GitHub Pages, works offline, Google Drive sync. Branched from v1.1 RC build 39. | No, preview |
 
 ---
+
+## PWA v2.0 preview, build 42 (not live yet, `PWA` branch)
+
+- Drive sync: the Google pass (valid ~1 hour) is kept when the app is closed, so reopening
+  within the hour syncs without a tap.
+- Renewing the Google sign-in pre-selects the account used before (no account chooser).
 
 ## PWA v2.0 preview, build 41 (not live yet, `PWA` branch)
 

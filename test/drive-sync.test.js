@@ -32,6 +32,7 @@ function fakeDrive() {
             const found = [...files.entries()].filter(([, f]) => f.name === name).map(([id, f]) => ({ id, name: f.name }));
             return resp(200, { files: found });
         }
+        if (method === 'GET' && u.pathname === '/drive/v3/about') return resp(200, { user: { emailAddress: 'maker@example.com' } });
         if (method === 'GET' && (m = /^\/drive\/v3\/files\/([^/]+)$/.exec(u.pathname))) {
             const f = files.get(m[1]);
             return f ? resp(200, JSON.parse(f.body)) : resp(404, {});
@@ -59,17 +60,18 @@ function fakeDrive() {
 
 // ---------- one simulated device ----------
 let tokenCounter = 0;
-function device(drive, clock, state, images) {
-    const ls = new Map(), ss = new Map();
+function device(drive, clock, state, images, reuse) {
+    // reuse: { ls, kv } of an earlier device = the same phone after closing and reopening the app
+    const ls = reuse ? reuse.ls : new Map(), ss = new Map();
     const storage = map => ({ getItem: k => (map.has(k) ? map.get(k) : null), setItem: (k, v) => map.set(k, String(v)), removeItem: k => map.delete(k) });
-    const kv = new Map();
+    const kv = reuse ? reuse.kv : new Map();
     const dev = { toasts: [], thumbImports: [], popups: [], revoked: [], saves: 0, online: true, timers: [] };
     const gis = {
         initTokenClient(cfg) {
             dev.clientId = cfg.client_id; dev.scope = cfg.scope;
             const client = {
                 requestAccessToken(o) {
-                    dev.popups.push(o.prompt);
+                    dev.popups.push(o.prompt); dev.hints = (dev.hints || []).concat([o.login_hint || null]);
                     const tok = 'tok' + (++tokenCounter);
                     drive.validTokens.add(tok);
                     Promise.resolve().then(() => client.callback({ access_token: tok, expires_in: 3600 }));
@@ -107,7 +109,7 @@ function device(drive, clock, state, images) {
     // Like the real app: data lives in a script-level `let`, NOT on window
     vm.runInContext('let appState = JSON.parse(__initialState);', ctx);
     DS = vm.runInContext('DriveSync', ctx);
-    dev.ctx = ctx; dev.sync = DS; dev.kv = kv;
+    dev.ctx = ctx; dev.sync = DS; dev.kv = kv; dev.ls = ls;
     dev.state = () => vm.runInContext('appState', ctx);
     assert.equal(ctx.appState, undefined, 'test setup mirrors the app: no window.appState');
     dev.edit = fn => { fn(dev.state(), ctx); clock.now += 1000; ctx.saveState(); };
@@ -322,4 +324,27 @@ test('sync refuses to run before the app data is loaded (never uploads an empty 
     const r = await phone.sync.signIn();
     assert.match(r.error, /not loaded/);
     assert.equal(drive.byName('solidcutlist-data.json').items.parts.A.v.qty, 4);
+});
+
+test('reopening the app within the hour syncs without a tap; later renewals skip the account chooser', async () => {
+    const drive = fakeDrive(), clock = { now: 1e12 };
+    const phone = device(drive, clock, pcData());
+    await phone.sync.signIn();
+    await Promise.resolve(); await new Promise(r => setImmediate(r)); // let the account lookup finish
+    // app closed and reopened 20 minutes later
+    clock.now += 20 * 60000;
+    const reopened = device(drive, clock, pcData(), {}, { ls: phone.ls, kv: phone.kv });
+    const r = await reopened.sync.syncNow();
+    assert.equal(r.ok, true, 'synced with the saved Google pass');
+    assert.equal((reopened.popups || []).length, 0, 'no sign-in window');
+    // two hours later the pass has expired: one tap renews it, with the account pre-selected
+    clock.now += 2 * 3600000;
+    assert.equal((await reopened.sync.syncNow()).skipped, 'needs-tap');
+    await reopened.sync.syncNow({ interactive: true });
+    assert.deepEqual(plain(reopened.popups), ['']);
+    assert.deepEqual(plain(reopened.hints), ['maker@example.com']);
+    // sign-out forgets the pass and the account
+    reopened.sync.signOut();
+    assert.equal(reopened.ls.get('solidcutlistDriveToken'), undefined);
+    assert.equal(JSON.parse(reopened.ls.get('solidcutlistDriveSync')).email, '');
 });
